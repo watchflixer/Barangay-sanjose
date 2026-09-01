@@ -8,11 +8,12 @@
       "landmark": "San Jose Bridge",
       "river": "Marikina River",
       "currentLevel": "28.18",
-      "alertLevel": "28.80",
-      "alarmLevel": "29.80",
-      "criticalLevel": "30.70",
+      "normalLevel": "25.00",
+      "alertLevel": "25.00",
+      "alarmLevel": "26.00",
+      "criticalLevel": "28.00",
       "unit": "m",
-      "note": "Seed value — replaced automatically by the scheduled PAGASA fetch."
+      "note": "Seed value — replaced automatically by the scheduled PAGASA fetch. normalLevel = below 25.00m is normal (no marking on the gauge below the 1st warning). alertLevel/alarmLevel read directly off the San Jose Bridge staff gauge (25.00 = 1st Warning ALERT, 26.00 = 2nd Warning ALARM). criticalLevel is an ESTIMATE from the gauge photo (3rd marking's position) — CONFIRM the exact printed value with MDRRMO before relying on it."
     }
   ]
 }
