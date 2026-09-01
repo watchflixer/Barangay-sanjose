@@ -5,6 +5,7 @@ import { MapViewer } from './components/MapViewer';
 import { AddHazardModal } from './components/AddHazardModal';
 import { EmergencyHotlinesModal } from './components/EmergencyHotlinesModal';
 import { LiveStreamModal } from './components/LiveStreamModal';
+import { PagasaFloodStatus } from './components/PagasaFloodStatus';
 import { HazardAlert, MapSettings, HazardType, HazardStatus } from './types';
 import { INITIAL_HAZARDS, SAN_JOSE_POLYGON_COORDS } from './data/geoData';
 
@@ -157,6 +158,7 @@ export default function App() {
             onMapClickCoordinate={handleMapClickCoordinate}
             recenterTrigger={recenterCount}
           />
+          <PagasaFloodStatus />
         </main>
       </div>
 
