@@ -19,6 +19,8 @@ jobs:
           node-version: 20
       - run: npm install
       - run: npm run build
+       env:
+          VITE_FLOOD_LIVE_URL: ${{ vars.FLOOD_LIVE_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
