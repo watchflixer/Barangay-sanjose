@@ -32,6 +32,7 @@ function normalizeRow(row) {
   };
   return {
     name: get('stnNm', 'stationName', 'obsNm', 'name') || 'Rodriguez',
+    landmark: 'San Jose Bridge',
     currentLevel: get('wl', 'nowWl', 'currentWl', 'current'),
     alertLevel: get('alertWl', 'alert', 'wl1'),
     alarmLevel: get('alarmWl', 'alarm', 'wl2'),
@@ -87,6 +88,7 @@ async function main() {
     if (matched.length > 0) {
       stations = matched.map((r) => ({
         name: r[0] || 'Rodriguez',
+        landmark: 'San Jose Bridge',
         currentLevel: r[1] || null,
         alertLevel: r[5] || null,
         alarmLevel: r[6] || null,
