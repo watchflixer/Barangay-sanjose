@@ -3,6 +3,7 @@ export interface FloodStation {
   landmark?: string;
   river?: string;
   currentLevel: string | number | null;
+  normalLevel?: string | number | null; // reference only — below alertLevel is already treated as "normal"
   alertLevel?: string | number | null;
   alarmLevel?: string | number | null;
   criticalLevel?: string | number | null;
@@ -30,6 +31,11 @@ export function classifyFloodLevel(station: FloodStation): FloodLevel {
 }
 
 export const FLOOD_DATA_URL = `${import.meta.env.BASE_URL}data/flood-status.json`;
+
+// When set, the app fetches live data directly from the always-on scraper
+// server (see /server) instead of the git-committed snapshot. Set this in
+// your deploy environment, e.g. VITE_FLOOD_LIVE_URL=https://your-app.onrender.com/api/flood-status
+export const FLOOD_LIVE_URL: string | undefined = import.meta.env.VITE_FLOOD_LIVE_URL;
 
 // Approximate coordinates for San Jose Bridge (Rodriguez Highway crossing of the
 // Marikina River at Barangay San Jose, Rodriguez, Rizal) — the landmark PAGASA's
