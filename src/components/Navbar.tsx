@@ -26,10 +26,12 @@ interface NavbarProps {
   onResetMap: () => void;
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
-  onOpenUpdates: () => void;
-  onOpenEvacuationCenters: () => void;
-  onOpenResolvedCleared: () => void;
-  onOpenHistory: () => void;
+  hasLiveUrl?: boolean;
+  onOpenLiveModal?: () => void;
+  onOpenUpdates?: () => void;
+  onOpenEvacuationCenters?: () => void;
+  onOpenResolvedCleared?: () => void;
+  onOpenHistory?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -39,10 +41,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetMap,
   mobileMenuOpen,
   setMobileMenuOpen,
-  onOpenUpdates,
-  onOpenEvacuationCenters,
-  onOpenResolvedCleared,
-  onOpenHistory,
+  hasLiveUrl = false,
+  onOpenLiveModal = () => {},
+  onOpenUpdates = () => {},
+  onOpenEvacuationCenters = () => {},
+  onOpenResolvedCleared = () => {},
+  onOpenHistory = () => {},
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isSpinning, setIsSpinning] = useState<boolean>(false);

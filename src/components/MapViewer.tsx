@@ -149,13 +149,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       });
     });
 
-    // Map click handler for adding pin mode
-    map.on('click', (e) => {
-      if (isAddingPinMode) {
-        onMapClickCoordinate([e.latlng.lat, e.latlng.lng]);
-      }
-    });
-
     mapInstanceRef.current = map;
 
     return () => {
@@ -163,6 +156,22 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       mapInstanceRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    const handleMapClick = (e: L.LeafletMouseEvent) => {
+      if (isAddingPinMode) {
+        onMapClickCoordinate([e.latlng.lat, e.latlng.lng]);
+      }
+    };
+
+    mapInstanceRef.current.on('click', handleMapClick);
+
+    return () => {
+      mapInstanceRef.current?.off('click', handleMapClick);
+    };
+  }, [isAddingPinMode, onMapClickCoordinate]);
 
   // 2. Update Tile Layer on setting change
   useEffect(() => {
