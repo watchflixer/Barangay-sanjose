@@ -5,6 +5,7 @@
   "stations": [
     {
       "name": "Rodriguez",
+      "landmark": "San Jose Bridge",
       "river": "Marikina River",
       "currentLevel": "28.18",
       "alertLevel": "28.80",
