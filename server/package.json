@@ -4,12 +4,11 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "start": "node index.mjs",
-    "postinstall": "playwright install --with-deps chromium"
+    "start": "node index.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "playwright": "^1.47.0"
+    "playwright": "1.47.0"
   }
 }
