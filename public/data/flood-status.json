@@ -1,19 +1,27 @@
 {
-  "fetchedAt": "2026-09-01T14:20:00+08:00",
+  "fetchedAt": "2026-09-01T13:52:21.418Z",
   "source": "https://pasig-marikina-tullahanffws.pagasa.dost.gov.ph/water/table.do",
   "barangay": "Barangay San Jose, Rodriguez, Rizal",
   "stations": [
     {
       "name": "Rodriguez",
       "landmark": "San Jose Bridge",
-      "river": "Marikina River",
-      "currentLevel": "28.18",
-      "normalLevel": "25.00",
-      "alertLevel": "25.00",
-      "alarmLevel": "26.00",
-      "criticalLevel": "28.00",
-      "unit": "m",
-      "note": "Seed value — replaced automatically by the scheduled PAGASA fetch. normalLevel = below 25.00m is normal (no marking on the gauge below the 1st warning). alertLevel/alarmLevel read directly off the San Jose Bridge staff gauge (25.00 = 1st Warning ALERT, 26.00 = 2nd Warning ALARM). criticalLevel is an ESTIMATE from the gauge photo (3rd marking's position) — CONFIRM the exact printed value with MDRRMO before relying on it."
+      "currentLevel": "28.16",
+      "alertLevel": null,
+      "alarmLevel": null,
+      "criticalLevel": null,
+      "raw": {
+        "obscd": "11102201",
+        "agctype": "001",
+        "obsnm": "Rodriguez",
+        "wl": "28.16",
+        "wl30m": "28.14",
+        "wl1h": "28.14",
+        "wl2h": "28.15",
+        "alertwl": "28.80",
+        "alarmwl": "29.80",
+        "criticalwl": "30.70"
+      }
     }
   ]
 }
