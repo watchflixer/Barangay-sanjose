@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { MapViewer } from './components/MapViewer';
@@ -8,6 +8,8 @@ import { LiveStreamModal } from './components/LiveStreamModal';
 import { PagasaFloodStatus } from './components/PagasaFloodStatus';
 import { HazardAlert, MapSettings, HazardType, HazardStatus } from './types';
 import { INITIAL_HAZARDS, SAN_JOSE_POLYGON_COORDS } from './data/geoData';
+import { useFloodStatus } from './hooks/useFloodStatus';
+import { classifyFloodLevel, SAN_JOSE_BRIDGE_COORDS, AUTO_FLOOD_ALERT_ID } from './lib/flood';
 
 export default function App() {
   const [alerts, setAlerts] = useState<HazardAlert[]>(INITIAL_HAZARDS);
@@ -42,6 +44,49 @@ export default function App() {
   const handleUpdateMapSettings = (partial: Partial<MapSettings>) => {
     setMapSettings((prev) => ({ ...prev, ...partial }));
   };
+
+  // ---- AUTOMATIC PAGASA FLOOD PIN ----
+  const floodStatus = useFloodStatus();
+
+  useEffect(() => {
+    if (!floodStatus.data || !floodStatus.data.stations?.length) return;
+    const station = floodStatus.data.stations[0];
+    const level = classifyFloodLevel(station);
+    const displayName = station.landmark || station.name || 'San Jose Bridge';
+
+    setAlerts((prev) => {
+      const withoutAuto = prev.filter((a) => a.id !== AUTO_FLOOD_ALERT_ID);
+
+      if (level === 'watch' || level === 'alarm' || level === 'critical') {
+        const severity = level === 'critical' ? 'critical' : level === 'alarm' ? 'high' : 'moderate';
+        const autoAlert: HazardAlert = {
+          id: AUTO_FLOOD_ALERT_ID,
+          type: 'flood',
+          title: `${level.toUpperCase()} \u2014 ${displayName} Water Level (Live PAGASA)`,
+          streetName: `${displayName}, Rodriguez Highway`,
+          sitio: `${displayName} Crossing`,
+          coordinates: SAN_JOSE_BRIDGE_COORDS,
+          timeReported: 'Automatic \u2014 PAGASA FFWS',
+          status: 'active',
+          severity,
+          description: `Automatic live reading from PAGASA's official river gauge at ${displayName}: current water level is ${station.currentLevel}${station.unit || 'm'} (Watch ${station.alertLevel}${station.unit || 'm'} / Alarm ${station.alarmLevel}${station.unit || 'm'} / Critical ${station.criticalLevel}${station.unit || 'm'}). This marker is generated automatically \u2014 not a manual report \u2014 and updates every 15 minutes.`,
+          reportedBy: 'PAGASA FFWS (Automatic Real-Time Feed)',
+          updatesCount: 0,
+          lastUpdated: floodStatus.data
+            ? new Date(floodStatus.data.fetchedAt).toLocaleTimeString('en-PH', {
+                timeZone: 'Asia/Manila',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+              })
+            : undefined,
+        };
+        return [autoAlert, ...withoutAuto];
+      }
+
+      return withoutAuto;
+    });
+  }, [floodStatus.data]);
 
   const handleSelectAlert = (alert: HazardAlert | null) => {
     setSelectedAlert(alert);
