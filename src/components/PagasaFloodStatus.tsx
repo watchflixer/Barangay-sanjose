@@ -5,7 +5,7 @@ import { classifyFloodLevel, FloodLevel } from '../lib/flood';
 
 const LEVEL_STYLES: Record<FloodLevel, { label: string; badge: string; dot: string }> = {
   normal: { label: 'NORMAL', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40', dot: 'bg-emerald-400' },
-  watch: { label: 'WATCH', badge: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40', dot: 'bg-yellow-400' },
+  watch: { label: 'ALERT', badge: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40', dot: 'bg-yellow-400' },
   alarm: { label: 'ALARM', badge: 'bg-orange-500/15 text-orange-400 border-orange-500/40', dot: 'bg-orange-400' },
   critical: { label: 'CRITICAL', badge: 'bg-red-500/15 text-red-400 border-red-500/40', dot: 'bg-red-400' },
   unknown: { label: 'NO DATA', badge: 'bg-slate-500/15 text-slate-400 border-slate-500/40', dot: 'bg-slate-400' },
