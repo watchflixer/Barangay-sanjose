@@ -1,0 +1,17 @@
+{
+  "fetchedAt": "2026-09-01T14:20:00+08:00",
+  "source": "https://pasig-marikina-tullahanffws.pagasa.dost.gov.ph/water/table.do",
+  "barangay": "Barangay San Jose, Rodriguez, Rizal",
+  "stations": [
+    {
+      "name": "Rodriguez",
+      "river": "Marikina River",
+      "currentLevel": "28.18",
+      "alertLevel": "28.80",
+      "alarmLevel": "29.80",
+      "criticalLevel": "30.70",
+      "unit": "m",
+      "note": "Seed value — replaced automatically by the scheduled PAGASA fetch."
+    }
+  ]
+}
