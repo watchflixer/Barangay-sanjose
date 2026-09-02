@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-02T09:33:05.891Z",
+  "fetchedAt": "2026-09-02T13:51:29.361Z",
   "source": "https://pasig-marikina-tullahanffws.pagasa.dost.gov.ph/water/table.do",
   "barangay": "Barangay San Jose, Rodriguez, Rizal",
   "stations": [
@@ -15,9 +15,9 @@
         "agctype": "001",
         "obsnm": "Rodriguez",
         "wl": "28.05",
-        "wl30m": "28.05",
-        "wl1h": "28.06",
-        "wl2h": "28.06",
+        "wl30m": "28.03",
+        "wl1h": "28.03",
+        "wl2h": "28.04",
         "alertwl": "28.80",
         "alarmwl": "29.80",
         "criticalwl": "30.70"
