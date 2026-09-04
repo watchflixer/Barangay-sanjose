@@ -1,12 +1,12 @@
 {
-  "fetchedAt": "2026-09-04T19:37:50.234Z",
+  "fetchedAt": "2026-09-04T21:50:48.709Z",
   "source": "https://pasig-marikina-tullahanffws.pagasa.dost.gov.ph/water/table.do",
   "barangay": "Barangay San Jose, Rodriguez, Rizal",
   "stations": [
     {
       "name": "Rodriguez",
       "landmark": "San Jose Bridge",
-      "currentLevel": "28.56",
+      "currentLevel": "28.54",
       "alertLevel": null,
       "alarmLevel": null,
       "criticalLevel": null,
@@ -14,10 +14,10 @@
         "obscd": "11102201",
         "agctype": "001",
         "obsnm": "Rodriguez",
-        "wl": "28.56",
-        "wl30m": "28.57",
-        "wl1h": "28.57",
-        "wl2h": "28.57",
+        "wl": "28.54",
+        "wl30m": "28.55",
+        "wl1h": "28.55",
+        "wl2h": "28.56",
         "alertwl": "28.80",
         "alarmwl": "29.80",
         "criticalwl": "30.70"
