@@ -1,0 +1,7 @@
+{
+  "name": "Barangay San Jose Hazard & Water Level Map",
+  "description": "Official Disaster & Hazard Monitoring Portal for Barangay San Jose, Rodriguez, Rizal with live water level monitoring and verified incident reports.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
