@@ -35,6 +35,8 @@ interface MapViewerProps {
   isAddingPinMode: boolean;
   onMapClickCoordinate: (coords: [number, number]) => void;
   recenterTrigger?: number;
+  onOpenMobileMenu?: () => void;
+  isMobileMenuOpen?: boolean;
 }
 
 // Tile Layer URLs
@@ -67,6 +69,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   isAddingPinMode,
   onMapClickCoordinate,
   recenterTrigger,
+  onOpenMobileMenu,
+  isMobileMenuOpen = false,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -79,6 +83,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
   const [mouseCoords, setMouseCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [showLayerMenu, setShowLayerMenu] = React.useState(false);
+
+  const toggleLayerMenu = (open?: boolean) => {
+    setShowLayerMenu((prev) => (typeof open === 'boolean' ? open : !prev));
+  };
   const [showFloodProneBlank, setShowFloodProneBlank] = React.useState(false);
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
@@ -675,8 +683,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         )}
       </div>
 
-      {/* Floating GIS Map Controls (Top Left) */}
-      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank ? 'left-4 top-4 z-40' : 'left-4 top-4 z-10'}`}>
+      {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
+      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''}`}>
         <button
           id="btn-recenter-gis"
           onClick={handleRecenter}
@@ -690,7 +698,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         <div className="relative">
           <button
             id="btn-toggle-layers-menu"
-            onClick={() => setShowLayerMenu(!showLayerMenu)}
+            onClick={() => toggleLayerMenu()}
             title="Layers"
             className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-800 shadow-xs border border-slate-200 transition-colors active:scale-95 cursor-pointer"
           >
@@ -698,40 +706,47 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           </button>
 
           {showLayerMenu && (
-            <div className="absolute top-0 left-11 w-64 bg-white rounded-lg shadow-lg border border-slate-200 p-2.5 text-[11px] text-slate-800 space-y-2.5 z-30 animate-in fade-in zoom-in-95 duration-150">
-              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                <span className="font-bold text-slate-900 text-[11px] uppercase tracking-wider">MAP SETTINGS</span>
-                <button
-                  onClick={() => setShowLayerMenu(false)}
-                  className="text-slate-400 hover:text-slate-600 text-xs font-bold"
-                >
-                  ✕
-                </button>
-              </div>
+            <>
+              {/* Mobile transparent backdrop: tap anywhere outside on phones to close Layers */}
+              <div
+                className="fixed inset-0 z-30 md:hidden"
+                onClick={() => toggleLayerMenu(false)}
+              />
 
-              {/* Base Map Style */}
-              <div className="-mt-1">
-                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
-                  BASEMAP STYLE:
-                </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {(['streets', 'satellite', 'light', 'dark'] as const).map((layer) => (
-                    <button
-                      key={layer}
-                      onClick={() => {
-                        if (layer === 'dark') {
-                          // Coming Soon is intentionally a no-op; keep the Layers menu open.
-                          return;
-                        }
-                        if (layer === 'light') {
-                          setShowFloodProneBlank(true);
+              <div className="absolute top-0 left-11 w-64 bg-white rounded-lg shadow-xl border border-slate-200 p-2.5 text-[11px] text-slate-800 space-y-2.5 z-40 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                  <span className="font-bold text-slate-900 text-[11px] uppercase tracking-wider">MAP SETTINGS</span>
+                  <button
+                    onClick={() => toggleLayerMenu(false)}
+                    className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Base Map Style */}
+                <div className="-mt-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-1.5">
+                    BASEMAP STYLE:
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(['streets', 'satellite', 'light', 'dark'] as const).map((layer) => (
+                      <button
+                        key={layer}
+                        onClick={() => {
+                          if (layer === 'dark') {
+                            // Coming Soon is intentionally a no-op; keep the Layers menu open.
+                            return;
+                          }
+                          if (layer === 'light') {
+                            setShowFloodProneBlank(true);
+                            onUpdateMapSettings({ tileLayer: layer });
+                            toggleLayerMenu(false);
+                            return;
+                          }
+                          setShowFloodProneBlank(false);
                           onUpdateMapSettings({ tileLayer: layer });
-                          setShowLayerMenu(false);
-                          return;
-                        }
-                        setShowFloodProneBlank(false);
-                        onUpdateMapSettings({ tileLayer: layer });
-                      }}
+                        }}
                       className={`relative px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors ${
                         layer === 'dark'
                           ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -799,8 +814,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 </>
               )}
             </div>
-          )}
-        </div>
+          </>
+        )}
+      </div>
 
         <button
           id="btn-show-user-location"
@@ -813,7 +829,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </button>
       </div>
 
-      {locationMessage && <div className="absolute left-4 top-44 z-20 rounded-md bg-white/95 px-3 py-2 text-[11px] text-slate-700 shadow-md">{locationMessage}</div>}
+      {locationMessage && !isMobileMenuOpen && (
+        <div className="absolute left-4 top-44 z-20 rounded-md bg-white/95 px-3 py-2 text-[11px] text-slate-700 shadow-md">
+          {locationMessage}
+        </div>
+      )}
 
     </div>
   );

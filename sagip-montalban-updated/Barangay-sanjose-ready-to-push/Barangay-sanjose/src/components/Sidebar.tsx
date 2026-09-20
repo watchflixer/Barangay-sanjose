@@ -41,6 +41,7 @@ interface SidebarProps {
   liveUrl?: string;
   onOpenLiveModal?: () => void;
   onRemoveLive?: () => void;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -57,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   liveUrl = '',
   onOpenLiveModal = () => {},
   onRemoveLive = () => {},
+  onClose,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 

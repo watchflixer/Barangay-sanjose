@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+server.js
+
+# Local env files (see .env.example)
+.env
+.env.local
+
+# Logs & misc
+*.log
+.DS_Store
