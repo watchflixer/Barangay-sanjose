@@ -123,16 +123,53 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      setPhotoError('Image size should be less than 8MB');
+    if (file.size > 15 * 1024 * 1024) {
+      setPhotoError('Image size should be less than 15MB');
       return;
     }
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        setPhotoUrl(event.target.result);
-        setPhotoError(null);
+      const rawData = event.target?.result;
+      if (typeof rawData === 'string') {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const MAX_DIM = 960;
+            let width = img.width;
+            let height = img.height;
+            if (width > MAX_DIM || height > MAX_DIM) {
+              if (width > height) {
+                height = Math.round((height * MAX_DIM) / width);
+                width = MAX_DIM;
+              } else {
+                width = Math.round((width * MAX_DIM) / height);
+                height = MAX_DIM;
+              }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, width, height);
+              const compressedData = canvas.toDataURL('image/jpeg', 0.72);
+              setPhotoUrl(compressedData);
+              setPhotoError(null);
+            } else {
+              setPhotoUrl(rawData);
+              setPhotoError(null);
+            }
+          } catch {
+            setPhotoUrl(rawData);
+            setPhotoError(null);
+          }
+        };
+        img.onerror = () => {
+          setPhotoUrl(rawData);
+          setPhotoError(null);
+        };
+        img.src = rawData;
       }
     };
     reader.readAsDataURL(file);

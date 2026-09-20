@@ -27,9 +27,25 @@ export default function App() {
   });
   const [selectedAlert, setSelectedAlert] = useState<HazardAlert | null>(null);
 
-  // Keep community reports available after refresh or accidental tab close.
+  // Keep community reports available after refresh or accidental tab close safely
   useEffect(() => {
-    localStorage.setItem('san-jose-alerts', JSON.stringify(alerts));
+    try {
+      localStorage.setItem('san-jose-alerts', JSON.stringify(alerts));
+    } catch (err) {
+      console.warn('LocalStorage quota or storage error caught, recovering:', err);
+      try {
+        // If quota exceeded, strip out bulky photo data from user reports so alerts remain intact
+        const trimmed = alerts.map((a) => {
+          if (a.photoUrl && a.photoUrl.startsWith('data:image')) {
+            return { ...a, photoUrl: undefined };
+          }
+          return a;
+        });
+        localStorage.setItem('san-jose-alerts', JSON.stringify(trimmed));
+      } catch {
+        // Silently prevent app crash if browser storage is completely blocked
+      }
+    }
   }, [alerts]);
 
   // Modals state
@@ -118,14 +134,21 @@ export default function App() {
           description: `Automatic live reading from PAGASA's official river gauge at ${displayName}: current water level is ${station.currentLevel}${station.unit || 'm'} (Watch ${station.alertLevel}${station.unit || 'm'} / Alarm ${station.alarmLevel}${station.unit || 'm'} / Critical ${station.criticalLevel}${station.unit || 'm'}). This marker is generated automatically \u2014 not a manual report \u2014 and updates every 15 minutes.`,
           reportedBy: 'PAGASA FFWS (Automatic Real-Time Feed)',
           updatesCount: 0,
-          lastUpdated: floodStatus.data
-            ? new Date(floodStatus.data.fetchedAt).toLocaleTimeString('en-PH', {
+          lastUpdated: (() => {
+            if (!floodStatus.data?.fetchedAt) return undefined;
+            try {
+              const d = new Date(floodStatus.data.fetchedAt);
+              if (isNaN(d.getTime())) return undefined;
+              return d.toLocaleTimeString('en-PH', {
                 timeZone: 'Asia/Manila',
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: true,
-              })
-            : undefined,
+              });
+            } catch {
+              return undefined;
+            }
+          })(),
         };
         return [autoAlert, ...withoutAuto];
       }
@@ -235,7 +258,27 @@ export default function App() {
             liveUrl={liveStreamUrl}
             onOpenLiveModal={() => setIsLiveModalOpen(true)}
             onRemoveLive={() => setLiveStreamUrl('')}
+            onClose={() => setMobileMenuOpen(false)}
           />
+
+          {/* Arrow toggle attached to the outer right edge of the incident feed drawer on mobile portrait */}
+          <button
+            id="btn-mobile-sidebar-toggle-arrow"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+            aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+            className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 items-center justify-center bg-transparent border-0 shadow-none p-1.5 transition-transform active:scale-90 cursor-pointer select-none"
+          >
+            <svg
+              viewBox="0 0 70 140"
+              className={`w-3.5 h-[22px] transition-transform duration-300 ${
+                mobileMenuOpen ? 'rotate-180' : 'rotate-0'
+              }`}
+              fill="#0f172a"
+            >
+              <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
+            </svg>
+          </button>
         </div>
 
         {/* Backdrop for Mobile Sidebar */}
@@ -258,6 +301,8 @@ export default function App() {
             isAddingPinMode={isAddingPinMode}
             onMapClickCoordinate={handleMapClickCoordinate}
             recenterTrigger={recenterCount}
+            onOpenMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+            isMobileMenuOpen={mobileMenuOpen}
           />
           <PagasaFloodStatus />
         </main>
