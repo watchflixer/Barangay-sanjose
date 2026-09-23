@@ -22,7 +22,11 @@ import {
   Droplets,
   AlertTriangle,
   CheckCircle2,
-  LocateFixed
+  LocateFixed,
+  Plus,
+  Minus,
+  Check,
+  ShieldCheck
 } from 'lucide-react';
 
 interface MapViewerProps {
@@ -91,6 +95,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const [locationMessage, setLocationMessage] = React.useState('');
+  // When true, the location banner is rendered as a centered green success
+  // toast that auto-hides after 3 seconds.
+  const [locationSuccess, setLocationSuccess] = React.useState(false);
+  const locationMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showLocationPermissionCard, setShowLocationPermissionCard] = React.useState(false);
+  const [precisionChoice, setPrecisionChoice] = React.useState<'precise' | 'approximate'>('precise');
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const floodMapFrameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -110,12 +120,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       maxZoom: 18,
       maxBounds: mapSettings.lockCameraToBounds ? maxBounds : undefined,
       maxBoundsViscosity: 1.0, // Hard lock - rubberband bouncing back
-      zoomControl: false, // We'll add custom positioned zoom control
+      zoomControl: false, // Zoom buttons are custom buttons in the left control stack, below 'Show your location'
       attributionControl: false,
     });
-
-    // Custom Zoom control top-right
-    L.control.zoom({ position: 'topright' }).addTo(map);
 
     // Initial Tile Layer
     const tileConfig = TILE_SERVERS[mapSettings.tileLayer];
@@ -303,69 +310,136 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     return () => {
       userLocationMarkerRef.current?.remove();
       userLocationMarkerRef.current = null;
+      if (locationMessageTimerRef.current) clearTimeout(locationMessageTimerRef.current);
     };
   }, []);
 
+  // Opens the Chrome-style in-app permission card. The real geolocation
+  // request only fires after the user taps one of the Allow buttons.
   const handleShowUserLocation = () => {
     if (!mapInstanceRef.current) return;
     if (!navigator.geolocation) { setLocationMessage('Location is unavailable.'); return; }
-    setLocationMessage('Requesting your location…');
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coordinates: L.LatLngExpression = [
-          position.coords.latitude,
-          position.coords.longitude,
-        ];
-        const locationIcon = L.divIcon({
-          className: 'user-location-marker',
-          html: '<span class="user-location-dot"></span>',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        });
-
-        if (userLocationMarkerRef.current) {
-          userLocationMarkerRef.current.setLatLng(coordinates);
-          userLocationMarkerRef.current.setIcon(locationIcon);
-        } else {
-          userLocationMarkerRef.current = L.marker(coordinates, {
-            icon: locationIcon,
-            zIndexOffset: 1000,
-            title: 'Your location',
-          }).addTo(mapInstanceRef.current!);
-        }
-        // The location can be outside Barangay San Jose. Temporarily release
-        // the GIS boundary lock so the button can always reach the user.
-        const map = mapInstanceRef.current;
-        if (mapSettings.lockCameraToBounds) map.setMaxBounds(null as any);
-        map.flyTo(coordinates, 16, {
-          duration: 1.6,
-          easeLinearity: 0.25,
-        });
-        setIsLocating(false);
-        setLocationMessage('Location found.');
-      },
-      () => { setIsLocating(false); setLocationMessage(''); },
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 },
-    );
+    setShowLocationPermissionCard(true);
   };
 
-  // Try to locate automatically when the map is ready. Browsers may still require
-  // a one-time permission approval; after approval this runs silently on refresh.
-  useEffect(() => {
+  const runLocationRequest = (highAccuracy: boolean) => {
     if (!mapInstanceRef.current || !navigator.geolocation) return;
-    const locate = () => {
-      if (navigator.permissions?.query) {
-        navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((permission) => {
-          if (permission.state === 'granted' || permission.state === 'prompt') handleShowUserLocation();
-        }).catch(() => handleShowUserLocation());
-      } else {
-        handleShowUserLocation();
-      }
+
+    // Clear any pending auto-hide timer from a previous run so a new request
+    // always starts with a fresh, visible message.
+    if (locationMessageTimerRef.current) {
+      clearTimeout(locationMessageTimerRef.current);
+      locationMessageTimerRef.current = null;
+    }
+
+    // Calling getCurrentPosition triggers the browser's native "Allow location?"
+    // dialog whenever permission is still undecided ("prompt"). If the user
+    // previously tapped "Never allow", Chrome never shows the dialog again —
+    // detect that state and guide the user instead of failing silently.
+    const requestGeolocation = () => {
+      setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coordinates: L.LatLngExpression = [
+            position.coords.latitude,
+            position.coords.longitude,
+          ];
+          const locationIcon = L.divIcon({
+            className: 'user-location-marker',
+            html: '<span class="user-location-dot"></span>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          });
+
+          if (userLocationMarkerRef.current) {
+            userLocationMarkerRef.current.setLatLng(coordinates);
+            userLocationMarkerRef.current.setIcon(locationIcon);
+          } else {
+            userLocationMarkerRef.current = L.marker(coordinates, {
+              icon: locationIcon,
+              zIndexOffset: 1000,
+              title: 'Your location',
+            }).addTo(mapInstanceRef.current!);
+          }
+
+          // The location can be outside Barangay San Jose. Temporarily release
+          // the GIS boundary lock so the button can always reach the user.
+          const map = mapInstanceRef.current;
+          if (mapSettings.lockCameraToBounds) map.setMaxBounds(null as any);
+          map.flyTo(coordinates, 16, {
+            duration: 1.6,
+            easeLinearity: 0.25,
+          });
+          setIsLocating(false);
+          setLocationMessage('Location Found!');
+          setLocationSuccess(true);
+          if (locationMessageTimerRef.current) clearTimeout(locationMessageTimerRef.current);
+          locationMessageTimerRef.current = setTimeout(() => {
+            setLocationMessage('');
+            setLocationSuccess(false);
+          }, 3000);
+        },
+        (error) => {
+          setIsLocating(false);
+          setLocationSuccess(false);
+          if (error.code === error.PERMISSION_DENIED) {
+            setLocationMessage('Location is blocked in your browser settings.');
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            setLocationMessage('Your location is currently unavailable. Please try again.');
+          } else if (error.code === error.TIMEOUT) {
+            setLocationMessage('Location request timed out. Please try again.');
+          } else {
+            setLocationMessage('Could not get your location. Please try again.');
+          }
+        },
+        { enableHighAccuracy: highAccuracy, timeout: 10000, maximumAge: 60000 },
+      );
     };
-    const timer = window.setTimeout(locate, 700);
-    return () => window.clearTimeout(timer);
-  }, []);
+
+    // IMPORTANT: the geolocation call must run synchronously from the user's
+    // tap on "Allow" so the browser treats it as a direct user gesture. The
+    // permissions check below only refines the hint message — it must never
+    // delay the actual request, otherwise Safari/iOS suppresses the dialog.
+    const askPermissionState = () => {
+      if (!navigator.permissions?.query) return;
+      navigator.permissions
+        .query({ name: 'geolocation' as PermissionName })
+        .then((permission) => {
+          // 'granted' → the location is fetched silently, no dialogs at all.
+          // 'prompt'  → the browser's one-time native allow dialog appears.
+          if (permission.state === 'prompt') {
+            setLocationMessage('Tap "Allow" on the browser popup to share your location.');
+          }
+        })
+        .catch(() => { /* hint only — the request itself is already running */ });
+    };
+    askPermissionState();
+
+    // Fires the native dialog immediately (still inside the click gesture):
+    requestGeolocation();
+  };
+
+  const handleAllowLocationRequest = () => {
+    setShowLocationPermissionCard(false);
+    setLocationSuccess(false);
+    runLocationRequest(precisionChoice === 'precise');
+  };
+
+  const handleNeverAllowLocation = () => {
+    setShowLocationPermissionCard(false);
+    setLocationMessage('Location access declined. Allow location in your browser settings to enable it.');
+  };
+
+  const handleZoomIn = () => {
+    mapInstanceRef.current?.zoomIn();
+  };
+
+  const handleZoomOut = () => {
+    mapInstanceRef.current?.zoomOut();
+  };
+
+  // Location is ONLY requested when the user clicks the "Show your location"
+  // button — no automatic geolocation prompt on page load.
 
   // 6. Render Custom Hazard Markers with SVG / Emoji Icons and Popups
   useEffect(() => {
@@ -669,8 +743,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Live Coordinate Display (Bottom Left) */}
-      <div className="absolute bottom-4 left-4 z-10 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono">
+      {/* Live Coordinate Display (Bottom Left) — also visible on mobile portrait (Android/iPhone) */}
+      <div className={`absolute bottom-4 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap sm:flex ${isMobileMenuOpen ? '' : 'portrait:flex'} items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono`}>
         <Compass className="w-3.5 h-3.5 text-blue-400" />
         <span className="font-semibold text-white">BRGY. SAN JOSE</span>
         <span className="text-slate-600">|</span>
@@ -827,11 +901,144 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         >
           <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
         </button>
+
+        {/* Zoom In / Zoom Out — below "Show your location"; hidden in Flood Prone mode */}
+        {!showFloodProneBlank && (
+          <>
+            <button
+              id="btn-zoom-in"
+              onClick={handleZoomIn}
+              title="Zoom in"
+              aria-label="Zoom in"
+              className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+            >
+              <Plus className="h-4 w-4 text-slate-700" />
+            </button>
+
+            <button
+              id="btn-zoom-out"
+              onClick={handleZoomOut}
+              title="Zoom out"
+              aria-label="Zoom out"
+              className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+            >
+              <Minus className="h-4 w-4 text-slate-700" />
+            </button>
+          </>
+        )}
       </div>
 
       {locationMessage && !isMobileMenuOpen && (
-        <div className="absolute left-4 top-44 z-20 rounded-md bg-white/95 px-3 py-2 text-[11px] text-slate-700 shadow-md">
-          {locationMessage}
+        locationSuccess ? (
+          // Minimal professional success text — italic monospace, small and
+          // subtle, auto-hides after 3 seconds.
+          <div className="pointer-events-none absolute inset-x-0 bottom-20 z-20 flex justify-center px-4">
+            <p className="animate-in fade-in zoom-in-95 font-['JetBrains_Mono',monospace] text-xs font-medium italic tracking-wide text-green-400/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] duration-300">
+              {locationMessage}
+            </p>
+          </div>
+        ) : (
+          <div className="absolute left-4 top-44 z-20 rounded-md bg-white/95 px-3 py-2 text-[11px] text-slate-700 shadow-md">
+            {locationMessage}
+          </div>
+        )
+      )}
+
+      {/* Chrome-style in-app location permission card — replicates the native
+          Android Chrome dialog so the same Precise/Approximate + Allow flow
+          appears on every device, even after the browser stops showing its
+          own native prompt. */}
+      {showLocationPermissionCard && (
+        <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-[320px] rounded-3xl bg-[#1f2430] p-4 shadow-2xl ring-1 ring-white/10">
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1a73e8]">
+                <MapPin className="h-4 w-4 text-white" />
+              </div>
+              <p className="pt-0.5 text-sm leading-snug text-slate-100">
+                <span className="font-bold">HazardSync</span> wants to use your device's location
+              </p>
+            </div>
+
+            {/* Precise option */}
+            <button
+              onClick={() => setPrecisionChoice('precise')}
+              className="mt-3.5 flex w-full items-center gap-2.5 rounded-2xl bg-[#2a303c] p-2.5 text-left ring-1 transition-colors ring-transparent active:scale-[0.99] hover:ring-white/20"
+            >
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#3a4150]">
+                <svg viewBox="0 0 56 56" className="h-full w-full">
+                  <rect width="56" height="56" fill="#3c4454" />
+                  <path d="M-2 14 L20 2 L34 16 L58 8" stroke="#5a6577" strokeWidth="4" fill="none" />
+                  <path d="M-2 34 L14 26 L30 40 L58 30" stroke="#5a6577" strokeWidth="4" fill="none" />
+                  <path d="M14 -2 L22 20 L10 38 L18 58" stroke="#5a6577" strokeWidth="3" fill="none" />
+                  <path d="M40 -2 L34 22 L46 40 L40 58" stroke="#5a6577" strokeWidth="3" fill="none" />
+                  <rect x="2" y="40" width="14" height="10" rx="2" fill="#3f7d5c" />
+                  <rect x="42" y="2" width="12" height="10" rx="2" fill="#3f7d5c" />
+                  <circle cx="28" cy="26" r="6" fill="#4285f4" stroke="#dfe3ea" strokeWidth="3" />
+                </svg>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-slate-100">Precise</div>
+                <div className="text-xs text-slate-400">Exact location</div>
+              </div>
+              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${precisionChoice === 'precise' ? 'bg-[#4285f4]' : 'border-2 border-slate-500'}`}>
+                {precisionChoice === 'precise' && <Check className="h-4 w-4 text-white" />}
+              </div>
+            </button>
+
+            {/* Approximate option */}
+            <button
+              onClick={() => setPrecisionChoice('approximate')}
+              className="mt-2 flex w-full items-center gap-2.5 rounded-2xl bg-[#2a303c] p-2.5 text-left ring-1 transition-colors ring-transparent active:scale-[0.99] hover:ring-white/20"
+            >
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#3a4150]">
+                <svg viewBox="0 0 56 56" className="h-full w-full">
+                  <rect width="56" height="56" fill="#3c4454" />
+                  <path d="M-2 14 L20 2 L34 16 L58 8" stroke="#5a6577" strokeWidth="4" fill="none" />
+                  <path d="M-2 34 L14 26 L30 40 L58 30" stroke="#5a6577" strokeWidth="4" fill="none" />
+                  <path d="M14 -2 L22 20 L10 38 L18 58" stroke="#5a6577" strokeWidth="3" fill="none" />
+                  <path d="M40 -2 L34 22 L46 40 L40 58" stroke="#5a6577" strokeWidth="3" fill="none" />
+                  <rect x="2" y="40" width="14" height="10" rx="2" fill="#3f7d5c" />
+                  <rect x="42" y="2" width="12" height="10" rx="2" fill="#3f7d5c" />
+                  <circle cx="28" cy="26" r="20" fill="#4285f4" fillOpacity="0.25" stroke="#a8c7fa" strokeWidth="2" />
+                  <circle cx="28" cy="26" r="4" fill="#a8c7fa" />
+                </svg></div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-slate-100">Approximate</div>
+                <div className="text-xs text-slate-400">Neighborhood</div>
+              </div>
+              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${precisionChoice === 'approximate' ? 'bg-[#4285f4]' : 'border-2 border-slate-500'}`}>
+                {precisionChoice === 'approximate' && <Check className="h-4 w-4 text-white" />}
+              </div>
+            </button>
+
+            <div className="mt-3.5 space-y-2">
+              <button
+                onClick={handleAllowLocationRequest}
+                className="w-full rounded-full bg-[#0b57d0] py-2.5 text-[13px] font-semibold text-white shadow-lg transition-colors active:scale-[0.98] hover:bg-[#1a73e8]"
+              >
+                Allow while visiting the site
+              </button>
+              <button
+                onClick={handleAllowLocationRequest}
+                className="w-full rounded-full bg-[#0b57d0] py-2.5 text-[13px] font-semibold text-white shadow-lg transition-colors active:scale-[0.98] hover:bg-[#1a73e8]"
+              >
+                Allow this time
+              </button>
+              <button
+                onClick={handleNeverAllowLocation}
+                className="w-full rounded-full bg-[#0b57d0] py-2.5 text-[13px] font-semibold text-white shadow-lg transition-colors active:scale-[0.98] hover:bg-[#1a73e8]"
+              >
+                Never allow
+              </button>
+              <p className="pt-1 text-center text-[10px] leading-relaxed text-slate-400 flex items-start justify-center gap-1.5">
+                <ShieldCheck className="w-3 h-3 shrink-0 text-emerald-400 mt-0.5" />
+                <span>
+                  By continuing, you consent to the use of your device location solely for displaying your position on this map. Your location is never saved, stored, or shared — in accordance with the Data Privacy Act (RA 10173).
+                </span>
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

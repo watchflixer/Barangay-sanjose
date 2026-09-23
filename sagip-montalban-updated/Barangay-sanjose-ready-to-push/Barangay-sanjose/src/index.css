@@ -11,19 +11,6 @@
   z-index: 1;
 }
 
-#leaflet-map-root .leaflet-top.leaflet-right {
-  top: 4px;
-}
-
-/* Flood-prone mode only: push zoom in/out below the "Show your location" button
-   (control column: Recenter + Layers + Show Location + gaps = ~170px from top) */
-#leaflet-map-root.flood-prone-map .leaflet-top.leaflet-right {
-  top: 172px;
-  right: auto;
-  bottom: auto;
-  left: 4px;
-}
-
 /* Custom Inverted Mask styling */
 .gis-blackout-mask {
   pointer-events: auto;

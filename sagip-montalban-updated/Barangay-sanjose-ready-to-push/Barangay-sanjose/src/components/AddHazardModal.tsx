@@ -181,7 +181,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
 
     // Strict Photo Requirement to prevent fake reports
     if (!photoUrl.trim()) {
-      setPhotoError('Required: Kailangan mag-upload o maglagay ng litrato bilang proof upang ma-verify ang hazard pin.');
+      setPhotoError('Required: You must upload or add a photo as proof so the hazard pin can be verified.');
       return;
     }
 
@@ -353,7 +353,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                 <Camera className="w-3.5 h-3.5 text-rose-500" />
-                <span>Kailangang Litrato / Photo Verification *</span>
+                <span>Photo Required / Photo Verification *</span>
               </label>
               <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                 Anti-Fake Report
@@ -361,7 +361,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             </div>
 
             <p className="text-[11px] text-slate-500 leading-snug">
-              Mag-upload ng aktwal na litrato mula sa lugar upang kumpirmahin ang totoong peligro sa Barangay San Jose.
+              Upload an actual photo from the site to confirm the real hazard in Barangay San Jose.
             </p>
 
             {photoUrl ? (

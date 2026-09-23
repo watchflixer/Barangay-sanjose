@@ -25,9 +25,9 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
               <History className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold tracking-tight">Kasaysayan ng mga Ulat at Aksyon (History Log)</h2>
+              <h2 className="text-base font-bold tracking-tight">Reports & Actions History Log</h2>
               <p className="text-xs text-slate-300">
-                Opisyal na talaan ng mga nai-report na hazard at pagtugon sa Barangay San Jose
+                Official record of reported hazards and responses in Barangay San Jose
               </p>
             </div>
           </div>
@@ -67,7 +67,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                           : 'bg-red-100 text-red-800'
                       }`}
                     >
-                      {alert.status === 'resolved' ? 'Naaksyunan' : alert.status === 'monitoring' ? 'Monitoring' : 'Aktibo'}
+                      {alert.status === 'resolved' ? 'Resolved' : alert.status === 'monitoring' ? 'Monitoring' : 'Active'}
                     </span>
                   </div>
 
@@ -78,11 +78,11 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                     </p>
                     <p className="flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>Naiulat ni: {alert.reportedBy}</span>
+                      <span>Reported by: {alert.reportedBy}</span>
                     </p>
                     <p className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>Timestamp: {alert.lastUpdated || 'Kamakailan'}</span>
+                      <span>Timestamp: {alert.lastUpdated || 'Recent'}</span>
                     </p>
                   </div>
 
@@ -97,12 +97,12 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
 
         {/* Footer */}
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
-          <span>Kabuuang talaan: <strong>{alerts.length} mga ulat</strong></span>
+          <span>Total records: <strong>{alerts.length} reports</strong></span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition-colors cursor-pointer"
           >
-            Isara
+            Close
           </button>
         </div>
       </div>

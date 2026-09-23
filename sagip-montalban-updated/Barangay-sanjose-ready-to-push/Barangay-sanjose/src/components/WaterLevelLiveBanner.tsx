@@ -97,7 +97,7 @@ export const WaterLevelLiveBanner: React.FC<WaterLevelLiveBannerProps> = ({
               WATER LEVEL MONITORING
             </h3>
             <p className="text-[10px] text-slate-400 font-medium truncate flex items-center gap-1">
-              <span>Bayan ng Montalban</span>
+              <span>Municipality of Montalban</span>
               <span>•</span>
               <span className="font-mono text-red-400">{liveTimestamp} PHT</span>
             </p>
@@ -109,14 +109,14 @@ export const WaterLevelLiveBanner: React.FC<WaterLevelLiveBannerProps> = ({
           <button
             onClick={onOpenEditModal}
             className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Palitan o i-edit ang link"
+            title="Change or edit the link"
           >
             <Settings className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={onRemoveLive}
             className="p-1 rounded text-slate-400 hover:text-red-400 hover:bg-red-950/40 transition-colors cursor-pointer"
-            title="Alisin ang live broadcast"
+            title="Remove the live broadcast"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -130,7 +130,7 @@ export const WaterLevelLiveBanner: React.FC<WaterLevelLiveBannerProps> = ({
           className="w-full h-full border-0"
           allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"
           allowFullScreen={true}
-          title="Bayan ng Montalban Live Water Level Monitoring"
+          title="Municipality of Montalban Live Water Level Monitoring"
         />
       </div>
 
@@ -147,7 +147,7 @@ export const WaterLevelLiveBanner: React.FC<WaterLevelLiveBannerProps> = ({
           rel="noreferrer"
           className="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
         >
-          <span>Buksan sa Official Page</span>
+          <span>Open on Official Page</span>
           <ExternalLink className="w-3 h-3" />
         </a>
       </div>

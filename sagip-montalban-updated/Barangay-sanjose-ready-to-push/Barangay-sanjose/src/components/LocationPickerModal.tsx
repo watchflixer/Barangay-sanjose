@@ -108,12 +108,8 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     );
   };
 
-  useEffect(() => {
-    if (!isOpen || !mapRef.current || !navigator.geolocation) return;
-    const timer = window.setTimeout(() => handleShowUserLocation(), 500);
-    return () => window.clearTimeout(timer);
-  }, [isOpen]);
-
+  // Location is ONLY requested when the user clicks the "Show your location"
+  // button — no automatic geolocation prompt when the modal opens.
   useEffect(() => {
     if (!isOpen || !initialCoordinates) return;
     setCoordinates(initialCoordinates);

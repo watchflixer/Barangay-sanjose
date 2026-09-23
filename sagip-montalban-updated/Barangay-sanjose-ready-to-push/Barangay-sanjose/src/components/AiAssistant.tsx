@@ -14,7 +14,7 @@ interface ChatMessage {
 
 const initialMessage: ChatMessage = {
   role: 'assistant',
-  text: 'Hi! Ako si SJ AI. Tinutulungan kitang maintindihan ang mga hazard sa Barangay San Jose. Ano ang kailangan mo?',
+  text: "Hi! I'm SJ AI. I help you understand hazards in Barangay San Jose. What do you need?",
 };
 
 const buildReply = (question: string, alerts: HazardAlert[]) => {
@@ -23,27 +23,27 @@ const buildReply = (question: string, alerts: HazardAlert[]) => {
   const floods = active.filter((alert) => alert.type === 'flood');
   const critical = active.filter((alert) => alert.severity === 'critical' || alert.severity === 'high');
 
-  if (text.includes('911') || text.includes('hotline') || text.includes('tawag') || text.includes('emergency')) {
-    return 'Kung may agarang panganib, tumawag agad sa 911. Maaari mo ring buksan ang Hotlines directory para makita ang rescue, fire, police, at barangay contacts.';
+  if (text.includes('911') || text.includes('hotline') || text.includes('tawag') || text.includes('call') || text.includes('emergency')) {
+    return 'If there is immediate danger, call 911 right away. You can also open the Hotlines directory to see rescue, fire, police, and barangay contacts.';
   }
-  if (text.includes('flood') || text.includes('baha') || text.includes('tubig')) {
-    if (floods.length === 0) return 'Walang active flood alert sa ngayon. Manatiling alerto at tingnan ang live PAGASA status bago bumiyahe.';
-    return `May ${floods.length} active flood alert${floods.length > 1 ? 's' : ''}: ${floods
+  if (text.includes('flood') || text.includes('baha') || text.includes('tubig') || text.includes('water')) {
+    if (floods.length === 0) return 'There is no active flood alert right now. Stay alert and check the live PAGASA status before traveling.';
+    return `There are ${floods.length} active flood alert${floods.length > 1 ? 's' : ''}: ${floods
       .slice(0, 2)
       .map((alert) => alert.sitio)
-      .join(', ')}. Iwasang dumaan sa mababang lugar at sundin ang abiso ng barangay.`;
+      .join(', ')}. Avoid passing through low-lying areas and follow barangay advisories.`;
   }
-  if (text.includes('safe') || text.includes('ligtas') || text.includes('gawin')) {
+  if (text.includes('safe') || text.includes('ligtas') || text.includes('gawin') || text.includes('what should')) {
     return critical.length
-      ? `May ${critical.length} high-priority alert. Lumayo sa hazard area, huwag tumawid sa baha o bumalik sa pinangyarihan, at tumawag sa 911 kung may banta sa buhay.`
-      : 'Walang high-priority alert sa ngayon. Ihanda ang emergency kit, flashlight, tubig, at mga importanteng dokumento.';
+      ? `There are ${critical.length} high-priority alerts. Stay away from the hazard area, do not cross floodwater or return to the scene, and call 911 if lives are at risk.`
+      : 'There are no high-priority alerts right now. Prepare your emergency kit, flashlight, water, and important documents.';
   }
   if (text.includes('status') || text.includes('alert') || text.includes('update')) {
     return active.length
-      ? `${active.length} active alert ang mino-monitor ngayon. Pinakamalapit na alert: ${active[0].title} sa ${active[0].sitio}.`
-      : 'Walang active alert sa kasalukuyan. Patuloy pa ring i-check ang dashboard para sa bagong report.';
+      ? `${active.length} active alerts are being monitored now. Nearest alert: ${active[0].title} in ${active[0].sitio}.`
+      : 'There are no active alerts at the moment. Keep checking the dashboard for new reports.';
   }
-  return 'Maaari mong itanong: “May baha ba?”, “Ano ang dapat kong gawin?”, o “Emergency hotline”. Para sa agarang panganib, tumawag sa 911.';
+  return 'You can ask: "Is there flooding?", "What should I do?", or "Emergency hotline". For immediate danger, call 911.';
 };
 
 export const AiAssistant: React.FC<AiAssistantProps> = ({ alerts, onOpenHotlines }) => {
@@ -76,7 +76,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ alerts, onOpenHotlines
     if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'fil-PH';
+    recognition.lang = 'en-US';
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       setInput(transcript);
@@ -107,14 +107,14 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ alerts, onOpenHotlines
               </div>
             ))}
             <div className="flex flex-wrap gap-1.5 pt-1">
-              {['May baha ba?', 'Ano ang dapat kong gawin?', 'Emergency hotline'].map((prompt) => (
+              {['Is there flooding?', 'What should I do?', 'Emergency hotline'].map((prompt) => (
                 <button key={prompt} onClick={() => sendMessage(prompt)} className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-700 hover:bg-blue-100">{prompt}</button>
               ))}
             </div>
           </div>
           <div className="border-t border-slate-200 bg-white p-3">
             <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-1.5 focus-within:border-blue-400">
-              <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && sendMessage()} placeholder="Magtanong tungkol sa hazards..." className="min-w-0 flex-1 bg-transparent px-2 text-xs text-slate-800 outline-none placeholder:text-slate-400" />
+              <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && sendMessage()} placeholder="Ask about hazards..." className="min-w-0 flex-1 bg-transparent px-2 text-xs text-slate-800 outline-none placeholder:text-slate-400" />
               <button onClick={startVoiceInput} aria-label="Use voice input" className={`rounded-lg p-2 ${isListening ? 'bg-red-100 text-red-600' : 'text-slate-500 hover:bg-slate-200'}`}><Mic className="h-4 w-4" /></button>
               <button onClick={() => sendMessage()} aria-label="Send message" className="rounded-lg bg-blue-600 p-2 text-white hover:bg-blue-700"><Send className="h-4 w-4" /></button>
             </div>

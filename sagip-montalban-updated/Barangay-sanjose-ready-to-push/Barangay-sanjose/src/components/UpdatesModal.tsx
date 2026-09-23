@@ -35,9 +35,9 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
               <BellRing className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold tracking-tight">Pinakabagong Updates at Situational Report</h2>
+              <h2 className="text-base font-bold tracking-tight">Latest Updates & Situational Report</h2>
               <p className="text-xs text-slate-300">
-                Opisyal na ulat mula sa Barangay San Jose BDRRMO at Rodriguez MDRRMO
+                Official reports from Barangay San Jose BDRRMO and Rodriguez MDRRMO
               </p>
             </div>
           </div>
@@ -58,11 +58,11 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
               <span>BDRRMO Weather & Flood Advisory (Barangay San Jose)</span>
             </div>
             <p className="text-slate-700 leading-relaxed">
-              Kasalukuyang <strong>Normal hanggang Katamtaman</strong> ang antas ng tubig sa Rodriguez River at Wawa corridor. Patuloy ang pag-ikot ng mga barangay tanod at rescue personnel sa mga low-lying areas tulad ng Kasiglahan Village (1K1 & 1K2) at Tagumpay.
+              The water level in the <strong>Rodriguez River and Wawa corridor</strong> is currently <strong>Normal to Moderate</strong>. Barangay tanod and rescue personnel continue to patrol low-lying areas such as Kasiglahan Village (1K1 & 1K2) and Tagumpay.
             </p>
             <div className="flex items-center justify-between pt-1 text-[11px] text-amber-800 font-medium border-t border-amber-200/60">
-              <span>Antas ng Tubig: <strong>Normal (Green Level)</strong></span>
-              <span>Updated: <strong>Kasalukuyang Oras</strong></span>
+              <span>Water Level: <strong>Normal (Green Level)</strong></span>
+              <span>Updated: <strong>Current Time</strong></span>
             </div>
           </div>
 
@@ -70,15 +70,15 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-center">
               <div className="text-xl font-black text-red-700">{activeAlerts.length}</div>
-              <div className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Aktibong Insidente</div>
+              <div className="text-[11px] font-bold text-red-600 uppercase tracking-wider">Active Incidents</div>
             </div>
             <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-center">
               <div className="text-xl font-black text-amber-700">{monitoringAlerts.length}</div>
-              <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Nasa Pagsubaybay</div>
+              <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Under Monitoring</div>
             </div>
             <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-center">
               <div className="text-xl font-black text-emerald-700">{resolvedAlerts.length}</div>
-              <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Naaksyunan / Ligtas</div>
+              <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Actioned / Safe</div>
             </div>
           </div>
 
@@ -86,7 +86,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
           <div className="space-y-3 pt-2">
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Kasalukuyang Talaan ng mga Ulat</span>
+              <span>Current Reports Log</span>
             </h3>
 
             <div className="space-y-2.5">
@@ -103,7 +103,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
                           : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
-                      {alert.status === 'active' ? 'Aktibo' : alert.status === 'monitoring' ? 'Monitoring' : 'Resolved'}
+                      {alert.status === 'active' ? 'Active' : alert.status === 'monitoring' ? 'Monitoring' : 'Resolved'}
                     </span>
                   </div>
                   <p className="text-slate-600 text-[11px]">{alert.sitio} • {alert.streetName}</p>
@@ -121,7 +121,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
             onClick={onClose}
             className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition-colors cursor-pointer"
           >
-            Isara
+            Close
           </button>
         </div>
       </div>

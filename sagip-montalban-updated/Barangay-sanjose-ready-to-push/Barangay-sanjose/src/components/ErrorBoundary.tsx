@@ -22,7 +22,7 @@ export class ErrorBoundary extends Component<Props, State> {
   public static getDerivedStateFromError(error: Error): State {
     return {
       hasError: true,
-      errorMessage: error?.message || 'May naganap na hindi inaasahang error.',
+      errorMessage: error?.message || 'An unexpected error occurred.',
     };
   }
 
@@ -53,9 +53,9 @@ export class ErrorBoundary extends Component<Props, State> {
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Naka-recover ang HazardSync</h2>
+              <h2 className="text-lg font-bold text-white">HazardSync has recovered</h2>
               <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                May naitalang pansamantalang error (tulad ng storage limit o rate limit) ngunit na-protektahan ang app mula sa pag-crash.
+                A temporary error was recorded (such as a storage limit or rate limit), but the app was protected from crashing.
               </p>
               {this.state.errorMessage && (
                 <div className="mt-3 p-2.5 bg-slate-900/80 rounded border border-slate-700/60 font-mono text-[11px] text-amber-300 break-words">
@@ -69,15 +69,15 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold text-white transition-colors cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                I-refresh ang Pahina
+                Refresh Page
               </button>
               <button
                 onClick={this.handleResetStorage}
                 className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
-                title="Linisin ang na-ipong cache kung napuno ang storage"
+                title="Clear the cached data if storage is full"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                I-clear Cache
+                Clear Cache
               </button>
             </div>
           </div>
