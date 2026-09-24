@@ -95,9 +95,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const [locationMessage, setLocationMessage] = React.useState('');
-  // When true, the location banner is rendered as a centered green success
-  // toast that auto-hides after 3 seconds.
-  const [locationSuccess, setLocationSuccess] = React.useState(false);
+  // Banner style for the location message: "success" renders the centered
+  // green toast, "error" the matching centered red one; both auto-hide after
+  // 3 seconds. Anything else uses the plain hint banner top-left.
+  const [locationBanner, setLocationBanner] = React.useState<'none' | 'success' | 'error'>('none');
   const locationMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showLocationPermissionCard, setShowLocationPermissionCard] = React.useState(false);
   const [precisionChoice, setPrecisionChoice] = React.useState<'precise' | 'approximate'>('precise');
@@ -372,18 +373,24 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           });
           setIsLocating(false);
           setLocationMessage('Location Found!');
-          setLocationSuccess(true);
+          setLocationBanner('success');
           if (locationMessageTimerRef.current) clearTimeout(locationMessageTimerRef.current);
           locationMessageTimerRef.current = setTimeout(() => {
             setLocationMessage('');
-            setLocationSuccess(false);
+            setLocationBanner('none');
           }, 3000);
         },
         (error) => {
           setIsLocating(false);
-          setLocationSuccess(false);
+          setLocationBanner('none');
           if (error.code === error.PERMISSION_DENIED) {
-            setLocationMessage('Location is blocked in your browser settings.');
+            setLocationMessage('Location access denied!');
+            setLocationBanner('error');
+            if (locationMessageTimerRef.current) clearTimeout(locationMessageTimerRef.current);
+            locationMessageTimerRef.current = setTimeout(() => {
+              setLocationMessage('');
+              setLocationBanner('none');
+            }, 3000);
           } else if (error.code === error.POSITION_UNAVAILABLE) {
             setLocationMessage('Your location is currently unavailable. Please try again.');
           } else if (error.code === error.TIMEOUT) {
@@ -421,13 +428,19 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
   const handleAllowLocationRequest = () => {
     setShowLocationPermissionCard(false);
-    setLocationSuccess(false);
+    setLocationBanner('none');
     runLocationRequest(precisionChoice === 'precise');
   };
 
   const handleNeverAllowLocation = () => {
     setShowLocationPermissionCard(false);
-    setLocationMessage('Location access declined. Allow location in your browser settings to enable it.');
+    setLocationMessage('Location access denied!');
+    setLocationBanner('error');
+    if (locationMessageTimerRef.current) clearTimeout(locationMessageTimerRef.current);
+    locationMessageTimerRef.current = setTimeout(() => {
+      setLocationMessage('');
+      setLocationBanner('none');
+    }, 3000);
   };
 
   const handleZoomIn = () => {
@@ -743,8 +756,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Live Coordinate Display (Bottom Left) — also visible on mobile portrait (Android/iPhone) */}
-      <div className={`absolute bottom-4 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap sm:flex ${isMobileMenuOpen ? '' : 'portrait:flex'} items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono`}>
+      {/* Live Coordinate Display (Bottom Left) — also visible on mobile portrait (Android/iPhone), raised a bit */}
+      <div className={`absolute bottom-4 portrait:bottom-10 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap sm:flex ${isMobileMenuOpen ? '' : 'portrait:flex'} items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono`}>
         <Compass className="w-3.5 h-3.5 text-blue-400" />
         <span className="font-semibold text-white">BRGY. SAN JOSE</span>
         <span className="text-slate-600">|</span>
@@ -929,11 +942,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {locationMessage && !isMobileMenuOpen && (
-        locationSuccess ? (
-          // Minimal professional success text — italic monospace, small and
-          // subtle, auto-hides after 3 seconds.
-          <div className="pointer-events-none absolute inset-x-0 bottom-20 z-20 flex justify-center px-4">
-            <p className="animate-in fade-in zoom-in-95 font-['JetBrains_Mono',monospace] text-xs font-medium italic tracking-wide text-green-400/90 drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] duration-300">
+        locationBanner !== 'none' ? (
+          // Minimal centered toast — green when found, red when denied —
+          // italic monospace, small and subtle, auto-hides after 3 seconds.
+          <div className="pointer-events-none absolute inset-x-0 bottom-20 portrait:bottom-28 z-20 flex justify-center px-4">
+            <p className={`animate-in fade-in zoom-in-95 font-['JetBrains_Mono',monospace] text-xs font-medium italic tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] duration-300 ${locationBanner === 'success' ? 'text-green-400/90' : 'text-red-400/90'}`}>
               {locationMessage}
             </p>
           </div>

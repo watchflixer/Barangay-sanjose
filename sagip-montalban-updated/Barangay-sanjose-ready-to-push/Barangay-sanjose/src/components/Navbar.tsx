@@ -118,8 +118,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                 <span>Rizal</span>
-                {/* Live clock beside “Rizal” — mobile (portrait) only */}
-                <span className="hidden portrait:flex items-center gap-1 normal-case tracking-tight text-slate-700 tabular-nums">
+                {/* Live clock beside “Rizal” — mobile phone views (narrow width or portrait) */}
+                <span className="flex sm:hidden sm:portrait:flex items-center gap-1 normal-case tracking-tight text-slate-700 tabular-nums">
                   <span className="w-0.5 h-2.5 rounded-full bg-slate-300" />
                   {currentTime || 'PST'}
                 </span>
@@ -159,7 +159,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-2 shrink-0">
-            <div className="flex h-8 items-center justify-center mr-4 sm:mr-5 text-slate-800 font-sans font-semibold text-xs tracking-tight tabular-nums whitespace-nowrap portrait:hidden">
+            <div className="hidden sm:flex h-8 items-center justify-center mr-4 sm:mr-5 text-slate-800 font-sans font-semibold text-xs tracking-tight tabular-nums whitespace-nowrap portrait:hidden">
               {currentTime || 'PST'}
             </div>
 
