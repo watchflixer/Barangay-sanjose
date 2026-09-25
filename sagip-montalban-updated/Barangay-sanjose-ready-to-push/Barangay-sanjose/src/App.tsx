@@ -216,7 +216,9 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-100 font-['Plus_Jakarta_Sans',sans-serif]">
+    // h-full resolves against the 100dvh html height fix in index.css — the
+    // app always fits the phone screen with no cut-off or extra scrolling.
+    <div className="flex flex-col h-full w-screen overflow-hidden bg-slate-100 font-['Plus_Jakarta_Sans',sans-serif]">
       {/* Top Navbar */}
       <Navbar
         alerts={alerts}

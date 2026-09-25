@@ -92,7 +92,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({ alerts, onOpenHotlines
   return (
     <div className="absolute right-5 bottom-14 z-50 sm:right-7 sm:bottom-14">
       {isOpen && (
-        <section className="mb-3 flex h-[min(520px,calc(100vh-8rem))] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <section className="mb-3 flex h-[min(520px,calc(100dvh-8rem))] w-[min(360px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
           <header className="flex items-center justify-between bg-slate-950 px-4 py-3 text-white">
             <div className="flex items-center gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600"><Bot className="h-5 w-5" /></div>

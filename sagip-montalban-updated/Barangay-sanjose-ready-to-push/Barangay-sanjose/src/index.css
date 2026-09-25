@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+/* Mobile viewport fix (Android/iPhone): h-screen/100vh includes the browser's
+   hidden address bar, so the site appeared cut off and had to be scrolled.
+   100dvh is the real visible height, so the whole app fits the screen. */
+html,
+body,
+#root {
+  height: 100%;
+}
+@supports (height: 100dvh) {
+  html {
+    height: 100dvh;
+  }
+}
+
 /* Leaflet Container & Layout */
 .leaflet-container {
   width: 100%;
