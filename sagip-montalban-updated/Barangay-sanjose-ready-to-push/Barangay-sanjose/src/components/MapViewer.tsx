@@ -963,7 +963,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           // Minimal centered toast — green when found, red when denied —
           // italic monospace, small and subtle, auto-hides after 3 seconds.
           // z-[40] keeps it visible above the Flood Prone iframe (z-30).
-          <div className="pointer-events-none absolute inset-x-0 bottom-20 portrait:bottom-28 z-[40] flex justify-center px-4">
+          // Portrait sits a bit lower on the main map; Flood Prone keeps the
+          // raised spot so it stays clear of the iframe's bottom overlays.
+          <div className={`pointer-events-none absolute inset-x-0 bottom-20 ${showFloodProneBlank ? 'portrait:bottom-28' : 'portrait:bottom-20'} z-[40] flex justify-center px-4`}>
             <p className={`animate-in fade-in zoom-in-95 font-['JetBrains_Mono',monospace] text-xs font-medium italic tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] duration-300 ${locationBanner === 'success' ? 'text-green-400/90' : 'text-red-400/90'}`}>
               {locationMessage}
             </p>
