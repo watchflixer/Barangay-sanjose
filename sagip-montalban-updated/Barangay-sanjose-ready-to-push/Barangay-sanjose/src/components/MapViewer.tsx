@@ -41,6 +41,8 @@ interface MapViewerProps {
   recenterTrigger?: number;
   onOpenMobileMenu?: () => void;
   isMobileMenuOpen?: boolean;
+  /** Lets the parent app know the Flood Prone map is open (for navbar gating). */
+  onFloodProneChange?: (isOpen: boolean) => void;
 }
 
 // Tile Layer URLs
@@ -75,6 +77,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   recenterTrigger,
   onOpenMobileMenu,
   isMobileMenuOpen = false,
+  onFloodProneChange,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -92,6 +95,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     setShowLayerMenu((prev) => (typeof open === 'boolean' ? open : !prev));
   };
   const [showFloodProneBlank, setShowFloodProneBlank] = React.useState(false);
+
+  // Notify the parent app whenever the Flood Prone map opens or closes.
+  React.useEffect(() => {
+    onFloodProneChange?.(showFloodProneBlank);
+  }, [showFloodProneBlank, onFloodProneChange]);
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const [locationMessage, setLocationMessage] = React.useState('');
@@ -363,14 +371,23 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             }).addTo(mapInstanceRef.current!);
           }
 
-          // The location can be outside Barangay San Jose. Temporarily release
-          // the GIS boundary lock so the button can always reach the user.
-          const map = mapInstanceRef.current;
-          if (mapSettings.lockCameraToBounds) map.setMaxBounds(null as any);
-          map.flyTo(coordinates, 16, {
-            duration: 1.6,
-            easeLinearity: 0.25,
-          });
+          // While the Flood Prone map is open the location goes into the
+          // iframe instead of the hidden GIS map behind it.
+          if (showFloodProneBlank) {
+            floodMapFrameRef.current?.contentWindow?.postMessage(
+              { type: 'flood-user-location', lat: position.coords.latitude, lng: position.coords.longitude },
+              '*'
+            );
+          } else {
+            // The location can be outside Barangay San Jose. Temporarily release
+            // the GIS boundary lock so the button can always reach the user.
+            const map = mapInstanceRef.current;
+            if (mapSettings.lockCameraToBounds) map.setMaxBounds(null as any);
+            map.flyTo(coordinates, 16, {
+              duration: 1.6,
+              easeLinearity: 0.25,
+            });
+          }
           setIsLocating(false);
           setLocationMessage('Location Found!');
           setLocationBanner('success');
@@ -756,8 +773,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Live Coordinate Display (Bottom Left) — also visible on mobile portrait (Android/iPhone), raised a bit */}
-      <div className={`absolute bottom-4 portrait:bottom-10 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap sm:flex ${isMobileMenuOpen ? '' : 'portrait:flex'} items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono`}>
+      {/* Live Coordinate Display (Bottom Left) — desktop/landscape only; hidden on mobile portrait (Android/iPhone) */}
+      <div className="absolute bottom-4 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap portrait:hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono">
         <Compass className="w-3.5 h-3.5 text-blue-400" />
         <span className="font-semibold text-white">BRGY. SAN JOSE</span>
         <span className="text-slate-600">|</span>
@@ -945,13 +962,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         locationBanner !== 'none' ? (
           // Minimal centered toast — green when found, red when denied —
           // italic monospace, small and subtle, auto-hides after 3 seconds.
-          <div className="pointer-events-none absolute inset-x-0 bottom-20 portrait:bottom-28 z-20 flex justify-center px-4">
+          // z-[40] keeps it visible above the Flood Prone iframe (z-30).
+          <div className="pointer-events-none absolute inset-x-0 bottom-20 portrait:bottom-28 z-[40] flex justify-center px-4">
             <p className={`animate-in fade-in zoom-in-95 font-['JetBrains_Mono',monospace] text-xs font-medium italic tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] duration-300 ${locationBanner === 'success' ? 'text-green-400/90' : 'text-red-400/90'}`}>
               {locationMessage}
             </p>
           </div>
         ) : (
-          <div className="absolute left-4 top-44 z-20 rounded-md bg-white/95 px-3 py-2 text-[11px] text-slate-700 shadow-md">
+          <div className="absolute left-4 top-44 z-[40] rounded-md bg-white/95 px-3 py-2 text-[11px] text-slate-700 shadow-md">
             {locationMessage}
           </div>
         )
