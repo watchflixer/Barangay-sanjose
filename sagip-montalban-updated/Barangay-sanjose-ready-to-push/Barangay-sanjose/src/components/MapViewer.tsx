@@ -26,7 +26,8 @@ import {
   Plus,
   Minus,
   Check,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from 'lucide-react';
 
 interface MapViewerProps {
@@ -100,6 +101,40 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   React.useEffect(() => {
     onFloodProneChange?.(showFloodProneBlank);
   }, [showFloodProneBlank, onFloodProneChange]);
+
+  // True while the Flood Prone iframe has navigated away to the external
+  // Leaflet site (leafletjs.com): the floating controls hide and an X
+  // button appears (all devices) to come back.
+  const [floodOnExternalSite, setFloodOnExternalSite] = React.useState(false);
+  // Bumped to remount the Flood Prone iframe, resetting it to the map.
+  const [floodMapNonce, setFloodMapNonce] = React.useState(0);
+
+  // The Flood Prone iframe reports taps on its underlined "Leaflet" credit.
+  // The credit still navigates the iframe to leafletjs.com; the app answers
+  // by hiding its floating controls (Recenter/Layers/Show your location) and
+  // raising an X button that returns to the Flood Prone map.
+  React.useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if ((event.data as { type?: string } | null)?.type === 'flood-leaflet-click') {
+        setFloodOnExternalSite(true);
+      }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, []);
+
+  // Closing Flood Prone by any other means (streets/satellite basemap) also
+  // resets the external-site state so a stale X never comes back later.
+  React.useEffect(() => {
+    if (!showFloodProneBlank) setFloodOnExternalSite(false);
+  }, [showFloodProneBlank]);
+
+  // X button: remount the iframe so the Flood Prone map loads fresh and
+  // bring the floating controls back.
+  const handleBackToFloodProne = () => {
+    setFloodOnExternalSite(false);
+    setFloodMapNonce((n) => n + 1);
+  };
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const [locationMessage, setLocationMessage] = React.useState('');
@@ -757,12 +792,27 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       {showFloodProneBlank && (
         <div className="absolute inset-0 z-30 bg-white" aria-label="Rizal Flood Hazard Map">
           <iframe
+            key={floodMapNonce}
             title="Rizal Flood Hazard Map (100-year)"
             src={`${import.meta.env.BASE_URL}rizal_flood_100yr_map.html`}
             ref={floodMapFrameRef}
             className="h-full w-full border-0"
           />
         </div>
+      )}
+
+      {/* X button shown while the Flood Prone iframe is viewing the external
+          Leaflet site (leafletjs.com). Bare X icon — no circle card — visible
+          on ALL devices and returns the user to the Flood Prone map. */}
+      {showFloodProneBlank && floodOnExternalSite && (
+        <button
+          onClick={handleBackToFloodProne}
+          title="Back to Flood Prone map"
+          aria-label="Back to Flood Prone map"
+          className="absolute right-6 top-4 z-[45] flex h-10 w-10 items-center justify-center text-slate-900 drop-shadow-sm transition-transform hover:scale-110 active:scale-90"
+        >
+          <X className="h-7 w-7" strokeWidth={3} />
+        </button>
       )}
 
       {/* Adding Pin Active Overlay Banner */}
@@ -788,7 +838,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite ? 'hidden' : ''}`}>
         <button
           id="btn-recenter-gis"
           onClick={handleRecenter}

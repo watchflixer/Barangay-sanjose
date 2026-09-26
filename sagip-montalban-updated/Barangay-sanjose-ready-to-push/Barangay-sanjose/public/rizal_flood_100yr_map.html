@@ -149,6 +149,17 @@ window.addEventListener('message', (event) => {
   if (event.data.type === 'flood-user-location') showFloodUserLocation(event.data.lat, event.data.lng);
 });
 
+// Tapping the underlined "Leaflet" credit navigates to leafletjs.com as
+// usual. The tap is also reported to the parent app so it can hide its
+// floating map controls while the external site is open.
+document.addEventListener('click', function (e) {
+  const target = e.target;
+  if (!target || typeof target.closest !== 'function') return;
+  if (target.closest('.leaflet-control-attribution a[href*="leafletjs"]')) {
+    window.parent.postMessage({ type: 'flood-leaflet-click' }, '*');
+  }
+}, true);
+
 let floodUserMarker = null;
 function showFloodUserLocation(lat, lng) {
   if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;

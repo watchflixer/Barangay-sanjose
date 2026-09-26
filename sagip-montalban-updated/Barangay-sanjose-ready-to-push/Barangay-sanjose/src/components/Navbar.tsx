@@ -27,7 +27,7 @@ interface NavbarProps {
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
   hasLiveUrl?: boolean;
-  /** Flood Prone map is open — disables Report/●●● on mobile portrait. */
+  /** Flood Prone map is open — disables Report/●●● on ALL devices. */
   floodProneOpen?: boolean;
   onOpenLiveModal?: () => void;
   onOpenUpdates?: () => void;
@@ -54,24 +54,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
   const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState<boolean>(false);
-  // Tracks portrait orientation so flood-prone gating only applies on
-  // Android/iPhone portrait views, never on desktop.
-  const [isPortrait, setIsPortrait] = useState<boolean>(
-    () => typeof window !== 'undefined' && window.matchMedia('(orientation: portrait)').matches
-  );
   const menuDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Close the ●●● dropdown whenever the Flood Prone map disables it (all devices).
   useEffect(() => {
-    const media = window.matchMedia('(orientation: portrait)');
-    const handleChange = (event: MediaQueryListEvent) => setIsPortrait(event.matches);
-    media.addEventListener('change', handleChange);
-    return () => media.removeEventListener('change', handleChange);
-  }, []);
-
-  // Close the ●●● dropdown when the Flood Prone map disables it on portrait.
-  useEffect(() => {
-    if (floodProneOpen && isPortrait) setIsMenuDropdownOpen(false);
-  }, [floodProneOpen, isPortrait]);
+    if (floodProneOpen) setIsMenuDropdownOpen(false);
+  }, [floodProneOpen]);
 
   const handleRecenter = () => {
     setIsSpinning(true);
@@ -187,9 +175,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="relative shrink-0" ref={menuDropdownRef}>
               <button
                 onClick={() => setIsMenuDropdownOpen((prev) => !prev)}
+                disabled={floodProneOpen}
                 title="Options"
-                disabled={floodProneOpen && isPortrait}
-                className={`inline-flex h-8 items-center justify-center px-2 rounded-md border border-slate-200 transition-colors ${floodProneOpen && isPortrait ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100 cursor-pointer'}`}
+                className={`inline-flex h-8 items-center justify-center px-2 rounded-md border border-slate-200 transition-colors ${floodProneOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100 cursor-pointer'}`}
               >
                 <span className="text-black font-black text-[10px] tracking-wider leading-none">
                   ●●●
@@ -197,7 +185,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {isMenuDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-slate-100">
+                <div className="absolute right-0 mt-7 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-slate-100">
+                  {/* Speech-bubble arrow pointing up at the ●●● button */}
+                  <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 rounded-[2px] border-l border-t border-slate-200 bg-white" />
                   <div className="py-1">
                     <button
                       onClick={() => {
@@ -259,8 +249,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-report-hazard"
               onClick={onOpenReportModal}
-              disabled={floodProneOpen && isPortrait}
-              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-white bg-slate-900 rounded-md shadow-xs transition-all shrink-0 whitespace-nowrap ${floodProneOpen && isPortrait ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-800'}`}
+              disabled={floodProneOpen}
+              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-white bg-slate-900 rounded-md shadow-xs transition-all shrink-0 whitespace-nowrap ${floodProneOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-800'}`}
             >
               <PlusCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>Report</span>
