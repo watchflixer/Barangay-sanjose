@@ -198,6 +198,8 @@ export default function App() {
 
   // True while the Flood Prone map is open — used to gate navbar actions.
   const [floodProneOpen, setFloodProneOpen] = useState(false);
+  // True while the realtime Traffic map is open — also gates navbar actions.
+  const [trafficOpen, setTrafficOpen] = useState(false);
 
   const resolvedAlerts = alerts.filter((a) => a.status === 'resolved');
 
@@ -232,6 +234,7 @@ export default function App() {
         setMobileMenuOpen={setMobileMenuOpen}
         hasLiveUrl={!!liveStreamUrl}
         floodProneOpen={floodProneOpen}
+        trafficOpen={trafficOpen}
         onOpenLiveModal={() => setIsLiveModalOpen(true)}
         onOpenUpdates={() => setIsUpdatesModalOpen(true)}
         onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
@@ -310,6 +313,7 @@ export default function App() {
             onOpenMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
             isMobileMenuOpen={mobileMenuOpen}
             onFloodProneChange={setFloodProneOpen}
+            onTrafficChange={setTrafficOpen}
           />
           <PagasaFloodStatus />
         </main>

@@ -29,6 +29,8 @@ interface NavbarProps {
   hasLiveUrl?: boolean;
   /** Flood Prone map is open — disables Report/●●● on ALL devices. */
   floodProneOpen?: boolean;
+  /** Traffic map is open — also disables Report/●●● on ALL devices. */
+  trafficOpen?: boolean;
   onOpenLiveModal?: () => void;
   onOpenUpdates?: () => void;
   onOpenEvacuationCenters?: () => void;
@@ -45,6 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setMobileMenuOpen,
   hasLiveUrl = false,
   floodProneOpen = false,
+  trafficOpen = false,
   onOpenLiveModal = () => {},
   onOpenUpdates = () => {},
   onOpenEvacuationCenters = () => {},
@@ -56,10 +59,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState<boolean>(false);
   const menuDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close the ●●● dropdown whenever the Flood Prone map disables it (all devices).
+  // Close the ●●● dropdown whenever Flood Prone or Traffic disables it (all devices).
   useEffect(() => {
-    if (floodProneOpen) setIsMenuDropdownOpen(false);
-  }, [floodProneOpen]);
+    if (floodProneOpen || trafficOpen) setIsMenuDropdownOpen(false);
+  }, [floodProneOpen, trafficOpen]);
 
   const handleRecenter = () => {
     setIsSpinning(true);
@@ -175,9 +178,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="relative shrink-0" ref={menuDropdownRef}>
               <button
                 onClick={() => setIsMenuDropdownOpen((prev) => !prev)}
-                disabled={floodProneOpen}
+                disabled={floodProneOpen || trafficOpen}
                 title="Options"
-                className={`inline-flex h-8 items-center justify-center px-2 rounded-md border border-slate-200 transition-colors ${floodProneOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100 cursor-pointer'}`}
+                className={`inline-flex h-8 items-center justify-center px-2 rounded-md border border-slate-200 transition-colors ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100 cursor-pointer'}`}
               >
                 <span className="text-black font-black text-[10px] tracking-wider leading-none">
                   ●●●
@@ -249,8 +252,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-report-hazard"
               onClick={onOpenReportModal}
-              disabled={floodProneOpen}
-              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-white bg-slate-900 rounded-md shadow-xs transition-all shrink-0 whitespace-nowrap ${floodProneOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-800'}`}
+              disabled={floodProneOpen || trafficOpen}
+              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-white bg-slate-900 rounded-md shadow-xs transition-all shrink-0 whitespace-nowrap ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-800'}`}
             >
               <PlusCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span>Report</span>

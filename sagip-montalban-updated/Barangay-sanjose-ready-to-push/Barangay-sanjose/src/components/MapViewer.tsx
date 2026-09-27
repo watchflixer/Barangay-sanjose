@@ -27,7 +27,8 @@ import {
   Minus,
   Check,
   ShieldCheck,
-  X
+  X,
+  Radio
 } from 'lucide-react';
 
 interface MapViewerProps {
@@ -44,6 +45,8 @@ interface MapViewerProps {
   isMobileMenuOpen?: boolean;
   /** Lets the parent app know the Flood Prone map is open (for navbar gating). */
   onFloodProneChange?: (isOpen: boolean) => void;
+  /** Lets the parent app know the Traffic map is open (for navbar gating). */
+  onTrafficChange?: (isOpen: boolean) => void;
 }
 
 // Tile Layer URLs
@@ -79,6 +82,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   onOpenMobileMenu,
   isMobileMenuOpen = false,
   onFloodProneChange,
+  onTrafficChange,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -135,6 +139,23 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     setFloodOnExternalSite(false);
     setFloodMapNonce((n) => n + 1);
   };
+
+  // Realtime Traffic map (the former "Comming Soon" Layers slot). A second
+  // full-map overlay rendered on top of the GIS map, mutually exclusive with
+  // the Flood Prone overlay.
+  const [showTrafficMap, setShowTrafficMap] = React.useState(false);
+  const trafficMapFrameRef = useRef<HTMLIFrameElement | null>(null);
+  React.useEffect(() => {
+    if (showTrafficMap) setShowFloodProneBlank(false);
+  }, [showTrafficMap]);
+  // Conversely, opening Flood Prone closes the Traffic map.
+  React.useEffect(() => {
+    if (showFloodProneBlank) setShowTrafficMap(false);
+  }, [showFloodProneBlank]);
+  // Notify the parent app whenever the Traffic map opens or closes.
+  React.useEffect(() => {
+    onTrafficChange?.(showTrafficMap);
+  }, [showTrafficMap, onTrafficChange]);
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const [locationMessage, setLocationMessage] = React.useState('');
@@ -411,6 +432,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           if (showFloodProneBlank) {
             floodMapFrameRef.current?.contentWindow?.postMessage(
               { type: 'flood-user-location', lat: position.coords.latitude, lng: position.coords.longitude },
+              '*'
+            );
+          } else if (showTrafficMap) {
+            trafficMapFrameRef.current?.contentWindow?.postMessage(
+              { type: 'traffic-user-location', lat: position.coords.latitude, lng: position.coords.longitude },
               '*'
             );
           } else {
@@ -760,6 +786,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       floodMapFrameRef.current?.contentWindow?.postMessage({ type: 'flood-recenter' }, '*');
       return;
     }
+    // In Traffic mode, recenter inside the traffic map the same way.
+    if (showTrafficMap) {
+      trafficMapFrameRef.current?.contentWindow?.postMessage({ type: 'traffic-recenter' }, '*');
+      return;
+    }
     if (!mapInstanceRef.current) return;
 
     // Close any active open popups
@@ -796,6 +827,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             title="Rizal Flood Hazard Map (100-year)"
             src={`${import.meta.env.BASE_URL}rizal_flood_100yr_map.html`}
             ref={floodMapFrameRef}
+            className="h-full w-full border-0"
+          />
+        </div>
+      )}
+
+      {/* Realtime Traffic map overlay (Leaflet 2.0.0-alpha.1 inside). The
+          TomTom key travels as a query parameter so the iframe picks it up
+          without any build-time injection into public/ files. */}
+      {showTrafficMap && (
+        <div className="absolute inset-0 z-30 bg-white" aria-label="Rizal Realtime Traffic Map">
+          <iframe
+            title="Rizal Realtime Traffic Map"
+            src={`${import.meta.env.BASE_URL}rizal_traffic_map.html${import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN ? `?key=${encodeURIComponent(import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN)}` : ''}`}
+            ref={trafficMapFrameRef}
             className="h-full w-full border-0"
           />
         </div>
@@ -838,7 +883,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank || showTrafficMap ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite ? 'hidden' : ''}`}>
         <button
           id="btn-recenter-gis"
           onClick={handleRecenter}
@@ -884,38 +929,45 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     BASEMAP STYLE:
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
-                    {(['streets', 'satellite', 'light', 'dark'] as const).map((layer) => (
+                    {(['streets', 'satellite', 'dark', 'light'] as const).map((layer) => (
                       <button
                         key={layer}
                         onClick={() => {
                           if (layer === 'dark') {
-                            // Coming Soon is intentionally a no-op; keep the Layers menu open.
+                            // The former "Comming Soon" slot now opens the realtime Traffic map.
+                            setShowTrafficMap(true);
+                            setShowFloodProneBlank(false);
+                            toggleLayerMenu(false);
                             return;
                           }
                           if (layer === 'light') {
+                            setShowTrafficMap(false);
                             setShowFloodProneBlank(true);
                             onUpdateMapSettings({ tileLayer: layer });
                             toggleLayerMenu(false);
                             return;
                           }
+                          setShowTrafficMap(false);
                           setShowFloodProneBlank(false);
                           onUpdateMapSettings({ tileLayer: layer });
                         }}
                       className={`relative px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors ${
                         layer === 'dark'
-                          ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          : (layer === 'light' ? showFloodProneBlank : mapSettings.tileLayer === layer)
+                          ? showTrafficMap
+                            ? 'bg-black text-white border-black'
+                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                          : (layer === 'light' ? showFloodProneBlank : mapSettings.tileLayer === layer && !showTrafficMap)
                             ? 'bg-black text-white border-black'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Comming Soon' : layer}
+                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {!showFloodProneBlank && (
+              {!showFloodProneBlank && !showTrafficMap && (
                 <>
               {/* Inverted Blackout Mask Opacity */}
               <div>
@@ -983,7 +1035,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </button>
 
         {/* Zoom In / Zoom Out — below "Show your location"; hidden in Flood Prone mode */}
-        {!showFloodProneBlank && (
+        {!showFloodProneBlank && !showTrafficMap && (
           <>
             <button
               id="btn-zoom-in"
@@ -1015,7 +1067,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           // z-[40] keeps it visible above the Flood Prone iframe (z-30).
           // Portrait sits a bit lower on the main map; Flood Prone keeps the
           // raised spot so it stays clear of the iframe's bottom overlays.
-          <div className={`pointer-events-none absolute inset-x-0 bottom-20 ${showFloodProneBlank ? 'portrait:bottom-28' : 'portrait:bottom-20'} z-[40] flex justify-center px-4`}>
+          <div className={`pointer-events-none absolute inset-x-0 bottom-20 ${showFloodProneBlank || showTrafficMap ? 'portrait:bottom-28' : 'portrait:bottom-20'} z-[40] flex justify-center px-4`}>
             <p className={`animate-in fade-in zoom-in-95 font-['JetBrains_Mono',monospace] text-xs font-medium italic tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] duration-300 ${locationBanner === 'success' ? 'text-green-400/90' : 'text-red-400/90'}`}>
               {locationMessage}
             </p>

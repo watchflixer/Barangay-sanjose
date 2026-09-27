@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="tl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rizal Realtime Traffic Map</title>
+
+<!-- Mapbox GL JS — real live traffic via the traffic-day-v2 style -->
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet" />
+<style>
+  :root{
+    --line:#d4d8d4;
+    --ink:#1b2a2f;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;}
+  #map{position:absolute;top:0;left:0;right:0;bottom:0;}
+  /* Zoom buttons: top-left, below the parent app's floating buttons */
+  #map .mapboxgl-ctrl-top-left{top:132px;left:6px;}
+  /* Base map switcher: same slot the Flood Prone map's layers control uses */
+  #base-switch{
+    position:absolute;top:10px;right:12px;
+    display:flex;gap:4px;
+    background:rgba(255,255,255,0.95);border:1px solid var(--line);border-radius:8px;
+    padding:4px;z-index:400;box-shadow:0 2px 6px rgba(0,0,0,0.15);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  #base-switch button{
+    border:1px solid transparent;border-radius:5px;background:transparent;
+    padding:4px 10px;font-size:0.72rem;font-weight:700;letter-spacing:0.02em;
+    color:#33413a;cursor:pointer;transition:background .15s ease,color .15s ease;
+  }
+  #base-switch button:hover{background:#eef1ec;}
+  #base-switch button.active{background:#111827;color:#ffffff;}
+  #legend{
+    position:absolute;right:12px;bottom:24px;
+    min-width:150px;
+    background:rgba(244,246,244,0.95);border:1px solid var(--line);border-radius:8px;
+    padding:10px 12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:0.78rem;color:var(--ink);z-index:400;box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  }
+  #legend .row{display:flex;align-items:center;gap:6px;margin:3px 0;}
+  #legend .sw{width:13px;height:13px;border-radius:2px;display:inline-block;}
+  /* Raise the legend on mobile portrait so it clears the parent app's bottom overlays */
+  @media (orientation: portrait) and (max-width: 640px){
+    #legend{ bottom: 56px; }
+  }
+  #notice{
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    max-width:calc(100% - 90px);
+    background:rgba(122,31,27,0.92);color:#fff;border-radius:8px;
+    padding:8px 14px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:0.75rem;line-height:1.35;z-index:500;box-shadow:0 2px 8px rgba(0,0,0,0.25);
+    display:none;text-align:center;
+  }
+  /* Parent app's "Show your location" drops this pulsing blue dot on the traffic map */
+  .traffic-user-marker{background:transparent;border:0;}
+  .traffic-user-dot{
+    display:block;width:18px;height:18px;margin:3px;
+    border:3px solid #ffffff;border-radius:50%;
+    background:#1a73e8;
+    box-shadow:0 0 0 7px rgba(26,115,232,.22),0 2px 8px rgba(15,23,42,.45);
+    position:relative;
+  }
+  .traffic-user-dot::after{
+    content:"";position:absolute;inset:-14px;border-radius:50%;
+    border:2px solid rgba(26,115,232,.55);
+    animation:trafficUserPulse 1.6s ease-out infinite;
+  }
+  @keyframes trafficUserPulse{
+    0%{transform:scale(.45);opacity:1;}
+    70%{transform:scale(1.15);opacity:0;}
+    100%{transform:scale(1.15);opacity:0;}
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="base-switch">
+  <button type="button" data-base="traffic" class="active">Street</button>
+  <button type="button" data-base="satellite">Satellite</button>
+</div>
+<div id="notice"></div>
+<div id="legend">
+  <div class="row"><span class="sw" style="background:#2BC82B;"></span>Free flowing</div>
+  <div class="row"><span class="sw" style="background:#F1BF40;"></span>Slow traffic</div>
+  <div class="row"><span class="sw" style="background:#CC0704;"></span>Heavy congestion</div>
+  <div class="row"><span class="sw" style="background:#7A1F1B;"></span>Road closed</div>
+</div>
+
+<script>
+  const notice = document.getElementById('notice');
+  const showNotice = (text) => { notice.textContent = text; notice.style.display = 'block'; };
+
+  // The Mapbox token is injected by the parent app at runtime via the ?key=
+  // query parameter (sourced from VITE_MAPBOX_TRAFFIC_TOKEN) — never hardcode
+  // it in this file so it stays out of the repository.
+  const params = new URLSearchParams(location.search);
+  mapboxgl.accessToken = (params.get('key') || '').trim();
+  if (!mapboxgl.accessToken) {
+    showNotice('Kulang ang Mapbox token — i-set ang VITE_MAPBOX_TRAFFIC_TOKEN sa environment.');
+  }
+
+  // Rodriguez (Montalban), Rizal — starting view around Barangay San Jose.
+  const RIZAL_BOUNDS = [[121.05, 14.66], [121.22, 14.80]];
+  const MAX_BOUNDS = [[121.02, 14.63], [121.25, 14.83]];
+  const RIZAL_CENTER = [121.131, 14.7425];
+
+  // Base styles: traffic-day-v2 already renders LIVE traffic on streets.
+  // The satellite style does not, so the live traffic vector overlay
+  // (mapbox-traffic-v1) is added on top of it after the style loads.
+  const STYLE_TRAFFIC = 'mapbox://styles/mapbox/traffic-day-v2';
+  const STYLE_SATELLITE = 'mapbox://styles/mapbox/satellite-streets-v12';
+  let currentBase = 'traffic';
+
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: STYLE_TRAFFIC, // live traffic colors built in
+    center: RIZAL_CENTER,
+    zoom: 12,
+    minZoom: 10,
+    maxZoom: 19
+  });
+  map.setMaxBounds(MAX_BOUNDS);
+  map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 0 });
+
+  map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
+  map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+
+  // Live traffic overlay for the satellite base: color roads by congestion.
+  function addTrafficOverlay() {
+    if (map.getSource('traffic')) return;
+    map.addSource('traffic', { type: 'vector', url: 'mapbox://mapbox.mapbox-traffic-v1' });
+    map.addLayer({
+      id: 'traffic-flow',
+      type: 'line',
+      source: 'traffic',
+      'source-layer': 'traffic',
+      paint: {
+        'line-width': 2.5,
+        'line-opacity': 0.9,
+        'line-color': [
+          'match', ['get', 'congestion'],
+          'low', '#2BC82B',
+          'moderate', '#F1BF40',
+          'heavy', '#CC0704',
+          'severe', '#7A1F1B',
+          '#888888'
+        ]
+      }
+    });
+  }
+
+  map.on('style.load', () => {
+    if (currentBase === 'satellite') addTrafficOverlay();
+  });
+
+  // Street / Satellite switcher (same idea as the Flood Prone layers control).
+  const switchBox = document.getElementById('base-switch');
+  switchBox.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-base]');
+    if (!btn) return;
+    const base = btn.dataset.base;
+    if (base === currentBase) return;
+    switchBox.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+    currentBase = base;
+    map.setStyle(base === 'satellite' ? STYLE_SATELLITE : STYLE_TRAFFIC);
+  });
+
+  map.on('error', (e) => {
+    const status = e && e.error && e.error.status;
+    if (status === 401) {
+      showNotice('Hindi valid ang Mapbox token — i-check ang VITE_MAPBOX_TRAFFIC_TOKEN.');
+    } else if (status === 429) {
+      showNotice('Naubos na ang Mapbox quota ngayong buwan. Subukan ulit sa susunod.');
+    }
+  });
+
+  // The traffic-day-v2 style renders LIVE congestion by itself — no polling
+  // needed. The Recenter button from the parent app returns to the overview.
+  window.trafficRecenter = function () {
+    map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 1200 });
+  };
+
+  let trafficUserMarker = null;
+  function showTrafficUserLocation(lat, lng) {
+    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+    if (!trafficUserMarker) {
+      const el = document.createElement('div');
+      el.className = 'traffic-user-marker';
+      el.innerHTML = '<span class="traffic-user-dot"></span>';
+      trafficUserMarker = new mapboxgl.Marker({ element: el })
+        .setLngLat([lng, lat])
+        .addTo(map);
+    } else {
+      trafficUserMarker.setLngLat([lng, lat]);
+    }
+    map.flyTo({ center: [lng, lat], zoom: 16, duration: 1600 });
+  }
+
+  // Messages from the parent app: recenter, and "Show your location" which
+  // drops a pulsing blue dot on this map and flies to it.
+  window.addEventListener('message', (event) => {
+    if (!event.data) return;
+    if (event.data.type === 'traffic-recenter') window.trafficRecenter();
+    if (event.data.type === 'traffic-user-location') showTrafficUserLocation(event.data.lat, event.data.lng);
+  });
+</script>
+</body>
+</html>
