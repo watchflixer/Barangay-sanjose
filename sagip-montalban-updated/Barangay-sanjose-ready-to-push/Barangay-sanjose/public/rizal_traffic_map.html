@@ -103,8 +103,10 @@
   mapboxgl.accessToken = (params.get('key') || '').trim() || atob(FALLBACK_TOKEN_B64);
 
   // Rodriguez (Montalban), Rizal — starting view around Barangay San Jose.
+  // Users can zoom/pan out to the WHOLE Philippines; live traffic still
+  // renders at any zoom because both base styles draw Mapbox traffic data.
   const RIZAL_BOUNDS = [[121.05, 14.66], [121.22, 14.80]];
-  const MAX_BOUNDS = [[121.02, 14.63], [121.25, 14.83]];
+  const MAX_BOUNDS = [[112.0, 2.5], [131.0, 22.5]]; // PH region + padding
   const RIZAL_CENTER = [121.131, 14.7425];
 
   // Base styles: traffic-day-v2 already renders LIVE traffic on streets.
@@ -119,7 +121,7 @@
     style: STYLE_TRAFFIC, // live traffic colors built in
     center: RIZAL_CENTER,
     zoom: 12,
-    minZoom: 10,
+    minZoom: 4.5, // zoom out far enough to see the whole Philippines
     maxZoom: 19
   });
   map.setMaxBounds(MAX_BOUNDS);
