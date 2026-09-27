@@ -16,51 +16,56 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;}
   #map{position:absolute;top:0;left:0;right:0;bottom:0;}
-  /* Zoom buttons: a faithful port of Leaflet 1.9.4's .leaflet-bar /
-     .leaflet-control-zoom rules, so sizing and position match the Flood
-     Prone map's Leaflet control tile for tile. */
+  /* Zoom buttons: Leaflet 1.9.4's .leaflet-bar markup and rules, ported
+     verbatim. Using the same element type (anchors, not buttons) and the
+     same class names avoids native button styling, so the Traffic layer's
+     control renders pixel-identical to the Flood Prone map's Leaflet one. */
   #traffic-zoom{
     position:absolute;top:132px;left:6px;z-index:400;
+  }
+  .leaflet-bar{
     box-shadow:0 1px 5px rgba(0,0,0,0.65);
     border-radius:4px;
   }
-  #traffic-zoom button{
-    background-color:#ffffff;
-    border:0;border-bottom:1px solid #cccccc;
+  .leaflet-bar a{
+    background-color:#fff;
+    border-bottom:1px solid #ccc;
     width:26px;height:26px;line-height:26px;
     display:block;text-align:center;text-decoration:none;
-    color:#000000;
-    font:bold 18px 'Lucida Console',Monaco,monospace;
-    text-indent:1px;padding:0;cursor:pointer;
+    color:black;
   }
-  #traffic-zoom button:hover,
-  #traffic-zoom button:focus{background-color:#f4f4f4;}
-  #traffic-zoom #traffic-zoom-in{
+  .leaflet-bar a:hover,
+  .leaflet-bar a:focus{background-color:#f4f4f4;}
+  .leaflet-bar a:first-child{
     border-top-left-radius:4px;border-top-right-radius:4px;
   }
-  #traffic-zoom #traffic-zoom-out{
-    border-bottom:none;
+  .leaflet-bar a:last-child{
     border-bottom-left-radius:4px;border-bottom-right-radius:4px;
+    border-bottom:none;
   }
-  #traffic-zoom button:disabled{
-    cursor:default;background-color:#f4f4f4;color:#bbbbbb;
+  .leaflet-bar a.leaflet-disabled{
+    cursor:default;background-color:#f4f4f4;color:#bbb;
   }
-  /* Touch devices: Leaflet grows the tiles to 30px with a 2px frame and
-     drops the shadow — this is the size the Flood Prone map shows on phones. */
-  @media (pointer: coarse){
-    #traffic-zoom{
-      box-shadow:none;
-      border:2px solid rgba(0,0,0,0.2);
-      background-clip:padding-box;
-    }
-    #traffic-zoom button{
-      width:30px;height:30px;line-height:30px;font-size:22px;
-    }
-    #traffic-zoom #traffic-zoom-in,
-    #traffic-zoom #traffic-zoom-out{
-      border-top-left-radius:2px;border-top-right-radius:2px;
-      border-bottom-left-radius:2px;border-bottom-right-radius:2px;
-    }
+  .leaflet-control-zoom-in,
+  .leaflet-control-zoom-out{
+    font:bold 18px 'Lucida Console',Monaco,monospace;
+    text-indent:1px;
+  }
+  /* Same touch behaviour Leaflet applies on phones: 30px tiles, 22px glyphs,
+     2px frame, no shadow. Added to <body> when touch is detected. */
+  .leaflet-touch .leaflet-bar{
+    box-shadow:none;
+    border:2px solid rgba(0,0,0,0.2);
+    background-clip:padding-box;
+  }
+  .leaflet-touch .leaflet-bar a{width:30px;height:30px;line-height:30px;}
+  .leaflet-touch .leaflet-control-zoom-in,
+  .leaflet-touch .leaflet-control-zoom-out{font-size:22px;}
+  .leaflet-touch .leaflet-bar a:first-child{
+    border-top-left-radius:2px;border-top-right-radius:2px;
+  }
+  .leaflet-touch .leaflet-bar a:last-child{
+    border-bottom-left-radius:2px;border-bottom-right-radius:2px;
   }
   /* Base map switcher: same slot the Flood Prone map's layers control uses */
   #base-switch{
@@ -121,9 +126,9 @@
 </head>
 <body>
 <div id="map"></div>
-<div id="traffic-zoom">
-  <button type="button" id="traffic-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
-  <button type="button" id="traffic-zoom-out" title="Zoom out" aria-label="Zoom out">&minus;</button>
+<div id="traffic-zoom" class="leaflet-bar">
+  <a class="leaflet-control-zoom-in" href="#" title="Zoom in" aria-label="Zoom in">+</a>
+  <a class="leaflet-control-zoom-out" href="#" title="Zoom out" aria-label="Zoom out">&minus;</a>
 </div>
 <div id="base-switch">
   <button type="button" data-base="traffic" class="active">Street</button>
@@ -176,18 +181,24 @@
   map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 0 });
 
   // Zoom in / out buttons that mirror the Flood Prone map's Leaflet control.
-  const zoomInBtn = document.getElementById('traffic-zoom-in');
-  const zoomOutBtn = document.getElementById('traffic-zoom-out');
+  // Leaflet detects touch in JS (not via a media query) and toggles this
+  // class, so mirror that exactly to get the same mobile sizing.
+  if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) {
+    document.body.classList.add('leaflet-touch');
+  }
+  const zoomBox = document.getElementById('traffic-zoom');
+  const zoomInBtn = zoomBox.querySelector('.leaflet-control-zoom-in');
+  const zoomOutBtn = zoomBox.querySelector('.leaflet-control-zoom-out');
   const stepZoom = (delta) => {
     const next = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), Math.round(map.getZoom()) + delta));
     map.easeTo({ zoom: next, duration: 300 });
   };
-  zoomInBtn.addEventListener('click', () => stepZoom(1));
-  zoomOutBtn.addEventListener('click', () => stepZoom(-1));
+  zoomInBtn.addEventListener('click', (e) => { e.preventDefault(); stepZoom(1); });
+  zoomOutBtn.addEventListener('click', (e) => { e.preventDefault(); stepZoom(-1); });
   const syncZoomButtons = () => {
     const z = map.getZoom();
-    zoomInBtn.disabled = z >= map.getMaxZoom();
-    zoomOutBtn.disabled = z <= map.getMinZoom();
+    zoomInBtn.classList.toggle('leaflet-disabled', z >= map.getMaxZoom());
+    zoomOutBtn.classList.toggle('leaflet-disabled', z <= map.getMinZoom());
   };
   map.on('zoom', syncZoomButtons);
   map.on('zoomend', syncZoomButtons);
