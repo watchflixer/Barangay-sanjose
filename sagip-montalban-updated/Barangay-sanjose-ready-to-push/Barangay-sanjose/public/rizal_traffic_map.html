@@ -16,8 +16,30 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;}
   #map{position:absolute;top:0;left:0;right:0;bottom:0;}
-  /* Zoom buttons: top-left, below the parent app's floating buttons */
-  #map .mapboxgl-ctrl-top-left{top:132px;left:6px;}
+  /* Zoom buttons: top-left, same slot + same look as the Flood Prone map's
+     Leaflet zoom control (26px white tiles, thin gray divider, bold +/-). */
+  #traffic-zoom{
+    position:absolute;top:132px;left:6px;z-index:400;
+    border-radius:4px;overflow:hidden;
+    box-shadow:0 1px 5px rgba(0,0,0,0.45);
+  }
+  #traffic-zoom button{
+    -webkit-tap-highlight-color:transparent;
+    display:block;width:26px;height:26px;padding:0;
+    background-color:#ffffff;color:#000000;
+    border:0;border-bottom:1px solid #cccccc;
+    font:bold 18px/26px Tahoma,Verdana,sans-serif;
+    text-align:center;text-decoration:none;cursor:pointer;
+  }
+  #traffic-zoom button:hover{background-color:#f4f4f4;}
+  #traffic-zoom button:disabled{
+    cursor:default;background-color:#ffffff;color:#bbbbbb;
+  }
+  #traffic-zoom #traffic-zoom-in{border-top-left-radius:4px;border-top-right-radius:4px;}
+  #traffic-zoom #traffic-zoom-out{
+    border-bottom:1px solid #cccccc;
+    border-bottom-left-radius:4px;border-bottom-right-radius:4px;
+  }
   /* Base map switcher: same slot the Flood Prone map's layers control uses */
   #base-switch{
     position:absolute;top:10px;right:12px;
@@ -77,6 +99,10 @@
 </head>
 <body>
 <div id="map"></div>
+<div id="traffic-zoom">
+  <button type="button" id="traffic-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+  <button type="button" id="traffic-zoom-out" title="Zoom out" aria-label="Zoom out">&minus;</button>
+</div>
 <div id="base-switch">
   <button type="button" data-base="traffic" class="active">Street</button>
   <button type="button" data-base="satellite">Satellite</button>
@@ -127,8 +153,27 @@
   map.setMaxBounds(MAX_BOUNDS);
   map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 0 });
 
-  map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-left');
-  map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+  // Zoom in / out buttons that mirror the Flood Prone map's Leaflet control.
+  const zoomInBtn = document.getElementById('traffic-zoom-in');
+  const zoomOutBtn = document.getElementById('traffic-zoom-out');
+  const stepZoom = (delta) => {
+    const next = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), Math.round(map.getZoom()) + delta));
+    map.easeTo({ zoom: next, duration: 300 });
+  };
+  zoomInBtn.addEventListener('click', () => stepZoom(1));
+  zoomOutBtn.addEventListener('click', () => stepZoom(-1));
+  const syncZoomButtons = () => {
+    const z = map.getZoom();
+    zoomInBtn.disabled = z >= map.getMaxZoom();
+    zoomOutBtn.disabled = z <= map.getMinZoom();
+  };
+  map.on('zoom', syncZoomButtons);
+  map.on('zoomend', syncZoomButtons);
+
+  // The Flood Prone map has no scale bar, so the Traffic map drops it too —
+  // both layers now expose exactly the same control set: zoom buttons
+  // top-left, layer switcher top-right, legend bottom-right.
+  map.on('load', syncZoomButtons);
 
   // Live traffic overlay for the satellite base: color roads by congestion.
   function addTrafficOverlay() {
