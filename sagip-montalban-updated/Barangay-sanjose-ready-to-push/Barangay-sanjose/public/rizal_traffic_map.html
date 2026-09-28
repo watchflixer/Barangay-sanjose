@@ -148,7 +148,12 @@
   body.routing #legend-stack,body.routing #base-switch{display:none;}
   body.routing #notice{top:132px;}
   .rt svg{display:block;} .rt button{font-family:inherit;color:inherit;-webkit-tap-highlight-color:transparent;}
-  #rt-top{position:absolute;z-index:1200;top:12px;left:20px;right:20px;max-width:440px;margin:0 auto;background:#fff;border-radius:24px;box-shadow:0 2px 10px rgba(0,0,0,.3);padding:6px 6px 6px 14px;display:flex;align-items:center;gap:4px;}
+  /* Only show the route-view chrome once a route actually exists (body.routing).
+     These two IDs must NOT set display in their own rules: an ID selector
+     (1-0-0) outranks .rt (0-1-0), so they stayed visible on the plain traffic
+     map before any destination was picked. The routing-scoped rules below
+     (1-1-1) win only while a route is on screen. */
+  #rt-top{position:absolute;z-index:1200;top:12px;left:20px;right:20px;max-width:440px;margin:0 auto;background:#fff;border-radius:24px;box-shadow:0 2px 10px rgba(0,0,0,.3);padding:6px 6px 6px 14px;align-items:center;gap:4px;}
   #rt-edit{flex:1;min-width:0;display:flex;gap:10px;cursor:pointer;}
   #rt-edit .dc{position:relative;width:24px;flex:none;}
   #rt-edit .dc .b{position:absolute;left:2px;top:14px;width:20px;height:20px;border-radius:50%;background:#e8f0fe;display:flex;align-items:center;justify-content:center;}
@@ -162,7 +167,9 @@
   #rt-side{display:flex;flex-direction:column;justify-content:space-between;height:96px;}
   .rt-ib{width:40px;height:40px;border:0;background:transparent;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
   .rt-ib:active{background:#e8eaed;}
-  #rt-layers{position:absolute;z-index:1200;right:12px;top:124px;width:40px;height:40px;border:0;border-radius:12px;background:#c7e8f1;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  #rt-layers{position:absolute;z-index:1200;right:12px;top:124px;width:40px;height:40px;border:0;border-radius:12px;background:#c7e8f1;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;align-items:center;justify-content:center;}
+  /* While a route is on screen, reveal the flex layouts gated by .rt */
+  body.routing #rt-top,body.routing #rt-layers,body.routing #rt-locate{display:flex;}
   #rt-menu{position:absolute;z-index:1300;top:62px;right:26px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 0;min-width:190px;}
   #rt-menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:12px 18px;font-size:16px;cursor:pointer;}
   #rt-menu button:active{background:#f1f3f4;}
