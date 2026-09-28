@@ -229,16 +229,33 @@
   #rt-opts input{width:20px;height:20px;accent-color:#00697a;}
   #rt-opts .done{margin-top:8px;width:100%;height:44px;border:0;border-radius:22px;background:#00697a;color:#fff;font-size:16px;cursor:pointer;}
 
-  /* ===== Fare / Pamasahe Card — bigger than route options ===== */
+  /* ===== On-site Navigation banner + compact sheet while navigating ===== */
+  #nav-banner{position:absolute;z-index:1250;top:10px;left:12px;right:12px;max-width:440px;margin:0 auto;
+    background:#0b7a87;color:#fff;border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.35);
+    padding:12px 14px;display:none;align-items:center;gap:12px;font-family:"Google Sans",Roboto,sans-serif;}
+  body.navigating #nav-banner{display:flex;}
+  body.navigating #rt-sheet .rt-chips,body.navigating #rt-sheet .rt-tabs,body.navigating #rt-sheet .rt-sum,body.navigating #rt-top{display:none!important;}
+  #nav-banner .nav-eta{font-size:24px;font-weight:700;line-height:1.1;}
+  #nav-banner .nav-dist{font-size:12px;opacity:.9;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #nav-banner #nav-exit{border:0;border-radius:999px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;flex:none;}
+  #nav-banner #nav-exit:active{background:rgba(255,255,255,.3);}
+
+    /* ===== Fare / Pamasahe Card — bigger than route options ===== */
   #rt-fare, #rt-driver{position:absolute;z-index:1450;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-family:"Google Sans",Roboto,sans-serif;backdrop-filter:blur(2px);}
   #rt-fare .card, #rt-driver .card{background:#fff;border-radius:24px;padding:0;width:400px;max-width:calc(100% - 24px);max-height:85vh;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;}
   #rt-fare .fare-head, #rt-driver .fare-head{padding:20px 20px 12px;border-bottom:1px solid #e8eaed;position:relative;}
+  /* Fare card header: flex row so the ✕ button sits exactly aligned with the title */
+  #rt-fare .fare-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;}
+  #rt-fare .fare-head h3{flex:1;min-width:0;}
+  #rt-fare .fare-head .close{position:static;flex:none;width:34px;height:34px;}
   #rt-fare .fare-head h3, #rt-driver .fare-head h3{margin:0;font-size:20px;font-weight:600;display:flex;align-items:center;gap:8px;}
   #rt-fare .fare-head .live, #rt-driver .fare-head .live{font-size:11px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;}
   #rt-fare .fare-head .live::before, #rt-driver .fare-head .live::before{content:"";width:6px;height:6px;background:#2e7d32;border-radius:50%;display:inline-block;animation:farePulse 1.5s infinite;}
   @keyframes farePulse{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
   #rt-fare .fare-head .sub, #rt-driver .fare-head .sub{font-size:12px;color:#5f6368;margin-top:4px;}
-  #rt-fare .fare-head .close, #rt-driver .fare-head .close{position:absolute;top:14px;right:14px;width:36px;height:36px;border:0;border-radius:50%;background:#f1f3f4;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  #rt-fare .fare-head .close, #rt-driver .fare-head .close{border:0;border-radius:50%;background:#f1f3f4;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;}
+  #rt-driver .fare-head .close{position:absolute;top:14px;right:14px;width:36px;height:36px;}
+  #rt-fare .fare-head .close{width:34px;height:34px;font-size:15px;line-height:1;}
   #rt-fare .fare-body, #rt-driver .fare-body{overflow-y:auto;padding:12px 12px 0;flex:1;}
   #rt-fare .fare-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #e8eaed;border-radius:14px;margin-bottom:10px;cursor:pointer;transition:all .15s ease;background:#fff;}
   #rt-fare .fare-row:hover{border-color:#202124;background:#f8f9fa;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06);}
@@ -380,7 +397,6 @@
     .dir-empty{padding:14px 16px;font-size:13px;}
 
     /* Fare card — bigger on mobile, optimized for Pixel 7 375x820 */
-    #rt-fare .card{width:calc(100% - 16px);max-width:360px;border-radius:20px;max-height:82vh;}
     #rt-fare .fare-head{padding:14px 14px 10px;}
     #rt-fare .fare-head h3{font-size:16px;}
     #rt-fare .fare-head .sub{font-size:11px;}
@@ -468,7 +484,7 @@
   <button type="button" id="rt-locate" aria-label="My location"><span></span></button>
   <div class="rt-head"><div id="rt-title">Drive</div>
     <button type="button" class="rt-cb" id="rt-tune" aria-label="Route options" data-i="tune"></button>
-    <button type="button" class="rt-cb" id="rt-pricing" aria-label="Fare" data-i="pricing"></button>
+    <button type="button" class="rt-cb" id="rt-pricing" aria-label="Fare" data-i="ticket"></button>
     <button type="button" class="rt-cb" id="rt-share" aria-label="Driver Cost" data-i="pricing"></button>
     <button type="button" class="rt-cb" id="rt-close" aria-label="Close" data-i="close"></button></div>
   <div class="rt-tabs">
@@ -481,7 +497,7 @@
   <div class="rt-chips">
     <button type="button" class="rt-chip go" id="rt-start"><span data-i="nav"></span>Start</button>
     <button type="button" class="rt-chip" id="rt-stop"><span data-i="addstop"></span>Add stops</button>
-    <button type="button" class="rt-chip" id="rt-share2"><span data-i="pricing"></span>Driver Cost</button>
+    <button type="button" class="rt-chip" id="rt-share2"><span data-i="share"></span>Share</button>
     <button type="button" class="rt-chip" id="rt-save"><span data-i="bookmark"></span><em style="font-style:normal">Save</em></button>
   </div>
 </div>
@@ -502,8 +518,7 @@
       <!-- Rows injected by JS -->
     </div>
     <div class="fare-foot">
-      <div style="font-size:13px;font-weight:600;">Calculation</div>
-      <div class="calc-row">
+      <div class="calc-row" style="margin-top:0;">
         <label>Passengers:</label>
         <div class="ctrl">
           <button type="button" id="fare-minus">−</button>
@@ -518,6 +533,20 @@
           <div class="t1" style="font-size:10px;">Base + per km</div>
         </div>
         <div class="t2" id="fare-total">₱0</div>
+      </div>
+      <div class="total-box" style="margin-top:12px; background:#e8f5e9; color:#1b5e20; border:1px solid #a5d6a7; padding:14px 16px;">
+        <div>
+          <div class="t1" style="font-size:13px;font-weight:700;opacity:1;">Money Given (Bayad)</div>
+          <div class="t1" style="font-size:10px;">Ilagay ang halagang ibabayad</div>
+        </div>
+        <div class="fare-input" style="background:#ffffff; border:1px solid #a5d6a7; border-radius:10px; padding:6px 10px;"><span style="color:#1b5e20;">₱</span><input type="number" id="fare-money" value="0" min="0" step="10" placeholder="0" style="color:#1b5e20; width:70px; font-size:15px;"></div>
+      </div>
+      <div class="total-box" style="margin-top:8px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9;">
+        <div>
+          <div class="t1" style="font-size:12px;font-weight:600;">Change (Sukli)</div>
+          <div class="t1" style="font-size:10px;">Bayad − Pasahe</div>
+        </div>
+        <div class="t2" id="fare-change" style="color:#1b5e20;">₱0</div>
       </div>
     </div>
   </div>
@@ -677,7 +706,8 @@
     addstop:'<path d="M12 21s-6-5.6-6-10a6 6 0 0 1 12 0c0 4.4-6 10-6 10z" '+S+'/><path d="M12 8.5v5M9.5 11h5" '+S+'/>',
     bookmark:'<path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z" '+S+'/>',
     bookmarkOn:'<path fill="currentColor" d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>',
-    pricing:'<path fill="currentColor" d="M6 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2h1a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-1V5a2 2 0 0 0-2-2H6zm0 2h6v2H6V5zm1 4h4v2H7V9zm-1 4h1v5H6v-5zm3 0h4a1 1 0 0 1 1 1v4h-5v-5z"/><circle cx="18" cy="6" r="2.5" fill="currentColor"/>'
+    pricing:'<path fill="currentColor" d="M6 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2h1a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-1V5a2 2 0 0 0-2-2H6zm0 2h6v2H6V5zm1 4h4v2H7V9zm-1 4h1v5H6v-5zm3 0h4a1 1 0 0 1 1 1v4h-5v-5z"/><circle cx="18" cy="6" r="2.5" fill="currentColor"/>',
+    ticket:'<path fill="currentColor" d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-9 7.5h-2v-2h2v2zm0-4.5h-2v-2h2v2zm0-4.5h-2v-2h2v2z"/>'
   });
   const svg = (n, sz) => '<svg viewBox="0 0 24 24" width="'+(sz||24)+'" height="'+(sz||24)+'" aria-hidden="true">'+ICONS[n]+'</svg>';
   document.querySelectorAll('[data-i]').forEach((e) => { e.innerHTML = svg(e.dataset.i, e.dataset.i === 'pin' ? 24 : 22); });
@@ -897,7 +927,7 @@
   async function go() {
     if (!from || !to) return;
     if (mode === 'transit') { window.open(gmapsUrl('transit'), '_blank', 'noopener'); return; }
-    setHint('Hinahanap ang ruta…');
+    setHint('Finding route…');
     try {
       const a = await coordsOf(from), b = await coordsOf(to);
       points = [a].concat(stops, [b]);
@@ -910,8 +940,8 @@
       curMode = mode; selIdx = 0; setHint(''); enterRouteView();
     } catch (e) {
       const msg = e.message === 'geo'
-        ? 'Hindi makuha ang location mo. I-allow ang location o pindutin ang "Show your location", tapos subukan ulit.'
-        : 'Walang nakitang ruta. Subukan ang ibang lugar o mode.';
+        ? 'Could not get your location. Allow location access or tap "Show your location", then try again.'
+        : 'No route found. Try a different place or travel mode.';
       setHint(msg); if (panel.hidden) flash(msg, 4000);
     }
   }
@@ -1038,18 +1068,201 @@
   $('rt-layers').addEventListener('click', () => { const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
   $('rt-layers2').addEventListener('click', () => { const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
   $('rt-locate').addEventListener('click', () => {
-    getUserLoc().then((l) => map.flyTo({ center: [l.lng, l.lat], zoom: 15, duration: 1200 })).catch(() => flash('Hindi makuha ang location mo.'));
+    getUserLoc().then((l) => map.flyTo({ center: [l.lng, l.lat], zoom: 15, duration: 1200 })).catch(() => flash('Could not get your location.'));
   });
-  $('rt-start').addEventListener('click', () => window.open(gmapsUrl(TRAVEL[curMode], true), '_blank', 'noopener'));
-  $('rt-stop').addEventListener('click', () => { addingStop = true; openPanel(); });
-  async function shareRoute() {
-    const url = gmapsUrl(TRAVEL[curMode]);
-    try { if (navigator.share) { await navigator.share({ title: 'Directions to ' + (to.label || 'destination'), url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
-    try { await navigator.clipboard.writeText(url); flash('Link copied.'); } catch (e) { flash(url, 6000); }
+  // ===== On-site Navigation (Start button) — real GPS, like Google Maps =====
+  // The marker ONLY moves when you physically move: it tracks the device's
+  // real GPS via watchPosition, snaps your position onto the route, shows a
+  // live countdown (remaining distance / your actual speed), and reroutes
+  // automatically when you stray off the route. No simulation.
+  let nav = null; // { coords, cum, total, dist, seg, marker, watchId, lastFixTs, lastSpeed, rerouteTs, camTs }
+  function navTables(r) {
+    const coords = r.geometry.coordinates;
+    const R = 6371000, rad = Math.PI / 180;
+    const cum = [0];
+    for (let i = 1; i < coords.length; i++) {
+      const lng1 = coords[i-1][0], lat1 = coords[i-1][1], lng2 = coords[i][0], lat2 = coords[i][1];
+      const x = (lng2 - lng1) * rad * Math.cos(((lat1 + lat2) / 2) * rad);
+      const y = (lat2 - lat1) * rad;
+      cum.push(cum[i-1] + Math.sqrt(x*x + y*y) * R);
+    }
+    return { coords, cum, total: cum[cum.length - 1] };
   }
-  // Share buttons now changed to Driver Cost — all pricing buttons open fare card with toll/gas/money/change
+  function stopNav(showRoute) {
+    if (!nav) return;
+    if (nav.watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(nav.watchId);
+    if (nav.marker) nav.marker.remove();
+    nav = null;
+    const b = document.getElementById('nav-banner');
+    if (b) b.remove();
+    document.body.classList.remove('navigating');
+    // Exiting navigation: recenter the map to show the WHOLE route again
+    // (Google-Maps-style route overview). Start's internal cleanup passes no
+    // flag and just resets the pitch.
+    if (showRoute && routeActive && curRoute()) fitRoute();
+    else map.easeTo({ pitch: 0, duration: 400 });
+    if (routeActive) placeMarkers(); // bring back the route origin dot
+    if (trafficUserMarker) trafficUserMarker.getElement().style.display = '';
+    renderSheet();
+  }
+  function navBanner(text, sub) {
+    let b = document.getElementById('nav-banner');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'nav-banner';
+      b.innerHTML = '<div class="nav-eta" id="nav-eta">…</div><div class="nav-dist" id="nav-dist"></div><button type="button" id="nav-exit" aria-label="Exit navigation">Exit</button>';
+      document.body.appendChild(b);
+      document.getElementById('nav-exit').addEventListener('click', () => stopNav(true));
+    }
+    if (text != null) b.querySelector('.nav-eta').textContent = text;
+    if (sub != null) b.querySelector('.nav-dist').textContent = sub;
+  }
+  async function navReroute(lng, lat) {
+    if (!nav || nav.rerouting || !to) return;
+    nav.rerouting = true;
+    flash('Off route — calculating a new route…');
+    try {
+      const a = { lng, lat }, b = await coordsOf(to);
+      points = [a].concat(stops, [b]);
+      const rs = (await Promise.allSettled([
+        fetchRoutes('driving-traffic', points, true), fetchRoutes('driving', points, false), fetchRoutes('walking', points, false)
+      ])).map((x) => (x.status === 'fulfilled' ? x.value : null));
+      routes = { car: rs[0], moto: rs[1], walk: rs[2] };
+      const r = routes[curMode] && routes[curMode][0];
+      if (!r) throw new Error('noroute');
+      selIdx = 0;
+      if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); }
+      renderLabels(); renderSheet();
+      const t = navTables(r);
+      nav.coords = t.coords; nav.cum = t.cum; nav.total = t.total;
+      nav.dist = 0; nav.seg = 0; nav.rerouteTs = Date.now();
+      flash('New route found — continue your trip.');
+    } catch (e) {
+      flash('Could not recalculate the route. Stay near the route.');
+    }
+    if (nav) nav.rerouting = false;
+  }
+  function onNavFix(pos) {
+    if (!nav) return;
+    const lat = pos.coords.latitude, lng = pos.coords.longitude;
+    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+    nav.lastFixTs = Date.now();
+    nav.lastSpeed = (typeof pos.coords.speed === 'number' && pos.coords.speed >= 0) ? pos.coords.speed : null;
+    // Snap to the route: search forward in a window around the last segment.
+    const rad = Math.PI / 180, R = 6371000;
+    const distM = (lng1, lat1, lng2, lat2) => {
+      const x = (lng2 - lng1) * rad * Math.cos(((lat1 + lat2) / 2) * rad);
+      const y = (lat2 - lat1) * rad;
+      return Math.sqrt(x*x + y*y) * R;
+    };
+    let best = { d: Infinity, i: nav.seg };
+    const W = 40; // look ahead up to 40 points (~a few hundred meters)
+    for (let k = nav.seg; k < Math.min(nav.seg + W, nav.coords.length - 1); k++) {
+      for (const c of [nav.coords[k], nav.coords[k + 1]]) {
+        const d = distM(lng, lat, c[0], c[1]);
+        if (d < best.d) best = { d, i: k };
+      }
+    }
+    // Also don't drift backwards: allow a small window behind the current seg.
+    for (let k = Math.max(0, nav.seg - 8); k < nav.seg; k++) {
+      const d = distM(lng, lat, nav.coords[k][0], nav.coords[k][1]);
+      if (d < best.d) best = { d, i: k };
+    }
+    nav.seg = best.i;
+    if (best.d > 60) { // meters off route -> Google-Maps-style auto reroute
+      const now = Date.now();
+      if (!nav.rerouteTs || now - nav.rerouteTs > 8000) navReroute(lng, lat);
+      return;
+    }
+    // Progress = distance along route up to the snapped point.
+    nav.dist = nav.cum[nav.seg];
+    const remainFrac = Math.max(0, 1 - nav.dist / nav.total);
+    const r = curRoute();
+    if (!r) return;
+    // Speed: real GPS speed when available, else the route's average.
+    const speed = (nav.lastSpeed && nav.lastSpeed > 0.5) ? nav.lastSpeed : Math.max(0.5, r.distance / r.duration);
+    const remainS = (r.distance * remainFrac) / speed;
+    navBanner(fmtTime(remainS), fmtDist(r.distance * remainFrac) + ' left • ' + (to ? (to.user ? 'Your location' : to.label) : 'destination'));
+    // Move the marker to the snapped route position (segment projection).
+    const a = nav.coords[nav.seg], c = nav.coords[Math.min(nav.seg + 1, nav.coords.length - 1)];
+    const segLen = nav.cum[Math.min(nav.seg + 1, nav.cum.length - 1)] - nav.cum[nav.seg];
+    let frac = 0;
+    if (segLen > 0) {
+      const dToA = distM(lng, lat, a[0], a[1]), dToC = distM(lng, lat, c[0], c[1]);
+      frac = Math.max(0, Math.min(1, (segLen*segLen + dToA*dToA - dToC*dToC) / (2*segLen*dToA || 1)));
+    }
+    const slng = a[0] + (c[0] - a[0]) * frac, slat = a[1] + (c[1] - a[1]) * frac;
+    nav.marker.setLngLat([slng, slat]);
+    // Google-Maps camera: re-aims ONLY on each new GPS fix and ONLY while
+    // you are moving. Each animation lasts under the fix gap, so when you
+    // stop, the camera settles immediately — it never glides on its own.
+    const now = Date.now();
+    const moving = (nav.lastSpeed || 0) > 1;
+    if (moving && (!nav.camTs || now - nav.camTs > 900)) {
+      nav.camTs = now;
+      const heading = Math.atan2((c[0] - a[0]), (c[1] - a[1])) * 180 / Math.PI;
+      const spdKmh = (nav.lastSpeed || 0) * 3.6;
+      const z = spdKmh > 45 ? 17 : spdKmh > 20 ? 18 : 19; // starts max-zoomed, eases out as you speed up
+      map.easeTo({ center: [slng, slat], zoom: z, bearing: (heading + 360) % 360, duration: 850 });
+    }
+    if (nav.dist >= nav.total - 15) { // within 15 m of the end -> arrived
+      flash('You have arrived at your destination.');
+      stopNav(true);
+    }
+  }
+  function startNav() {
+    const r = curRoute();
+    if (!r || !r.geometry || !r.geometry.coordinates.length) { flash('Please select a route first.'); return; }
+    if (!navigator.geolocation) { flash('Walang GPS support ang browser na ito.'); return; }
+    stopNav();
+    const t = navTables(r);
+    const el = document.createElement('div');
+    el.className = 'traffic-user-marker';
+    el.innerHTML = '<span class="traffic-user-dot"></span>';
+    nav = {
+      coords: t.coords, cum: t.cum, total: t.total, dist: 0, seg: 0,
+      marker: new mapboxgl.Marker({ element: el }).setLngLat(t.coords[0]).addTo(map),
+      watchId: null, lastFixTs: 0, lastSpeed: null, rerouteTs: 0, camTs: 0
+    };
+    document.body.classList.add('navigating');
+    // Only ONE blue dot while navigating: remove the route-origin dot and
+    // hide the parent app's "Show your location" dot — the nav marker is it.
+    if (originMarker) { originMarker.remove(); originMarker = null; }
+    if (trafficUserMarker) trafficUserMarker.getElement().style.display = 'none';
+    navBanner('…', 'Waiting for GPS — start moving to begin navigation');
+    // Face forward at the start: center on the origin, pointed along the
+    // first route segment, like Google Maps when navigation begins.
+    const sc = t.coords[0], sn = t.coords[1] || t.coords[0];
+    const initBrg = Math.atan2(sn[0] - sc[0], sn[1] - sc[1]) * 180 / Math.PI;
+    map.easeTo({ center: sc, zoom: 19, bearing: (initBrg + 360) % 360, duration: 900 }); // max zoom-in on Start
+    nav.watchId = navigator.geolocation.watchPosition(
+      onNavFix,
+      () => { flash('Could not get GPS. Allow location access and make sure you are outdoors or have signal.'); },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }
+    );
+  }
+  $('rt-start').addEventListener('click', startNav);
+  $('rt-stop').addEventListener('click', () => { addingStop = true; openPanel(); });
+  // Share links back to THIS website - the URL carries traffic=1 plus the
+  // route coordinates, so opening it re-opens the site's Traffic map and
+  // recomputes the same route (never sends anyone to Google Maps).
+  function siteShareUrl() {
+    const ll = (p) => p.lat + ',' + p.lng;
+    const q = new URLSearchParams();
+    q.set('traffic', '1');
+    if (from && !from.user) q.set('sfrom', ll(from));
+    if (to && !to.user) q.set('sto', ll(to));
+    q.set('smode', curMode);
+    return location.origin + location.pathname.replace(/rizal_traffic_map\.html.*$/, '') + '?' + q.toString();
+  }
+  async function shareRoute() {
+    const url = siteShareUrl();
+    try { if (navigator.share) { await navigator.share({ title: 'Route on Sagip Montalban', url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); flash('Website link copied.'); } catch (e) { flash(url, 6000); }
+  }
+  // Top icon (rt-share) opens Driver Cost card; bottom chip (rt-share2) shares the route link
   $('rt-share').addEventListener('click', showFareCard);
-  $('rt-share2').addEventListener('click', showFareCard);
+  $('rt-share2').addEventListener('click', shareRoute);
   $('rt-save').addEventListener('click', () => {
     if (!to || to.lat == null) return;
     const i = savedPlaces.findIndex((p) => p.lat === to.lat && p.lng === to.lng);
@@ -1136,6 +1349,10 @@
     $('fare-total').textContent = '₱'+baseFare.toLocaleString();
     $('fare-mode-label').textContent = f.name+' • '+farePax+' pax'+(f.surge>1?' • Surge':'');
     $('fare-count').textContent = farePax;
+    const money = parseFloat($('fare-money')?.value)||0;
+    const change = money - baseFare;
+    const fc = $('fare-change');
+    if(fc){ fc.textContent = '₱'+change.toLocaleString(); fc.style.color = change < 0 ? '#c62828' : '#1b5e20'; if(fc.parentElement){ fc.parentElement.style.background = change < 0 ? '#ffebee' : '#e8f5e9'; fc.parentElement.style.borderColor = change < 0 ? '#ef9a9a' : '#c8e6c9'; } }
   }
 
   function updateDriverTotal(){
@@ -1205,10 +1422,12 @@
   $('rt-fare').addEventListener('click', (e)=>{ if(e.target.id==='rt-fare') hideFareCard(); });
   $('fare-minus').addEventListener('click', ()=>{ if(farePax>1){ farePax--; updateFareTotal(); updateDriverTotal(); } });
   $('fare-plus').addEventListener('click', ()=>{ if(farePax<20){ farePax++; updateFareTotal(); updateDriverTotal(); } });
+  const fareMoneyEl = $('fare-money');
+  if (fareMoneyEl) { fareMoneyEl.addEventListener('input', updateFareTotal); fareMoneyEl.addEventListener('change', updateFareTotal); }
 
   // Driver Cost button — separate card with toll/gas/money/change
   $('rt-share').addEventListener('click', showDriverCard);
-  $('rt-share2').addEventListener('click', showDriverCard);
+  // rt-share2 is now Share — handled above
   $('driver-close').addEventListener('click', hideDriverCard);
   $('rt-driver').addEventListener('click', (e)=>{ if(e.target.id==='rt-driver') hideDriverCard(); });
   // Driver cost inputs — realtime update
@@ -1280,6 +1499,24 @@
     currentBase = base;
     map.setStyle(base === 'satellite' ? STYLE_SATELLITE : STYLE_TRAFFIC);
   });
+
+  // ===== Shared route auto-load (?sfrom=lat,lng&sto=lat,lng&smode=car) =====
+  (function loadSharedRoute() {
+    const q = new URLSearchParams(location.search);
+    const sto = q.get('sto');
+    if (!sto) return;
+    const parsePt = (v) => { if (!v) return null; const p = v.split(',').map(Number); return (isFinite(p[0]) && isFinite(p[1])) ? { lat: p[0], lng: p[1], label: 'Shared location' } : null; };
+    const f = parsePt(q.get('sfrom')), t = parsePt(sto);
+    if (!t) return;
+    from = f || { user: true };
+    to = t;
+    if (from.user) { fromIn.value = 'Your location'; fromIn.classList.add('is-user'); } else { fromIn.value = from.label; fromIn.classList.remove('is-user'); }
+    toIn.value = to.label;
+    const m = q.get('smode');
+    if (m === 'car' || m === 'moto' || m === 'transit' || m === 'walk') mode = m;
+    panel.querySelectorAll('.dir-modes button').forEach((x) => x.classList.toggle('on', x.dataset.mode === mode));
+    go();
+  })();
 
   map.on('error', (e) => {
     const status = e && e.error && e.error.status;

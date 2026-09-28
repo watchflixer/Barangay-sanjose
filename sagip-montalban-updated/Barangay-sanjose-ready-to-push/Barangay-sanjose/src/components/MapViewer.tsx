@@ -149,7 +149,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Realtime Traffic map (the former "Comming Soon" Layers slot). A second
   // full-map overlay rendered on top of the GIS map, mutually exclusive with
   // the Flood Prone overlay.
-  const [showTrafficMap, setShowTrafficMap] = React.useState(false);
+  // A shared link (?traffic=1&sfrom=lat,lng&sto=lat,lng&smode=car) opens the
+  // Traffic map on load with the shared route pre-computed — the in-app
+  // Share button builds exactly this URL so recipients land on the website,
+  // not on Google Maps.
+  const sharedRoute = React.useMemo(() => {
+    const q = new URLSearchParams(window.location.search);
+    return {
+      open: q.get('traffic') === '1',
+      sfrom: q.get('sfrom') || '',
+      sto: q.get('sto') || '',
+      smode: q.get('smode') || '',
+    };
+  }, []);
+  const [showTrafficMap, setShowTrafficMap] = React.useState(sharedRoute.open);
   const trafficMapFrameRef = useRef<HTMLIFrameElement | null>(null);
   React.useEffect(() => {
     if (showTrafficMap) setShowFloodProneBlank(false);
@@ -852,7 +865,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         <div className="absolute inset-0 z-30 bg-white" aria-label="Rizal Realtime Traffic Map">
           <iframe
             title="Rizal Realtime Traffic Map"
-            src={`${import.meta.env.BASE_URL}rizal_traffic_map.html${import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN ? `?key=${encodeURIComponent(import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN)}` : ''}`}
+            src={`${import.meta.env.BASE_URL}rizal_traffic_map.html?${[
+              import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN ? `key=${encodeURIComponent(import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN)}` : '',
+              sharedRoute.sfrom ? `sfrom=${encodeURIComponent(sharedRoute.sfrom)}` : '',
+              sharedRoute.sto ? `sto=${encodeURIComponent(sharedRoute.sto)}` : '',
+              sharedRoute.smode ? `smode=${encodeURIComponent(sharedRoute.smode)}` : '',
+            ].filter(Boolean).join('&')}`}
             ref={trafficMapFrameRef}
             className="h-full w-full border-0"
           />

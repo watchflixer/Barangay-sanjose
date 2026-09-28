@@ -180,10 +180,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setIsMenuDropdownOpen((prev) => !prev)}
                 disabled={floodProneOpen || trafficOpen}
                 title="Options"
-                className={`inline-flex h-8 items-center justify-center px-2 rounded-md border border-slate-200 transition-colors ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100 cursor-pointer'}`}
+                aria-label="Options"
+                className={`inline-flex h-8 w-9 items-center justify-center rounded-md border border-slate-200 transition-colors ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100 cursor-pointer'}`}
               >
-                <span className="text-black font-black text-[10px] tracking-wider leading-none">
-                  ●●●
+                {/* CSS dots, not text: Chrome Android/iOS font-boosts text glyphs
+                    (●●●) and blows the button up in mobile portrait. Plain
+                    rounded spans are immune to font inflation. */}
+                <span className="flex items-center gap-[2.5px]" aria-hidden="true">
+                  <span className="w-1 h-1 rounded-full bg-slate-900" />
+                  <span className="w-1 h-1 rounded-full bg-slate-900" />
+                  <span className="w-1 h-1 rounded-full bg-slate-900" />
                 </span>
               </button>
 
