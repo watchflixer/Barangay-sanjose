@@ -26,6 +26,11 @@
      Leaflet stylesheet above gives identical size, margin and look as the
      Flood Prone map. The slot rule below is copied from that map. */
   .leaflet-top.leaflet-left{top:132px;left:6px;}
+  /* Hide the zoom buttons while a route is on screen (the bottom sheet + top
+     card already own the layout, like Google Maps during navigation) and
+     while the full-screen Directions screen is open. */
+  body.routing .leaflet-top.leaflet-left,
+  body.directions-open .leaflet-top.leaflet-left{display:none;}
   /* Base map switcher: same slot the Flood Prone map's layers control uses */
   #base-switch{
     position:absolute;top:10px;right:12px;
@@ -41,18 +46,32 @@
   }
   #base-switch button:hover{background:#eef1ec;}
   #base-switch button.active{background:#111827;color:#ffffff;}
+  /* Bottom-right stack: Directions button sits directly above the legend card */
+  #legend-stack{
+    position:absolute;right:12px;bottom:24px;z-index:400;
+    display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+  }
+  #directions-btn{
+    display:block;width:48px;height:48px;padding:0;border:0;border-radius:14px;
+    background:#0b7a87;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);
+    transition:transform .12s ease,box-shadow .12s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #directions-btn svg{display:block;width:100%;height:100%;}
+  #directions-btn:hover{box-shadow:0 3px 10px rgba(0,0,0,0.35);}
+  #directions-btn:active{transform:scale(.94);}
+  #directions-btn:focus-visible{outline:3px solid #ffffff;outline-offset:-6px;}
   #legend{
-    position:absolute;right:12px;bottom:24px;
     min-width:150px;
     background:rgba(244,246,244,0.95);border:1px solid var(--line);border-radius:8px;
     padding:10px 12px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    font-size:0.78rem;color:var(--ink);z-index:400;box-shadow:0 2px 6px rgba(0,0,0,0.15);
+    font-size:0.78rem;color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,0.15);
   }
   #legend .row{display:flex;align-items:center;gap:6px;margin:3px 0;}
   #legend .sw{width:13px;height:13px;border-radius:2px;display:inline-block;}
-  /* Raise the legend on mobile portrait so it clears the parent app's bottom overlays */
+  /* Raise the stack on mobile portrait so it clears the parent app's bottom overlays */
   @media (orientation: portrait) and (max-width: 640px){
-    #legend{ bottom: 56px; }
+    #legend-stack{ bottom: 56px; }
   }
   #notice{
     position:absolute;top:10px;left:50%;transform:translateX(-50%);
@@ -81,6 +100,123 @@
     70%{transform:scale(1.15);opacity:0;}
     100%{transform:scale(1.15);opacity:0;}
   }
+
+  /* ===== Directions screen (Google Maps-style) ===== */
+  #dir-panel{position:absolute;inset:0;z-index:1500;background:#fff;display:flex;flex-direction:column;
+    font-family:"Google Sans",Roboto,-apple-system,"Segoe UI",sans-serif;color:#202124;}
+  #dir-panel[hidden]{display:none;}
+  #dir-panel button{font-family:inherit;color:inherit;-webkit-tap-highlight-color:transparent;}
+  #dir-panel svg{display:block;}
+  .dir-top{display:flex;align-items:flex-start;gap:4px;padding:16px 12px 0 8px;}
+  .dir-ib{width:40px;height:40px;border:0;background:transparent;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;}
+  .dir-ib:active{background:#e8eaed;}
+  .dir-dots{position:relative;width:24px;height:88px;flex:none;}
+  .dir-dots i{position:absolute;left:50%;width:3px;height:3px;margin-left:-1.5px;border-radius:50%;background:#9aa0a6;}
+  .dir-dots .b{position:absolute;left:2px;top:8px;width:20px;height:20px;border-radius:50%;background:#e8f0fe;display:flex;align-items:center;justify-content:center;}
+  .dir-dots .b:after{content:"";width:10px;height:10px;border-radius:50%;background:#1a73e8;}
+  .dir-dots .p{position:absolute;left:0;top:56px;color:#d93025;}
+  .dir-fields{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
+  .dir-fields input{width:100%;height:40px;border:1px solid #c4c7c5;border-radius:8px;padding:0 12px;font:400 16px/1 inherit;font-family:inherit;color:#202124;background:#fff;outline:none;}
+  .dir-fields input::placeholder{color:#757575;}
+  .dir-fields input:focus{border:2px solid #1a73e8;padding:0 11px;}
+  .dir-fields input.is-user{color:#1a73e8;}
+  #dir-swap{align-self:center;margin-left:4px;}
+  .dir-modes{display:flex;justify-content:space-around;padding:14px 20px 12px;border-bottom:1px solid #dadce0;}
+  .dir-modes button{width:60px;height:36px;border:0;border-radius:18px;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .dir-modes button.on{background:#a6dbe8;}
+  #dir-hint{padding:8px 16px;font-size:.8rem;color:#b3261e;background:#fdf3f2;}
+  #dir-hint:empty{display:none;}
+  #dir-body{flex:1;overflow-y:auto;}
+  .dir-sc-row{display:flex;overflow-x:auto;border-bottom:8px solid #f1f3f4;}
+  .dir-sc{display:flex;align-items:center;gap:10px;padding:14px 12px;border:0;background:transparent;cursor:pointer;text-align:left;flex:none;border-right:1px solid #dadce0;}
+  .dir-sc:last-child{border-right:0;}
+  .dir-sc-ic,.dir-row-ic{width:44px;height:44px;border-radius:50%;background:#d7ebee;display:flex;align-items:center;justify-content:center;flex:none;color:#202124;}
+  .dir-sc-ic.o{background:#fff;border:1px solid #c4c7c5;}
+  .dir-sc-tx,.dir-row-tx{display:flex;flex-direction:column;min-width:0;}
+  .dir-sc-title{font-size:16px;}
+  .dir-sc-sub.eta{color:#188038;}
+  .dir-sc-sub{font-size:14px;color:#5f6368;max-width:62px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dir-sec{display:flex;justify-content:space-between;align-items:center;padding:20px 20px 8px;font-size:15px;font-weight:500;}
+  .dir-sec svg{color:#5f6368;}
+  .dir-row{display:flex;align-items:center;gap:16px;width:100%;padding:10px 20px;border:0;background:transparent;text-align:left;cursor:pointer;}
+  .dir-row:active,.dir-sc:active{background:#f1f3f4;}
+  .dir-row-ic{background:#e8eaed;}
+  .dir-row-title{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dir-row-sub{font-size:14px;color:#5f6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dir-more{display:block;margin:8px auto;padding:10px 16px;border:0;background:transparent;color:#00796b;font-size:16px;cursor:pointer;}
+  .dir-empty{padding:16px 20px;font-size:14px;color:#5f6368;}
+
+  /* ===== Route view (Google Maps-style) ===== */
+  [hidden]{display:none!important;}
+  .rt{display:none;font-family:"Google Sans",Roboto,-apple-system,"Segoe UI",sans-serif;color:#202124;}
+  body.routing .rt{display:block;}
+  body.routing #legend-stack,body.routing #base-switch{display:none;}
+  body.routing #notice{top:132px;}
+  .rt svg{display:block;} .rt button{font-family:inherit;color:inherit;-webkit-tap-highlight-color:transparent;}
+  /* Only show the route-view chrome once a route actually exists (body.routing).
+     These two IDs must NOT set display in their own rules: an ID selector
+     (1-0-0) outranks .rt (0-1-0), so they stayed visible on the plain traffic
+     map before any destination was picked. The routing-scoped rules below
+     (1-1-1) win only while a route is on screen. */
+  #rt-top{position:absolute;z-index:1200;top:12px;left:20px;right:20px;max-width:440px;margin:0 auto;background:#fff;border-radius:24px;box-shadow:0 2px 10px rgba(0,0,0,.3);padding:6px 6px 6px 14px;align-items:center;gap:4px;}
+  #rt-edit{flex:1;min-width:0;display:flex;gap:10px;cursor:pointer;}
+  #rt-edit .dc{position:relative;width:24px;flex:none;}
+  #rt-edit .dc .b{position:absolute;left:2px;top:14px;width:20px;height:20px;border-radius:50%;background:#e8f0fe;display:flex;align-items:center;justify-content:center;}
+  #rt-edit .dc .b:after{content:"";width:10px;height:10px;border-radius:50%;background:#1a73e8;}
+  #rt-edit .dc .p{position:absolute;left:0;top:64px;color:#d93025;}
+  #rt-edit .dc i{position:absolute;left:11px;width:3px;height:3px;border-radius:50%;background:#9aa0a6;}
+  #rt-edit .tx{flex:1;min-width:0;}
+  #rt-edit .r{height:48px;display:flex;align-items:center;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #rt-edit .r + .r{border-top:1px solid #dadce0;}
+  #rt-from{color:#1a73e8;} #rt-to small{color:#5f6368;font-size:13px;margin-left:8px;}
+  #rt-side{display:flex;flex-direction:column;justify-content:space-between;height:96px;}
+  .rt-ib{width:40px;height:40px;border:0;background:transparent;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .rt-ib:active{background:#e8eaed;}
+  #rt-layers{position:absolute;z-index:1200;right:12px;top:124px;width:40px;height:40px;border:0;border-radius:12px;background:#c7e8f1;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;align-items:center;justify-content:center;}
+  /* While a route is on screen, reveal the flex layouts gated by .rt.
+     #rt-layers (the light-blue map-type button) is intentionally NOT listed:
+     the Street/Satellite switcher is hidden in route view anyway, so it only
+     added clutter next to the top card. */
+  body.routing #rt-top,body.routing #rt-locate{display:flex;}
+  /* (1-1-1) beats the generic body.routing .rt rule that would otherwise
+     render it as a block button. */
+  body.routing #rt-layers{display:none;}
+  #rt-menu{position:absolute;z-index:1300;top:62px;right:26px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 0;min-width:190px;}
+  #rt-menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:12px 18px;font-size:16px;cursor:pointer;}
+  #rt-menu button:active{background:#f1f3f4;}
+  #rt-sheet{position:absolute;z-index:1200;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:#fff;border-radius:24px 24px 0 0;box-shadow:0 -2px 12px rgba(0,0,0,.25);padding-top:16px;}
+  #rt-sheet:before{content:"";position:absolute;top:8px;left:50%;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:#c4c7c5;}
+  #rt-locate{position:absolute;right:12px;top:-64px;width:48px;height:48px;border:0;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  #rt-locate span{width:32px;height:32px;border-radius:50%;background:#e8f0fe;display:flex;align-items:center;justify-content:center;}
+  #rt-locate span:after{content:"";width:14px;height:14px;border-radius:50%;background:#1a73e8;border:2px solid #fff;box-sizing:border-box;box-shadow:0 0 0 1px #1a73e8;}
+  .rt-head{display:flex;align-items:center;padding:6px 16px 8px 20px;gap:10px;}
+  #rt-title{flex:1;font-size:23px;font-weight:500;}
+  .rt-cb{width:44px;height:44px;border:0;border-radius:50%;background:#e9eef0;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .rt-cb:active{background:#d5dde0;}
+  .rt-tabs{display:flex;border-bottom:1px solid #dadce0;}
+  .rt-tab{flex:1;min-width:0;position:relative;border:0;background:transparent;padding:14px 0 16px;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;font-size:16px;cursor:pointer;}
+  .rt-tab.on{color:#0e6e80;}
+  .rt-tab.on:after{content:"";position:absolute;left:50%;bottom:-1px;width:60px;height:3px;margin-left:-30px;border-radius:3px 3px 0 0;background:#0e6e80;}
+  .rt-sum{padding:12px 20px 12px;border-bottom:1px solid #dadce0;}
+  #rt-time{font-size:23px;color:#188038;} #rt-dist{font-size:23px;color:#3c4043;}
+  #rt-sub{font-size:15px;color:#5f6368;margin-top:4px;}
+  #rt-gas{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:16px;color:#5f6368;}
+  #rt-gas svg{color:#188038;width:18px;height:18px;}
+  .rt-lbl svg{display:inline-block!important;vertical-align:-2px;margin-left:6px;width:15px;height:15px;color:#188038;}
+  .rt-lbl.sel svg{color:#fff;}
+  .rt-chips{display:flex;gap:12px;overflow-x:auto;padding:12px 16px 16px;}
+  .rt-chip{flex:none;height:44px;padding:0 18px 0 14px;border:0;border-radius:22px;background:#d3eef5;font-size:17px;display:flex;align-items:center;gap:10px;cursor:pointer;}
+  .rt-chip.go{background:#00697a;color:#fff!important;}
+  .rt-chip:active{filter:brightness(.93);}
+  .rt-lbl{background:#fff;color:#202124;border-radius:10px;padding:6px 10px;font:500 15px "Google Sans",Roboto,sans-serif;box-shadow:0 1px 5px rgba(0,0,0,.35);cursor:pointer;white-space:nowrap;}
+  .rt-lbl.sel{background:#1c1fb8;color:#fff;}
+  .rt-stop{width:16px;height:16px;border-radius:50%;background:#fff;border:4px solid #6b7280;box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,.4);}
+  #rt-opts{position:absolute;z-index:1400;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-family:"Google Sans",Roboto,sans-serif;}
+  #rt-opts .card{background:#fff;border-radius:20px;padding:20px 24px;width:300px;max-width:calc(100% - 40px);}
+  #rt-opts h3{margin:0 0 8px;font-size:20px;font-weight:500;}
+  #rt-opts label{display:flex;align-items:center;gap:12px;padding:12px 0;font-size:16px;}
+  #rt-opts input{width:20px;height:20px;accent-color:#00697a;}
+  #rt-opts .done{margin-top:8px;width:100%;height:44px;border:0;border-radius:22px;background:#00697a;color:#fff;font-size:16px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -96,12 +232,77 @@
   <button type="button" data-base="satellite">Satellite</button>
 </div>
 <div id="notice"></div>
-<div id="legend">
-  <div class="row"><span class="sw" style="background:#2BC82B;"></span>Free flowing</div>
-  <div class="row"><span class="sw" style="background:#F1BF40;"></span>Slow traffic</div>
-  <div class="row"><span class="sw" style="background:#CC0704;"></span>Heavy congestion</div>
-  <div class="row"><span class="sw" style="background:#7A1F1B;"></span>Road closed</div>
+<div id="legend-stack">
+  <button type="button" id="directions-btn" title="Directions" aria-label="Directions">
+    <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff"/>
+      <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#0b7a87" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)"/>
+    </svg>
+  </button>
+  <div id="legend">
+    <div class="row"><span class="sw" style="background:#2BC82B;"></span>Free flowing</div>
+    <div class="row"><span class="sw" style="background:#F1BF40;"></span>Slow traffic</div>
+    <div class="row"><span class="sw" style="background:#CC0704;"></span>Heavy congestion</div>
+    <div class="row"><span class="sw" style="background:#7A1F1B;"></span>Road closed</div>
+  </div>
 </div>
+<div id="dir-panel" hidden>
+  <div class="dir-top">
+    <button type="button" class="dir-ib" id="dir-back" aria-label="Back" data-i="back"></button>
+    <div class="dir-dots"><span class="b"></span><i style="top:34px"></i><i style="top:41px"></i><i style="top:48px"></i><span class="p" data-i="pin"></span></div>
+    <div class="dir-fields">
+      <input id="dir-from" type="text" autocomplete="off" aria-label="Starting point" placeholder="Choose starting point">
+      <input id="dir-to" type="text" autocomplete="off" aria-label="Destination" placeholder="Choose destination">
+    </div>
+    <button type="button" class="dir-ib" id="dir-swap" aria-label="Swap" data-i="swap"></button>
+  </div>
+  <div class="dir-modes">
+    <button type="button" data-mode="car" class="on" aria-label="Car" data-i="car"></button>
+    <button type="button" data-mode="moto" aria-label="Motorcycle" data-i="moto"></button>
+    <button type="button" data-mode="transit" aria-label="Public transport" data-i="transit"></button>
+    <button type="button" data-mode="walk" aria-label="Walking" data-i="walk"></button>
+  </div>
+  <div id="dir-hint"></div>
+  <div id="dir-body"></div>
+</div>
+<div id="rt-top" class="rt">
+  <div id="rt-edit">
+    <div class="dc"><span class="b"></span><i style="top:44px"></i><i style="top:51px"></i><i style="top:58px"></i><span class="p" data-i="pin"></span></div>
+    <div class="tx"><div class="r" id="rt-from">Your location</div><div class="r" id="rt-to"></div></div>
+  </div>
+  <div id="rt-side">
+    <button type="button" class="rt-ib" id="rt-dots" aria-label="More options" data-i="dots"></button>
+    <button type="button" class="rt-ib" id="rt-swap" aria-label="Swap" data-i="swap"></button>
+  </div>
+</div>
+<div id="rt-menu" class="rt" hidden></div>
+<button type="button" id="rt-layers" class="rt" aria-label="Map type" data-i="layers"></button>
+<div id="rt-sheet" class="rt">
+  <button type="button" id="rt-locate" aria-label="My location"><span></span></button>
+  <div class="rt-head"><div id="rt-title">Drive</div>
+    <button type="button" class="rt-cb" id="rt-tune" aria-label="Route options" data-i="tune"></button>
+    <button type="button" class="rt-cb" id="rt-share" aria-label="Share" data-i="share"></button>
+    <button type="button" class="rt-cb" id="rt-close" aria-label="Close" data-i="close"></button></div>
+  <div class="rt-tabs">
+    <button type="button" class="rt-tab on" data-m="car"><b data-i="car"></b><span>—</span></button>
+    <button type="button" class="rt-tab" data-m="moto"><b data-i="moto"></b><span>—</span></button>
+    <button type="button" class="rt-tab" data-m="transit"><b data-i="transit"></b><span>—</span></button>
+    <button type="button" class="rt-tab" data-m="walk"><b data-i="walk"></b><span>—</span></button>
+  </div>
+  <div class="rt-sum"><div><span id="rt-time"></span><span id="rt-dist"></span></div><div id="rt-sub"></div><div id="rt-gas" hidden><span data-i="leaf"></span><em style="font-style:normal"></em></div></div>
+  <div class="rt-chips">
+    <button type="button" class="rt-chip go" id="rt-start"><span data-i="nav"></span>Start</button>
+    <button type="button" class="rt-chip" id="rt-stop"><span data-i="addstop"></span>Add stops</button>
+    <button type="button" class="rt-chip" id="rt-share2"><span data-i="share"></span>Share</button>
+    <button type="button" class="rt-chip" id="rt-save"><span data-i="bookmark"></span><em style="font-style:normal">Save</em></button>
+  </div>
+</div>
+<div id="rt-opts" hidden><div class="card"><h3>Route options</h3>
+  <label><input type="checkbox" id="o-toll">Avoid tolls</label>
+  <label><input type="checkbox" id="o-hwy">Avoid highways</label>
+  <label><input type="checkbox" id="o-ferry">Avoid ferries</label>
+  <button type="button" class="done" id="o-done">Done</button></div></div>
 
 <script>
   const notice = document.getElementById('notice');
@@ -170,6 +371,408 @@
   // top-left, layer switcher top-right, legend bottom-right.
   map.on('load', syncZoomButtons);
 
+  // ===== Directions screen =====
+  const $ = (id) => document.getElementById(id);
+  const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const S = 'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"';
+  const ICONS = {
+    back:'<path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>',
+    swap:'<path fill="currentColor" d="M16 17.01V10h-2v7.01h-3L15 21l4-3.99h-3zM9 3L5 6.99h3V14h2V6.99h3L9 3z"/>',
+    pin:'<path fill="currentColor" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/>',
+    car:'<path fill="currentColor" d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm11 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM5 11l1.5-4.5h11L19 11H5z"/>',
+    moto:'<circle cx="5.5" cy="16.5" r="3" '+S+'/><circle cx="18.5" cy="16.5" r="3" '+S+'/><path d="M5.5 16.5l3-6h4l2.5 3.5h3.5M11 10.5l1.5 6M9 7h3.5l1.5 3.5" '+S+'/>',
+    transit:'<path fill="currentColor" d="M12 2c-4 0-8 .5-8 4v9.5C4 17.43 5.57 19 7.5 19L6 20.5v.5h2.23l2-2H14l2 2h2v-.5L16.5 19c1.93 0 3.5-1.57 3.5-3.5V6c0-3.5-3.58-4-8-4zM7.5 17a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM11 10H6V6h5v4zm2 0V6h5v4h-5zm3.5 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/>',
+    walk:'<path fill="currentColor" d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>',
+    home:'<path fill="currentColor" d="M12 3 3 11h2v9h5v-6h4v6h5v-9h2z"/>',
+    work:'<rect x="3" y="7" width="18" height="13" rx="2" '+S+'/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" '+S+'/>',
+    more:'<circle cx="6" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="18" cy="12" r="1.8" fill="currentColor"/>',
+    clock:'<circle cx="12" cy="12" r="9" '+S+'/><path d="M12 7v5l3.5 2" '+S+'/>',
+    info:'<circle cx="12" cy="12" r="9" '+S+'/><path d="M12 11v6M12 7.5v.5" '+S+'/>'
+  };
+  Object.assign(ICONS, {
+    layers:'<g transform="translate(-1.5 3) scale(.9)"><path fill="currentColor" d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/></g><circle cx="19" cy="6" r="2.6" fill="currentColor"/>',
+    tune:'<path fill="currentColor" d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/>',
+    share:'<path fill="currentColor" d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/>',
+    close:'<path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>',
+    dots:'<path fill="currentColor" d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>',
+    nav:'<path d="M12 3.5L5.5 20l6.5-3.6 6.5 3.6z" '+S+'/>',
+    leaf:'<path fill="currentColor" d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.25S2 11.5 2 13.5s1.75 3.75 1.75 3.75C7 8 17 8 17 8z"/>',
+    addstop:'<path d="M12 21s-6-5.6-6-10a6 6 0 0 1 12 0c0 4.4-6 10-6 10z" '+S+'/><path d="M12 8.5v5M9.5 11h5" '+S+'/>',
+    bookmark:'<path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z" '+S+'/>',
+    bookmarkOn:'<path fill="currentColor" d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>'
+  });
+  const svg = (n, sz) => '<svg viewBox="0 0 24 24" width="'+(sz||24)+'" height="'+(sz||24)+'" aria-hidden="true">'+ICONS[n]+'</svg>';
+  document.querySelectorAll('[data-i]').forEach((e) => { e.innerHTML = svg(e.dataset.i, e.dataset.i === 'pin' ? 24 : 22); });
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const panel = $('dir-panel'), fromIn = $('dir-from'), toIn = $('dir-to'), body = $('dir-body');
+  let mode = 'car', from = { user: true }, to = null, active = 'to', pendingSave = null, showAll = false;
+  let userLoc = null, results = [], searching = false, searchErr = false, seq = 0, timer = null;
+  let recent = store.get('traffic_recent', []);
+  const saved = { home: store.get('traffic_home', null), work: store.get('traffic_work', null) };
+  const dirty = { from: false, to: false };
+  const setHint = (t) => { $('dir-hint').textContent = t || ''; };
+  const tellParent = (open) => { try { window.parent.postMessage({ type: open ? 'traffic-directions-open' : 'traffic-directions-close' }, '*'); } catch (e) {} };
+
+  // Live drive time from your location to Home / Work, shown in green like Google Maps.
+  const eta = {};
+  async function loadEta(k) {
+    const p = saved[k]; if (!p) return;
+    try {
+      if (!userLoc) {
+        const st = navigator.permissions && (await navigator.permissions.query({ name: 'geolocation' }));
+        if (!st || st.state !== 'granted') return; // never trigger a permission prompt just for this
+        await getUserLoc();
+      }
+      const url = 'https://api.mapbox.com/directions/v5/mapbox/driving-traffic/' + userLoc.lng + ',' + userLoc.lat + ';' + p.lng + ',' + p.lat +
+        '?overview=false&access_token=' + encodeURIComponent(mapboxgl.accessToken);
+      const r = ((await (await fetch(url)).json()).routes || [])[0]; if (!r) return;
+      const m = Math.max(1, Math.round(r.duration / 60));
+      eta[k] = m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+      if (!panel.hidden && !dirty[active]) renderBody();
+    } catch (e) {}
+  }
+  function setUserFrom() { from = { user: true }; fromIn.value = 'Your location'; fromIn.classList.add('is-user'); }
+  function openPanel() {
+    panel.hidden = false; tellParent(true); setHint('');
+    document.body.classList.add('directions-open'); // hides the zoom buttons
+    if (!from) setUserFrom();
+    if (!to) toIn.value = '';
+    loadEta('home'); loadEta('work');
+    active = 'to'; if (addingStop) { toIn.value = ''; toIn.placeholder = 'Add a stop'; }
+    renderBody(); setTimeout(() => toIn.focus(), 60);
+  }
+  function closePanel() {
+    panel.hidden = true; if (!routeActive) tellParent(false);
+    document.body.classList.remove('directions-open'); // bring the zoom buttons back
+    if (addingStop) { addingStop = false; toIn.placeholder = 'Choose destination'; toIn.value = to ? (to.user ? 'Your location' : to.label) : ''; }
+    document.activeElement && document.activeElement.blur();
+  }
+  $('directions-btn').addEventListener('click', openPanel);
+  $('dir-back').addEventListener('click', closePanel);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) closePanel(); });
+  setUserFrom();
+
+  panel.querySelectorAll('.dir-modes button').forEach((b) => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    panel.querySelectorAll('.dir-modes button').forEach((x) => x.classList.toggle('on', x === b));
+    if (from && to) go();
+  }));
+
+  const fieldOf = (k) => (k === 'to' ? toIn : fromIn);
+  function onFocus(k) { active = k; if (k === 'from') fromIn.select(); renderBody(); }
+  function onInput(k) {
+    const inp = fieldOf(k);
+    if (k === 'to') { if (!addingStop) to = null; } else { from = null; inp.classList.remove('is-user'); }
+    active = k; dirty[k] = true; scheduleSearch(inp.value);
+  }
+  toIn.addEventListener('focus', () => onFocus('to'));
+  fromIn.addEventListener('focus', () => onFocus('from'));
+  toIn.addEventListener('input', () => onInput('to'));
+  fromIn.addEventListener('input', () => onInput('from'));
+  fromIn.addEventListener('blur', () => setTimeout(() => { if (!from && !dirty.from) setUserFrom(); }, 250));
+  [toIn, fromIn].forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter' && results[0] && dirty[active]) applyPlace(results[0]); }));
+  $('dir-swap').addEventListener('click', () => {
+    [from, to] = [to, from];
+    const put = (inp, v) => { inp.value = v ? (v.user ? 'Your location' : v.label) : ''; inp.classList.toggle('is-user', !!(v && v.user)); };
+    put(fromIn, from); put(toIn, to);
+    dirty.from = dirty.to = false; results = []; renderBody();
+    if (from && to) go();
+  });
+
+  function scheduleSearch(q) {
+    clearTimeout(timer); const my = ++seq; q = q.trim(); searchErr = false;
+    if (q.length < 2) { results = []; searching = false; dirty[active] = false; renderBody(); return; }
+    searching = true; renderBody();
+    timer = setTimeout(async () => {
+      try {
+        const url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(q) + '.json?country=ph&limit=6&autocomplete=true&proximity=121.131,14.7425&access_token=' + encodeURIComponent(mapboxgl.accessToken);
+        const res = await fetch(url); if (!res.ok) throw new Error('http');
+        const d = await res.json(); if (my !== seq) return;
+        results = (d.features || []).map((f) => {
+          const pn = f.place_name || '', i = pn.indexOf(',');
+          return { label: i > 0 ? pn.slice(0, i) : pn, sub: i > 0 ? pn.slice(i + 1).trim() : '', lng: f.center[0], lat: f.center[1] };
+        });
+      } catch (e) { if (my !== seq) return; results = []; searchErr = true; }
+      searching = false; renderBody();
+    }, 280);
+  }
+
+  function row(icon, title, sub, fn) {
+    const r = h('button', 'dir-row'); r.type = 'button';
+    const ic = h('span', 'dir-row-ic'); ic.innerHTML = svg(icon, 22); r.appendChild(ic);
+    const tx = h('span', 'dir-row-tx'); tx.appendChild(h('span', 'dir-row-title', title));
+    if (sub) tx.appendChild(h('span', 'dir-row-sub', sub));
+    r.appendChild(tx); r.addEventListener('click', fn); return r;
+  }
+  function shortcut(icon, label, subText, cls, fn) {
+    const b = h('button', 'dir-sc'); b.type = 'button';
+    const ic = h('span', 'dir-sc-ic' + (cls ? ' ' + cls : '')); ic.innerHTML = svg(icon, 22); b.appendChild(ic);
+    const tx = h('span', 'dir-sc-tx'); tx.appendChild(h('span', 'dir-sc-title', label));
+    if (subText) tx.appendChild(h('span', 'dir-sc-sub', subText));
+    b.appendChild(tx); b.addEventListener('click', fn); return b;
+  }
+  const userRow = () => row('pin', 'Your location', '', () => { if (active === 'from') { setUserFrom(); dirty.from = false; results = []; if (to) go(); else { renderBody(); toIn.focus(); } } else { to = { user: true }; toIn.value = 'Your location'; if (from) go(); } });
+
+  function renderBody() {
+    body.textContent = '';
+    const q = fieldOf(active).value.trim();
+    if (dirty[active] && q.length >= 2) {
+      if (active === 'from') body.appendChild(userRow());
+      results.forEach((r) => body.appendChild(row('pin', r.label, r.sub, () => applyPlace(r))));
+      if (searching) body.appendChild(h('div', 'dir-empty', 'Naghahanap…'));
+      else if (searchErr) body.appendChild(h('div', 'dir-empty', 'Hindi makuha ang mga resulta. Subukan ulit.'));
+      else if (!results.length) body.appendChild(h('div', 'dir-empty', 'Walang nakitang lugar.'));
+      return;
+    }
+    if (active === 'from') body.appendChild(userRow());
+    const sc = h('div', 'dir-sc-row');
+    [['home', 'Home'], ['work', 'Work']].forEach(([k, label]) => {
+      const p = saved[k];
+      const el = shortcut(k, label, p ? (eta[k] || p.label) : 'Set location', '', () => {
+        if (p) return applyPlace(p);
+        pendingSave = k; active = 'to'; to = null; toIn.value = ''; toIn.placeholder = 'Search ' + label + ' location';
+        setHint('Pumili ng lugar na ise-save bilang ' + label + '.'); toIn.focus();
+      });
+      if (p && eta[k]) el.querySelector('.dir-sc-sub').classList.add('eta');
+      sc.appendChild(el);
+    });
+    sc.appendChild(shortcut('more', 'More', '', 'o', () => { showAll = true; renderBody(); }));
+    body.appendChild(sc);
+    const sec = h('div', 'dir-sec'); sec.appendChild(h('span', '', 'Recent')); const inf = h('span'); inf.innerHTML = svg('info', 22); sec.appendChild(inf); body.appendChild(sec);
+    if (!recent.length) { body.appendChild(h('div', 'dir-empty', 'Wala pang recent na destinasyon.')); return; }
+    (showAll ? recent : recent.slice(0, 3)).forEach((r) => body.appendChild(row('clock', r.label, r.sub, () => applyPlace(r))));
+    if (!showAll && recent.length > 3) { const m = h('button', 'dir-more', 'More from recent history'); m.type = 'button'; m.addEventListener('click', () => { showAll = true; renderBody(); }); body.appendChild(m); }
+  }
+
+  function applyPlace(place) {
+    if (addingStop) { stops.push(place); addingStop = false; toIn.placeholder = 'Choose destination'; toIn.value = to.user ? 'Your location' : to.label; dirty.to = false; results = []; go(); return; }
+    if (pendingSave) { saved[pendingSave] = place; store.set('traffic_' + pendingSave, place); pendingSave = null; toIn.placeholder = 'Choose destination'; active = 'to'; setHint(''); }
+    if (active === 'to') { to = place; toIn.value = place.label; } else { from = place; fromIn.value = place.label; fromIn.classList.remove('is-user'); }
+    dirty.from = dirty.to = false; results = [];
+    recent = [place].concat(recent.filter((r) => !(r.lat === place.lat && r.lng === place.lng))).slice(0, 20);
+    store.set('traffic_recent', recent);
+    if (from && to) go(); else { renderBody(); (active === 'to' ? fromIn : toIn).focus(); }
+  }
+
+  function getUserLoc() {
+    return new Promise((resolve, reject) => {
+      const fail = () => (userLoc ? resolve(userLoc) : reject(new Error('geo')));
+      if (!navigator.geolocation) return fail();
+      navigator.geolocation.getCurrentPosition(
+        (p) => { userLoc = { lat: p.coords.latitude, lng: p.coords.longitude }; resolve(userLoc); },
+        fail, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
+    });
+  }
+  const coordsOf = (p) => (p.user ? getUserLoc() : Promise.resolve(p));
+
+  // ===== Route view =====
+  const MODES = ['car', 'moto', 'transit', 'walk'];
+  const TITLES = { car: 'Drive', moto: 'Motorcycle', transit: 'Transit', walk: 'Walk' };
+  const TRAVEL = { car: 'driving', moto: 'two-wheeler', transit: 'transit', walk: 'walking' };
+  let routes = {}, curMode = 'car', selIdx = 0, stops = [], addingStop = false, routeActive = false, points = [];
+  let destMarker = null, originMarker = null, stopMarkers = [], labelMarkers = [], clickBound = false;
+  const opts = { toll: false, hwy: false, ferry: false };
+  let savedPlaces = store.get('traffic_saved', []);
+  const fmtTime = (s) => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' hr ' + (m % 60) + ' min'; };
+  const fmtShort = (s) => { const m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + ' min' : Math.floor(m / 60) + ' hr' + (m % 60 ? ' ' + (m % 60) : ''); };
+  const fmtDist = (m) => (m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(m < 10000 ? 1 : 0) + ' km');
+  const flash = (t, ms) => { showNotice(t); setTimeout(() => { notice.style.display = 'none'; }, ms || 3000); };
+
+  function gmapsUrl(travel, nav) {
+    const ll = (p) => p.lat + ',' + p.lng;
+    let u = 'https://www.google.com/maps/dir/?api=1&travelmode=' + travel;
+    if (from && !from.user) u += '&origin=' + ll(from);
+    if (to && !to.user) u += '&destination=' + ll(to);
+    if (stops.length) u += '&waypoints=' + stops.map(ll).join('%7C');
+    return u + (nav ? '&dir_action=navigate' : '');
+  }
+
+  async function fetchRoutes(profile, pts, alt) {
+    const ex = profile === 'walking' ? [] : [opts.toll && 'toll', opts.hwy && 'motorway', opts.ferry && 'ferry'].filter(Boolean);
+    const url = 'https://api.mapbox.com/directions/v5/mapbox/' + profile + '/' + pts.map((p) => p.lng + ',' + p.lat).join(';') +
+      '?geometries=geojson&overview=full' + (profile === 'driving-traffic' ? '&annotations=congestion,distance' : '') + (alt && pts.length === 2 ? '&alternatives=true' : '') +
+      (ex.length ? '&exclude=' + ex.join(',') : '') + '&access_token=' + encodeURIComponent(mapboxgl.accessToken);
+    const res = await fetch(url); if (!res.ok) throw new Error('http');
+    const r = (await res.json()).routes; if (!r || !r.length) throw new Error('noroute'); return r;
+  }
+  async function go() {
+    if (!from || !to) return;
+    if (mode === 'transit') { window.open(gmapsUrl('transit'), '_blank', 'noopener'); return; }
+    setHint('Hinahanap ang ruta…');
+    try {
+      const a = await coordsOf(from), b = await coordsOf(to);
+      points = [a].concat(stops, [b]);
+      // One request per travel mode so the tabs can show every duration (like Google Maps).
+      const [car, moto, walk] = (await Promise.allSettled([
+        fetchRoutes('driving-traffic', points, true), fetchRoutes('driving', points, false), fetchRoutes('walking', points, false)
+      ])).map((x) => (x.status === 'fulfilled' ? x.value : null));
+      routes = { car, moto, walk };
+      if (!routes[mode]) throw new Error('noroute');
+      curMode = mode; selIdx = 0; setHint(''); enterRouteView();
+    } catch (e) {
+      const msg = e.message === 'geo'
+        ? 'Hindi makuha ang location mo. I-allow ang location o pindutin ang "Show your location", tapos subukan ulit.'
+        : 'Walang nakitang ruta. Subukan ang ibang lugar o mode.';
+      setHint(msg); if (panel.hidden) flash(msg, 4000);
+    }
+  }
+
+  const routeFC = () => ({ type: 'FeatureCollection', features: (routes[curMode] || []).map((r, i) => ({ type: 'Feature', properties: { i, sel: i === selIdx ? 1 : 0 }, geometry: r.geometry })) });
+  function ensureLayers() {
+    if (!routeActive) return;
+    if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); return; }
+    map.addSource('route', { type: 'geojson', lineMetrics: true, data: routeFC() });
+    const lay = { 'line-join': 'round', 'line-cap': 'round' }, alt = ['==', ['get', 'sel'], 0], sel = ['==', ['get', 'sel'], 1];
+    const L = (id, filter, color, w, op) => map.addLayer({ id, type: 'line', source: 'route', filter, layout: lay, paint: { 'line-color': color, 'line-width': w, 'line-opacity': op == null ? 1 : op } });
+    L('alt-casing', alt, '#ffffff', 9); L('alt-line', alt, '#8ea2f7', 5); L('alt-hit', alt, '#000000', 24, 0.01);
+    L('route-casing', sel, '#0a0a6e', 11);
+    map.addLayer({ id: 'route-line', type: 'line', source: 'route', filter: sel, layout: lay, paint: { 'line-gradient': gradient(curRoute()), 'line-width': 7 } });
+    if (!clickBound) { clickBound = true; map.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) select(f.properties.i); }); }
+  }
+  map.on('style.load', () => setTimeout(ensureLayers, 0)); // basemap switch wipes custom layers
+
+  const curRoute = () => (routes[curMode] || [])[selIdx];
+  // Colour the selected route by live congestion (blue = free, orange = slow, red = heavy), like Google Maps.
+  function gradient(r) {
+    const BLUE = '#2b1ee6', flat = ['interpolate', ['linear'], ['line-progress'], 0, BLUE, 1, BLUE];
+    const ann = [];
+    ((r && r.legs) || []).forEach((l) => { const a = l.annotation; if (a && a.congestion && a.distance) a.congestion.forEach((c, i) => ann.push([c, a.distance[i]])); });
+    const total = ann.reduce((t, a) => t + a[1], 0); if (!total) return flat;
+    const col = (c) => (c === 'moderate' ? '#f5a623' : c === 'heavy' || c === 'severe' ? '#d93025' : BLUE);
+    const runs = []; let pos = 0;
+    ann.forEach(([c, d]) => { const k = col(c), s0 = pos / total; pos += d; const last = runs[runs.length - 1]; if (last && last.k === k) last.e = pos / total; else runs.push({ k, s: s0, e: pos / total }); });
+    const st = []; let prev = -1;
+    const add = (v, k) => { v = Math.max(v, prev + 1e-6); if (v > 1) return; if (!st.length) v = 0; prev = v; st.push(v, k); };
+    runs.forEach((ru) => { add(ru.s, ru.k); add(Math.max(ru.e - 2e-6, ru.s + 1e-6), ru.k); });
+    if (prev < 1) add(1, runs[runs.length - 1].k);
+    return st.length < 4 ? flat : ['interpolate', ['linear'], ['line-progress']].concat(st);
+  }
+  function applyGradient() { if (map.getLayer('route-line')) map.setPaintProperty('route-line', 'line-gradient', gradient(curRoute())); }
+  // "Saves N% gas": the shortest of several driving routes vs the longest.
+  function eco() {
+    const rr = routes[curMode] || []; if (curMode !== 'car' || rr.length < 2) return null;
+    let mi = 0, mx = 0; rr.forEach((r, i) => { if (r.distance < rr[mi].distance) mi = i; if (r.distance > mx) mx = r.distance; });
+    const pct = Math.round((1 - rr[mi].distance / mx) * 100); return pct >= 1 ? { i: mi, pct } : null;
+  }
+  function renderLabels() {
+    labelMarkers.forEach((m) => m.remove()); labelMarkers = []; let k = 0; const eg = eco();
+    (routes[curMode] || []).forEach((r, i) => {
+      const c = r.geometry.coordinates, f = i === selIdx ? 0.5 : (k++ % 2 ? 0.74 : 0.28);
+      const e = h('div', 'rt-lbl' + (i === selIdx ? ' sel' : ''), fmtTime(r.duration));
+      if (eg && eg.i === i) e.insertAdjacentHTML('beforeend', svg('leaf', 15));
+      e.addEventListener('click', (ev) => { ev.stopPropagation(); select(i); });
+      labelMarkers.push(new mapboxgl.Marker({ element: e }).setLngLat(c[Math.min(c.length - 1, Math.floor(c.length * f))]).addTo(map));
+    });
+  }
+  function placeMarkers() {
+    [destMarker, originMarker].concat(stopMarkers).forEach((m) => m && m.remove()); stopMarkers = [];
+    const a = points[0], b = points[points.length - 1];
+    destMarker = new mapboxgl.Marker({ color: '#d93025' }).setLngLat([b.lng, b.lat]).addTo(map);
+    const el = h('div', 'traffic-user-marker'); el.innerHTML = '<span class="traffic-user-dot"></span>';
+    originMarker = new mapboxgl.Marker({ element: el }).setLngLat([a.lng, a.lat]).addTo(map);
+    stops.forEach((p) => stopMarkers.push(new mapboxgl.Marker({ element: h('div', 'rt-stop') }).setLngLat([p.lng, p.lat]).addTo(map)));
+  }
+  function fitRoute() {
+    const bb = new mapboxgl.LngLatBounds();
+    (routes[curMode] || []).forEach((r) => r.geometry.coordinates.forEach((c) => bb.extend(c)));
+    map.fitBounds(bb, { padding: { top: 150, bottom: $('rt-sheet').offsetHeight + 40, left: 40, right: 40 }, duration: 900 });
+  }
+  function renderTop() {
+    const f = $('rt-from'); f.textContent = from.user ? 'Your location' : from.label; f.style.color = from.user ? '#1a73e8' : '#202124';
+    const t = $('rt-to'); t.textContent = to.user ? 'Your location' : to.label;
+    if (stops.length) t.appendChild(h('small', '', '+' + stops.length + (stops.length > 1 ? ' stops' : ' stop')));
+  }
+  function renderSheet() {
+    $('rt-title').textContent = TITLES[curMode];
+    MODES.forEach((m) => {
+      const el = document.querySelector('.rt-tab[data-m="' + m + '"]'), r = routes[m] && routes[m][0];
+      el.querySelector('span').textContent = r ? fmtShort(r.duration) : '—'; el.classList.toggle('on', m === curMode);
+    });
+    const r = routes[curMode][selIdx], best = routes[curMode][0];
+    $('rt-time').textContent = fmtTime(r.duration); $('rt-dist').textContent = ' (' + fmtDist(r.distance) + ')';
+    const typ = curMode === 'car' ? (r.duration_typical || (routes.moto && routes.moto[0] && routes.moto[0].duration)) : 0;
+    const heavy = !!typ && r.duration > typ * 1.1;
+    $('rt-time').style.color = heavy ? '#d93025' : '#188038';
+    $('rt-sub').textContent = selIdx === 0 ? (heavy ? 'Best route, despite heavier traffic than usual' : 'Best route') : Math.max(1, Math.round((r.duration - best.duration) / 60)) + ' min slower';
+    const eg = eco(); $('rt-gas').hidden = !(eg && eg.i === selIdx); if (eg) $('rt-gas').querySelector('em').textContent = 'Saves ' + eg.pct + '% gas';
+    const on = !!(to && to.lat != null && savedPlaces.some((p) => p.lat === to.lat && p.lng === to.lng));
+    $('rt-save').querySelector('span').innerHTML = svg(on ? 'bookmarkOn' : 'bookmark', 22);
+    $('rt-save').querySelector('em').textContent = on ? 'Saved' : 'Save';
+  }
+  function select(i) {
+    selIdx = i; if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); } renderLabels(); renderSheet();
+  }
+  function enterRouteView() {
+    routeActive = true; document.body.classList.add('routing');
+    panel.hidden = true; tellParent(true); document.activeElement && document.activeElement.blur();
+    // body.routing now owns hiding the zoom buttons, so drop the Directions
+    // flag — otherwise it would linger and keep them hidden after clearRoute.
+    document.body.classList.remove('directions-open');
+    placeMarkers(); ensureLayers(); renderLabels(); renderTop(); renderSheet();
+    requestAnimationFrame(fitRoute);
+  }
+  function clearRoute() {
+    routeActive = false; document.body.classList.remove('routing');
+    ['route-line', 'route-casing', 'alt-hit', 'alt-line', 'alt-casing'].forEach((id) => map.getLayer(id) && map.removeLayer(id));
+    if (map.getSource('route')) map.removeSource('route');
+    [destMarker, originMarker].concat(stopMarkers, labelMarkers).forEach((m) => m && m.remove());
+    destMarker = originMarker = null; stopMarkers = []; labelMarkers = []; stops = []; routes = {};
+    to = null; toIn.value = ''; $('rt-menu').hidden = true; $('rt-opts').hidden = true; tellParent(false);
+  }
+
+  // ----- Route view controls -----
+  document.querySelectorAll('.rt-tab').forEach((t) => t.addEventListener('click', () => {
+    const m = t.dataset.m;
+    if (m === 'transit') { window.open(gmapsUrl('transit'), '_blank', 'noopener'); return; }
+    if (!routes[m]) { flash('Walang ruta para sa mode na ito.'); return; }
+    curMode = mode = m; selIdx = 0;
+    panel.querySelectorAll('.dir-modes button').forEach((x) => x.classList.toggle('on', x.dataset.mode === m));
+    if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); }
+    renderLabels(); renderSheet(); fitRoute();
+  }));
+  $('rt-close').addEventListener('click', clearRoute);
+  $('rt-edit').addEventListener('click', openPanel);
+  $('rt-swap').addEventListener('click', () => $('dir-swap').click());
+  $('rt-layers').addEventListener('click', () => { const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
+  $('rt-locate').addEventListener('click', () => {
+    getUserLoc().then((l) => map.flyTo({ center: [l.lng, l.lat], zoom: 15, duration: 1200 })).catch(() => flash('Hindi makuha ang location mo.'));
+  });
+  $('rt-start').addEventListener('click', () => window.open(gmapsUrl(TRAVEL[curMode], true), '_blank', 'noopener'));
+  $('rt-stop').addEventListener('click', () => { addingStop = true; openPanel(); });
+  async function shareRoute() {
+    const url = gmapsUrl(TRAVEL[curMode]);
+    try { if (navigator.share) { await navigator.share({ title: 'Directions to ' + (to.label || 'destination'), url }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(url); flash('Nakopya na ang link ng directions.'); } catch (e) { flash(url, 6000); }
+  }
+  $('rt-share').addEventListener('click', shareRoute);
+  $('rt-share2').addEventListener('click', shareRoute);
+  $('rt-save').addEventListener('click', () => {
+    if (!to || to.lat == null) return;
+    const i = savedPlaces.findIndex((p) => p.lat === to.lat && p.lng === to.lng);
+    if (i >= 0) savedPlaces.splice(i, 1); else savedPlaces.unshift(to);
+    store.set('traffic_saved', savedPlaces); renderSheet();
+  });
+  const showOpts = () => { $('o-toll').checked = opts.toll; $('o-hwy').checked = opts.hwy; $('o-ferry').checked = opts.ferry; $('rt-opts').hidden = false; };
+  $('rt-tune').addEventListener('click', showOpts);
+  $('o-done').addEventListener('click', () => {
+    opts.toll = $('o-toll').checked; opts.hwy = $('o-hwy').checked; opts.ferry = $('o-ferry').checked;
+    $('rt-opts').hidden = true; go();
+  });
+  $('rt-dots').addEventListener('click', (e) => {
+    e.stopPropagation(); const m = $('rt-menu');
+    if (!m.hidden) { m.hidden = true; return; }
+    m.textContent = '';
+    const add = (t, fn) => { const b = h('button', '', t); b.type = 'button'; b.addEventListener('click', () => { m.hidden = true; fn(); }); m.appendChild(b); };
+    add('Route options', showOpts); add('Share directions', shareRoute);
+    if (stops.length) add('Remove stops', () => { stops = []; go(); });
+    m.hidden = false;
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('#rt-menu')) $('rt-menu').hidden = true; });
+
   // Live traffic overlay for the satellite base: color roads by congestion.
   function addTrafficOverlay() {
     if (map.getSource('traffic')) return;
@@ -228,6 +831,7 @@
   let trafficUserMarker = null;
   function showTrafficUserLocation(lat, lng) {
     if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+    userLoc = { lat: lat, lng: lng };
     if (!trafficUserMarker) {
       const el = document.createElement('div');
       el.className = 'traffic-user-marker';
