@@ -114,6 +114,10 @@
   .dir-dots i{position:absolute;left:50%;width:3px;height:3px;margin-left:-1.5px;border-radius:50%;background:#9aa0a6;}
   .dir-dots .b{position:absolute;left:2px;top:8px;width:20px;height:20px;border-radius:50%;background:#e8f0fe;display:flex;align-items:center;justify-content:center;}
   .dir-dots .b:after{content:"";width:10px;height:10px;border-radius:50%;background:#1a73e8;}
+  /* Origin that is NOT the user's GPS location: blank hollow circle in the
+     Directions panel too — blue stays only for "Your location". */
+  #dir-panel.from-not-user .dir-dots .b{background:#f1f3f4;}
+  #dir-panel.from-not-user .dir-dots .b:after{background:transparent;box-shadow:inset 0 0 0 2px #bdc1c6;}
   .dir-dots .p{position:absolute;left:0;top:56px;color:#d93025;}
   .dir-fields{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
   .dir-fields input{width:100%;height:40px;border:1px solid #c4c7c5;border-radius:8px;padding:0 12px;font:400 16px/1 inherit;font-family:inherit;color:#202124;background:#fff;outline:none;}
@@ -163,6 +167,10 @@
   #rt-edit .dc{position:relative;width:24px;flex:none;}
   #rt-edit .dc .b{position:absolute;left:2px;top:14px;width:20px;height:20px;border-radius:50%;background:#e8f0fe;display:flex;align-items:center;justify-content:center;}
   #rt-edit .dc .b:after{content:"";width:10px;height:10px;border-radius:50%;background:#1a73e8;}
+  /* Origin that is NOT the user's GPS location shows a blank circle —
+     gray ring, no blue fill (blue stays only for "Your location"). */
+  #rt-edit.from-not-user .dc .b{background:#f1f3f4;}
+  #rt-edit.from-not-user .dc .b:after{background:transparent;box-shadow:inset 0 0 0 2px #bdc1c6;}
   #rt-edit .dc .p{position:absolute;left:0;top:64px;color:#d93025;}
   #rt-edit .dc i{position:absolute;left:11px;width:3px;height:3px;border-radius:50%;background:#9aa0a6;}
   #rt-edit .tx{flex:1;min-width:0;}
@@ -217,6 +225,117 @@
   #rt-opts label{display:flex;align-items:center;gap:12px;padding:12px 0;font-size:16px;}
   #rt-opts input{width:20px;height:20px;accent-color:#00697a;}
   #rt-opts .done{margin-top:8px;width:100%;height:44px;border:0;border-radius:22px;background:#00697a;color:#fff;font-size:16px;cursor:pointer;}
+
+  /* ============================================================
+     MOBILE PORTRAIT (Android / iPhone) — compact Google Maps sizing.
+     The reference phone screenshot uses small text and tight rows:
+     ~16px rows on the top card, ~19px summary time, ~13px tabs.
+     Sizing-only: same layout, elements and behavior as desktop.
+     ============================================================ */
+  @media (orientation: portrait) and (max-width: 640px){
+    /* --- Top origin/destination card: previous COMPACT size, but the
+         full desktop look stays (blue dot, gray dots between rows,
+         divider line, red pin, ⋮ and ⇅ buttons) --- */
+    #rt-top{top:10px;left:20px;right:20px;max-width:none;}
+    #rt-edit{gap:7px;padding-left:2px;}
+    #rt-edit .r{height:38px;font-size:15px;}
+    #rt-edit .dc{width:20px;}
+    #rt-edit .dc .b{left:0;top:9px;}
+    #rt-edit .dc .b:after{width:8px;height:8px;}
+    #rt-edit .dc .p{left:0;top:47px;transform:scale(.8);transform-origin:left top;}
+    /* Re-center the gray connector dots on the 38px-row boundary
+       (inline top:44/51/58 in the HTML target the desktop 48px rows). */
+    #rt-edit .dc i{left:8.5px !important;}
+    #rt-edit .dc i:nth-of-type(1){top:34px !important;}
+    #rt-edit .dc i:nth-of-type(2){top:38px !important;}
+    #rt-edit .dc i:nth-of-type(3){top:42px !important;}
+    #rt-side{height:76px;}
+    .rt-ib{width:36px;height:36px;}
+    .rt-ib svg{width:20px;height:20px;}
+
+    /* --- Bottom sheet: compact like the screenshot --- */
+    #rt-sheet{
+      padding-top:14px;
+      border-radius:24px 24px 0 0;
+      box-shadow:0 -4px 24px rgba(0,0,0,.28);
+    }
+    .rt-head{padding:2px 14px 2px 20px;gap:6px;}
+    #rt-title{font-size:19px;font-weight:600;}
+    .rt-cb{width:38px;height:38px;}
+    .rt-cb svg{width:19px;height:19px;}
+    .rt-tabs{border-bottom-width:1px;}
+    .rt-tab{padding:9px 0 10px;font-size:13px;gap:5px;}
+    .rt-tab b svg{width:17px;height:17px;}
+    .rt-tab.on:after{width:40px;height:3px;margin-left:-20px;}
+    .rt-sum{padding:9px 20px 10px;}
+    #rt-time,#rt-dist{font-size:19px;}
+    #rt-sub{font-size:13px;margin-top:3px;}
+    #rt-gas{font-size:13px;margin-top:6px;gap:6px;}
+    #rt-gas svg{width:14px;height:14px;}
+    .rt-chips{padding:10px 14px calc(12px + env(safe-area-inset-bottom, 0px));gap:8px;}
+    .rt-chip{height:40px;border-radius:20px;font-size:14px;padding:0 14px 0 11px;gap:7px;}
+    .rt-chip.go{padding:0 16px 0 13px;}
+    .rt-chip svg{width:16px;height:16px;}
+    .rt-chip span{display:inline-flex;align-items:center;}
+    .rt-chip span svg{flex:none;}
+
+    /* --- My-location FAB above the sheet --- */
+    #rt-locate{width:44px;height:44px;top:-58px;right:12px;border-radius:13px;}
+    #rt-locate span{width:28px;height:28px;}
+    #rt-locate span:after{width:12px;height:12px;}
+
+    /* --- Duration chips floating on the route --- */
+    .rt-lbl{padding:5px 9px;font-size:13px;border-radius:9px;}
+    .rt-lbl svg{width:12px;height:12px;}
+
+    /* --- Route options dialog --- */
+    #rt-opts .card{width:calc(100% - 48px);max-width:320px;border-radius:20px;}
+    #rt-opts h3{font-size:18px;}
+    #rt-opts label{font-size:14px;padding:11px 0;}
+    #rt-opts .done{height:42px;font-size:14px;border-radius:21px;}
+
+    /* --- Directions screen: centered back-button + origin/destination
+         group, and Google Maps sizing for Home / Work / More --- */
+    .dir-top{max-width:480px;margin:0 auto;gap:10px;padding:14px 8px 0;}
+    #dir-back{margin-top:4px;} /* centers the 40px arrow on the 48px input row */
+    .dir-fields{gap:8px;}
+    .dir-fields input{height:48px;border-radius:10px;font-size:17px;padding:0 14px;}
+    .dir-fields input:focus{padding:0 13px;}
+    .dir-dots{height:104px;} /* 2 × 48px inputs + 8px gap */
+    .dir-dots .b{top:14px;}
+    .dir-dots .p{top:70px;}
+    .dir-dots i:nth-of-type(1){top:45px !important;}
+    .dir-dots i:nth-of-type(2){top:52px !important;}
+    .dir-dots i:nth-of-type(3){top:59px !important;}
+    .dir-modes{padding:13px 16px 11px;}
+    .dir-modes button{width:64px;height:40px;}
+    .dir-sc{gap:12px;padding:12px 14px;}
+    .dir-sc-ic,.dir-row-ic{width:42px;height:42px;}
+    .dir-sc-ic svg,.dir-row-ic svg{width:21px;height:21px;}
+    .dir-sc-title{font-size:16px;}
+    .dir-sc-sub{font-size:13px;max-width:96px;}
+    .dir-sec{font-size:17px;font-weight:500;padding:18px 20px 10px;}
+
+    /* Recent list rows — Google Maps phone proportions with inset
+       dividers that start at the text (after the icon), not the edge. */
+    .dir-row{position:relative;padding:14px 16px;gap:16px;}
+    .dir-row::after{content:"";position:absolute;left:80px;right:0;bottom:0;height:1px;background:#e8eaed;}
+    .dir-row:last-of-type::after{display:none;}
+    .dir-row-title{font-size:18px;}
+    .dir-row-sub{font-size:14px;}
+    .dir-more{font-size:17px;padding:14px 16px;}
+    .dir-empty{padding:18px 20px;font-size:15px;}
+  }
+
+  /* Extra-small phones (iPhone SE / 320px Androids) — tighten further */
+  @media (orientation: portrait) and (max-width: 360px){
+    #rt-top{left:16px;right:16px;}
+    #rt-title{font-size:17px;}
+    #rt-time,#rt-dist{font-size:17px;}
+    .rt-tab{font-size:12px;}
+    .rt-chip{height:37px;font-size:13px;padding:0 12px 0 10px;}
+    .rt-chip.go{padding:0 14px 0 12px;}
+  }
 </style>
 </head>
 <body>
@@ -435,7 +554,9 @@
       if (!panel.hidden && !dirty[active]) renderBody();
     } catch (e) {}
   }
-  function setUserFrom() { from = { user: true }; fromIn.value = 'Your location'; fromIn.classList.add('is-user'); }
+  function setUserFrom() { from = { user: true }; fromIn.value = 'Your location'; fromIn.classList.add('is-user'); syncDirDot(); }
+  // Blank origin dot in the Directions panel while the origin is not "Your location".
+  const syncDirDot = () => panel.classList.toggle('from-not-user', !(from && from.user));
   function openPanel() {
     panel.hidden = false; tellParent(true); setHint('');
     document.body.classList.add('directions-open'); // hides the zoom buttons
@@ -472,7 +593,21 @@
   toIn.addEventListener('focus', () => onFocus('to'));
   fromIn.addEventListener('focus', () => onFocus('from'));
   toIn.addEventListener('input', () => onInput('to'));
-  fromIn.addEventListener('input', () => onInput('from'));
+  fromIn.addEventListener('input', () => {
+    // Emptying the origin field instantly restores "Your location": the text
+    // comes back, the dot turns blue again, and the text stays selected so
+    // the next keystroke replaces it (like Google Maps).
+    if (!fromIn.value.trim() && !addingStop) {
+      clearTimeout(timer); seq++;
+      setUserFrom();
+      dirty.from = false; results = []; searchErr = false; searching = false;
+      active = 'from';
+      renderBody();
+      fromIn.select();
+      return;
+    }
+    onInput('from');
+  });
   fromIn.addEventListener('blur', () => setTimeout(() => { if (!from && !dirty.from) setUserFrom(); }, 250));
   [toIn, fromIn].forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter' && results[0] && dirty[active]) applyPlace(results[0]); }));
   $('dir-swap').addEventListener('click', () => {
@@ -518,6 +653,7 @@
   const userRow = () => row('pin', 'Your location', '', () => { if (active === 'from') { setUserFrom(); dirty.from = false; results = []; if (to) go(); else { renderBody(); toIn.focus(); } } else { to = { user: true }; toIn.value = 'Your location'; if (from) go(); } });
 
   function renderBody() {
+    syncDirDot();
     body.textContent = '';
     const q = fieldOf(active).value.trim();
     if (dirty[active] && q.length >= 2) {
@@ -683,6 +819,9 @@
   }
   function renderTop() {
     const f = $('rt-from'); f.textContent = from.user ? 'Your location' : from.label; f.style.color = from.user ? '#1a73e8' : '#202124';
+    // Blank (no-blue) origin circle whenever the origin is a searched place,
+    // not the user's GPS location.
+    $('rt-edit').classList.toggle('from-not-user', !from.user);
     const t = $('rt-to'); t.textContent = to.user ? 'Your location' : to.label;
     if (stops.length) t.appendChild(h('small', '', '+' + stops.length + (stops.length > 1 ? ' stops' : ' stop')));
   }
