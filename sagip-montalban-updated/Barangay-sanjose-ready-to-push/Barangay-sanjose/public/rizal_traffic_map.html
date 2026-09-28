@@ -173,8 +173,14 @@
   .rt-ib{width:40px;height:40px;border:0;background:transparent;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;}
   .rt-ib:active{background:#e8eaed;}
   #rt-layers{position:absolute;z-index:1200;right:12px;top:124px;width:40px;height:40px;border:0;border-radius:12px;background:#c7e8f1;box-shadow:0 1px 4px rgba(0,0,0,.25);cursor:pointer;align-items:center;justify-content:center;}
-  /* While a route is on screen, reveal the flex layouts gated by .rt */
-  body.routing #rt-top,body.routing #rt-layers,body.routing #rt-locate{display:flex;}
+  /* While a route is on screen, reveal the flex layouts gated by .rt.
+     #rt-layers (the light-blue map-type button) is intentionally NOT listed:
+     the Street/Satellite switcher is hidden in route view anyway, so it only
+     added clutter next to the top card. */
+  body.routing #rt-top,body.routing #rt-locate{display:flex;}
+  /* (1-1-1) beats the generic body.routing .rt rule that would otherwise
+     render it as a block button. */
+  body.routing #rt-layers{display:none;}
   #rt-menu{position:absolute;z-index:1300;top:62px;right:26px;background:#fff;border-radius:12px;box-shadow:0 4px 16px rgba(0,0,0,.3);padding:6px 0;min-width:190px;}
   #rt-menu button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:12px 18px;font-size:16px;cursor:pointer;}
   #rt-menu button:active{background:#f1f3f4;}
