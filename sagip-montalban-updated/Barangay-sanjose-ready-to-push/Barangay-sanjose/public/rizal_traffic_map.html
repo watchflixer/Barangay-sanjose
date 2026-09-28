@@ -26,6 +26,11 @@
      Leaflet stylesheet above gives identical size, margin and look as the
      Flood Prone map. The slot rule below is copied from that map. */
   .leaflet-top.leaflet-left{top:132px;left:6px;}
+  /* Hide the zoom buttons while a route is on screen (the bottom sheet + top
+     card already own the layout, like Google Maps during navigation) and
+     while the full-screen Directions screen is open. */
+  body.routing .leaflet-top.leaflet-left,
+  body.directions-open .leaflet-top.leaflet-left{display:none;}
   /* Base map switcher: same slot the Flood Prone map's layers control uses */
   #base-switch{
     position:absolute;top:10px;right:12px;
@@ -427,6 +432,7 @@
   function setUserFrom() { from = { user: true }; fromIn.value = 'Your location'; fromIn.classList.add('is-user'); }
   function openPanel() {
     panel.hidden = false; tellParent(true); setHint('');
+    document.body.classList.add('directions-open'); // hides the zoom buttons
     if (!from) setUserFrom();
     if (!to) toIn.value = '';
     loadEta('home'); loadEta('work');
@@ -435,6 +441,7 @@
   }
   function closePanel() {
     panel.hidden = true; if (!routeActive) tellParent(false);
+    document.body.classList.remove('directions-open'); // bring the zoom buttons back
     if (addingStop) { addingStop = false; toIn.placeholder = 'Choose destination'; toIn.value = to ? (to.user ? 'Your location' : to.label) : ''; }
     document.activeElement && document.activeElement.blur();
   }
@@ -696,6 +703,9 @@
   function enterRouteView() {
     routeActive = true; document.body.classList.add('routing');
     panel.hidden = true; tellParent(true); document.activeElement && document.activeElement.blur();
+    // body.routing now owns hiding the zoom buttons, so drop the Directions
+    // flag — otherwise it would linger and keep them hidden after clearRoute.
+    document.body.classList.remove('directions-open');
     placeMarkers(); ensureLayers(); renderLabels(); renderTop(); renderSheet();
     requestAnimationFrame(fitRoute);
   }
