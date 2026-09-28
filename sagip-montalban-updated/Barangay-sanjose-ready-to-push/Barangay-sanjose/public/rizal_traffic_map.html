@@ -21,13 +21,11 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;}
   #map{position:absolute;top:0;left:0;right:0;bottom:0;}
-  /* Zoom buttons: Leaflet 1.9.4's .leaflet-bar markup and CSS, loaded above
-     so the control is styled by Leaflet itself rather than a hand-ported
-     copy. Only the slot position is set here — it matches the Flood Prone
-     map's control placement (below the parent app's floating buttons). */
-  #traffic-zoom{
-    position:absolute;top:132px;left:6px;z-index:400;
-  }
+  /* Zoom buttons: the exact markup/classes Leaflet 1.9.4 generates
+     (.leaflet-top.leaflet-left > .leaflet-control.leaflet-bar), so the
+     Leaflet stylesheet above gives identical size, margin and look as the
+     Flood Prone map. The slot rule below is copied from that map. */
+  .leaflet-top.leaflet-left{top:132px;left:6px;}
   /* Base map switcher: same slot the Flood Prone map's layers control uses */
   #base-switch{
     position:absolute;top:10px;right:12px;
@@ -87,9 +85,11 @@
 </head>
 <body>
 <div id="map"></div>
-<div id="traffic-zoom" class="leaflet-bar">
-  <a class="leaflet-control-zoom-in" href="#" title="Zoom in" aria-label="Zoom in">+</a>
-  <a class="leaflet-control-zoom-out" href="#" title="Zoom out" aria-label="Zoom out">&minus;</a>
+<div class="leaflet-top leaflet-left">
+  <div id="traffic-zoom" class="leaflet-control-zoom leaflet-bar leaflet-control">
+    <a class="leaflet-control-zoom-in" href="#" title="Zoom in" role="button" aria-label="Zoom in">+</a>
+    <a class="leaflet-control-zoom-out" href="#" title="Zoom out" role="button" aria-label="Zoom out">&minus;</a>
+  </div>
 </div>
 <div id="base-switch">
   <button type="button" data-base="traffic" class="active">Street</button>
@@ -142,9 +142,10 @@
   map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 0 });
 
   // Zoom in / out buttons that mirror the Flood Prone map's Leaflet control.
-  // Leaflet detects touch in JS (not via a media query) and toggles this
-  // class, so mirror that exactly to get the same mobile sizing.
-  if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) {
+  // Leaflet 1.9.4 treats any browser with PointerEvent as "touch" and adds
+  // .leaflet-touch (30px buttons), so mirror that exactly - otherwise desktop
+  // gets the smaller 26px buttons and the two maps don't match.
+  if (navigator.maxTouchPoints > 0 || 'ontouchstart' in window || 'PointerEvent' in window) {
     document.body.classList.add('leaflet-touch');
   }
   const zoomBox = document.getElementById('traffic-zoom');
