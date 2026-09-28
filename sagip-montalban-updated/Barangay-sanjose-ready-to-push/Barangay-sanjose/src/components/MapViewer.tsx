@@ -112,6 +112,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [floodOnExternalSite, setFloodOnExternalSite] = React.useState(false);
   // Bumped to remount the Flood Prone iframe, resetting it to the map.
   const [floodMapNonce, setFloodMapNonce] = React.useState(0);
+  // The Traffic iframe's full-screen Directions screen reports open/close so
+  // the app's floating controls don't cover its back arrow and search fields.
+  const [trafficDirectionsOpen, setTrafficDirectionsOpen] = React.useState(false);
 
   // The Flood Prone iframe reports taps on its underlined "Leaflet" credit.
   // The credit still navigates the iframe to leafletjs.com; the app answers
@@ -122,6 +125,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       if ((event.data as { type?: string } | null)?.type === 'flood-leaflet-click') {
         setFloodOnExternalSite(true);
       }
+      const type = (event.data as { type?: string } | null)?.type;
+      if (type === 'traffic-directions-open') setTrafficDirectionsOpen(true);
+      if (type === 'traffic-directions-close') setTrafficDirectionsOpen(false);
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
@@ -156,6 +162,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   React.useEffect(() => {
     onTrafficChange?.(showTrafficMap);
   }, [showTrafficMap, onTrafficChange]);
+  // Leaving the Traffic map also resets its Directions state, so a stale
+  // "controls hidden" flag can't survive into the next visit. This must sit
+  // after the showTrafficMap declaration: the dependency array is evaluated
+  // during render, so reading it earlier throws a TDZ ReferenceError.
+  React.useEffect(() => {
+    if (!showTrafficMap) setTrafficDirectionsOpen(false);
+  }, [showTrafficMap]);
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const [locationMessage, setLocationMessage] = React.useState('');
@@ -883,7 +896,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank || showTrafficMap ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank || showTrafficMap ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite || (showTrafficMap && trafficDirectionsOpen) ? 'hidden' : ''}`}>
         <button
           id="btn-recenter-gis"
           onClick={handleRecenter}
