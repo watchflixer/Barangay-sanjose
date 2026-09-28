@@ -14,6 +14,11 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+# The Vite app lives in this sub-folder of the repo, not at the root.
+# Keep this in sync if the folder is ever moved.
+env:
+  APP_PATH: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,12 +31,15 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+        working-directory: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
 
       - name: Build
         run: npm run build
+        working-directory: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -39,7 +47,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: ./sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose/dist
 
   deploy:
     environment:
