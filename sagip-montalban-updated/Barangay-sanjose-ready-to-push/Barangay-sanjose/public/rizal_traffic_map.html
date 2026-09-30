@@ -488,7 +488,7 @@
   <div class="rt-head"><div id="rt-title">Drive</div>
     <button type="button" class="rt-cb" id="rt-tune" aria-label="Route options" data-i="tune"></button>
     <button type="button" class="rt-cb" id="rt-pricing" aria-label="Fare" data-i="ticket"></button>
-    <button type="button" class="rt-cb" id="rt-share" aria-label="Driver Cost" data-i="pricing"></button>
+    <button type="button" class="rt-cb" id="rt-share" aria-label="Driver" data-i="pricing"></button>
     <button type="button" class="rt-cb" id="rt-close" aria-label="Close" data-i="close"></button></div>
   <div class="rt-tabs">
     <button type="button" class="rt-tab on" data-m="car"><b data-i="car"></b><span>—</span></button>
@@ -533,7 +533,7 @@
       </div>
       <div class="fare-input-row" style="margin-top:8px;">
         <label style="font-size:13px;font-weight:500;color:#202124;">Money Given</label>
-        <div class="fare-input"><span>₱</span><input type="number" id="fare-money" value="500" min="0" step="10" placeholder="0"></div>
+        <div class="fare-input"><span>₱</span><input type="number" id="fare-money" value="" min="0" step="10" placeholder="0"></div>
       </div>
       <div class="total-box" style="margin-top:8px;">
         <div>
@@ -557,23 +557,23 @@
 <div id="rt-driver" hidden>
   <div class="card">
     <div class="fare-head">
-      <h3>Driver Cost</h3>
+      <h3>Driver</h3>
       <button type="button" class="close" id="driver-close" aria-label="Close">✕</button>
     </div>
     <div class="fare-body" style="padding:16px;">
-      <div style="font-size:15px;font-weight:700; margin-bottom:10px; color:#202124;">Sukli</div>
+      <div style="font-size:15px;font-weight:700; margin-bottom:10px; color:#202124;">Change</div>
       <div class="fare-input-row">
-        <label style="font-size:14px;color:#3c4043;">Binayad</label>
-        <div class="fare-input"><span>₱</span><input type="number" id="driver-binayad" value="500" min="0" step="10" placeholder="500"></div>
+        <label style="font-size:14px;color:#3c4043;">Money Given</label>
+        <div class="fare-input"><span>₱</span><input type="number" id="driver-binayad" value="" min="0" step="10" placeholder="0"></div>
       </div>
       <div class="fare-input-row">
-        <label style="font-size:14px;color:#3c4043;">Pamasahé</label>
-        <div class="fare-input"><span>₱</span><input type="number" id="driver-fare" value="0" min="0" step="5" placeholder="0"></div>
+        <label style="font-size:14px;color:#3c4043;">Fare</label>
+        <div class="fare-input"><span>₱</span><input type="number" id="driver-fare" value="" min="0" step="5" placeholder="0"></div>
       </div>
       <div class="total-box" style="margin-top:12px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; padding:14px 16px;">
         <div>
-          <div class="t1" style="font-size:14px;font-weight:700;opacity:1;">Sukli</div>
-          <div class="t1" style="font-size:10px;">Binayad − Pamasahé</div>
+          <div class="t1" style="font-size:14px;font-weight:700;opacity:1;">Change</div>
+          <div class="t1" style="font-size:10px;">Money Given − Fare</div>
         </div>
         <div class="t2" id="driver-change" style="font-size:26px; color:#1b5e20;">₱0</div>
       </div>
@@ -581,18 +581,18 @@
       <div style="font-size:15px;font-weight:700; margin:16px 0 10px; color:#202124;">Gas</div>
       <div class="fare-input-row">
         <label style="font-size:14px;color:#3c4043;">Gas Used (Liters)</label>
-        <div class="fare-input"><input type="number" id="driver-gas-liters" value="5" min="0" step="0.5" placeholder="5"><span style="margin-left:6px;font-size:12px;color:#5f6368;">L</span></div>
+        <div class="fare-input"><input type="number" id="driver-gas-liters" value="" min="0" step="0.5" placeholder="0"><span style="margin-left:6px;font-size:12px;color:#5f6368;">L</span></div>
       </div>
       <div class="fare-input-row">
         <label style="font-size:14px;color:#3c4043;">Gas Price / Liter</label>
-        <div class="fare-input"><span>₱</span><input type="number" id="driver-gas-price" value="85" min="0" step="0.5" placeholder="85"></div>
+        <div class="fare-input"><span>₱</span><input type="number" id="driver-gas-price" value="" min="0" step="0.5" placeholder="0"></div>
       </div>
       <div class="total-box" style="margin-top:12px; padding:14px 16px;">
         <div>
           <div class="t1" style="font-size:14px;font-weight:700;opacity:1;">Total Gas</div>
-          <div class="t1" style="font-size:10px;" id="driver-gas-breakdown">Liters × Price (5L × ₱85)</div>
+          <div class="t1" style="font-size:10px;" id="driver-gas-breakdown">Liters × Price</div>
         </div>
-        <div class="t2" id="driver-gas-total" style="font-size:26px;">₱425</div>
+        <div class="t2" id="driver-gas-total" style="font-size:26px;">₱0</div>
       </div>
     </div>
   </div>
@@ -1262,7 +1262,7 @@
 
   // ===== Fare System — plain, English, realtime Sept 28 2026, daily update =====
   let farePax = 1;
-  let fareSel = 'grab';
+  let fareSel = null; // No auto-pick: user must choose a ride first
   let fareData = [];
 
   function getRealtimeFares(distKm, dateObj){
@@ -1328,8 +1328,19 @@
   }
 
   function updateFareTotal(){
-    const f = fareData.find(x=>x.id===fareSel) || fareData[0];
-    if(!f) return;
+    const f = fareData.find(x=>x.id===fareSel) || null;
+    if(!f){
+      // Nothing selected yet — keep totals empty until the user picks a ride.
+      const ft = $('fare-total'); if(ft) ft.textContent = '₱0';
+      const fl = $('fare-mode-label'); if(fl) fl.textContent = 'Select a ride';
+      const fu = $('fare-unit'); if(fu) fu.textContent = '₱0';
+      const fc2 = $('fare-change');
+      if(fc2){
+        fc2.textContent = '₱0'; fc2.style.color = '#1b5e20';
+        if(fc2.parentElement){ fc2.parentElement.style.background = '#e8f5e9'; fc2.parentElement.style.borderColor = '#c8e6c9'; }
+      }
+      return;
+    }
     const fare = f.price * farePax;
     const en = f.energy || { label:'Gas', qty:0, rate:0, unit:'L' };
     const energyCost = en.qty * en.rate;
@@ -1368,12 +1379,7 @@
     const gb = $('driver-gas-breakdown');
     if(gb) gb.textContent = 'Liters × Price ('+gasLiters+'L × ₱'+gasPrice+')';
 
-    // Keep the selected fare live in the Pamasahé field unless the user edited it.
-    const fareInput = $('driver-fare');
-    if(fareInput && document.activeElement !== fareInput){
-      const f = fareData.find(x=>x.id===fareSel) || fareData[0];
-      if(f) fareInput.value = f.price * farePax;
-    }
+    // Pamasahé stays blank unless the user types it — no auto-fill.
   }
 
   function showFareCard(){
@@ -1384,15 +1390,17 @@
     fareData = getRealtimeFares(distKm, now);
     $('rt-driver').hidden = true;
     $('rt-fare').hidden = false;
-    fareSel = 'grab';
+    fareSel = null; // start unselected — user picks the ride
     farePax = 1;
+    const moneyEl = $('fare-money');
+    if(moneyEl) moneyEl.value = ''; // blank Money Given on open
     renderFareRows();
     updateFareTotal();
   }
 
   function showDriverCard(){
     const r = curRoute();
-    if(!r){ flash('Please select a route first to see driver cost.'); return; }
+    if(!r){ flash('Please select a route first to see Driver.'); return; }
     const distKm = r.distance/1000;
     const now = new Date();
     if(!fareData.length) fareData = getRealtimeFares(distKm, now);
