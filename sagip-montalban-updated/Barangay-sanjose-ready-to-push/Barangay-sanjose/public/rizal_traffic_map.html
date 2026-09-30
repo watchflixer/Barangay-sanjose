@@ -230,15 +230,38 @@
   #rt-opts .done{margin-top:8px;width:100%;height:44px;border:0;border-radius:22px;background:#00697a;color:#fff;font-size:16px;cursor:pointer;}
 
   /* ===== On-site Navigation banner + compact sheet while navigating ===== */
-  #nav-banner{position:absolute;z-index:1250;top:10px;left:12px;right:12px;max-width:440px;margin:0 auto;
-    background:#0b7a87;color:#fff;border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.35);
+  #nav-steps{position:absolute;z-index:1260;top:calc(10px + env(safe-area-inset-top, 0px));left:12px;right:12px;max-width:440px;margin:0 auto;
+    background:#fff;color:#202124;border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.35);
     padding:12px 14px;display:none;align-items:center;gap:12px;font-family:"Google Sans",Roboto,sans-serif;}
+  body.navigating #nav-steps{display:flex;}
+  #nav-steps .nav-arrow{width:36px;height:36px;border-radius:10px;background:#e8f0fe;color:#1a73e8;display:flex;align-items:center;justify-content:center;flex:none;}
+  #nav-steps .nav-tx{flex:1;min-width:0;}
+  #nav-steps .nav-step-text{font-size:15px;font-weight:600;line-height:1.25;}
+  #nav-steps .nav-step-next{font-size:11.5px;color:#5f6368;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #nav-steps .nav-step-dist{font-size:15px;font-weight:700;flex:none;}
+  #nav-banner{position:absolute;z-index:1250;top:calc(66px + env(safe-area-inset-top, 0px));left:12px;right:12px;max-width:440px;margin:0 auto;
+    background:#0b7a87;color:#fff;border-radius:16px;box-shadow:0 4px 18px rgba(0,0,0,.35);
+    padding:12px 14px;display:none;align-items:center;gap:10px;font-family:"Google Sans",Roboto,sans-serif;}
   body.navigating #nav-banner{display:flex;}
   body.navigating #rt-sheet .rt-chips,body.navigating #rt-sheet .rt-tabs,body.navigating #rt-sheet .rt-sum,body.navigating #rt-top{display:none!important;}
+  body.navigating #dir-panel{display:none!important;}
   #nav-banner .nav-eta{font-size:24px;font-weight:700;line-height:1.1;}
   #nav-banner .nav-dist{font-size:12px;opacity:.9;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #nav-banner #nav-exit{border:0;border-radius:999px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;flex:none;}
   #nav-banner #nav-exit:active{background:rgba(255,255,255,.3);}
+  #nav-banner .nav-mini{border:0;border-radius:999px;background:rgba(255,255,255,.18);color:#fff;font-size:13px;font-weight:600;padding:8px 11px;cursor:pointer;flex:none;}
+  #nav-banner .nav-mini:active{background:rgba(255,255,255,.3);}
+  #nav-pills{position:absolute;z-index:1255;top:calc(132px + env(safe-area-inset-top, 0px));left:12px;right:12px;max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:6px;pointer-events:none;font-family:"Google Sans",Roboto,sans-serif;}
+  .nav-pill{background:#fff8e1;border:1px solid #f9ab00;color:#7a5c00;border-radius:12px;padding:8px 12px;font-size:12.5px;font-weight:600;display:flex;}
+  .nav-pill.traffic{background:#e8f0fe;border-color:#a8c7fa;color:#174ea6;}
+  #nav-alt{position:absolute;z-index:1258;bottom:calc(24px + env(safe-area-inset-bottom, 0px));left:12px;right:12px;max-width:440px;margin:0 auto;background:#202124;color:#fff;border-radius:14px;box-shadow:0 4px 18px rgba(0,0,0,.35);padding:10px 12px;display:flex;align-items:center;gap:10px;font-family:"Google Sans",Roboto,sans-serif;}
+  #nav-alt[hidden]{display:none;}
+  #nav-alt .nav-alt-text{flex:1;font-size:13px;font-weight:600;}
+  #nav-alt button{border:0;border-radius:999px;padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer;}
+  #nav-alt #nav-alt-yes{background:#1a73e8;color:#fff;}
+  #nav-alt #nav-alt-no{background:rgba(255,255,255,.15);color:#fff;}
+  .nav-arrow-marker{width:28px;height:28px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));}
+  .nav-arrow-marker svg{width:100%;height:100%;display:block;}
 
     /* ===== Fare / Pamasahe Card — bigger than route options ===== */
   #rt-fare, #rt-driver{position:absolute;z-index:1450;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-family:"Google Sans",Roboto,sans-serif;backdrop-filter:blur(2px);}
@@ -907,7 +930,7 @@
   async function fetchRoutes(profile, pts, alt) {
     const ex = profile === 'walking' ? [] : [opts.toll && 'toll', opts.hwy && 'motorway', opts.ferry && 'ferry'].filter(Boolean);
     const url = 'https://api.mapbox.com/directions/v5/mapbox/' + profile + '/' + pts.map((p) => p.lng + ',' + p.lat).join(';') +
-      '?geometries=geojson&overview=full' + (profile === 'driving-traffic' ? '&annotations=congestion,distance' : '') + (alt && pts.length === 2 ? '&alternatives=true' : '') +
+      '?geometries=geojson&overview=full' + (profile === 'driving-traffic' ? '&annotations=congestion,duration,distance,speed&steps=true&banner_instructions=true' : '') + (alt && pts.length === 2 ? '&alternatives=true' : '') +
       (ex.length ? '&exclude=' + ex.join(',') : '') + '&access_token=' + encodeURIComponent(mapboxgl.accessToken);
     const res = await fetch(url); if (!res.ok) throw new Error('http');
     const r = (await res.json()).routes; if (!r || !r.length) throw new Error('noroute'); return r;
@@ -946,16 +969,18 @@
     map.addLayer({ id: 'route-line', type: 'line', source: 'route', filter: sel, layout: lay, paint: { 'line-gradient': gradient(curRoute()), 'line-width': 7 } });
     if (!clickBound) { clickBound = true; map.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) select(f.properties.i); }); }
   }
-  map.on('style.load', () => setTimeout(ensureLayers, 0)); // basemap switch wipes custom layers
+  map.on('style.load', () => setTimeout(() => { ensureLayers(); if (nav && nav.overlay) addNavTrafficOverlay(); }, 0)); // basemap switch wipes custom layers
 
   const curRoute = () => (routes[curMode] || [])[selIdx];
-  // Colour the selected route by live congestion (blue = free, orange = slow, red = heavy), like Google Maps.
+  // Colour the selected route by live congestion: BLUE base, and ONLY
+  // yellow (moderate) or red (heavy/severe) for congestion — no green,
+  // no orange, no gray anywhere (per user preference).
   function gradient(r) {
     const BLUE = '#2b1ee6', flat = ['interpolate', ['linear'], ['line-progress'], 0, BLUE, 1, BLUE];
     const ann = [];
     ((r && r.legs) || []).forEach((l) => { const a = l.annotation; if (a && a.congestion && a.distance) a.congestion.forEach((c, i) => ann.push([c, a.distance[i]])); });
     const total = ann.reduce((t, a) => t + a[1], 0); if (!total) return flat;
-    const col = (c) => (c === 'moderate' ? '#f5a623' : c === 'heavy' || c === 'severe' ? '#d93025' : BLUE);
+    const col = (c) => (c === 'moderate' ? '#f9ab00' : c === 'heavy' || c === 'severe' ? '#d93025' : BLUE);
     const runs = []; let pos = 0;
     ann.forEach(([c, d]) => { const k = col(c), s0 = pos / total; pos += d; const last = runs[runs.length - 1]; if (last && last.k === k) last.e = pos / total; else runs.push({ k, s: s0, e: pos / total }); });
     const st = []; let prev = -1;
@@ -1053,17 +1078,318 @@
   $('rt-close').addEventListener('click', clearRoute);
   $('rt-edit').addEventListener('click', openPanel);
   $('rt-swap').addEventListener('click', () => $('dir-swap').click());
-  $('rt-layers').addEventListener('click', () => { const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
-  $('rt-layers2').addEventListener('click', () => { const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
+  // During navigation the layers button toggles the whole-map live traffic
+  // overlay instead of switching basemap (keeps the nav camera stable), and
+  // the locate button becomes Recenter (resume follow mode).
+  $('rt-layers').addEventListener('click', () => { if (nav) { toggleNavTrafficOverlay(); return; } const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
+  $('rt-layers2').addEventListener('click', () => { if (nav) { toggleNavTrafficOverlay(); return; } const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
   $('rt-locate').addEventListener('click', () => {
+    if (nav) { recenterFollow(); return; }
     getUserLoc().then((l) => map.flyTo({ center: [l.lng, l.lat], zoom: 15, duration: 1200 })).catch(() => flash('Could not get your location.'));
   });
+  map.on('dragstart', () => { if (nav) nav.follow = false; }); // manual pan pauses follow mode
   // ===== On-site Navigation (Start button) — real GPS, like Google Maps =====
   // The marker ONLY moves when you physically move: it tracks the device's
   // real GPS via watchPosition, snaps your position onto the route, shows a
   // live countdown (remaining distance / your actual speed), and reroutes
-  // automatically when you stray off the route. No simulation.
-  let nav = null; // { coords, cum, total, dist, seg, marker, watchId, lastFixTs, lastSpeed, rerouteTs, camTs }
+  // automatically when you stray off the route. On desktop (or with ?sim=1)
+  // it plays the route at ~30 km/h instead so you can preview the camera.
+  // --- Tunable constants (Google-Maps feel) ---
+  const NAV = {
+    CAM_PAD_TOP: 0.45,      // marker sits in the lower third (45% top padding)
+    PITCH: 55,              // camera tilt while navigating
+    LOOKAHEAD: 40,          // meters peeked past the next turn for bearing
+    ZOOM_SLOW: 18, ZOOM_FAST: 15.5, // auto zoom range by speed
+    ZOOM_TURN: 18,          // zoom when within 120 m of a turn
+    BRG_SMOOTH: 0.08,       // bearing low-pass (lower = smoother)
+    PAD_SMOOTH: 0.06,       // camera-center low-pass
+    ZOOM_SMOOTH: 0.04,      // zoom low-pass
+    ZPT: 0.10,              // zoom touch factor per rAF frame
+    OFF_M: 40,              // meters off-route before rerouting starts
+    OFF_S: 3,               // seconds off-route before rerouting
+    ARRIVE_M: 30,           // "arrived" threshold
+    REFETCH_S: 60,          // traffic/ETA refresh interval
+    FASTER_SAVE_S: 120,     // min seconds saved before showing "Mas mabilis"
+    SIM_KMH: 30,            // desktop simulation speed
+    VOICE_M: 300            // speak the next turn within this distance
+  };
+  const navD2R = Math.PI / 180, navR = 6371000;
+  const navDistM = (lng1, lat1, lng2, lat2) => {
+    const x = (lng2 - lng1) * navD2R * Math.cos(((lat1 + lat2) / 2) * navD2R);
+    const y = (lat2 - lat1) * navD2R;
+    return Math.sqrt(x*x + y*y) * navR;
+  };
+  const navBearing = (a, b) => (Math.atan2(b[0] - a[0], b[1] - a[1]) / navD2R + 360) % 360;
+  const navNorm180 = (d) => ((d % 360) + 540) % 360 - 180; // shortest signed angle (-180..180)
+  const NAV_ARROWS = {
+    'turn-slight-left': '↰', 'turn-left': '←', 'turn-sharp-left': '↖',
+    'turn-slight-right': '↱', 'turn-right': '→', 'turn-sharp-right': '↗',
+    'turn-straight': '↑', 'straight': '↑', 'ramp-left': '←', 'ramp-right': '→',
+    'fork-left': '↰', 'fork-right': '↱', 'merge-left': '⇤', 'merge-right': '⇥',
+    'roundabout-left': '↺', 'roundabout-right': '↻', 'roundabout-turn': '↻',
+    'new-name': '↑', 'continue': '↑', 'depart': '↑', 'arrive': '📍', 'end of road left': '←', 'end of road right': '→'
+  };
+  const navArrowFor = (s) => NAV_ARROWS[s && s.maneuver && s.maneuver.type + (s.maneuver.modifier ? '-' + s.maneuver.modifier : '')] || NAV_ARROWS[s && s.maneuver && s.maneuver.type] || '↑';
+  let navVoice = { enabled: store.get('traffic_voice', true) };
+  function navSpeak(txt, force) {
+    if (!navVoice.enabled || !('speechSynthesis' in window)) return;
+    try {
+      if (!force && speechSynthesis.speaking) return; // don't talk over a running prompt
+      const u = new SpeechSynthesisUtterance(txt);
+      u.lang = 'fil-PH'; u.rate = 1;
+      try { const v = speechSynthesis.getVoices().find((x) => /fil|tl[-_]/i.test(x.lang)); if (v) u.voice = v; } catch (e) {}
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  function navStepsEl() {
+    let el = document.getElementById('nav-steps');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'nav-steps';
+      el.innerHTML = '<div class="nav-arrow" id="nav-arrow">↑</div><div class="nav-tx"><div class="nav-step-text" id="nav-step-text">…</div><div class="nav-step-next" id="nav-step-next"></div></div><div class="nav-step-dist" id="nav-step-dist"></div>';
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+  function navPillsEl() {
+    let el = document.getElementById('nav-pills');
+    if (!el) { el = document.createElement('div'); el.id = 'nav-pills'; document.body.appendChild(el); }
+    return el;
+  }
+  function navAltEl() {
+    let el = document.getElementById('nav-alt');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'nav-alt';
+      el.hidden = true;
+      el.innerHTML = '<div class="nav-alt-text">May mas mabilis na ruta</div><button type="button" id="nav-alt-yes">Oo, gamitin</button><button type="button" id="nav-alt-no">Huwag na</button>';
+      document.body.appendChild(el);
+      document.getElementById('nav-alt-yes').addEventListener('click', () => { el.hidden = true; navApplyAlt(); });
+      document.getElementById('nav-alt-no').addEventListener('click', () => { el.hidden = true; if (nav) nav.altTs = Date.now(); });
+    }
+    return el;
+  }
+  const NAV_MANEUVER = { left: 'Kumaliwa', right: 'Kumanan', 'slight left': 'Dumiko kaliwa', 'slight right': 'Dumiko kanan', 'sharp left': 'Matarik kaliwa', 'sharp right': 'Matarik kanan', uturn: 'Balik ikot', straight: 'Tuwi lang' };
+  const NAV_ACTION = /^(turn|continue|head|arrive|depart|make|keep|merge|at the|use|take|head out)/i;
+  // Taglish turn text from bannerInstructions (an ARRAY of banners; the last one
+  // is the imminent maneuver) + the step's road name.
+  function navStepText(s) {
+    const m = s.maneuver || {};
+    const bis = s.bannerInstructions || [];
+    const b = bis.length ? bis[bis.length - 1] : null;
+    const pri = b && b.primary, sec = b && b.secondary;
+    let street = '';
+    if (pri && pri.text && !NAV_ACTION.test(pri.text)) street = pri.text;
+    else if (sec && sec.text && !NAV_ACTION.test(sec.text)) street = sec.text;
+    else if (pri && pri.text) street = pri.text;
+    if (!street) street = s.name || '';
+    if (m.type === 'arrive') return 'Nakarating ka na sa ' + (street || 'destinasyon');
+    if (m.type === 'depart') return 'Magsimula: ' + (street || 'rutang ito');
+    const act = (m.modifier && NAV_MANEUVER[m.modifier]) || (m.type === 'roundabout' ? 'Rotonda' : m.type === 'merge' ? 'Pumasa' : m.type === 'new name' ? 'Maging' : 'Tuwi lang');
+    return street ? act + ' sa ' + street : act;
+  }
+  function navUpdateSteps() {
+    if (!nav) return;
+    const r = curRoute(); if (!r) return;
+    const steps = r.legs && r.legs[0] && r.legs[0].steps ? r.legs[0].steps : [];
+    if (!steps.length) return;
+    let acc = 0, cur = null, nxt = null, idx = 0;
+    for (let i = 0; i < steps.length; i++) {
+      acc += steps[i].distance;
+      if (acc >= nav.dist) { cur = steps[i]; nxt = steps[i + 1] || null; idx = i; break; }
+    }
+    if (!cur) { cur = steps[steps.length - 1]; nxt = null; idx = steps.length - 1; }
+    const el = navStepsEl();
+    el.querySelector('#nav-arrow').textContent = navArrowFor(cur);
+    el.querySelector('#nav-step-text').textContent = navStepText(cur);
+    el.querySelector('#nav-step-dist').textContent = fmtDist(Math.max(0, acc - nav.dist));
+    el.querySelector('#nav-step-next').textContent = nxt ? ('Tapos: ' + navStepText(nxt)) : (cur.maneuver && cur.maneuver.type === 'arrive' ? 'Papunta ka na sa destinasyon' : 'Walang iba pang liko');
+    // Voice prompt once per step, ~300 m before the maneuver.
+    const toMan = Math.max(0, acc - nav.dist);
+    if (nav.stepSpoken !== idx && toMan <= NAV.VOICE_M) {
+      nav.stepSpoken = idx;
+      navSpeak('Sa ' + fmtDist(toMan) + ', ' + navStepText(cur));
+    }
+  }
+  // Hazard + traffic-ahead pills: flood data degrades gracefully (file is optional).
+  async function navFetchHazards() {
+    if (!nav) return;
+    try {
+      const res = await fetch('data/flood-status.json', { cache: 'no-store' });
+      if (!res.ok) throw new Error('http');
+      const j = await res.json();
+      nav.hazards = (Array.isArray(j) ? j : (j.hazards || j.floods || [])).map((h) => ({
+        lat: h.lat != null ? +h.lat : (h.latlng ? +String(h.latlng).split(',')[0] : null),
+        lng: h.lng != null ? +h.lng : (h.latlng ? +String(h.latlng).split(',')[1] : null),
+        type: h.type || (h.status && /baha|flood/i.test(h.status) ? 'Baha' : 'Hazard'),
+        label: h.label || h.status || h.name || 'Hazard'
+      })).filter((h) => isFinite(h.lat) && isFinite(h.lng));
+      navPillsUpdate();
+    } catch (e) { /* optional file — just skip */ }
+  }
+  function navPillsUpdate() {
+    if (!nav) return;
+    const pills = navPillsEl();
+    const items = [];
+    (nav.hazards || []).forEach((h) => {
+      let bd = Infinity, bi = 0;
+      nav.coords.forEach((c, i) => { const d = navDistM(h.lng, h.lat, c[0], c[1]); if (d < bd) { bd = d; bi = i; } });
+      if (bd > 300) return; // only hazards on/near the route
+      const ahead = nav.total - nav.cum[bi];
+      if (ahead >= 0 && ahead < 2000) items.push({ cls: '', txt: h.type + ' ' + fmtDist(ahead) + ' sa unahan' });
+    });
+    const r = curRoute();
+    if (r && r.legs && r.legs[0] && r.legs[0].annotation && r.legs[0].annotation.congestion) {
+      const ann = [], a = r.legs[0].annotation;
+      a.congestion.forEach((c, i) => ann.push([c, a.distance[i]]));
+      let acc = 0; // first heavy/severe stretch ahead of us
+      for (let i = 0; i < ann.length; i++) {
+        if (acc >= nav.dist) {
+          if (ann[i][0] === 'heavy' || ann[i][0] === 'severe') {
+            items.push({ cls: ' traffic', txt: 'Mabigat na traffic sa ' + fmtDist(Math.max(50, acc - nav.dist)) });
+            break;
+          }
+        }
+        acc += ann[i][1];
+      }
+    }
+    const sig = items.map((x) => x.txt).join('|');
+    if (sig === nav.pillSig) return;
+    nav.pillSig = sig;
+    pills.textContent = '';
+    items.slice(0, 4).forEach((x) => { const p = h('div', 'nav-pill' + (x.cls ? ' ' + x.cls : ''), x.txt); pills.appendChild(p); });
+  }
+  function navBuildAltPrompt() {
+    const r = curRoute(), alts = (routes[curMode] || []).slice(1);
+    if (!r || !alts.length || !nav || nav.rerouting) return;
+    const best = alts.reduce((m, x) => (x.duration < m.duration ? x : m), alts[0]);
+    const save = Math.round(r.duration - best.duration);
+    if (save < NAV.FASTER_SAVE_S) return;
+    if (nav.altTs && Date.now() - nav.altTs < 90000) return; // don't nag after a dismiss
+    if (nav.altRoute === best && !navAltEl().hidden) return;
+    nav.altRoute = best;
+    navAltEl().hidden = false;
+    navAltEl().querySelector('.nav-alt-text').textContent = 'Mas mabilis na ruta — makakatipid ng ' + Math.round(save / 60) + ' min';
+    navSpeak('May mas mabilis na ruta, makakatipid ka ng ' + Math.round(save / 60) + ' minuto');
+  }
+  function navApplyAlt() {
+    if (!nav || !nav.altRoute) return;
+    const r = nav.altRoute; nav.altRoute = null;
+    const rr = routes[curMode] || [];
+    const i = rr.indexOf(r); if (i > 0) { rr.splice(i, 1); rr.unshift(r); }
+    selIdx = 0;
+    if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); }
+    renderLabels(); renderSheet();
+    const t = navTables(r);
+    nav.coords = t.coords; nav.cum = t.cum; nav.total = t.total;
+    nav.dist = 0; nav.seg = 0; nav.offTs = 0; nav.altTs = 0;
+    if (nav.marker) nav.marker.setLngLat(t.coords[0]);
+    flash('Lumipat sa mas mabilis na ruta.');
+  }
+  async function navRefreshRoutes() {
+    if (!nav || nav.refreshing) return;
+    nav.refreshing = true;
+    try {
+      const pos = nav.lastFix || { lng: nav.coords[nav.seg][0], lat: nav.coords[nav.seg][1] };
+      const b = await coordsOf(to);
+      points = [{ lng: pos.lng, lat: pos.lat }].concat(stops, [b]);
+      const rs = (await Promise.allSettled([
+        fetchRoutes('driving-traffic', points, true), fetchRoutes('driving', points, false), fetchRoutes('walking', points, false)
+      ])).map((x) => (x.status === 'fulfilled' ? x.value : null));
+      if (!nav) return; // exited while fetching
+      routes = { car: rs[0], moto: rs[1], walk: rs[2] };
+      const r = routes[curMode] && routes[curMode][0];
+      if (r) {
+        const keep = { coords: nav.coords, cum: nav.cum, total: nav.total, dist: nav.dist, seg: nav.seg };
+        selIdx = 0;
+        if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); }
+        renderSheet();
+        const t = navTables(r);
+        // Keep our snapped progress: offset the new table by what we already traveled.
+        const dOld = keep.dist;
+        nav.coords = t.coords; nav.cum = t.cum.map((c) => Math.max(0, c - Math.min(dOld, t.total * 0.9))); nav.total = Math.max(1, t.total - Math.min(dOld, t.total * 0.9));
+        nav.dist = 0; nav.seg = 0;
+        navUpdateSteps(); navPillsUpdate();
+      }
+    } catch (e) { /* silent — keep the old route */ }
+    if (nav) nav.refreshing = false;
+  }
+  function toggleNavTrafficOverlay() {
+    if (!nav) return;
+    nav.overlay = !nav.overlay;
+    if (nav.overlay) { addNavTrafficOverlay(); flash('Live traffic overlay: ON'); }
+    else {
+      ['nav-traffic-flow'].forEach((id) => map.getLayer(id) && map.removeLayer(id));
+      if (map.getSource('nav-traffic') && !currentBaseIsSatellite()) map.removeSource('nav-traffic');
+      flash('Live traffic overlay: OFF');
+    }
+  }
+  const currentBaseIsSatellite = () => currentBase === 'satellite';
+  function addNavTrafficOverlay() {
+    if (map.getLayer('nav-traffic-flow')) return;
+    if (!map.getSource('nav-traffic')) map.addSource('nav-traffic', { type: 'vector', url: 'mapbox://mapbox.mapbox-traffic-v1' });
+    map.addLayer({
+      id: 'nav-traffic-flow', type: 'line', source: 'nav-traffic', 'source-layer': 'traffic',
+      paint: {
+        'line-width': 3, 'line-opacity': 0.85,
+        // Blue base; ONLY yellow (moderate) or red (heavy/severe) — no gray.
+        'line-color': ['match', ['get', 'congestion'], 'low', '#2b1ee6', 'moderate', '#f9ab00', 'heavy', '#d93025', 'severe', '#d93025', '#2b1ee6']
+      }
+    });
+  }
+  function recenterFollow() {
+    if (!nav || nav.sim) return;
+    nav.follow = true;
+    map.easeTo({ center: nav.cPos || map.getCenter(), zoom: map.getZoom(), bearing: nav.brg == null ? map.getBearing() : nav.brg, pitch: NAV.PITCH, padding: { top: map.getContainer().clientHeight * NAV.CAM_PAD_TOP }, duration: 800 });
+    setTimeout(() => { if (nav) nav.follow = true; }, 850);
+  }
+  // One rAF loop: glides the marker toward the last fix (~1 s, ease-out) and
+  // gently re-aims the camera. Runs continuously; cheap when both are settled.
+  function navTick(ts) {
+    if (!nav) return;
+    const t = ts || performance.now();
+    if (nav.anim && nav.marker) {
+      const k = Math.min(1, (t - nav.anim.t0) / nav.anim.dur), e = 1 - Math.pow(1 - k, 3); // cubic ease-out
+      const p = [nav.anim.from[0] + (nav.anim.to[0] - nav.anim.from[0]) * e, nav.anim.from[1] + (nav.anim.to[1] - nav.anim.from[1]) * e];
+      nav.cPos = p; nav.marker.setLngLat(p);
+      if (k >= 1) nav.anim = null;
+    }
+    if (nav.sim && nav.follow) navSimTick(t);
+    const cam = nav.follow && (nav.cPos || nav.sim);
+    if (cam) {
+      const pad = { top: map.getContainer().clientHeight * NAV.CAM_PAD_TOP, bottom: 0, left: 0, right: 0 };
+      const sp = nav.speed || 0;
+      const zTarget = (nav.toTurnD != null && nav.toTurnD < 120) ? NAV.ZOOM_TURN : Math.max(NAV.ZOOM_FAST, Math.min(NAV.ZOOM_SLOW, NAV.ZOOM_SLOW - (sp / 13.9) * (NAV.ZOOM_SLOW - NAV.ZOOM_FAST)));
+      if (nav.z == null) nav.z = map.getZoom();
+      nav.z += (zTarget - nav.z) * NAV.ZOOM_SMOOTH;
+      if (nav.brg == null) nav.brg = map.getBearing();
+      nav.brg = (nav.brg + navNorm180(nav.brgTarget - nav.brg) * NAV.BRG_SMOOTH + 360) % 360;
+      if (nav.padC == null) nav.padC = map.getCenter();
+      nav.padC = { lat: nav.padC.lat + (nav.cPos[1] - nav.padC.lat) * NAV.PAD_SMOOTH, lng: nav.padC.lng + (nav.cPos[0] - nav.padC.lng) * NAV.PAD_SMOOTH };
+      map.jumpTo({ center: [nav.padC.lng, nav.padC.lat], zoom: nav.z, bearing: nav.brg, pitch: NAV.PITCH, padding: pad });
+    }
+    nav.raf = requestAnimationFrame(navTick);
+  }
+  // Desktop simulation: walk the route at ~30 km/h so you can preview the
+  // camera follow, rotation and traffic colors without a real GPS.
+  function navSimTick(t) {
+    if (!nav.simTs) nav.simTs = t;
+    const dt = Math.min(500, t - nav.simTs); nav.simTs = t;
+    const v = NAV.SIM_KMH / 3.6; // m/s
+    nav.dist = Math.min(nav.total, nav.dist + v * dt / 1000);
+    while (nav.seg < nav.cum.length - 2 && nav.cum[nav.seg + 1] < nav.dist) nav.seg++;
+    const a = nav.coords[nav.seg], b = nav.coords[Math.min(nav.seg + 1, nav.coords.length - 1)];
+    const segLen = nav.cum[Math.min(nav.seg + 1, nav.cum.length - 1)] - nav.cum[nav.seg];
+    const f = segLen > 0 ? Math.min(1, (nav.dist - nav.cum[nav.seg]) / segLen) : 0;
+    const p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+    nav.brgTarget = navBearing(a, b);
+    if (nav.marker) nav.marker.setLngLat(p); nav.cPos = p;
+    nav.speed = v;
+    const r = curRoute();
+    if (r) navBanner(fmtTime((r.distance * Math.max(0, 1 - nav.dist / nav.total)) / (NAV.SIM_KMH / 3.6)), fmtDist(r.distance * Math.max(0, 1 - nav.dist / nav.total)) + ' left • (Simulation)');
+    if (nav.dist >= nav.total - NAV.ARRIVE_M) { flash('Nakarating ka na.'); stopNav(true); return; }
+  }
+  let nav = null; // { coords, cum, total, dist, seg, marker, watchId, follow, overlay, camTs, anim, raf, wakelock, refreshTs, sim, voice:{enabled:true}, lastOffTs:0, speed }
   function navTables(r) {
     const coords = r.geometry.coordinates;
     const R = 6371000, rad = Math.PI / 180;
@@ -1079,16 +1405,20 @@
   function stopNav(showRoute) {
     if (!nav) return;
     if (nav.watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(nav.watchId);
+    if (nav.raf) cancelAnimationFrame(nav.raf);
+    if (nav.wakeLock) { nav.wakeLock.release().catch(() => {}); }
+    if ('speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) {} }
+    ['nav-traffic-flow'].forEach((id) => map.getLayer(id) && map.removeLayer(id));
+    if (map.getSource('nav-traffic') && !currentBaseIsSatellite()) map.removeSource('nav-traffic');
     if (nav.marker) nav.marker.remove();
     nav = null;
-    const b = document.getElementById('nav-banner');
-    if (b) b.remove();
+    ['#nav-banner', '#nav-steps', '#nav-pills', '#nav-alt'].forEach((s) => { const b = document.querySelector(s); if (b) b.remove(); });
     document.body.classList.remove('navigating');
     // Exiting navigation: recenter the map to show the WHOLE route again
     // (Google-Maps-style route overview). Start's internal cleanup passes no
     // flag and just resets the pitch.
     if (showRoute && routeActive && curRoute()) fitRoute();
-    else map.easeTo({ pitch: 0, duration: 400 });
+    else map.easeTo({ pitch: 0, bearing: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 }, duration: 500 });
     if (routeActive) placeMarkers(); // bring back the route origin dot
     if (trafficUserMarker) trafficUserMarker.getElement().style.display = '';
     renderSheet();
@@ -1098,23 +1428,31 @@
     if (!b) {
       b = document.createElement('div');
       b.id = 'nav-banner';
-      b.innerHTML = '<div class="nav-eta" id="nav-eta">…</div><div class="nav-dist" id="nav-dist"></div><button type="button" id="nav-exit" aria-label="Exit navigation">Exit</button>';
+      b.innerHTML = '<div class="nav-eta">…</div><div class="nav-dist"></div><button type="button" class="nav-mini" id="nav-voice" aria-label="Toggle voice">🔊</button><button type="button" id="nav-exit" aria-label="Exit navigation">Exit</button>';
       document.body.appendChild(b);
       document.getElementById('nav-exit').addEventListener('click', () => stopNav(true));
+      document.getElementById('nav-voice').addEventListener('click', () => {
+        navVoice.enabled = !navVoice.enabled;
+        store.set('traffic_voice', navVoice.enabled);
+        document.getElementById('nav-voice').textContent = navVoice.enabled ? '🔊' : '🔇';
+        if (!navVoice.enabled && 'speechSynthesis' in window) { try { speechSynthesis.cancel(); } catch (e) {} }
+      });
     }
+    document.getElementById('nav-voice').textContent = navVoice.enabled ? '🔊' : '🔇';
     if (text != null) b.querySelector('.nav-eta').textContent = text;
     if (sub != null) b.querySelector('.nav-dist').textContent = sub;
   }
   async function navReroute(lng, lat) {
     if (!nav || nav.rerouting || !to) return;
     nav.rerouting = true;
-    flash('Off route — calculating a new route…');
+    flash('Lumihis ka sa ruta — kinukwenta ang bagong ruta…');
     try {
       const a = { lng, lat }, b = await coordsOf(to);
       points = [a].concat(stops, [b]);
       const rs = (await Promise.allSettled([
         fetchRoutes('driving-traffic', points, true), fetchRoutes('driving', points, false), fetchRoutes('walking', points, false)
       ])).map((x) => (x.status === 'fulfilled' ? x.value : null));
+      if (!nav) return;
       routes = { car: rs[0], moto: rs[1], walk: rs[2] };
       const r = routes[curMode] && routes[curMode][0];
       if (!r) throw new Error('noroute');
@@ -1124,9 +1462,12 @@
       const t = navTables(r);
       nav.coords = t.coords; nav.cum = t.cum; nav.total = t.total;
       nav.dist = 0; nav.seg = 0; nav.rerouteTs = Date.now();
-      flash('New route found — continue your trip.');
+      nav.offTs = 0; nav.altTs = 0; nav.altRoute = null; nav.stepSpoken = -1;
+      navAltEl().hidden = true;
+      flash('Bagong ruta — ituloy ang biyahe.');
+      navSpeak('Nag-reroute tayo, ituloy lang ang biyahe.');
     } catch (e) {
-      flash('Could not recalculate the route. Stay near the route.');
+      flash('Hindi makakuha ng bagong ruta. Manatili malapit sa ruta.');
     }
     if (nav) nav.rerouting = false;
   }
@@ -1134,34 +1475,33 @@
     if (!nav) return;
     const lat = pos.coords.latitude, lng = pos.coords.longitude;
     if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+    // Ignore low-quality fixes (city canyons, weak signal).
+    if (pos.coords.accuracy && pos.coords.accuracy > 50) return;
     nav.lastFixTs = Date.now();
+    nav.lastFix = { lng, lat };
     nav.lastSpeed = (typeof pos.coords.speed === 'number' && pos.coords.speed >= 0) ? pos.coords.speed : null;
     // Snap to the route: search forward in a window around the last segment.
-    const rad = Math.PI / 180, R = 6371000;
-    const distM = (lng1, lat1, lng2, lat2) => {
-      const x = (lng2 - lng1) * rad * Math.cos(((lat1 + lat2) / 2) * rad);
-      const y = (lat2 - lat1) * rad;
-      return Math.sqrt(x*x + y*y) * R;
-    };
     let best = { d: Infinity, i: nav.seg };
     const W = 40; // look ahead up to 40 points (~a few hundred meters)
     for (let k = nav.seg; k < Math.min(nav.seg + W, nav.coords.length - 1); k++) {
       for (const c of [nav.coords[k], nav.coords[k + 1]]) {
-        const d = distM(lng, lat, c[0], c[1]);
+        const d = navDistM(lng, lat, c[0], c[1]);
         if (d < best.d) best = { d, i: k };
       }
     }
     // Also don't drift backwards: allow a small window behind the current seg.
     for (let k = Math.max(0, nav.seg - 8); k < nav.seg; k++) {
-      const d = distM(lng, lat, nav.coords[k][0], nav.coords[k][1]);
+      const d = navDistM(lng, lat, nav.coords[k][0], nav.coords[k][1]);
       if (d < best.d) best = { d, i: k };
     }
     nav.seg = best.i;
-    if (best.d > 60) { // meters off route -> Google-Maps-style auto reroute
+    if (best.d > NAV.OFF_M) { // off route — reroute after it stays off for NAV.OFF_S seconds
       const now = Date.now();
-      if (!nav.rerouteTs || now - nav.rerouteTs > 8000) navReroute(lng, lat);
+      if (!nav.offTs) nav.offTs = now;
+      if (now - nav.offTs > NAV.OFF_S * 1000 && now - nav.rerouteTs > 8000) { nav.offTs = 0; navReroute(lng, lat); }
       return;
     }
+    nav.offTs = 0;
     // Progress = distance along route up to the snapped point.
     nav.dist = nav.cum[nav.seg];
     const remainFrac = Math.max(0, 1 - nav.dist / nav.total);
@@ -1169,6 +1509,7 @@
     if (!r) return;
     // Speed: real GPS speed when available, else the route's average.
     const speed = (nav.lastSpeed && nav.lastSpeed > 0.5) ? nav.lastSpeed : Math.max(0.5, r.distance / r.duration);
+    nav.speed = speed;
     const remainS = (r.distance * remainFrac) / speed;
     navBanner(fmtTime(remainS), fmtDist(r.distance * remainFrac) + ' left • ' + (to ? (to.user ? 'Your location' : to.label) : 'destination'));
     // Move the marker to the snapped route position (segment projection).
@@ -1176,59 +1517,91 @@
     const segLen = nav.cum[Math.min(nav.seg + 1, nav.cum.length - 1)] - nav.cum[nav.seg];
     let frac = 0;
     if (segLen > 0) {
-      const dToA = distM(lng, lat, a[0], a[1]), dToC = distM(lng, lat, c[0], c[1]);
+      const dToA = navDistM(lng, lat, a[0], a[1]), dToC = navDistM(lng, lat, c[0], c[1]);
       frac = Math.max(0, Math.min(1, (segLen*segLen + dToA*dToA - dToC*dToC) / (2*segLen*dToA || 1)));
     }
     const slng = a[0] + (c[0] - a[0]) * frac, slat = a[1] + (c[1] - a[1]) * frac;
-    nav.marker.setLngLat([slng, slat]);
-    // Google-Maps camera: re-aims ONLY on each new GPS fix and ONLY while
-    // you are moving. Each animation lasts under the fix gap, so when you
-    // stop, the camera settles immediately — it never glides on its own.
-    const now = Date.now();
-    const moving = (nav.lastSpeed || 0) > 1;
-    if (moving && (!nav.camTs || now - nav.camTs > 900)) {
-      nav.camTs = now;
-      const heading = Math.atan2((c[0] - a[0]), (c[1] - a[1])) * 180 / Math.PI;
-      const spdKmh = (nav.lastSpeed || 0) * 3.6;
-      const z = spdKmh > 45 ? 17 : spdKmh > 20 ? 18 : 19; // starts max-zoomed, eases out as you speed up
-      map.easeTo({ center: [slng, slat], zoom: z, bearing: (heading + 360) % 360, duration: 850 });
+    // Glide the marker to the snapped point (~1 s, ease-out) — never a jump.
+    nav.anim = { from: nav.cPos || [slng, slat], to: [slng, slat], t0: performance.now(), dur: 1000 };
+    if (!nav.cPos) { nav.cPos = [slng, slat]; if (nav.marker) nav.marker.setLngLat([slng, slat]); }
+    // Heading: real GPS course when moving fast, otherwise the road's bearing
+    // with a peek at the next segment ~40 m before the turn.
+    const toSegEnd = nav.cum[Math.min(nav.seg + 1, nav.cum.length - 1)] - nav.dist;
+    let segBrg = navBearing(a, c);
+    if (toSegEnd < NAV.LOOKAHEAD && nav.seg + 2 < nav.coords.length) {
+      const nb = navBearing(c, nav.coords[Math.min(nav.seg + 2, nav.coords.length - 1)]);
+      segBrg = (segBrg + navNorm180(nb - segBrg) * 0.6 + 360) % 360;
     }
-    if (nav.dist >= nav.total - 15) { // within 15 m of the end -> arrived
-      flash('You have arrived at your destination.');
+    nav.toTurnD = toSegEnd;
+    const gpsBrg = (pos.coords.heading != null && pos.coords.heading >= 0 && nav.lastSpeed > 2) ? pos.coords.heading : null;
+    nav.brgTarget = gpsBrg != null ? gpsBrg : segBrg;
+    navUpdateSteps();
+    navPillsUpdate();
+    if (nav.dist >= nav.total - NAV.ARRIVE_M) { // within 30 m of the end -> arrived
+      flash('Nakarating ka na sa destinasyon.');
+      navSpeak('Nakarating ka na sa destinasyon.');
       stopNav(true);
     }
   }
   function startNav() {
     const r = curRoute();
-    if (!r || !r.geometry || !r.geometry.coordinates.length) { flash('Please select a route first.'); return; }
-    if (!navigator.geolocation) { flash('Walang GPS support ang browser na ito.'); return; }
+    if (!r || !r.geometry || !r.geometry.coordinates.length) { flash('Piliin muna ang ruta bago mag-Start.'); return; }
+    const q = new URLSearchParams(location.search);
+    const sim = q.get('sim') === '1' || !navigator.geolocation;
+    if (!sim && !navigator.geolocation) { flash('Walang GPS support ang browser na ito.'); return; }
     stopNav();
     const t = navTables(r);
     const el = document.createElement('div');
-    el.className = 'traffic-user-marker';
-    el.innerHTML = '<span class="traffic-user-dot"></span>';
+    el.className = 'nav-arrow-marker';
+    el.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 2 L19 20 L12 16 L5 20 Z" fill="#1a73e8" stroke="#fff" stroke-width="1.4"/></svg>';
     nav = {
       coords: t.coords, cum: t.cum, total: t.total, dist: 0, seg: 0,
       marker: new mapboxgl.Marker({ element: el }).setLngLat(t.coords[0]).addTo(map),
-      watchId: null, lastFixTs: 0, lastSpeed: null, rerouteTs: 0, camTs: 0
+      watchId: null, lastFixTs: 0, lastSpeed: null, lastFix: null, rerouteTs: 0, camTs: 0,
+      follow: true, overlay: false, anim: null, raf: 0, cPos: null, brg: null, z: null, padC: null,
+      brgTarget: null, toTurnD: null, speed: 0, offTs: 0, altTs: 0, altRoute: null, stepSpoken: -1,
+      pillSig: '', hazards: [], refreshing: false, wakelock: null, sim
     };
     document.body.classList.add('navigating');
     // Only ONE blue dot while navigating: remove the route-origin dot and
     // hide the parent app's "Show your location" dot — the nav marker is it.
     if (originMarker) { originMarker.remove(); originMarker = null; }
     if (trafficUserMarker) trafficUserMarker.getElement().style.display = 'none';
-    navBanner('…', 'Waiting for GPS — start moving to begin navigation');
+    navStepsEl(); navPillsEl(); navAltEl(); // create nav UI once (banner is made by navBanner)
+    navFetchHazards();
+    // Screen won't sleep while navigating (best-effort, ignorable).
+    if ('wakeLock' in navigator) {
+      navigator.wakeLock.request('screen').then((wl) => { if (nav) nav.wakeLock = wl; }).catch(() => {});
+    }
+    navBanner('…', sim ? 'Simulation mode — awtomat na aasikasuhin ang ruta' : 'Hinintay ang GPS — magsimulang maglakad para magsimula ang navigation');
     // Face forward at the start: center on the origin, pointed along the
     // first route segment, like Google Maps when navigation begins.
     const sc = t.coords[0], sn = t.coords[1] || t.coords[0];
-    const initBrg = Math.atan2(sn[0] - sc[0], sn[1] - sc[1]) * 180 / Math.PI;
-    map.easeTo({ center: sc, zoom: 19, bearing: (initBrg + 360) % 360, duration: 900 }); // max zoom-in on Start
-    nav.watchId = navigator.geolocation.watchPosition(
-      onNavFix,
-      () => { flash('Could not get GPS. Allow location access and make sure you are outdoors or have signal.'); },
-      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }
-    );
+    nav.brgTarget = navBearing(sc, sn);
+    nav.z = NAV.ZOOM_SLOW;
+    map.easeTo({ center: sc, zoom: NAV.ZOOM_TURN, bearing: nav.brgTarget, pitch: NAV.PITCH, padding: { top: map.getContainer().clientHeight * NAV.CAM_PAD_TOP }, duration: 900 });
+    nav.raf = requestAnimationFrame(navTick);
+    if (sim) {
+      nav.follow = true;
+    } else {
+      nav.watchId = navigator.geolocation.watchPosition(
+        onNavFix,
+        (err) => { flash(err.code === 1 ? 'Tinanggihan ang location permission — i-allow sa browser settings para mag-navigate.' : 'Mahina ang GPS — lumabas o pumunta sa mas malawak na lugar.'); },
+        { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }
+      );
+    }
+    // Fresh congestion/ETA every ~60 s while navigating (never auto-switches).
+    const refresh = () => { if (!nav) return; navRefreshRoutes().then(() => { if (nav) navBuildAltPrompt(); }); };
+    nav.refreshTimer = setInterval(refresh, NAV.REFETCH_S * 1000);
   }
+  function navVisChange() {
+    if (!nav) return;
+    if (document.visibilityState === 'visible' && 'wakeLock' in navigator && !nav.wakeLock) {
+      navigator.wakeLock.request('screen').then((wl) => { if (nav) nav.wakeLock = wl; }).catch(() => {});
+    }
+  }
+  document.addEventListener('visibilitychange', navVisChange);
+  document.addEventListener('pagehide', () => { if (nav) stopNav(true); });
   $('rt-start').addEventListener('click', startNav);
   $('rt-stop').addEventListener('click', () => { addingStop = true; openPanel(); });
   // Share links back to THIS website - the URL carries traffic=1 plus the
