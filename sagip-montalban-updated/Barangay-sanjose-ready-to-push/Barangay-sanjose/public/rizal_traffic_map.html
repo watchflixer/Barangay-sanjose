@@ -245,10 +245,10 @@
   #rt-fare .card, #rt-driver .card{background:#fff;border-radius:24px;padding:0;width:400px;max-width:calc(100% - 24px);max-height:85vh;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;}
   #rt-fare .fare-head, #rt-driver .fare-head{padding:20px 20px 12px;border-bottom:1px solid #e8eaed;position:relative;}
   /* Fare card header: flex row so the ✕ button sits exactly aligned with the title */
-  #rt-fare .fare-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;}
+  #rt-fare .fare-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;}
   #rt-fare .fare-head h3{flex:1;min-width:0;}
   #rt-fare .fare-head .close{position:static;flex:none;width:34px;height:34px;}
-  #rt-fare .fare-head h3, #rt-driver .fare-head h3{margin:0;font-size:20px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  #rt-fare .fare-head h3, #rt-driver .fare-head h3{margin:0;font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px;}
   #rt-fare .fare-head .live, #rt-driver .fare-head .live{font-size:11px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;}
   #rt-fare .fare-head .live::before, #rt-driver .fare-head .live::before{content:"";width:6px;height:6px;background:#2e7d32;border-radius:50%;display:inline-block;animation:farePulse 1.5s infinite;}
   @keyframes farePulse{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
@@ -256,11 +256,11 @@
   #rt-fare .fare-head .close, #rt-driver .fare-head .close{border:0;border-radius:50%;background:#f1f3f4;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none;}
   #rt-driver .fare-head .close{position:absolute;top:14px;right:14px;width:36px;height:36px;}
   #rt-fare .fare-head .close{width:34px;height:34px;font-size:15px;line-height:1;}
-  #rt-fare .fare-body, #rt-driver .fare-body{overflow-y:auto;padding:12px 12px 0;flex:1;}
-  #rt-fare .fare-row{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #e8eaed;border-radius:14px;margin-bottom:10px;cursor:pointer;transition:all .15s ease;background:#fff;}
+  #rt-fare .fare-body, #rt-driver .fare-body{overflow-y:auto;padding:8px 12px 0;flex:1;}
+  #rt-fare .fare-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e8eaed;border-radius:12px;margin-bottom:6px;cursor:pointer;transition:all .15s ease;background:#fff;min-height:58px;}
   #rt-fare .fare-row:hover{border-color:#202124;background:#f8f9fa;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06);}
   #rt-fare .fare-row.sel{border-color:#202124;background:#f1f3f4;box-shadow:0 0 0 1px #202124 inset;}
-  #rt-fare .fare-ic, #rt-driver .fare-ic{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none;font-size:16px;font-weight:700;border:1px solid #e8eaed;background:#f8f9fa;color:#202124;}
+  #rt-fare .fare-ic, #rt-driver .fare-ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none;font-size:15px;font-weight:700;border:1px solid #e8eaed;background:#f8f9fa;color:#202124;}
   #rt-fare .fare-ic.plain, #rt-driver .fare-ic.plain{background:#f1f3f4;color:#202124;border:1px solid #e8eaed;}
   #rt-fare .fare-ic.grab, #rt-driver .fare-ic.grab{background:#f1f3f4;color:#202124;}
   #rt-fare .fare-ic.bus, #rt-driver .fare-ic.bus{background:#f1f3f4;color:#202124;}
@@ -268,22 +268,23 @@
   #rt-fare .fare-ic.plane, #rt-driver .fare-ic.plane{background:#f1f3f4;color:#202124;}
   #rt-fare .fare-ic.ship, #rt-driver .fare-ic.ship{background:#f1f3f4;color:#202124;}
   #rt-fare .fare-info, #rt-driver .fare-info{flex:1;min-width:0;}
-  #rt-fare .fare-name, #rt-driver .fare-name{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px;}
-  #rt-fare .fare-name small, #rt-driver .fare-name small{font-size:10px;background:#f1f3f4;padding:2px 6px;border-radius:999px;font-weight:500;}
-  #rt-fare .fare-meta, #rt-driver .fare-meta{font-size:12px;color:#5f6368;margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;}
-  #rt-fare .fare-price, #rt-driver .fare-price{font-size:16px;font-weight:700;color:#202124;text-align:right;}
-  #rt-fare .fare-price small, #rt-driver .fare-price small{display:block;font-size:11px;font-weight:400;color:#5f6368;}
-  #rt-fare .fare-rating, #rt-driver .fare-rating{font-size:11px;color:#f9ab00;display:flex;align-items:center;gap:2px;margin-top:2px;}
-  #rt-fare .fare-foot, #rt-driver .fare-foot{padding:14px 16px 16px;border-top:1px solid #e8eaed;background:#f8f9fa;}
-  #rt-fare .calc-row, #rt-driver .calc-row{display:flex;align-items:center;gap:10px;margin-top:10px;}
-  #rt-fare .calc-row label, #rt-driver .calc-row label{font-size:13px;font-weight:500;color:#3c4043;}
-  #rt-fare .calc-row .ctrl, #rt-driver .calc-row .ctrl{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dadce0;border-radius:10px;padding:4px;}
-  #rt-fare .calc-row .ctrl button, #rt-driver .calc-row .ctrl button{width:32px;height:32px;border:0;border-radius:8px;background:#f1f3f4;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+  #rt-fare .fare-name, #rt-driver .fare-name{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;}
+  #rt-fare .fare-name small, #rt-driver .fare-name small{font-size:9px;background:#f1f3f4;padding:1px 5px;border-radius:999px;font-weight:500;}
+  #rt-fare .fare-meta, #rt-driver .fare-meta{font-size:11px;color:#5f6368;margin-top:1px;display:flex;gap:8px;flex-wrap:wrap;white-space:nowrap;}
+  #rt-fare .fare-meta span{overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  #rt-fare .fare-price, #rt-driver .fare-price{font-size:15px;font-weight:700;color:#202124;text-align:right;}
+  #rt-fare .fare-price small, #rt-driver .fare-price small{display:block;font-size:10px;font-weight:400;color:#5f6368;}
+  #rt-fare .fare-rating, #rt-driver .fare-rating{font-size:10px;color:#f9ab00;display:flex;align-items:center;gap:2px;margin-top:1px;}
+  #rt-fare .fare-foot, #rt-driver .fare-foot{padding:8px 14px 10px;border-top:1px solid #e8eaed;background:#f8f9fa;}
+  #rt-fare .calc-row, #rt-driver .calc-row{display:flex;align-items:center;gap:10px;margin-top:8px;}
+  #rt-fare .calc-row label, #rt-driver .calc-row label{font-size:12px;font-weight:500;color:#3c4043;}
+  #rt-fare .calc-row .ctrl, #rt-driver .calc-row .ctrl{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dadce0;border-radius:10px;padding:3px;}
+  #rt-fare .calc-row .ctrl button, #rt-driver .calc-row .ctrl button{width:28px;height:28px;border:0;border-radius:8px;background:#f1f3f4;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
   #rt-fare .calc-row .ctrl button:active, #rt-driver .calc-row .ctrl button:active{background:#e8eaed;}
-  #rt-fare .calc-row .ctrl span, #rt-driver .calc-row .ctrl span{width:32px;text-align:center;font-size:15px;font-weight:600;}
-  #rt-fare .total-box, #rt-driver .total-box{margin-top:12px;background:#202124;color:#fff;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;}
+  #rt-fare .calc-row .ctrl span, #rt-driver .calc-row .ctrl span{width:28px;text-align:center;font-size:14px;font-weight:600;}
+  #rt-fare .total-box, #rt-driver .total-box{margin-top:10px;background:#202124;color:#fff;border-radius:12px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;}
   #rt-fare .total-box .t1, #rt-driver .total-box .t1{font-size:12px;opacity:.8;}
-  #rt-fare .total-box .t2, #rt-driver .total-box .t2{font-size:20px;font-weight:700;}
+  #rt-fare .total-box .t2, #rt-driver .total-box .t2{font-size:19px;font-weight:700;}
   #rt-fare .update-note, #rt-driver .update-note{font-size:10px;color:#5f6368;text-align:center;margin-top:10px;line-height:1.3;}
   /* Driver pricing inputs — plain */
   #rt-fare .fare-input-row, #rt-driver .fare-input-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
@@ -397,16 +398,18 @@
     .dir-empty{padding:14px 16px;font-size:13px;}
 
     /* Fare card — bigger on mobile, optimized for Pixel 7 375x820 */
-    #rt-fare .fare-head{padding:14px 14px 10px;}
-    #rt-fare .fare-head h3{font-size:16px;}
+    #rt-fare .fare-head{padding:12px 12px 8px;}
+    #rt-fare .fare-head h3{font-size:15px;}
     #rt-fare .fare-head .sub{font-size:11px;}
-    #rt-fare .fare-body{padding:8px 8px 0;}
-    #rt-fare .fare-row{padding:10px;gap:10px;border-radius:12px;margin-bottom:8px;}
-    #rt-fare .fare-ic{width:38px;height:38px;border-radius:10px;font-size:18px;}
-    #rt-fare .fare-name{font-size:13.5px;}
-    #rt-fare .fare-meta{font-size:11px;}
-    #rt-fare .fare-price{font-size:14px;}
-    #rt-fare .fare-foot{padding:10px 12px 12px;}
+    #rt-fare .fare-body{padding:6px 8px 0;}
+    #rt-fare .fare-row{padding:7px 8px;gap:8px;border-radius:11px;margin-bottom:5px;min-height:52px;}
+    #rt-fare .fare-ic{width:32px;height:32px;border-radius:9px;font-size:13px;}
+    #rt-fare .fare-name{font-size:13px;}
+    #rt-fare .fare-meta{font-size:10.5px;}
+    #rt-fare .fare-price{font-size:13.5px;}
+    #rt-fare .fare-price small{font-size:9.5px;}
+    #rt-fare .fare-rating{font-size:9.5px;}
+    #rt-fare .fare-foot{padding:7px 10px 9px;}
   }
 
   /* Extra-small phones (iPhone SE / 320px Androids) — tighten further */
@@ -518,8 +521,8 @@
       <!-- Rows injected by JS -->
     </div>
     <div class="fare-foot">
-      <div style="font-size:15px;font-weight:700;color:#202124;">Payment</div>
-      <div class="calc-row" style="margin-top:8px;">
+      <div style="font-size:14px;font-weight:700;color:#202124;">Payment</div>
+      <div class="calc-row" style="margin-top:6px;">
         <label>Passengers:</label>
         <div class="ctrl">
           <button type="button" id="fare-minus">−</button>
@@ -528,18 +531,18 @@
         </div>
         <span style="font-size:12px;color:#5f6368;">× <span id="fare-unit">₱0</span></span>
       </div>
-      <div class="fare-input-row" style="margin-top:10px;">
-        <label style="font-size:14px;font-weight:500;color:#202124;">Money Given</label>
+      <div class="fare-input-row" style="margin-top:8px;">
+        <label style="font-size:13px;font-weight:500;color:#202124;">Money Given</label>
         <div class="fare-input"><span>₱</span><input type="number" id="fare-money" value="500" min="0" step="10" placeholder="0"></div>
       </div>
-      <div class="total-box" style="margin-top:12px;">
+      <div class="total-box" style="margin-top:8px;">
         <div>
           <div class="t1" id="fare-mode-label" style="font-size:14px;font-weight:700;opacity:1;">Grab • 1 pax</div>
           <div class="t1" style="font-size:10px;">Base + per km</div>
         </div>
         <div class="t2" id="fare-total">₱0</div>
       </div>
-      <div class="total-box" style="margin-top:8px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9;">
+      <div class="total-box" style="margin-top:6px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9;">
         <div>
           <div class="t1" style="font-size:13px;font-weight:700;opacity:1;">Change</div>
           <div class="t1" style="font-size:10px;">Money - Total</div>
@@ -1289,7 +1292,7 @@
 
     return [
       { id:'grab', name:'Grab', sub:'Car - 4 seats - Fastest', ic:'G', cls:'plain', price: calc(grabBase, grabPerKm, 90), perKm:grabPerKm, eta: Math.round(distKm/0.6)+' min', rating:'4.8', note: surge>1?'Surge 18% - Rush hour':'No surge', surge, energy:{label:'Gas',qty:2,rate:65,unit:'L'} },
-      { id:'tricycle', name:'Tricycle', sub:'Tricycle - 2-3 seats - Short distance', ic:'T', cls:'plain', price: calc(trikeBase, trikePerKm, 30), perKm:trikePerKm, eta: Math.round(distKm/0.3)+' min', rating:'4.2', note:'Local - Per trip', energy:{label:'Gas',qty:0.5,rate:65,unit:'L'} },
+      { id:'tricycle', name:'Tricycle', sub:'Tricycle - Short distance', ic:'T', cls:'plain', price: calc(trikeBase, trikePerKm, 30), perKm:trikePerKm, eta: Math.round(distKm/0.3)+' min', rating:'4.2', note:'Local - Per trip', energy:{label:'Gas',qty:0.5,rate:65,unit:'L'} },
       { id:'jeep', name:'Jeepney', sub:'Jeepney - Modern - Cheapest', ic:'J', cls:'plain', price: calc(jeepBase, jeepPerKm, 15), perKm:jeepPerKm, eta: Math.round(distKm/0.35)+' min', rating:'4.1', note:'Cheap - May transfer', energy:{label:'Gas',qty:1,rate:65,unit:'L'} },
       { id:'etrike', name:'E-Trike', sub:'Electric tricycle - Eco friendly', ic:'E', cls:'plain', price: calc(etrikeBase, etrikePerKm, 25), perKm:etrikePerKm, eta: Math.round(distKm/0.32)+' min', rating:'4.4', note:'Eco - Quiet', energy:{label:'Charge',qty:0.8,rate:13,unit:'kWh'} },
       { id:'bus', name:'Bus', sub:'Bus - Aircon - LTFRB 2026', ic:'B', cls:'plain', price: calc(busBase, busPerKm, 25), perKm:busPerKm, eta: Math.round(distKm/0.45)+' min', rating:'4.3', note:'LTFRB approved', energy:{label:'Gas',qty:1.4,rate:65,unit:'L'} },
