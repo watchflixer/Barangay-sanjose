@@ -518,7 +518,8 @@
       <!-- Rows injected by JS -->
     </div>
     <div class="fare-foot">
-      <div class="calc-row" style="margin-top:0;">
+      <div style="font-size:15px;font-weight:700;color:#202124;">Payment</div>
+      <div class="calc-row" style="margin-top:8px;">
         <label>Passengers:</label>
         <div class="ctrl">
           <button type="button" id="fare-minus">−</button>
@@ -527,24 +528,21 @@
         </div>
         <span style="font-size:12px;color:#5f6368;">× <span id="fare-unit">₱0</span></span>
       </div>
+      <div class="fare-input-row" style="margin-top:10px;">
+        <label style="font-size:14px;font-weight:500;color:#202124;">Money Given</label>
+        <div class="fare-input"><span>₱</span><input type="number" id="fare-money" value="500" min="0" step="10" placeholder="0"></div>
+      </div>
       <div class="total-box" style="margin-top:12px;">
         <div>
-          <div class="t1" id="fare-mode-label">Grab • 1 pax</div>
+          <div class="t1" id="fare-mode-label" style="font-size:14px;font-weight:700;opacity:1;">Grab • 1 pax</div>
           <div class="t1" style="font-size:10px;">Base + per km</div>
         </div>
         <div class="t2" id="fare-total">₱0</div>
       </div>
-      <div class="total-box" style="margin-top:12px; background:#e8f5e9; color:#1b5e20; border:1px solid #a5d6a7; padding:14px 16px;">
-        <div>
-          <div class="t1" style="font-size:13px;font-weight:700;opacity:1;">Money Given (Bayad)</div>
-          <div class="t1" style="font-size:10px;">Ilagay ang halagang ibabayad</div>
-        </div>
-        <div class="fare-input" style="background:#ffffff; border:1px solid #a5d6a7; border-radius:10px; padding:6px 10px;"><span style="color:#1b5e20;">₱</span><input type="number" id="fare-money" value="0" min="0" step="10" placeholder="0" style="color:#1b5e20; width:70px; font-size:15px;"></div>
-      </div>
       <div class="total-box" style="margin-top:8px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9;">
         <div>
-          <div class="t1" style="font-size:12px;font-weight:600;">Change (Sukli)</div>
-          <div class="t1" style="font-size:10px;">Bayad − Pasahe</div>
+          <div class="t1" style="font-size:13px;font-weight:700;opacity:1;">Change</div>
+          <div class="t1" style="font-size:10px;">Money - Total</div>
         </div>
         <div class="t2" id="fare-change" style="color:#1b5e20;">₱0</div>
       </div>
@@ -560,51 +558,38 @@
       <button type="button" class="close" id="driver-close" aria-label="Close">✕</button>
     </div>
     <div class="fare-body" style="padding:16px;">
-      <div style="font-size:12px;font-weight:600; margin-bottom:10px; color:#202124;">Selected Fare</div>
-      <div id="driver-fare-summary" style="background:#f8f9fa;border:1px solid #e8eaed;border-radius:12px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div>
-          <div style="font-size:13px;font-weight:600;" id="driver-mode-name">Grab • 1 pax</div>
-          <div style="font-size:11px;color:#5f6368;" id="driver-mode-detail">19 km</div>
-        </div>
-        <div style="font-size:16px;font-weight:700;" id="driver-fare-price">₱0</div>
-      </div>
-
-      <div style="font-size:12px;font-weight:600; margin-bottom:8px; color:#202124;">Toll & Gas</div>
+      <div style="font-size:15px;font-weight:700; margin-bottom:10px; color:#202124;">Sukli</div>
       <div class="fare-input-row">
-        <label>Toll Fee</label>
-        <div class="fare-input"><span>₱</span><input type="number" id="driver-toll" value="0" min="0" step="5" placeholder="0"></div>
+        <label style="font-size:14px;color:#3c4043;">Binayad</label>
+        <div class="fare-input"><span>₱</span><input type="number" id="driver-binayad" value="500" min="0" step="10" placeholder="500"></div>
       </div>
       <div class="fare-input-row">
-        <label>Gas Price / Liter</label>
-        <div class="fare-input"><span>₱</span><input type="number" id="driver-gas-price" value="65" min="0" step="0.5" placeholder="65"></div>
+        <label style="font-size:14px;color:#3c4043;">Pamasahé</label>
+        <div class="fare-input"><span>₱</span><input type="number" id="driver-fare" value="0" min="0" step="5" placeholder="0"></div>
+      </div>
+      <div class="total-box" style="margin-top:12px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9; padding:14px 16px;">
+        <div>
+          <div class="t1" style="font-size:14px;font-weight:700;opacity:1;">Sukli</div>
+          <div class="t1" style="font-size:10px;">Binayad − Pamasahé</div>
+        </div>
+        <div class="t2" id="driver-change" style="font-size:26px; color:#1b5e20;">₱0</div>
+      </div>
+
+      <div style="font-size:15px;font-weight:700; margin:16px 0 10px; color:#202124;">Gas</div>
+      <div class="fare-input-row">
+        <label style="font-size:14px;color:#3c4043;">Gas Used (Liters)</label>
+        <div class="fare-input"><input type="number" id="driver-gas-liters" value="5" min="0" step="0.5" placeholder="5"><span style="margin-left:6px;font-size:12px;color:#5f6368;">L</span></div>
       </div>
       <div class="fare-input-row">
-        <label>Gas Used (Liters)</label>
-        <div class="fare-input"><input type="number" id="driver-gas-liters" value="2" min="0" step="0.5" placeholder="2"><span style="margin-left:4px;font-size:11px;color:#5f6368;">L</span></div>
+        <label style="font-size:14px;color:#3c4043;">Gas Price / Liter</label>
+        <div class="fare-input"><span>₱</span><input type="number" id="driver-gas-price" value="85" min="0" step="0.5" placeholder="85"></div>
       </div>
-
-      <div style="margin-top:14px; padding-top:12px; border-top:1px solid #e8eaed;">
-        <div style="font-size:12px;font-weight:600; margin-bottom:8px; color:#202124;">Payment</div>
-        <div class="fare-input-row">
-          <label>Money Given</label>
-          <div class="fare-input"><span>₱</span><input type="number" id="driver-money" value="500" min="0" step="10" placeholder="500"></div>
-        </div>
-      </div>
-
-      <div class="total-box" style="margin-top:14px;">
+      <div class="total-box" style="margin-top:12px; padding:14px 16px;">
         <div>
-          <div class="t1">Total Cost</div>
-          <div class="t1" id="driver-breakdown" style="font-size:10px;">Fare + Toll + Gas</div>
+          <div class="t1" style="font-size:14px;font-weight:700;opacity:1;">Total Gas</div>
+          <div class="t1" style="font-size:10px;" id="driver-gas-breakdown">Liters × Price (5L × ₱85)</div>
         </div>
-        <div class="t2" id="driver-total">₱0</div>
-      </div>
-
-      <div class="total-box" style="margin-top:8px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9;">
-        <div>
-          <div class="t1" style="font-size:12px;font-weight:600;">Change</div>
-          <div class="t1" style="font-size:10px;">Money - Total</div>
-        </div>
-        <div class="t2" id="driver-change" style="color:#1b5e20;">₱0</div>
+        <div class="t2" id="driver-gas-total" style="font-size:26px;">₱425</div>
       </div>
     </div>
   </div>
@@ -1302,16 +1287,14 @@
       return Math.max(min||base, Math.round(price/5)*5);
     };
 
-    const isShort = distKm < 50;
-
     return [
-      { id:'grab', name:'Grab', sub:'Car - 4 seats - Fastest', ic:'G', cls:'plain', price: calc(grabBase, grabPerKm, 90), perKm:grabPerKm, eta: Math.round(distKm/0.6)+' min', rating:'4.8', note: surge>1?'Surge 18% - Rush hour':'No surge', surge },
-      { id:'tricycle', name:'Tricycle', sub:'Tricycle - 2-3 seats - Short distance', ic:'T', cls:'plain', price: calc(trikeBase, trikePerKm, 30), perKm:trikePerKm, eta: Math.round(distKm/0.3)+' min', rating:'4.2', note:'Local - Per trip' },
-      { id:'etrike', name:'E-Trike', sub:'Electric tricycle - Eco friendly', ic:'E', cls:'plain', price: calc(etrikeBase, etrikePerKm, 25), perKm:etrikePerKm, eta: Math.round(distKm/0.32)+' min', rating:'4.4', note:'Eco - Quiet' },
-      { id:'jeep', name:'Jeepney', sub:'Jeepney - Modern - Cheapest', ic:'J', cls:'plain', price: calc(jeepBase, jeepPerKm, 15), perKm:jeepPerKm, eta: Math.round(distKm/0.35)+' min', rating:'4.1', note:'Cheap - May transfer' },
-      { id:'bus', name:'Bus', sub:'Bus - Aircon - LTFRB 2026', ic:'B', cls:'plain', price: calc(busBase, busPerKm, 25), perKm:busPerKm, eta: Math.round(distKm/0.45)+' min', rating:'4.3', note:'LTFRB approved' },
-      { id:'plane', name:'Airplane', sub: isShort?'No direct - Need airport':'Via NAIA', ic:'A', cls:'plain', price: isShort? 0 : calc(planeBase, planePerKm, 1899), perKm:planePerKm, eta: isShort?'-': '55 min flight + 2h check-in', rating:'4.6', note: isShort?'For long distance only':'PAL/CebuPac realtime', disabled:isShort },
-      { id:'ship', name:'Ship', sub: isShort?'No sea route':'2GO - Manila port', ic:'S', cls:'plain', price: isShort? 0 : calc(shipBase, shipPerKm, 750), perKm:shipPerKm, eta: isShort?'-':'8-12 hrs', rating:'4.2', note: isShort?'Land route only':'Realtime 2GO' }
+      { id:'grab', name:'Grab', sub:'Car - 4 seats - Fastest', ic:'G', cls:'plain', price: calc(grabBase, grabPerKm, 90), perKm:grabPerKm, eta: Math.round(distKm/0.6)+' min', rating:'4.8', note: surge>1?'Surge 18% - Rush hour':'No surge', surge, energy:{label:'Gas',qty:2,rate:65,unit:'L'} },
+      { id:'tricycle', name:'Tricycle', sub:'Tricycle - 2-3 seats - Short distance', ic:'T', cls:'plain', price: calc(trikeBase, trikePerKm, 30), perKm:trikePerKm, eta: Math.round(distKm/0.3)+' min', rating:'4.2', note:'Local - Per trip', energy:{label:'Gas',qty:0.5,rate:65,unit:'L'} },
+      { id:'jeep', name:'Jeepney', sub:'Jeepney - Modern - Cheapest', ic:'J', cls:'plain', price: calc(jeepBase, jeepPerKm, 15), perKm:jeepPerKm, eta: Math.round(distKm/0.35)+' min', rating:'4.1', note:'Cheap - May transfer', energy:{label:'Gas',qty:1,rate:65,unit:'L'} },
+      { id:'etrike', name:'E-Trike', sub:'Electric tricycle - Eco friendly', ic:'E', cls:'plain', price: calc(etrikeBase, etrikePerKm, 25), perKm:etrikePerKm, eta: Math.round(distKm/0.32)+' min', rating:'4.4', note:'Eco - Quiet', energy:{label:'Charge',qty:0.8,rate:13,unit:'kWh'} },
+      { id:'bus', name:'Bus', sub:'Bus - Aircon - LTFRB 2026', ic:'B', cls:'plain', price: calc(busBase, busPerKm, 25), perKm:busPerKm, eta: Math.round(distKm/0.45)+' min', rating:'4.3', note:'LTFRB approved', energy:{label:'Gas',qty:1.4,rate:65,unit:'L'} },
+      { id:'plane', name:'Airplane', sub:'No airport in Rizal', ic:'A', cls:'plain', price: 0, perKm:planePerKm, eta:'-', rating:'4.6', note:'For long distance only', disabled:true },
+      { id:'ship', name:'Ship', sub:'No ferry port in Rizal', ic:'S', cls:'plain', price: 0, perKm:shipPerKm, eta:'-', rating:'4.2', note:'No sea route', disabled:true }
     ];
   }
 
@@ -1329,10 +1312,10 @@
       if(f.disabled) name.appendChild(h('small','','N/A'));
       const meta = h('div','fare-meta');
       meta.appendChild(h('span','', f.sub));
-      meta.appendChild(h('span','', '• '+f.eta));
+      if(!f.disabled) meta.appendChild(h('span','', '• '+f.eta));
       const rating = h('div','fare-rating','★ '+f.rating+' • '+f.note);
       info.appendChild(name); info.appendChild(meta); info.appendChild(rating);
-      const price = h('div','fare-price','₱'+f.price.toLocaleString());
+      const price = h('div','fare-price', f.disabled?'—':'₱'+f.price.toLocaleString());
       const small = h('small','', f.disabled?'Not available':'₱'+f.perKm.toFixed(1)+'/km');
       price.appendChild(small);
       row.appendChild(ic); row.appendChild(info); row.appendChild(price);
@@ -1344,48 +1327,50 @@
   function updateFareTotal(){
     const f = fareData.find(x=>x.id===fareSel) || fareData[0];
     if(!f) return;
-    const baseFare = f.price * farePax;
+    const fare = f.price * farePax;
+    const en = f.energy || { label:'Gas', qty:0, rate:0, unit:'L' };
+    const energyCost = en.qty * en.rate;
+    const totalCost = fare + energyCost;
     $('fare-unit').textContent = '₱'+f.price.toLocaleString();
-    $('fare-total').textContent = '₱'+baseFare.toLocaleString();
+    $('fare-total').textContent = '₱'+totalCost.toLocaleString();
     $('fare-mode-label').textContent = f.name+' • '+farePax+' pax'+(f.surge>1?' • Surge':'');
     $('fare-count').textContent = farePax;
     const money = parseFloat($('fare-money')?.value)||0;
-    const change = money - baseFare;
+    const change = money - totalCost;
     const fc = $('fare-change');
     if(fc){ fc.textContent = '₱'+change.toLocaleString(); fc.style.color = change < 0 ? '#c62828' : '#1b5e20'; if(fc.parentElement){ fc.parentElement.style.background = change < 0 ? '#ffebee' : '#e8f5e9'; fc.parentElement.style.borderColor = change < 0 ? '#ef9a9a' : '#c8e6c9'; } }
   }
 
   function updateDriverTotal(){
-    const f = fareData.find(x=>x.id===fareSel) || fareData[0];
-    if(!f) return;
-    const baseFare = f.price * farePax;
-    const toll = parseFloat($('driver-toll')?.value)||0;
+    // Sukli section — Binayad − Pamasahé
+    const binayad = parseFloat($('driver-binayad')?.value)||0;
+    const pamashe = parseFloat($('driver-fare')?.value)||0;
+    const sukli = binayad - pamashe;
+    const changeEl = $('driver-change');
+    if(changeEl){
+      changeEl.textContent = '₱'+sukli.toLocaleString();
+      changeEl.style.color = sukli < 0 ? '#c62828' : '#1b5e20';
+      if(changeEl.parentElement){
+        changeEl.parentElement.style.background = sukli < 0 ? '#ffebee' : '#e8f5e9';
+        changeEl.parentElement.style.borderColor = sukli < 0 ? '#ef9a9a' : '#c8e6c9';
+      }
+    }
+
+    // Gas section — Liters × Price
     const gasPrice = parseFloat($('driver-gas-price')?.value)||0;
     const gasLiters = parseFloat($('driver-gas-liters')?.value)||0;
     const gasCost = gasPrice * gasLiters;
-    const grandTotal = baseFare + toll + gasCost;
-    const money = parseFloat($('driver-money')?.value)||0;
-    const change = money - grandTotal;
+    const gt = $('driver-gas-total');
+    if(gt) gt.textContent = '₱'+gasCost.toLocaleString();
+    const gb = $('driver-gas-breakdown');
+    if(gb) gb.textContent = 'Liters × Price ('+gasLiters+'L × ₱'+gasPrice+')';
 
-    // Update driver summary
-    const distKm = (curRoute()?.distance||0)/1000;
-    if($('driver-mode-name')) $('driver-mode-name').textContent = f.name+' • '+farePax+' pax';
-    if($('driver-mode-detail')) $('driver-mode-detail').textContent = distKm.toFixed(1)+' km • ₱'+f.price+'/pax';
-    if($('driver-fare-price')) $('driver-fare-price').textContent = '₱'+baseFare.toLocaleString();
-
-    if($('driver-total')) $('driver-total').textContent = '₱'+grandTotal.toLocaleString();
-    const bd = $('driver-breakdown');
-    if(bd) bd.textContent = `Fare ₱${baseFare} + Toll ₱${toll} + Gas ₱${gasCost} (${gasLiters}L × ₱${gasPrice})`;
-
-    const changeEl = $('driver-change');
-    if(changeEl){
-      changeEl.textContent = '₱'+change.toLocaleString();
-      changeEl.style.color = change < 0 ? '#c62828' : '#1b5e20';
-      changeEl.parentElement.style.background = change < 0 ? '#ffebee' : '#e8f5e9';
-      changeEl.parentElement.style.borderColor = change < 0 ? '#ef9a9a' : '#c8e6c9';
+    // Keep the selected fare live in the Pamasahé field unless the user edited it.
+    const fareInput = $('driver-fare');
+    if(fareInput && document.activeElement !== fareInput){
+      const f = fareData.find(x=>x.id===fareSel) || fareData[0];
+      if(f) fareInput.value = f.price * farePax;
     }
-    // Also sync fare total box
-    updateFareTotal();
   }
 
   function showFareCard(){
@@ -1431,7 +1416,7 @@
   $('driver-close').addEventListener('click', hideDriverCard);
   $('rt-driver').addEventListener('click', (e)=>{ if(e.target.id==='rt-driver') hideDriverCard(); });
   // Driver cost inputs — realtime update
-  ['driver-toll','driver-gas-price','driver-gas-liters','driver-money'].forEach(id=>{
+  ['driver-binayad','driver-fare','driver-gas-price','driver-gas-liters'].forEach(id=>{
     const el = $(id);
     if(el){
       el.addEventListener('input', updateDriverTotal);
