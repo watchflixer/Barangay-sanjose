@@ -1322,7 +1322,8 @@
       const small = h('small','', f.disabled?'Not available':'₱'+f.perKm.toFixed(1)+'/km');
       price.appendChild(small);
       row.appendChild(ic); row.appendChild(info); row.appendChild(price);
-      if(!f.disabled) row.addEventListener('click',()=>{ fareSel=f.id; renderFareRows(); updateFareTotal(); });
+      // Toggle: clicking the selected ride deselects it; clicking another selects it.
+      if(!f.disabled) row.addEventListener('click',()=>{ fareSel = (fareSel===f.id) ? null : f.id; renderFareRows(); updateFareTotal(); });
       body.appendChild(row);
     });
   }
