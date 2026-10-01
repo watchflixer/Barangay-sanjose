@@ -858,15 +858,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Realtime Traffic map overlay (Leaflet 2.0.0-alpha.1 inside). The
-          TomTom key travels as a query parameter so the iframe picks it up
-          without any build-time injection into public/ files. */}
+      {/* Realtime Traffic (Mapbox GL) iframe. Optional PUBLIC browser keys
+          are runtime parameters because public/ files aren't Vite modules.
+          Restrict those keys to the production/preview website referrers. */}
       {showTrafficMap && (
         <div className="absolute inset-0 z-30 bg-white" aria-label="Rizal Realtime Traffic Map">
           <iframe
             title="Rizal Realtime Traffic Map"
             src={`${import.meta.env.BASE_URL}rizal_traffic_map.html?${[
               import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN ? `key=${encodeURIComponent(import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN)}` : '',
+              import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? `gkey=${encodeURIComponent(import.meta.env.VITE_GOOGLE_MAPS_API_KEY)}` : '',
               sharedRoute.sfrom ? `sfrom=${encodeURIComponent(sharedRoute.sfrom)}` : '',
               sharedRoute.sto ? `sto=${encodeURIComponent(sharedRoute.sto)}` : '',
               sharedRoute.smode ? `smode=${encodeURIComponent(sharedRoute.smode)}` : '',

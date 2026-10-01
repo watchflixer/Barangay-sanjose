@@ -37,9 +37,18 @@ jobs:
         run: npm ci
         working-directory: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
 
+      - name: Test destination search
+        run: npm run test:traffic
+        working-directory: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
+
       - name: Build
         run: npm run build
         working-directory: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
+        env:
+          # Optional PUBLIC browser keys. Restrict URLs/APIs in provider consoles.
+          # An unset Google key leaves Google UI Kit off; Mapbox/OSM still work.
+          VITE_GOOGLE_MAPS_API_KEY: ${{ secrets.VITE_GOOGLE_MAPS_API_KEY }}
+          VITE_MAPBOX_TRAFFIC_TOKEN: ${{ secrets.VITE_MAPBOX_TRAFFIC_TOKEN }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

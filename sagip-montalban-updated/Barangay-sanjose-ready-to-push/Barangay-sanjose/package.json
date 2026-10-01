@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test:traffic": "node scripts/test-traffic-search.mjs && node scripts/test-traffic-ui.mjs && node scripts/test-traffic-ui.mjs --google"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
