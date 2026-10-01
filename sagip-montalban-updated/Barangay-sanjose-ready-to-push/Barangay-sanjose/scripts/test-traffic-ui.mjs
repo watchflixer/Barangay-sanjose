@@ -360,7 +360,11 @@ check('closing Directions clears pending requests and hides the panel', panel.hi
 if (GOOGLE) {
   console.log('\nGoogle UI Kit integration (mocked official elements):');
   sandbox.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve({ features: [] }) });
-  els['directions-btn'].dispatch('click'); toIn.value = 'Example Google-only place'; toIn.dispatch('input');
+  els['directions-btn'].dispatch('click'); toIn.value = 'SM'; toIn.dispatch('input');
+  els['dir-search-submit'].dispatch('click'); await new Promise((r) => setTimeout(r, 30));
+  check('two-letter destinations such as SM/UP can query Google instead of being excluded',
+    els['dir-google'].querySelector('gmp-place-text-search-request')?.textQuery === 'SM');
+  toIn.value = 'Example Google-only place'; toIn.dispatch('input');
   els['dir-search-submit'].dispatch('click');
   await new Promise((r) => setTimeout(r, 50));
   const host = els['dir-google'], list = host.querySelector('gmp-place-search');

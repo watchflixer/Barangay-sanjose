@@ -124,7 +124,7 @@
     }
     async function search(query, proximity, context) {
       var ticket = ++generation;
-      host.textContent = ''; host.hidden = !key || String(query || '').trim().length < 3;
+      host.textContent = ''; host.hidden = !key || String(query || '').trim().length < 2;
       if (host.hidden) return;
       host.appendChild(status('Kinukuha ang live Google Maps places…'));
       try {
