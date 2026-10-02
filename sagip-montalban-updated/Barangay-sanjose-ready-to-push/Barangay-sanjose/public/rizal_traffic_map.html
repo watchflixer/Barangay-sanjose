@@ -729,8 +729,8 @@
   };
   const panel = $('dir-panel'), fromIn = $('dir-from'), toIn = $('dir-to'), body = $('dir-body');
   let mode = 'car', from = { user: true }, to = null, active = 'to', pendingSave = null, showAll = false;
-  let userLoc = null, results = [], searching = false, searchErr = false, seq = 0, timer = null;
-  let recent = store.get('traffic_recent', []);
+  let userLoc = null, userLocSource = null, results = [], searching = false, searchEnriching = false, searchErr = false, seq = 0, timer = null, searchDeadlineTimer = null;
+  let recent = store.get('traffic_recent_v2', store.get('traffic_recent', []));
   const saved = { home: store.get('traffic_home', null), work: store.get('traffic_work', null) };
   const dirty = { from: false, to: false };
   const setHint = (t) => { $('dir-hint').textContent = t || ''; };
@@ -760,6 +760,8 @@
   function openPanel() {
     panel.hidden = false; tellParent(true); setHint('');
     document.body.classList.add('directions-open'); // hides the zoom buttons
+    // Warm the static PSGC index without holding the panel or first search open.
+    if(!psgcSearchIndexData){loadPSGCSearchIndex().catch(()=>{});loadPSGCPointsIndex().catch(()=>{});}
     if (!from) setUserFrom();
     if (!to) toIn.value = '';
     loadEta('home'); loadEta('work');
@@ -767,6 +769,10 @@
     renderBody(); setTimeout(() => toIn.focus(), 60);
   }
   function closePanel() {
+    clearTimeout(searchDeadlineTimer);searchDeadlineTimer=null;
+    if(activeSourceSearchController){activeSourceSearchController.abort();activeSourceSearchController=null;}
+    seq++;
+    searching=false;searchEnriching=false;
     panel.hidden = true; if (!routeActive) tellParent(false);
     document.body.classList.remove('directions-open'); // bring the zoom buttons back
     if (addingStop) { addingStop = false; toIn.placeholder = 'Choose destination'; toIn.value = to ? (to.user ? 'Your location' : to.label) : ''; }
@@ -798,9 +804,11 @@
     // comes back, the dot turns blue again, and the text stays selected so
     // the next keystroke replaces it (like Google Maps).
     if (!fromIn.value.trim() && !addingStop) {
-      clearTimeout(timer); seq++;
+      clearTimeout(timer);clearTimeout(searchDeadlineTimer);searchDeadlineTimer=null;
+      if(activeSourceSearchController){activeSourceSearchController.abort();activeSourceSearchController=null;}
+      seq++;
       setUserFrom();
-      dirty.from = false; results = []; searchErr = false; searching = false;
+      dirty.from = false; results = []; searchErr = false; searching = false; searchEnriching = false;
       active = 'from';
       renderBody();
       fromIn.select();
@@ -811,6 +819,9 @@
   fromIn.addEventListener('blur', () => setTimeout(() => { if (!from && !dirty.from) setUserFrom(); }, 250));
   [toIn, fromIn].forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter' && results[0] && dirty[active]) applyPlace(results[0]); }));
   $('dir-swap').addEventListener('click', () => {
+    clearTimeout(timer);clearTimeout(searchDeadlineTimer);searchDeadlineTimer=null;
+    if(activeSourceSearchController){activeSourceSearchController.abort();activeSourceSearchController=null;}
+    seq++;searching=false;searchEnriching=false;
     [from, to] = [to, from];
     const put = (inp, v) => { inp.value = v ? (v.user ? 'Your location' : v.label) : ''; inp.classList.toggle('is-user', !!(v && v.user)); };
     put(fromIn, from); put(toIn, to);
@@ -818,22 +829,746 @@
     if (from && to) go();
   });
 
-  function scheduleSearch(q) {
-    clearTimeout(timer); const my = ++seq; q = q.trim(); searchErr = false;
-    if (q.length < 2) { results = []; searching = false; dirty[active] = false; renderBody(); return; }
-    searching = true; renderBody();
-    timer = setTimeout(async () => {
-      try {
-        const url = 'https://api.mapbox.com/geocoding/v5/mapbox.places/' + encodeURIComponent(q) + '.json?country=ph&limit=6&autocomplete=true&proximity=121.131,14.7425&access_token=' + encodeURIComponent(mapboxgl.accessToken);
-        const res = await fetch(url); if (!res.ok) throw new Error('http');
-        const d = await res.json(); if (my !== seq) return;
-        results = (d.features || []).map((f) => {
-          const pn = f.place_name || '', i = pn.indexOf(',');
-          return { label: i > 0 ? pn.slice(0, i) : pn, sub: i > 0 ? pn.slice(i + 1).trim() : '', lng: f.center[0], lat: f.center[1] };
-        });
-      } catch (e) { if (my !== seq) return; results = []; searchErr = true; }
-      searching = false; renderBody();
-    }, 280);
+  // Search speed changes are isolated from the map UI, routing, navigation,
+  // and iframe integration; all existing source types remain available.
+  const PH_BBOX = '116.9,4.5,126.7,21.2';
+  const PH_CENTER = { lat:12.8797, lng:121.7740 };
+  const LOCAL_PLACES = [
+    ['Kasiglahan Village (1K1 & 1K2)','Brgy. San Jose, Rodriguez, Rizal',14.7452,121.1355,'kasiglahan 1k1 1k2 village subdivision'],
+    ['Sub-Urban Housing','Brgy. San Jose, Rodriguez, Rizal',14.7510,121.1412,'suburban sub urban housing phase subdivision'],
+    ['Litex / Gravel Pit Corridor','Brgy. San Jose, Rodriguez, Rizal',14.7285,121.1120,'litex gravel pit market road'],
+    ['Eastwood Greenview & Residences','Brgy. San Jose, Rodriguez, Rizal',14.7390,121.1215,'eastwood greenview residences subdivision'],
+    ['Amityville Subdivision','Brgy. San Jose, Rodriguez, Rizal',14.7335,121.1280,'amityville subdivision'],
+    ['Tagumpay Village & Metro Montana','Brgy. San Jose, Rodriguez, Rizal',14.7560,121.1325,'tagumpay metro montana village'],
+    ['San Jose Proper / J.P. Rizal St','Brgy. San Jose, Rodriguez, Rizal',14.7410,121.1470,'san jose proper jp rizal poblacion barangay hall'],
+    ['Sitio Balite & Marang','Brgy. San Jose, Rodriguez, Rizal',14.7615,121.1460,'balite marang sitio'],
+    ['Sitio Wawa','Brgy. San Jose, Rodriguez, Rizal',14.7290,121.1470,'wawa sitio river'],
+    ['Sitio Libis','Brgy. San Jose, Rodriguez, Rizal',14.7520,121.1520,'libis sitio'],
+    ['Sitio Sapinit','Brgy. San Jose, Rodriguez, Rizal',14.7640,121.1400,'sapinit sitio'],
+    ['Sitio Manggahan','Brgy. San Jose, Rodriguez, Rizal',14.7380,121.1390,'manggahan sitio'],
+    ['Rodriguez Municipal Hall','Rodriguez, Rizal',14.7300,121.1440,'rodriguez municipal hall montalban'],
+    ['Rodriguez Plaza','Rodriguez, Rizal',14.7305,121.1445,'rodriguez plaza montalban'],
+    ['Sto. Niño de Rodriguez Parish','Rodriguez, Rizal',14.7302,121.1443,'santo nino rodriguez parish church montalban'],
+    ['Rodriguez National High School','Rodriguez, Rizal',14.7315,121.1450,'rodriguez national high school'],
+    ['Rodriguez Sports Complex','Rodriguez, Rizal',14.7295,121.1455,'rodriguez sports complex'],
+    ['Montalban Gorge (Wawa Dam)','Rodriguez, Rizal',14.7290,121.1900,'montalban gorge wawa dam river'],
+    ['Avilon Zoo','Rodriguez, Rizal',14.7235,121.1930,'avilon zoo'],
+    ['Puray Falls','Rodriguez, Rizal',14.7550,121.1900,'puray falls'],
+    ['SM City San Mateo','San Mateo, Rizal',14.6965,121.1160,'sm city san mateo mall'],
+    ['SM City Masinag','Antipolo, Rizal',14.6230,121.1240,'sm city masinag antipolo mall'],
+    ['Robinsons Place Antipolo','Antipolo, Rizal',14.5870,121.1750,'robinsons place antipolo mall'],
+    ['Antipolo Cathedral','Antipolo, Rizal',14.5875,121.1760,'antipolo cathedral church'],
+    ['Antipolo City Hall','Antipolo, Rizal',14.5860,121.1765,'antipolo city hall'],
+    ['University of Rizal System (URS)','Antipolo, Rizal',14.5930,121.1720,'university rizal system urs'],
+    ['Rizal Provincial Capitol','Antipolo, Rizal',14.5870,121.1770,'rizal provincial capitol'],
+    ['Cainta Junction','Cainta, Rizal',14.5790,121.1170,'cainta junction'],
+    ['Robinsons Cainta','Cainta, Rizal',14.5800,121.1200,'robinsons cainta mall'],
+    ['Sta. Lucia East Grand Mall','Cainta, Rizal',14.6190,121.1000,'sta lucia east grand mall'],
+    ['Marikina Sports Center','Marikina',14.6480,121.1020,'marikina sports center'],
+    ['Marikina Riverbanks','Marikina',14.6400,121.1030,'marikina riverbanks mall'],
+    ['Tanay Public Market','Tanay, Rizal',14.4970,121.2870,'tanay public market'],
+    ['Tanay Church','Tanay, Rizal',14.4960,121.2865,'tanay church parish'],
+    ['Daranak Falls','Tanay, Rizal',14.5350,121.2900,'daranak falls'],
+    ['Calinawan Cave','Tanay, Rizal',14.5300,121.3200,'calinawan cave'],
+    ['Regina Rica','Tanay, Rizal',14.5450,121.3000,'regina rica pilgrimage'],
+    ['Pililla Wind Farm','Pililla, Rizal',14.4800,121.3000,'pililla wind farm'],
+    ['Baras Church','Baras, Rizal',14.5200,121.2700,'baras church'],
+    ['Morong Church','Morong, Rizal',14.5150,121.2400,'morong church'],
+    ['Teresa Public Market','Teresa, Rizal',14.5600,121.2000,'teresa public market'],
+    ['Cardona Public Market','Cardona, Rizal',14.4870,121.2300,'cardona public market'],
+    ['Binangonan Public Market','Binangonan, Rizal',14.4650,121.1900,'binangonan public market'],
+    ['Angono Lakeside Park','Angono, Rizal',14.5250,121.1500,'angono lakeside park'],
+    ['Angono-Binangonan Petroglyphs','Angono, Rizal',14.5300,121.1650,'angono binangonan petroglyphs'],
+    ['Higantes Festival Grounds','Angono, Rizal',14.5250,121.1520,'higantes festival grounds angono'],
+    ['Robinsons Metro East','Pasig / Marikina border',14.6250,121.0950,'robinsons metro east mall'],
+    ['Ayala Malls Feliz','Pasig / Marikina border',14.6340,121.0990,'ayala malls feliz'],
+    ['SM Marikina','Marikina',14.6320,121.0980,'sm marikina mall'],
+    ['SM City San Lazaro','Manila',14.6170,120.9820,'sm city san lazaro manila'],
+    ['Divisoria','Manila',14.6000,120.9700,'divisoria manila'],
+    ['Quiapo Church','Manila',14.5980,120.9840,'quiapo church manila'],
+    ['Manila City Hall','Manila',14.5900,120.9810,'manila city hall'],
+    ['Rizal Park (Luneta)','Manila',14.5830,120.9790,'rizal park luneta'],
+    ['Intramuros','Manila',14.5890,120.9750,'intramuros manila'],
+    ['NAIA Terminal 1','Pasay',14.5080,121.0190,'naia terminal 1 airport'],
+    ['NAIA Terminal 2','Pasay',14.5120,121.0170,'naia terminal 2 airport'],
+    ['NAIA Terminal 3','Pasay',14.5180,121.0170,'naia terminal 3 airport'],
+    ['NAIA Terminal 4','Pasay',14.5100,121.0180,'naia terminal 4 airport'],
+    ['Clark International Airport','Pampanga',15.1860,120.5600,'clark international airport'],
+    ['Batangas Port','Batangas',13.7530,121.0420,'batangas port'],
+    ['BGC (Bonifacio Global City)','Taguig',14.5500,121.0500,'bonifacio global city bgc taguig'],
+    ['Ortigas Center','Pasig / Mandaluyong',14.5870,121.0630,'ortigas center'],
+    ['Makati CBD','Makati',14.5540,121.0240,'makati central business district'],
+    ['University of the Philippines Diliman','Quezon City',14.6540,121.0690,'university philippines diliman up'],
+    ['Ateneo de Manila University','Quezon City',14.6400,121.0790,'ateneo de manila university'],
+    ['De La Salle University','Manila',14.5650,120.9930,'de la salle university dlsu'],
+    ['University of Santo Tomas','Manila',14.6090,120.9890,'university santo tomas ust'],
+    ['Far Eastern University','Manila',14.6010,120.9870,'far eastern university feu'],
+    ['Philippine General Hospital','Manila',14.5790,120.9850,'philippine general hospital pgh'],
+    ['St. Luke\'s Medical Center QC','Quezon City',14.6220,121.0290,'st lukes medical center quezon city'],
+    ['The Medical City','Pasig',14.5850,121.0690,'the medical city pasig'],
+    ['Makati Medical Center','Makati',14.5590,121.0150,'makati medical center'],
+    ['Asian Hospital','Muntinlupa',14.4160,121.0400,'asian hospital alabang'],
+    ['Alabang Town Center','Muntinlupa',14.4240,121.0280,'alabang town center'],
+    ['SM Mall of Asia','Pasay',14.5350,120.9820,'sm mall of asia moa'],
+    ['SM Megamall','Mandaluyong',14.5850,121.0570,'sm megamall'],
+    ['SM North EDSA','Quezon City',14.6570,121.0310,'sm north edsa'],
+    ['Trinoma','Quezon City',14.6570,121.0320,'trinoma'],
+    ['Greenbelt','Makati',14.5520,121.0200,'greenbelt makati'],
+    ['Glorietta','Makati',14.5510,121.0230,'glorietta makati'],
+    ['Ayala Center Cebu','Cebu',10.3180,123.9050,'ayala center cebu'],
+    ['SM City Cebu','Cebu',10.3120,123.9180,'sm city cebu'],
+    ['SM Lanang Premier','Davao',7.1040,125.6320,'sm lanang premier davao'],
+    ['SM City Davao','Davao',7.0700,125.6080,'sm city davao'],
+    ['Baguio City Hall','Baguio',16.4120,120.5930,'baguio city hall'],
+    ['Burnham Park','Baguio',16.4100,120.5930,'burnham park baguio'],
+    ['Mines View Park','Baguio',16.4180,120.6120,'mines view park baguio'],
+    ['Vigan Heritage Village','Ilocos Sur',17.5750,120.3870,'vigan heritage village'],
+    ['Boracay White Beach','Aklan',11.9670,121.9240,'boracay white beach'],
+    ['Chocolate Hills','Bohol',9.9160,124.1670,'chocolate hills bohol'],
+    ['Puerto Princesa Underground River','Palawan',10.1900,118.9260,'puerto princesa underground river'],
+    ['El Nido','Palawan',11.1960,119.3960,'el nido palawan'],
+    ['Coron','Palawan',12.0000,120.2000,'coron palawan'],
+    ['Siargao Cloud 9','Surigao del Norte',9.8140,126.1640,'siargao cloud 9'],
+    ['Mayon Volcano','Albay',13.2570,123.6860,'mayon volcano albay'],
+    ['Taal Volcano','Batangas',14.0020,120.9930,'taal volcano batangas'],
+    ['Tagaytay Picnic Grove','Cavite',14.1150,120.9620,'tagaytay picnic grove'],
+    ['People\'s Park in the Sky','Tagaytay',14.1420,120.9350,'peoples park in the sky tagaytay'],
+    ['Banaue Rice Terraces','Ifugao',16.9120,121.0590,'banaue rice terraces']
+  ];
+  const SEARCH_ABBR = [
+    [/\b(blk|bl|blck)\.?(?=\s*\d|\s|$)/gi,'Block'], [/\bph\.?(?=\s*\d|\s|$)/gi,'Phase'],
+    [/\bbrgy\.?(?=\s|$)/gi,'Barangay'], [/\bsubd\.?(?=\s|$)/gi,'Subdivision'],
+    [/\bvlg\.?(?=\s|$)/gi,'Village'], [/\bst\.?(?=\s|$)/gi,'Street'],
+    [/\bave\.?(?=\s|$)/gi,'Avenue'], [/\bhi-?way\b/gi,'Highway'], [/\bbgy\.?(?=\s|$)/gi,'Barangay']
+  ];
+  const searchNorm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9ñ ]+/g,' ').replace(/\s+/g,' ').trim();
+  const searchNum = (x) => (typeof x==='number' && isFinite(x)) ? x : parseFloat(x);
+  const searchNear = (lat,lng,o) => { const dy=(lat-o.lat)*111, dx=(lng-o.lng)*108; return Math.sqrt(dx*dx+dy*dy); };
+  let activeSourceSearchController = null;
+  const searchTimeoutSignal = (ms, owner=activeSourceSearchController) => {
+    const c=new AbortController(), timeout=setTimeout(()=>c.abort(),ms);
+    if(owner && owner.signal){
+      if(owner.signal.aborted){clearTimeout(timeout);c.abort();}
+      else owner.signal.addEventListener('abort',()=>{clearTimeout(timeout);c.abort();},{once:true});
+    }
+    return c.signal;
+  };
+  function parseAddressQuery(raw) {
+    let q=raw.replace(/\s+/g,' ').trim(); SEARCH_ABBR.forEach(([re,to])=>{q=q.replace(re,to);});
+    const grab=(re)=>{const m=q.match(re); if(!m)return null; q=q.replace(m[0],' ').replace(/\s+/g,' ').trim(); return m[1].toUpperCase();};
+    const lot=grab(/\bl(?:ot|t)\.?\s*#?\s*([a-z]?\d+[a-z]?)\b/i);
+    const block=grab(/\bblock\s*#?\s*([a-z]?\d+[a-z]?)\b/i);
+    const phase=grab(/\b(?:phase|ph)\s*#?\s*(\d+[a-z]?|[ivx]+)\b/i);
+    return {full:q+(phase?' Phase '+phase:'')+(block?' Block '+block:'')+(lot?' Lot '+lot:''),base:q,phase,block,lot};
+  }
+  const SEARCH_RANK={coords:-2,local:0,psgc:0.2,hdxpoi:0.7,overpass_poi:0.5,overpass:2.5,photon:1,mapbox:2,arcgis:1.5,zippopotam:2.6,openmeteo:3.5,geonames:2.8,wikipedia:1.8,wikidata:2.2,fsq:1.2,osmtile:0.8,googlesug:1.4,bing:2.4,here:2.3};
+  const POI_ALIASES = [
+    [/\b(shop|store|tindahan|retail|mall|malls|boutique|outlet|supermarket|grocery|palengke|market|mart|convenience|7.?11|ministop|alfamart|puregold|sm|robinsons|landmark|rustans|metro|gaisano|savemore|waltermart|unitop|divisoria)\b/i,'shop'],
+    [/\b(computer|pc|laptop|internet|cyber|net|gaming|game|cellphone|cell|phone|mobile|electronics|gadget|repair|service center)\b/i,'electronics'],
+    [/\b(clothing|clothes|damit|apparel|fashion|ukay|ukay.?ukay|thrift|shoes|sapatos|bag|bags|jewelry|alahas|watch|relo)\b/i,'clothes'],
+    [/\b(pharmacy|botika|drugstore|drug|mercury|watsons|rose|generika|medicine|gamot)\b/i,'pharmacy'],
+    [/\b(bakery|panaderia|pandesal|bread|cake|cake shop|pastry|donut|donuts)\b/i,'bakery'],
+    [/\b(restaurant|resto|kainan|carenderia|carinderia|eatery|food|fast.?food|jollibee|mcdo|mcdonald|kfc|chowking|greenwich|pizza|burger|sushi|ramen|coffee|kape|cafe|starbucks|milk tea|milktea)\b/i,'restaurant'],
+    [/\b(bar|pub|beer|inuman|club|nightclub|videoke|karaoke|ktv)\b/i,'bar'],
+    [/\b(hotel|inn|motel|lodge|hostel|resort|pension|transient|airbnb)\b/i,'hotel'],
+    [/\b(bank|banko|atm|bdo|bpi|metrobank|landbank|pnb|china bank|security bank|unionbank|rcbc|eastwest|cebuana|palawan|mlhuillier)\b/i,'bank'],
+    [/\b(gas|gasoline|gasolinahan|petron|shell|caltex|seaoil|phoenix|total|fuel|diesel)\b/i,'fuel'],
+    [/\b(laundry|labada|laundromat|dry clean|water station|water refilling|refilling)\b/i,'laundry'],
+    [/\b(salon|parlor|barber|barbershop|spa|massage|nail|pedicure|manicure|beauty)\b/i,'hairdresser'],
+    [/\b(school|paaralan|eskwela|university|unibersidad|college|kolehiyo|academy|institute|elementary|high.?school|senior high|shs|junior high|jhs|preschool|kindergarten|daycare|tutor|learning center)\b/i,'school'],
+    [/\b(library|aklatan|study|review center|review|licensure)\b/i,'library'],
+    [/\b(hospital|ospital|clinic|klinika|health center|healthcenter|birthing|lying.?in|medical|doctor|doktor|dentist|dental|optical|laboratory|lab|diagnostic)\b/i,'hospital'],
+    [/\b(hall|city hall|municipal hall|barangay hall|barangay|brgy|pulis|police|station|fire|bumbero|post office|philpost|lto|ltfrb|dti|dole|nso|psa|sss|gsis|pag.?ibig|bir|nbi|dswd|doh|deped|dpwh|dilg|comelec|court|korte|prison|jail|pnp|camp)\b/i,'townhall'],
+    [/\b(church|simbahan|chapel|kapilya|parish|parokya|cathedral|katedral|mosque|masjid|temple|shrine|dambana)\b/i,'place_of_worship'],
+    [/\b(cemetery|sementeryo|memorial|columbarium|funeral|funeraria|crematory)\b/i,'grave_yard'],
+    [/\b(terminal|bus|jeepney|tricycle|trike|fx|uv express|van|puv|transport|station|stasyon|port|pantalan|pier|airport|paliparan|seaport|lrt|mrt|p2p|taxi|grab|angkas|joyride)\b/i,'bus_station'],
+    [/\b(park|liwasan|plaza|playground|garden|hardin|sports|gym|fitness|basketball|court|pool|swimming|beach|dagat|falls|talon|mountain|bundok|cave|kuweba|zoo|aviary|aquarium|museum|museo|gallery|teatro|cinema|movie|bowling|billiards|billar|arcade|theme park|amusement)\b/i,'park'],
+    [/\b(monument|bantayog|statue|estatwa|heritage|historical|makasaysayan|fort|kuta|ruins|mural)\b/i,'attraction'],
+    [/\b(tourist|tourism|pasyalan|viewpoint|tanawin|overlook|picnic|camping)\b/i,'viewpoint'],
+    [/\b(office|opisina|company|corp|corporation|business|negosyo|warehouse|bodega|factory|pabrika|industrial)\b/i,'office'],
+    [/\b(repair|ayos|vulcanizing|vulcanize|car shop|auto shop|motor shop|motorcycle shop|tire|gulong|muffler|car wash|carwash|auto supply|hardware|construction|paint|pintura|electrical|plumbing|tubig)\b/i,'car_repair'],
+    [/\b(pet|petshop|pet shop|veterinary|vet|animal clinic|asohan|dog|cat)\b/i,'veterinary'],
+    [/\b(courier|j&t|jnt|lbc|2go|mail|padala|cargo|shipping|forwarder)\b/i,'post_office'],
+    [/\b(printing|print|photocopy|xerox|comshop|pisonet|piso.?net|gaming shop)\b/i,'internet_cafe']
+  ];
+  function searchLocal(pq) {
+    const words=searchNorm(pq.base).split(' ').filter(w=>w.length>1); if(!words.length)return [];
+    return LOCAL_PLACES.filter(p=>{const hay=searchNorm(p[0]+' '+p[1]+' '+p[4]);return words.every(w=>hay.includes(w));})
+      .map(p=>({label:p[0],sub:p[1]+' • Approximate local pin',lat:p[2],lng:p[3],src:'local',rank:SEARCH_RANK.local,kind:'place'}));
+  }
+  // PSA PSGC REST data endpoints require a token; the hosted PSGC MCP is also
+  // an MCP protocol endpoint, not a browser geocoder. Use this versioned,
+  // no-key static index for browser name/code search. Its companion points are
+  // approximate boundary-derived points (faeldon/philippines-json-maps,
+  // PSA/NAMRIA 4Q 2023; MIT), not official PSA coordinates or survey points.
+  const PSGC_DATA_BASE='https://cdn.jsdelivr.net/gh/Tenasia/ph-psgc@2026-Q2/psgc';
+  let psgcSearchIndexTask=null,psgcPointsIndexTask=null,psgcSearchIndexData=null,psgcPointsIndexData=null;
+  const psgcAreaPointsTasks=new Map();
+  async function fetchPSGCJson(url,timeoutMs=10000) {
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs);
+    try {
+      const res=await fetch(url,{signal:controller.signal});
+      if(!res.ok)throw new Error('PSGC data '+res.status);
+      return await res.json();
+    } finally { clearTimeout(timer); }
+  }
+  function loadPSGCSearchIndex() {
+    if(!psgcSearchIndexTask)psgcSearchIndexTask=fetchPSGCJson(PSGC_DATA_BASE+'/search.json',12000).then(data=>{psgcSearchIndexData=data;return data;}).catch(err=>{psgcSearchIndexTask=null;throw err;});
+    return psgcSearchIndexTask;
+  }
+  function loadPSGCPointsIndex() {
+    if(!psgcPointsIndexTask)psgcPointsIndexTask=fetchPSGCJson(PSGC_DATA_BASE+'/points/index.json',6000).then(data=>{psgcPointsIndexData=data;return data;}).catch(err=>{psgcPointsIndexTask=null;throw err;});
+    return psgcPointsIndexTask;
+  }
+  function loadPSGCAreaPoints(code) {
+    const key=String(code);
+    if(!psgcAreaPointsTasks.has(key))psgcAreaPointsTasks.set(key,fetchPSGCJson(PSGC_DATA_BASE+'/points/'+encodeURIComponent(key)+'.json',2200).catch(()=>null));
+    return psgcAreaPointsTasks.get(key);
+  }
+  function psgcBoundsCenter(extent) {
+    if(!Array.isArray(extent)||extent.length<4)return null;
+    const lat=(searchNum(extent[0])+searchNum(extent[2]))/2,lng=(searchNum(extent[1])+searchNum(extent[3]))/2;
+    return isFinite(lat)&&isFinite(lng)?[lat,lng]:null;
+  }
+  async function searchPSGC(q) {
+    const stop=new Set(['barangay','brgy','bgy','city','municipality','municipal','province','region','the','of','philippines']);
+    const adminIntent=/\b(barangay|brgy|bgy|city|municipality|province|region)\b/i.test(q);
+    const terms=searchNorm(q).split(' ').filter(w=>(w.length>1||/^\d+$/.test(w))&&!stop.has(w));
+    if(!terms.length||(terms.length===1&&terms[0].length<4&&!/^\d+$/.test(terms[0])&&!adminIntent))return [];
+    if(searchPoiKeyword(q)&&!adminIntent)return [];
+    // Never make a cold index download part of the keystroke critical path.
+    // The Directions panel starts these requests in the background; use PSGC
+    // on this search only when both compact indexes have already arrived.
+    if(!psgcSearchIndexData||!psgcPointsIndexData){
+      if(!psgcSearchIndexTask)loadPSGCSearchIndex().catch(()=>{});
+      if(!psgcPointsIndexTask)loadPSGCPointsIndex().catch(()=>{});
+      return [];
+    }
+    const index=psgcSearchIndexData,pointsIndex=psgcPointsIndexData;
+    const areas=index.areas||[],regions=index.regions||[],cities=index.cities||[],extents=pointsIndex.areas||{},candidates=[];
+    const center=userLoc||map.getCenter(),queryKey=terms.join(' ');
+    const extentFor=code=>extents[String(code)]||null;
+    function candidateScore(name,context,areaCode,type) {
+      const nameKey=searchNorm(name),hay=searchNorm([name].concat(context||[]).filter(Boolean).join(' '));
+      if(!terms.every(w=>hay.includes(w)))return null;
+      const nameHits=terms.filter(w=>nameKey.includes(w)).length;
+      if(!nameHits)return null;
+      let score=-nameHits*2-(terms.every(w=>nameKey.includes(w))?3:0)-(nameKey===queryKey?4:0);
+      const boxCenter=psgcBoundsCenter(extentFor(areaCode));
+      if(boxCenter&&center&&isFinite(center.lat)&&isFinite(center.lng))score+=Math.min(searchNear(boxCenter[0],boxCenter[1],center),500)/50;
+      score+=type==='barangay'?0:type==='city'?0.25:0.5;
+      return score;
+    }
+    areas.forEach(area=>{
+      if(!area)return;
+      const region=regions[area[2]],areaCode=String(area[0]),areaName=area[1],regionName=region&&region[1]||'';
+      const score=candidateScore(areaName,[regionName],areaCode,'area');
+      if(score!=null)candidates.push({type:'area',name:areaName,code:areaCode,areaCode,areaName,regionName,score});
+    });
+    cities.forEach(city=>{
+      if(!city)return;
+      const cityCode=String(city[0]),cityName=city[1],area=areas[city[2]];
+      if(!area)return;
+      const areaCode=String(area[0]),areaName=area[1],region=regions[area[2]],regionName=region&&region[1]||'';
+      const cityScore=candidateScore(cityName,[areaName,regionName],areaCode,'city');
+      if(cityScore!=null)candidates.push({type:'city',name:cityName,code:cityCode,cityCode,areaCode,areaName,regionName,score:cityScore,cityKind:/^city of\b|\bcity$/i.test(cityName)?'City':'Municipality'});
+      (city[4]||[]).forEach(brgy=>{
+        if(!brgy)return;
+        const brgyName=brgy[0],district=brgy[2]||'',code=String(Number(cityCode)+Number(brgy[1]||0)).padStart(10,'0');
+        const score=candidateScore(brgyName,[district,cityName,areaName,regionName],areaCode,'barangay');
+        if(score!=null)candidates.push({type:'barangay',name:brgyName,code,cityCode,areaCode,areaName,regionName,cityName,district,score});
+      });
+    });
+    candidates.sort((a,b)=>a.score-b.score||a.name.localeCompare(b.name));
+    const selected=candidates.slice(0,60),areaCodes=[];
+    selected.forEach(c=>{if(c.areaCode&&!areaCodes.includes(c.areaCode)&&areaCodes.length<5)areaCodes.push(c.areaCode);});
+    const pointRows=await Promise.all(areaCodes.map(code=>loadPSGCAreaPoints(code).then(data=>[code,data]))),pointMap=new Map(pointRows);
+    return selected.filter(c=>!c.areaCode||areaCodes.includes(c.areaCode)).map(c=>{
+      const data=pointMap.get(c.areaCode),areaBox=extentFor(c.areaCode);
+      let point=null,pointNote='';
+      if(c.type==='barangay'){
+        point=data&&data.b&&data.b[c.code]||null;
+        if(point)pointNote='approximate barangay map point (2023 boundary-derived data)';
+        else if(data&&data.c&&data.c[c.cityCode]){point=data.c[c.cityCode];pointNote='barangay point unavailable; shown at the city/municipality map point';}
+      } else if(c.type==='city') {
+        point=data&&data.c&&data.c[c.code]||null;
+        if(point)pointNote='approximate city/municipality map point';
+      }
+      if(!point){point=psgcBoundsCenter(areaBox);if(point)pointNote='approximate administrative-area bounds center';}
+      if(!point)return null;
+      const lat=searchNum(point[0]),lng=searchNum(point[1]);if(!isFinite(lat)||!isFinite(lng))return null;
+      const hierarchy=[];
+      if(c.type==='barangay'){
+        if(c.district)hierarchy.push(c.district);
+        if(c.cityName)hierarchy.push(c.cityName);
+        if(c.areaName&&c.areaName!==c.cityName)hierarchy.push(c.areaName);
+        if(c.regionName&&c.regionName!==c.areaName)hierarchy.push(c.regionName);
+      } else if(c.type==='city'){
+        if(c.areaName&&c.areaName!==c.name)hierarchy.push(c.areaName);
+        if(c.regionName&&c.regionName!==c.areaName)hierarchy.push(c.regionName);
+      } else if(c.regionName)hierarchy.push(c.regionName);
+      const kind=c.type==='barangay'?'Barangay':c.type==='city'?c.cityKind:'Province/administrative area';
+      const published=index.published?'; PSA PSGC published '+index.published:'; PSA PSGC';
+      const sub=[kind,hierarchy.join(', '),'PSGC '+c.code+published,pointNote].filter(Boolean).join(' • ');
+      return {label:c.name,sub,lat,lng,src:'psgc',rank:SEARCH_RANK.psgc,kind:c.type};
+    }).filter(Boolean);
+  }
+
+  async function searchPhoton(q) {
+    const bias=userLoc||map.getCenter();
+    const url='https://photon.komoot.io/api/?q='+encodeURIComponent(q)+'&limit=15&lang=en&bbox='+PH_BBOX+(bias?'&lat='+bias.lat+'&lon='+bias.lng+'&location_bias_scale=0.25':'');
+    const d=await(await fetch(url,{signal:searchTimeoutSignal(3200)})).json();
+    return (d.features||[]).filter(f=>!f.properties.countrycode||String(f.properties.countrycode).toUpperCase()==='PH').map(f=>{
+      const p=f.properties, hn=p.housenumber?p.housenumber+' ':'', label=p.name||(p.street?hn+p.street:(p.district||p.city||''));
+      const sub=[p.name&&p.street?hn+p.street:'',p.district||p.suburb,p.city||p.county,p.state,p.postcode].filter((x,i,a)=>x&&x!==label&&a.indexOf(x)===i).join(', ');
+      return {label,sub,lng:f.geometry.coordinates[0],lat:f.geometry.coordinates[1],src:'photon',rank:SEARCH_RANK.photon,kind:p.osm_value||p.osm_key||p.type||''};
+    }).filter(r=>r.label);
+  }
+  async function searchMapbox(q) {
+    const bias=userLoc||map.getCenter();
+    const url='https://api.mapbox.com/geocoding/v5/mapbox.places/'+encodeURIComponent(q)+'.json?country=ph&limit=10&autocomplete=true&types=country,region,postcode,district,place,locality,neighborhood,address,poi'+(bias?'&proximity='+bias.lng+','+bias.lat:'')+'&access_token='+encodeURIComponent(mapboxgl.accessToken);
+    const res=await fetch(url,{signal:searchTimeoutSignal(3200)}); if(!res.ok)throw new Error('Mapbox '+res.status);
+    return ((await res.json()).features||[]).map(f=>{const full=f.place_name||'',i=full.indexOf(',');return {label:i>0?full.slice(0,i):(f.text||full),sub:i>0?full.slice(i+1).trim():full,lng:f.center[0],lat:f.center[1],src:'mapbox',rank:SEARCH_RANK.mapbox,kind:(f.place_type&&f.place_type[0])||''};});
+  }
+  async function searchArcGIS(q) {
+    const url='https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&countryCode=PHL&maxLocations=15&outFields=PlaceName,Place_addr,Type,City,Region,Category&SingleLine='+encodeURIComponent(q);
+    const d=await(await fetch(url,{signal:searchTimeoutSignal(3200)})).json();
+    return (d.candidates||[]).filter(c=>c.location&&c.score>=60).map(c=>{const a=c.attributes||{},parts=(c.address||'').split(','),label=a.PlaceName||parts[0];const sub=(a.Place_addr&&a.PlaceName?a.Place_addr:parts.slice(1).join(',')).trim()||[a.City,a.Region].filter(Boolean).join(',');return {label,sub,lat:c.location.y,lng:c.location.x,src:'arcgis',rank:SEARCH_RANK.arcgis,kind:a.Category||a.Type||''};});
+  }
+  const OVERPASS_MIRRORS=['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.osm.ch/api/interpreter','https://overpass.openstreetmap.ru/api/interpreter'];
+  const OVERPASS_SEARCH_BUDGET_MS=3200,OVERPASS_ATTEMPT_TIMEOUT_MS=1400;
+  const overpassResultCache=new Map(),overpassInflight=new Map();
+  function searchOverpassRun(query) {
+    const cached=overpassResultCache.get(query);if(cached&&Date.now()-cached.at<45000)return Promise.resolve(cached.data);
+    const pending=overpassInflight.get(query);if(pending&&(!pending.owner||!pending.owner.signal.aborted))return pending.task;
+    const owner=activeSourceSearchController,entry={owner,task:null};
+    const task=(async()=>{
+      const deadline=Date.now()+OVERPASS_SEARCH_BUDGET_MS;
+      for(const mirror of OVERPASS_MIRRORS){
+        if(owner&&owner.signal.aborted)return {elements:[]};
+        const remaining=deadline-Date.now();if(remaining<=0)break;
+        try{
+          const timeout=Math.min(OVERPASS_ATTEMPT_TIMEOUT_MS,remaining);
+          const res=await fetch(mirror,{method:'POST',body:'data='+encodeURIComponent(query),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:searchTimeoutSignal(timeout,owner)});
+          if(res.ok){const data=await res.json();if(!owner||!owner.signal.aborted)overpassResultCache.set(query,{at:Date.now(),data});return data;}
+        }catch(_){if(owner&&owner.signal.aborted)return {elements:[]};/* try another mirror within the shared search budget */}
+      }
+      return {elements:[]};
+    })().finally(()=>{if(overpassInflight.get(query)===entry)overpassInflight.delete(query);});
+    entry.task=task;overpassInflight.set(query,entry);return task;
+  }
+  function searchOverpassResults(data) {
+    return (data.elements||[]).map(e=>{const t=e.tags||{},lat=searchNum(e.lat!=null?e.lat:(e.center&&e.center.lat)),lng=searchNum(e.lon!=null?e.lon:(e.center&&e.center.lon));
+      const label=t.name||t['name:en']||t['addr:housename']||[t['addr:housenumber'],t['addr:street']].filter(Boolean).join(' ');
+      const sub=[t.name?[t['addr:housenumber'],t['addr:street']].filter(Boolean).join(' '):'',t['addr:suburb']||t['addr:neighbourhood']||t['addr:subdistrict']||t['addr:barangay'],t['addr:city']||t['addr:municipality']||t['addr:town']].filter(Boolean).join(', ')||[t.amenity,t.shop,t.office,t.leisure,t.healthcare,t.tourism,t.craft].filter(Boolean).join(', ');
+      const kind=t.shop||t.amenity||t.office||t.leisure||t.healthcare||t.tourism||t.craft||'';return {label,sub,lat,lng,src:'overpass',rank:SEARCH_RANK.overpass,kind};
+    }).filter(r=>r.label&&isFinite(r.lat)&&isFinite(r.lng));
+  }
+  // HDX's HOT Philippines POI export is published as Mapbox vector tiles,
+  // not as a keyword-search API. Attach an invisible vector layer on demand
+  // and query the map's already-loaded tiles, so this stays viewport-scoped.
+  const HDX_POI_SOURCE_ID='hdx-phl-poi-search';
+  const HDX_POI_SOURCE_LAYER='pre_34309001_679c_42d9_9195_d55bb0a01781';
+  const HDX_POI_TILES='https://data.humdata.org/gis/pre_34309001_679c_42d9_9195_d55bb0a01781/{z}/{x}/{y}.pbf';
+  let hdxSearchSourceRequested=false;
+  function ensureHDXPOISource() {
+    if(!map.isStyleLoaded())return false;
+    if(!map.getSource(HDX_POI_SOURCE_ID))map.addSource(HDX_POI_SOURCE_ID,{type:'vector',tiles:[HDX_POI_TILES],minzoom:0,maxzoom:14,attribution:'HOT / Humanitarian Data Exchange; OpenStreetMap contributors'});
+    if(!map.getLayer(HDX_POI_SOURCE_ID+'-invisible'))map.addLayer({id:HDX_POI_SOURCE_ID+'-invisible',type:'circle',source:HDX_POI_SOURCE_ID,'source-layer':HDX_POI_SOURCE_LAYER,minzoom:0,paint:{'circle-radius':1,'circle-opacity':0}});
+    return true;
+  }
+  map.on('style.load',()=>{if(hdxSearchSourceRequested){try{ensureHDXPOISource();}catch(err){console.debug('HDX POI tiles unavailable',err);}}});
+  async function waitForHDXTiles(owner=activeSourceSearchController) {
+    if(map.isSourceLoaded(HDX_POI_SOURCE_ID))return;
+    await new Promise(resolve=>{
+      let timer;
+      const finish=()=>{clearTimeout(timer);map.off('sourcedata',onData);map.off('idle',finish);if(owner&&owner.signal)owner.signal.removeEventListener('abort',finish);resolve();};
+      const onData=e=>{if(e.sourceId===HDX_POI_SOURCE_ID&&map.isSourceLoaded(HDX_POI_SOURCE_ID))finish();};
+      map.on('sourcedata',onData);map.on('idle',finish);if(owner&&owner.signal)owner.signal.addEventListener('abort',finish,{once:true});timer=setTimeout(finish,1100);
+    });
+  }
+  const HDX_CATEGORY_TAGS={
+    shop:['shop'],electronics:['computer','electronics','mobile_phone'],clothes:['clothes','clothing','shoes','fashion'],pharmacy:['pharmacy'],bakery:['bakery'],
+    restaurant:['restaurant','fast_food','cafe','food_court'],bar:['bar','pub','nightclub'],hotel:['hotel','motel','hostel','guest_house','resort'],bank:['bank','atm'],fuel:['fuel'],
+    laundry:['laundry'],hairdresser:['hairdresser','beauty'],school:['school','college','university','kindergarten','library'],library:['library'],hospital:['hospital','clinic','doctors','dentist'],
+    townhall:['townhall','government','police','fire_station','post_office'],place_of_worship:['place_of_worship'],grave_yard:['grave_yard','cemetery'],bus_station:['bus_station','ferry_terminal','taxi'],
+    park:['park','playground','sports_centre','swimming_pool','zoo','museum','beach'],attraction:['attraction','museum','artwork'],viewpoint:['viewpoint'],office:['office'],
+    car_repair:['car_repair','car_wash','tyres','hardware'],veterinary:['veterinary'],post_office:['post_office'],internet_cafe:['internet_cafe','computer']
+  };
+  function hdxCategoryMatches(tags,category) {
+    if(category==='shop')return !!tags.shop;
+    const fields=['amenity','man_made','shop','tourism'].map(key=>searchNorm(tags[key])).filter(Boolean),aliases=HDX_CATEGORY_TAGS[category]||[category];
+    return aliases.some(alias=>fields.some(value=>value===searchNorm(alias)||value.includes(searchNorm(alias))));
+  }
+  async function searchHDXPOI(q) {
+    if(!map.isStyleLoaded())return [];
+    hdxSearchSourceRequested=true;
+    try{ensureHDXPOISource();if(!map.getSource(HDX_POI_SOURCE_ID))return [];await waitForHDXTiles();}catch(_){return [];}
+    let features=[];
+    try{features=map.querySourceFeatures(HDX_POI_SOURCE_ID,{sourceLayer:HDX_POI_SOURCE_LAYER});}catch(_){return [];}
+    const words=searchOsmWords(q),category=searchPoiKeyword(q);
+    if(!words.length&&!category)return [];
+    return features.map(feature=>{
+      const tags=feature.properties||{},name=tags.name||tags['name:en']||tags.name_en||tags['name:fil']||tags.name_fil||'';
+      const geometry=feature.geometry,coords=geometry&&geometry.type==='Point'&&geometry.coordinates;
+      if(!name||!coords||coords.length<2)return null;
+      const lng=searchNum(coords[0]),lat=searchNum(coords[1]);
+      const address=[tags['addr:full']||tags.addr_full,tags['addr:street']||tags.addr_stree,tags['addr:city']||tags.addr_city,tags['addr:barangay']].filter(Boolean).join(', ');
+      const hay=searchNorm([name,tags['name:en'],tags.name_en,tags['name:fil'],tags.name_fil,address].filter(Boolean).join(' '));
+      const textHit=words.length&&words.every(word=>hay.includes(word)),categoryHit=category&&hdxCategoryMatches(tags,category);
+      if(!textHit&&!categoryHit)return null;
+      const kind=tags.amenity||tags.shop||tags.tourism||tags.man_made||'';
+      return {label:String(name),sub:[kind,address,'HOT Philippines POI • currently loaded map tiles'].filter(Boolean).join(' • '),lat,lng,src:'hdxpoi',rank:SEARCH_RANK.hdxpoi,kind:String(kind)};
+    }).filter(Boolean);
+  }
+
+  async function searchOverpass(q) {
+    const c=map.getCenter(),d=0.25,words=searchNorm(q).split(' ').filter(x=>x.length>1).map(x=>x.replace(/[^a-z0-9]/g,'')).filter(Boolean);if(!words.length)return [];
+    const re='(?i)'+words.join('.*'),box=(c.lat-d)+','+(c.lng-d)+','+(c.lat+d)+','+(c.lng+d);
+    const query='[out:json][timeout:15];(nwr["name"~"'+re+'"]('+box+');nwr["addr:housename"~"'+re+'"]('+box+');nwr["addr:street"~"'+re+'"]["addr:housenumber"]('+box+'););out center 40;';
+    return searchOverpassResults(await searchOverpassRun(query));
+  }
+  // Category aliases enable text-only searches such as "computer shop" or
+  // "botika" to query the matching OpenStreetMap tags.
+  function searchPoiKeyword(q) {
+    for(const [re,key] of POI_ALIASES) if(re.test(q)) return key;
+    return null;
+  }
+  function searchOsmWords(q) { return searchNorm(q).split(' ').filter(x=>x.length>1).map(x=>x.replace(/[^a-z0-9]/g,'')).filter(Boolean); }
+  function searchOsmBox(center,d) { return (center.lat-d)+','+(center.lng-d)+','+(center.lat+d)+','+(center.lng+d); }
+  function withOverpassSource(rows,src='overpass_poi',offset=0) { return rows.map(r=>({...r,src,rank:SEARCH_RANK[src]+offset})); }
+  async function searchOverpassPoi(q) {
+    const c=map.getCenter(),d=0.5,w=searchOsmWords(q); if(!w.length)return [];
+    const re='(?i)'+w.join('.*'),box=searchOsmBox(c,d);
+    const query='[out:json][timeout:20];('+
+      'nwr["amenity"]["name"~"'+re+'"]('+box+');'+
+      'nwr["shop"]["name"~"'+re+'"]('+box+');'+
+      'nwr["office"]["name"~"'+re+'"]('+box+');'+
+      'nwr["leisure"]["name"~"'+re+'"]('+box+');'+
+      'nwr["healthcare"]["name"~"'+re+'"]('+box+');'+
+      'nwr["tourism"]["name"~"'+re+'"]('+box+');'+
+      'nwr["craft"]["name"~"'+re+'"]('+box+');'+
+      ');out center 60;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi');
+  }
+  async function searchOverpassCategory(q) {
+    const keyword=searchPoiKeyword(q); if(!keyword)return [];
+    const c=map.getCenter(),d=0.35,box=searchOsmBox(c,d);
+    const tags=['amenity','shop','leisure','healthcare','tourism','office','craft'];
+    const filter=tags.map(tag=>'nwr["'+tag+'"="'+keyword+'"]('+box+');').join('');
+    const query='[out:json][timeout:20];('+filter+');out center 80;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi');
+  }
+  async function searchOverpassWide(q) {
+    const keyword=searchPoiKeyword(q); if(!keyword)return [];
+    const c=map.getCenter(),d=0.8,box=searchOsmBox(c,d),tags=['amenity','shop','leisure','healthcare','tourism','office','craft'];
+    const filter=tags.map(tag=>'nwr["'+tag+'"="'+keyword+'"]('+box+');').join('');
+    const query='[out:json][timeout:25];('+filter+');out center 100;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi',0.2);
+  }
+  async function searchOverpassAreas(q) {
+    const c=map.getCenter(),d=0.6,w=searchOsmWords(q);if(!w.length)return [];
+    const re='(?i)'+w.join('.*'),box=searchOsmBox(c,d);
+    const query='[out:json][timeout:20];(nwr["place"~"neighbourhood|suburb|quarter|village|hamlet|town|city"]["name"~"'+re+'"]('+box+');nwr["landuse"~"residential|commercial|industrial|retail"]["name"~"'+re+'"]('+box+');nwr["boundary"="administrative"]["name"~"'+re+'"]('+box+'););out center 40;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi',0.3);
+  }
+  async function searchOverpassTransport(q) {
+    const c=map.getCenter(),d=0.4,w=searchOsmWords(q),transport=/\b(terminal|bus|jeep|trike|tricycle|fx|van|puv|station|stasyon|port|pier|mrt|lrt|p2p|transport|sakayan)\b/i.test(q);
+    if(!transport&&!w.length)return [];
+    const re=w.length?'(?i)'+w.join('.*'):'.',box=searchOsmBox(c,d);
+    const query='[out:json][timeout:15];(nwr["amenity"~"bus_station|ferry_terminal|taxi"]["name"~"'+re+'"]('+box+');nwr["highway"="bus_stop"]["name"~"'+re+'"]('+box+');nwr["public_transport"="station"]["name"~"'+re+'"]('+box+');nwr["railway"="station"]["name"~"'+re+'"]('+box+'););out center 40;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi',0.1);
+  }
+  async function searchOverpassTourism(q) {
+    const c=map.getCenter(),d=0.6,w=searchOsmWords(q);if(!w.length)return [];
+    const re='(?i)'+w.join('.*'),box=searchOsmBox(c,d);
+    const query='[out:json][timeout:15];(nwr["historic"]["name"~"'+re+'"]('+box+');nwr["tourism"~"attraction|museum|viewpoint|artwork|gallery"]["name"~"'+re+'"]('+box+');nwr["memorial"]["name"~"'+re+'"]('+box+'););out center 40;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi',0.2);
+  }
+  async function searchOverpassEmergency(q) {
+    const c=map.getCenter(),d=0.6,w=searchOsmWords(q),isEmergency=/\b(police|pulis|pnp|fire|bumbero|emergency|rescue|hospital|ambulance|barangay hall|tanod|station)\b/i.test(q);
+    if(!isEmergency&&!w.length)return [];
+    const re=w.length?'(?i)'+w.join('.*'):'.',box=searchOsmBox(c,d);
+    const query='[out:json][timeout:15];(nwr["amenity"~"police|fire_station|ambulance_station|hospital|clinic|ranger_station"]["name"~"'+re+'"]('+box+');nwr["emergency"~"ambulance_station|fire_station|water_tank|phone|defibrillator"]["name"~"'+re+'"]('+box+');nwr["office"="government"]["name"~"'+re+'"]('+box+'););out center 40;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi',0.1);
+  }
+  async function searchOverpassReligious(q) {
+    const c=map.getCenter(),d=0.6,w=searchOsmWords(q);if(!w.length)return [];
+    const re='(?i)'+w.join('.*'),box=searchOsmBox(c,d);
+    const query='[out:json][timeout:15];(nwr["amenity"="place_of_worship"]["name"~"'+re+'"]('+box+');nwr["building"~"church|mosque|chapel"]["name"~"'+re+'"]('+box+'););out center 40;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi',0.1);
+  }
+  async function searchOverpassEducation(q) {
+    const c=map.getCenter(),d=0.6,w=searchOsmWords(q);if(!w.length)return [];
+    const re='(?i)'+w.join('.*'),box=searchOsmBox(c,d);
+    const query='[out:json][timeout:20];(nwr["amenity"~"school|college|university|kindergarten|language_school|music_school|driving_school"]["name"~"'+re+'"]('+box+');nwr["building"~"school|college|university|kindergarten"]["name"~"'+re+'"]('+box+');nwr["office"="educational_institution"]["name"~"'+re+'"]('+box+');nwr["landuse"="education"]["name"~"'+re+'"]('+box+'););out center 60;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi',0.1);
+  }
+  async function searchOverpassWater(q) {
+    const c=map.getCenter(),d=0.6,w=searchOsmWords(q),isWater=/\b(river|ilog|falls|talon|dam|water|tubig|spring|bukal|lake|lawa|sea|dagat|bay|beach|waterfall|stream|sapa)\b/i.test(q);
+    if(!isWater&&!w.length)return [];
+    const re=w.length?'(?i)'+w.join('.*'):'.',box=searchOsmBox(c,d);
+    const query='[out:json][timeout:15];(nwr["waterway"~"river|stream|waterfall|dam"]["name"~"'+re+'"]('+box+');nwr["natural"~"water|spring|beach|bay"]["name"~"'+re+'"]('+box+'););out center 40;';
+    return withOverpassSource(searchOverpassResults(await searchOverpassRun(query)),'overpass_poi',0.1);
+  }
+  async function searchOSMTiles(q) {
+    // OSM's standard tile.openstreetmap.org endpoint serves raster images, not
+    // GeoJSON. Use the equivalent current z14 tile bounds against Overpass JSON.
+    const c=map.getCenter(),z=14,n=Math.pow(2,z),x=Math.floor((c.lng+180)/360*n),y=Math.floor((1-Math.log(Math.tan(c.lat*Math.PI/180)+1/Math.cos(c.lat*Math.PI/180))/Math.PI)/2*n);
+    const lon=x=>x/n*360-180,lat=y=>Math.atan(Math.sinh(Math.PI*(1-2*y/n)))*180/Math.PI;
+    const south=lat(y+1),north=lat(y),west=lon(x),east=lon(x+1),w=searchOsmWords(q);if(!w.length)return [];
+    const re='(?i)'+w.join('.*'),query='[out:json][timeout:12];(nwr["name"~"'+re+'"]('+south+','+west+','+north+','+east+'););out center 50;';
+    return searchOverpassResults(await searchOverpassRun(query)).map(r=>({...r,src:'osmtile',rank:SEARCH_RANK.osmtile}));
+  }
+
+  // Zippopotam.us resolves Philippine four-digit postal codes to named places.
+  async function searchZippopotamPH(q) {
+    const match=String(q||'').match(/(?:^|\D)(\d{4})(?:\D|$)/);
+    if(!match)return [];
+    try {
+      const res=await fetch('https://api.zippopotam.us/ph/'+match[1],{signal:searchTimeoutSignal(2200)});
+      if(!res.ok)return [];
+      const data=await res.json();
+      return (data.places||[]).map(place=>({
+        label:[data['post code'],place['place name']].filter(Boolean).join(' '),
+        sub:[place.state,data.country||'Philippines'].filter(Boolean).join(', '),
+        lat:searchNum(place.latitude),lng:searchNum(place.longitude),src:'zippopotam',rank:SEARCH_RANK.zippopotam,kind:'postcode'
+      })).filter(row=>row.label&&isFinite(row.lat)&&isFinite(row.lng));
+    } catch(_){return [];}
+  }
+  async function searchOpenMeteo(q) {
+    const url='https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(q)+'&count=10&language=en&format=json&countryCode=PH';
+    const d=await(await fetch(url,{signal:searchTimeoutSignal(3200)})).json();
+    return (d.results||[]).map(r=>({label:r.name,sub:[r.admin2,r.admin1,r.country].filter(Boolean).join(', '),lat:searchNum(r.latitude),lng:searchNum(r.longitude),src:'openmeteo',rank:SEARCH_RANK.openmeteo,kind:'city'})).filter(r=>isFinite(r.lat)&&isFinite(r.lng));
+  }
+  async function searchGeoNames(q) {
+    const url='https://secure.geonames.org/searchJSON?name_startsWith='+encodeURIComponent(q)+'&country=PH&maxRows=10&style=full&username=demo';
+    const res=await fetch(url,{signal:searchTimeoutSignal(3200)});if(!res.ok)throw new Error('GeoNames '+res.status);const d=await res.json();
+    return (d.geonames||[]).map(g=>({label:g.name,sub:[g.adminName2,g.adminName1,g.countryName].filter(Boolean).join(', '),lat:searchNum(g.lat),lng:searchNum(g.lng),src:'geonames',rank:SEARCH_RANK.geonames,kind:g.fcodeName||'place'})).filter(r=>isFinite(r.lat)&&isFinite(r.lng));
+  }
+  async function searchWikipedia(q) {
+    const c=map.getCenter(),url='https://en.wikipedia.org/w/api.php?action=query&list=geosearch&gscoord='+c.lat+'%7C'+c.lng+'&gsradius=10000&gslimit=30&format=json&origin=*';
+    const d=await(await fetch(url,{signal:searchTimeoutSignal(3200)})).json(),words=searchNorm(q).split(' ').filter(x=>x.length>1);
+    return ((d.query&&d.query.geosearch)||[]).map(g=>({label:g.title,sub:'Wikipedia',lat:searchNum(g.lat),lng:searchNum(g.lon),src:'wikipedia',rank:SEARCH_RANK.wikipedia,kind:'article'})).filter(r=>isFinite(r.lat)&&isFinite(r.lng)&&words.every(w=>searchNorm(r.label).includes(w)));
+  }
+  async function searchWikidata(q) {
+    const c=map.getCenter(),sparql='SELECT ?item ?itemLabel ?lat ?lon WHERE { SERVICE wikibase:around { ?item wdt:P625 ?loc. bd:serviceParam wikibase:center "Point('+c.lng+' '+c.lat+')"^^geo:wktLiteral. bd:serviceParam wikibase:radius "12". } ?item p:P625 ?st. ?st psv:P625 ?v. ?v wikibase:geoLatitude ?lat. ?v wikibase:geoLongitude ?lon. SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } LIMIT 60';
+    const url='https://query.wikidata.org/sparql?format=json&query='+encodeURIComponent(sparql),res=await fetch(url,{signal:searchTimeoutSignal(3200),headers:{'Accept':'application/sparql-results+json'}});if(!res.ok)throw new Error('Wikidata '+res.status);
+    const d=await res.json(),words=searchNorm(q).split(' ').filter(x=>x.length>1);
+    return ((d.results&&d.results.bindings)||[]).map(b=>({label:b.itemLabel.value,sub:'Wikidata',lat:searchNum(b.lat.value),lng:searchNum(b.lon.value),src:'wikidata',rank:SEARCH_RANK.wikidata,kind:'entity'})).filter(r=>isFinite(r.lat)&&isFinite(r.lng)&&words.every(w=>searchNorm(r.label).includes(w)));
+  }
+  async function searchFoursquare(q) {
+    // Foursquare's v3 Places API requires an authorized token; skip cleanly
+    // unless the app injects one as window.FOURSQUARE_API_KEY or ?fsq=.
+    const key=(window.FOURSQUARE_API_KEY||params.get('fsq')||'').trim();if(!key)return [];
+    const c=map.getCenter(),url='https://api.foursquare.com/v3/places/search?query='+encodeURIComponent(q)+'&ll='+c.lat+','+c.lng+'&radius=20000&limit=20&country=PH';
+    const res=await fetch(url,{signal:searchTimeoutSignal(3200),headers:{'Authorization':key}});if(!res.ok)throw new Error('Foursquare '+res.status);
+    const d=await res.json();return (d.results||[]).map(p=>({label:p.name,sub:[p.location&&(p.location.address||p.location.formatted_address),p.location&&p.location.locality].filter(Boolean).join(', ')||'Foursquare',lat:searchNum(p.geocodes&&p.geocodes.main&&p.geocodes.main.latitude),lng:searchNum(p.geocodes&&p.geocodes.main&&p.geocodes.main.longitude),src:'fsq',rank:SEARCH_RANK.fsq,kind:p.categories&&p.categories[0]?p.categories[0].name:''})).filter(r=>r.label&&isFinite(r.lat)&&isFinite(r.lng));
+  }
+  async function searchGoogleSuggest(q) {
+    const owner=activeSourceSearchController,deadline=Date.now()+1800;
+    const url='https://suggestqueries.google.com/complete/search?client=firefox&hl=en&gl=ph&q='+encodeURIComponent(q+' Philippines');
+    try {
+      const res=await fetch(url,{signal:searchTimeoutSignal(1000,owner)});if(!res.ok)throw new Error('Google Suggest '+res.status);
+      const text=await res.text(),match=text.match(/\[.*\]/s);if(!match)return [];
+      const suggestion=(JSON.parse(match[0])[1]||[])[0];
+      if(!suggestion||owner&&owner.signal.aborted)return [];
+      // Resolve just the top suggestion, under one shared deadline. Avoid the
+      // old serial chain of up to six extra geocoder requests per keystroke.
+      const remaining=deadline-Date.now();if(remaining<=0)return [];
+      const lookup='https://photon.komoot.io/api/?q='+encodeURIComponent(suggestion)+'&limit=1&lang=en&bbox='+PH_BBOX;
+      const d=await(await fetch(lookup,{signal:searchTimeoutSignal(Math.min(800,remaining),owner)})).json(),f=(d.features||[])[0];
+      if(!f)return [];
+      const p=f.properties||{};
+      return [{label:p.name||suggestion,sub:[p.street,p.city||p.county,p.state].filter(Boolean).join(', ')||'Google suggestion',lat:searchNum(f.geometry.coordinates[1]),lng:searchNum(f.geometry.coordinates[0]),src:'googlesug',rank:SEARCH_RANK.googlesug,kind:p.osm_value||''}].filter(r=>isFinite(r.lat)&&isFinite(r.lng));
+    }catch(_){return [];}
+  }
+  async function searchBing(q) {
+    // Never embed the sample/private Bing key from pasted snippets in source.
+    const key=(window.BING_MAPS_KEY||params.get('bing')||'').trim();if(!key)return [];
+    const url='https://dev.virtualearth.net/REST/v1/Locations?query='+encodeURIComponent(q)+'&maxResults=10&includeEntityTypes=Place,Address,Neighborhood,PopulatedPlace&key='+encodeURIComponent(key);
+    const res=await fetch(url,{signal:searchTimeoutSignal(3200)});if(!res.ok)throw new Error('Bing '+res.status);
+    const d=await res.json(),items=(d.resourceSets&&d.resourceSets[0]&&d.resourceSets[0].resources)||[];
+    return items.map(r=>({label:r.name||((r.address&&r.address.formattedAddress)||'').split(',')[0],sub:r.address&&r.address.formattedAddress||'Bing Maps',lat:searchNum(r.point&&r.point.coordinates&&r.point.coordinates[0]),lng:searchNum(r.point&&r.point.coordinates&&r.point.coordinates[1]),src:'bing',rank:SEARCH_RANK.bing,kind:r.entityType||''})).filter(r=>r.label&&isFinite(r.lat)&&isFinite(r.lng));
+  }
+  async function searchHere(q) {
+    const key=(window.HERE_KEY||params.get('here')||'').trim();if(!key)return [];
+    const url='https://geocode.search.hereapi.com/v1/geocode?q='+encodeURIComponent(q)+'&in=countryCode:PHL&limit=10&apiKey='+encodeURIComponent(key);
+    const res=await fetch(url,{signal:searchTimeoutSignal(3200)});if(!res.ok)throw new Error('HERE '+res.status);const d=await res.json();
+    return (d.items||[]).map(it=>({label:it.title||(it.address&&it.address.label),sub:it.address&&it.address.label||'HERE',lat:searchNum(it.position&&it.position.lat),lng:searchNum(it.position&&it.position.lng),src:'here',rank:SEARCH_RANK.here,kind:it.resultType||''})).filter(r=>r.label&&isFinite(r.lat)&&isFinite(r.lng));
+  }
+
+  const SEARCH_PLACE_NOISE=new Set(['barangay','brgy','bgy','city','municipality','municipal','province','region','town','of','the','philippines','place','poi','locality','administrative','area','center','centre','mall','shopping','store','building','establishment','approximate','map','pin','point','boundary','derived','data','currently','loaded','tiles','hot','psgc','psa','published','wikipedia','wikidata','photon','mapbox','arcgis','nominatim','geonames','zippopotam','google','bing','here','foursquare','coordinates','fallback','unavailable','shown','source','address','postcode','code']);
+  function searchPlaceNameKey(row) {
+    return searchNorm(row&&row.label||'').replace(/\b\d{4}\b/g,' ').replace(/\bs\b/g,' ').split(' ').filter(word=>word&&!SEARCH_PLACE_NOISE.has(word)).join(' ');
+  }
+  function searchPlaceContext(row) {
+    const text=searchNorm(row&&row.sub||'')
+      .replace(/\bpsgc\s+\d+\b/g,' ')
+      .replace(/\bpsa psgc published [a-z]+\s+\d+\s+\d+\b/g,' ')
+      .replace(/\bhot philippines poi\b/g,' ');
+    return new Set(text.split(' ').filter(word=>(word.length>2||/^\d{1,4}$/.test(word))&&!SEARCH_PLACE_NOISE.has(word)));
+  }
+  function searchPlaceNamesMatch(a,b) {
+    const left=searchPlaceNameKey(a),right=searchPlaceNameKey(b);
+    if(!left||!right)return false;
+    if(left===right)return true;
+    const aWords=left.split(' '),bWords=right.split(' '),shorter=aWords.length<=bWords.length?aWords:bWords,longer=shorter===aWords?bWords:aWords;
+    if(shorter.length<2)return false;
+    const shared=shorter.filter(word=>longer.includes(word)).length;
+    return shared>=2&&shared/shorter.length>=0.8;
+  }
+  function searchPlaceAdminLevel(row) {
+    const text=searchNorm((row&&row.kind||'')+' '+(row&&row.sub||''));
+    if(/\bbarangay\b/.test(text))return 'barangay';
+    if(/\b(province|region)\b/.test(text))return 'province-region';
+    if(/\b(municipality|city|town|village|hamlet|district)\b/.test(text))return 'lgu';
+    if(/\b(administrative|locality)\b/.test(text))return 'administrative';
+    return '';
+  }
+  function searchResultsAreDuplicates(a,b) {
+    if(!a||!b||!isFinite(a.lat)||!isFinite(a.lng)||!isFinite(b.lat)||!isFinite(b.lng)||!searchPlaceNamesMatch(a,b))return false;
+    const distance=searchNear(a.lat,a.lng,b),aContext=searchPlaceContext(a),bContext=searchPlaceContext(b);
+    const smaller=Math.min(aContext.size,bContext.size),shared=[...aContext].filter(word=>bContext.has(word)).length;
+    const sameContext=shared>=2&&smaller>0&&shared/smaller>=0.75;
+    const aLevel=searchPlaceAdminLevel(a),bLevel=searchPlaceAdminLevel(b);
+    // Very-near provider pins can be duplicates even with sparse metadata, but
+    // do not collapse same-name places whose area context explicitly differs.
+    if(distance<=0.06&&(sameContext||!aContext.size||!bContext.size))return true;
+    if(aLevel&&bLevel&&sameContext&&distance<=2.5&&(aLevel===bLevel||aLevel==='administrative'||bLevel==='administrative'))return true;
+    // For non-administrative POIs, require a more specific shared context at
+    // the wider threshold so nearby same-brand branches remain separate.
+    if(distance<=0.25&&sameContext&&shared>=3)return true;
+    return false;
+  }
+  function dedupeSearchResults(rows,limit=Infinity) {
+    const unique=[];
+    for(const row of (rows||[])){
+      const duplicate=unique.find(existing=>searchResultsAreDuplicates(existing,row));
+      if(!duplicate)unique.push(row);
+      else if(!duplicate.sub&&row.sub)duplicate.sub=row.sub;
+      if(unique.length>=limit)break;
+    }
+    return unique;
+  }
+  const searchUnwrap=p=>p.then(v=>v,()=>[]);
+  function rankSearchResults(all,raw,pq) {
+    const out=[],tn=searchNorm(raw),words=searchNorm(pq.base).split(' ').filter(w=>w.length>1),center=userLoc||map.getCenter();
+    (all||[]).forEach(r=>{
+      if(!r||!isFinite(r.lat)||!isFinite(r.lng)||r.lat<4||r.lat>22||r.lng<116||r.lng>127)return;
+      const labelText=searchNorm(r.label+' '+(r.sub||'')),hit=words.filter(w=>labelText.includes(w)).length;
+      const categoryResult=(r.src==='overpass_poi'||r.src==='hdxpoi')&&!!searchPoiKeyword(raw);
+      if(!hit&&!categoryResult&&searchNorm(pq.base).length>3)return;
+      r.score=(SEARCH_RANK[r.src]!=null?SEARCH_RANK[r.src]:(r.rank||3))*2-hit*3+(center?Math.min(searchNear(r.lat,r.lng,center),300)/100:0)+(searchNorm(r.label).startsWith(tn)?-3:0)-(/shop|school|hospital|restaurant|bank|fuel|pharmacy|hotel|office|amenity|building/i.test(r.kind||'')?2:0);
+      out.push(r);
+    });
+    out.sort((a,b)=>a.score-b.score);
+    const res=dedupeSearchResults(out,30);
+    if((pq.block||pq.lot)&&res.length){
+      const best=res[0],unit=[pq.phase&&'Phase '+pq.phase,pq.block&&'Block '+pq.block,pq.lot&&'Lot '+pq.lot].filter(Boolean).join(', ');
+      const approximate={label:pq.base+', '+unit,sub:'Tinatayang lokasyon — malapit sa '+best.label,lat:best.lat,lng:best.lng,src:'approx'};
+      const nearby=res.slice(1).filter(row=>searchNear(row.lat,row.lng,best)>0.25);
+      res.splice(0,res.length,approximate,...nearby);
+    }
+    return res;
+  }
+  async function searchPlaces(raw,deep=true,onPartial) {
+    const cm=raw.match(/^\s*(-?\d{1,3}(?:\.\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
+    if(cm){let lat=+cm[1],lng=+cm[2];if(lat>30&&lng<30)[lat,lng]=[lng,lat];if(lat>=4&&lat<=22&&lng>=116&&lng<=127){const direct=[{label:lat.toFixed(5)+', '+lng.toFixed(5),sub:'Philippine coordinates',lat,lng,src:'coords'}];if(onPartial)onPartial(direct,true);return direct;}}
+    const pq=parseAddressQuery(raw),hasUnit=!!(pq.phase||pq.block||pq.lot),variants=[pq.full];
+    if(hasUnit){if(pq.phase)variants.push('Phase '+pq.phase+' '+pq.base,pq.base+' Ph '+pq.phase);variants.push(pq.base);}
+    // Keep all 27 search sources enabled. They start concurrently; early
+    // results are published as they arrive, rather than waiting for the slowest.
+    // Public Nominatim autocomplete is intentionally excluded by its usage policy.
+    const jobs=[
+      ()=>Promise.resolve(searchLocal(pq)),
+      ()=>searchPSGC(pq.base),
+      ()=>searchHDXPOI(pq.base),
+      ()=>searchPhoton(pq.full),
+      ()=>searchMapbox(pq.full),
+      ()=>searchArcGIS(pq.full),
+      ()=>searchOverpassPoi(pq.base),
+      ()=>searchOverpass(pq.base),
+      ()=>searchOverpassCategory(pq.base),
+      ()=>searchOverpassWide(pq.base),
+      ()=>searchOverpassAreas(pq.base),
+      ()=>searchOverpassTransport(pq.base),
+      ()=>searchOverpassTourism(pq.base),
+      ()=>searchOverpassEmergency(pq.base),
+      ()=>searchOverpassReligious(pq.base),
+      ()=>searchOverpassEducation(pq.base),
+      ()=>searchOverpassWater(pq.base),
+      ()=>searchOpenMeteo(pq.base),
+      ()=>searchWikipedia(pq.base),
+      ()=>searchWikidata(pq.base),
+      ()=>searchFoursquare(pq.base),
+      ()=>searchGoogleSuggest(pq.base),
+      ()=>searchBing(pq.full),
+      ()=>searchHere(pq.full),
+      ()=>searchOSMTiles(pq.base),
+      ()=>searchZippopotamPH(pq.base),
+      ()=>searchGeoNames(pq.base)
+    ];
+    if(hasUnit)variants.slice(1,3).forEach(v=>{jobs.push(()=>searchPhoton(v));jobs.push(()=>searchOverpassPoi(v));});
+    const owner=activeSourceSearchController,sourceRows=Array(jobs.length).fill(null),updateDelay=80;
+    let updateTimer=null,cutoffTimer=null;
+    function publishPartial() {
+      if(!onPartial||updateTimer||owner&&owner.signal.aborted)return;
+      updateTimer=setTimeout(()=>{
+        updateTimer=null;
+        if(owner&&owner.signal.aborted)return;
+        const partial=rankSearchResults([].concat(...sourceRows.filter(Array.isArray)),raw,pq);
+        if(partial.length)onPartial(partial,false);
+      },updateDelay);
+    }
+    const tasks=jobs.map((job,index)=>Promise.resolve().then(job).then(rows=>Array.isArray(rows)?rows:[],()=>[]).then(rows=>{
+      sourceRows[index]=rows;
+      if(rows.length)publishPartial();
+      return rows;
+    }));
+    const allPromise=Promise.all(tasks).then(rows=>{
+      if(updateTimer){clearTimeout(updateTimer);updateTimer=null;}
+      if(cutoffTimer){clearTimeout(cutoffTimer);cutoffTimer=null;}
+      const complete=rankSearchResults([].concat(...rows),raw,pq);
+      if(onPartial)onPartial(complete,true);
+      return complete;
+    }).catch(()=>[]);
+    const cutoffPromise=new Promise(resolve=>{
+      cutoffTimer=setTimeout(()=>resolve(rankSearchResults([].concat(...sourceRows.filter(Array.isArray)),raw,pq)),650);
+    });
+    // Return a usable snapshot by the one-second UI budget. The complete
+    // 27-source collection keeps running and streams later matches through the
+    // callback; starting the next query cancels the old one's network work.
+    return await Promise.race([allPromise,cutoffPromise]);
+  }
+  function scheduleSearch(q,deep) {
+    clearTimeout(timer);clearTimeout(searchDeadlineTimer);searchDeadlineTimer=null;
+    if(activeSourceSearchController){activeSourceSearchController.abort();activeSourceSearchController=null;}
+    const my=++seq;q=q.trim();searchErr=false;searchEnriching=false;
+    if(q.length<2){results=[];searching=false;dirty[active]=false;renderBody();return;}
+    results=[];activeSourceSearchController=new AbortController();
+    searching=true;renderBody();
+    timer=setTimeout(async()=>{
+      // Fast UI deadline: after the 200 ms debounce, show whatever has arrived
+      // within 650 ms. The remaining sources continue and merge without blocking.
+      searchDeadlineTimer=setTimeout(()=>{
+        if(my!==seq)return;
+        searching=false;searchEnriching=true;renderBody();
+      },650);
+      let allSourcesComplete=false;
+      try{
+        const found=await searchPlaces(q,true,(partial,complete)=>{
+          if(my!==seq)return;
+          allSourcesComplete=allSourcesComplete||!!complete;
+          results=partial;searchErr=false;searching=false;searchEnriching=!complete;
+          clearTimeout(searchDeadlineTimer);searchDeadlineTimer=null;
+          renderBody();
+        });if(my!==seq)return;
+        clearTimeout(searchDeadlineTimer);searchDeadlineTimer=null;
+        results=found;searchErr=false;searchEnriching=!allSourcesComplete;
+      }catch(e){if(my!==seq)return;clearTimeout(searchDeadlineTimer);searchDeadlineTimer=null;console.warn('Place search failed',e);results=[];searchErr=true;searchEnriching=false;}
+      searching=false;renderBody();
+    },200);
   }
 
   function row(icon, title, sub, fn) {
@@ -860,6 +1595,7 @@
       if (active === 'from') body.appendChild(userRow());
       results.forEach((r) => body.appendChild(row('pin', r.label, r.sub, () => applyPlace(r))));
       if (searching) body.appendChild(h('div', 'dir-empty', 'Naghahanap…'));
+      else if (searchEnriching) body.appendChild(h('div', 'dir-empty', results.length ? 'Kinukuha pa ang iba pang source…' : 'Patuloy na kinukuha ang resulta mula sa iba pang source…'));
       else if (searchErr) body.appendChild(h('div', 'dir-empty', 'Hindi makuha ang mga resulta. Subukan ulit.'));
       else if (!results.length) body.appendChild(h('div', 'dir-empty', 'Walang nakitang lugar.'));
       return;
@@ -878,29 +1614,54 @@
     });
     sc.appendChild(shortcut('more', 'More', '', 'o', () => { showAll = true; renderBody(); }));
     body.appendChild(sc);
+    const uniqueRecent=dedupeSearchResults(recent);
+    if(uniqueRecent.length!==recent.length){recent=uniqueRecent;store.set('traffic_recent_v2',recent);}
     const sec = h('div', 'dir-sec'); sec.appendChild(h('span', '', 'Recent')); const inf = h('span'); inf.innerHTML = svg('info', 22); sec.appendChild(inf); body.appendChild(sec);
-    if (!recent.length) { body.appendChild(h('div', 'dir-empty', 'Wala pang recent na destinasyon.')); return; }
-    (showAll ? recent : recent.slice(0, 3)).forEach((r) => body.appendChild(row('clock', r.label, r.sub, () => applyPlace(r))));
-    if (!showAll && recent.length > 3) { const m = h('button', 'dir-more', 'More from recent history'); m.type = 'button'; m.addEventListener('click', () => { showAll = true; renderBody(); }); body.appendChild(m); }
+    if (!uniqueRecent.length) { body.appendChild(h('div', 'dir-empty', 'Wala pang recent na destinasyon.')); return; }
+    (showAll ? uniqueRecent : uniqueRecent.slice(0, 3)).forEach((r) => body.appendChild(row('clock', r.label, r.sub, () => applyPlace(r))));
+    if (!showAll && uniqueRecent.length > 3) { const m = h('button', 'dir-more', 'More from recent history'); m.type = 'button'; m.addEventListener('click', () => { showAll = true; renderBody(); }); body.appendChild(m); }
   }
 
   function applyPlace(place) {
+    clearTimeout(searchDeadlineTimer);searchDeadlineTimer=null;
+    if(activeSourceSearchController){activeSourceSearchController.abort();activeSourceSearchController=null;}
+    seq++;searching=false;searchEnriching=false;
     if (addingStop) { stops.push(place); addingStop = false; toIn.placeholder = 'Choose destination'; toIn.value = to.user ? 'Your location' : to.label; dirty.to = false; results = []; go(); return; }
     if (pendingSave) { saved[pendingSave] = place; store.set('traffic_' + pendingSave, place); pendingSave = null; toIn.placeholder = 'Choose destination'; active = 'to'; setHint(''); }
     if (active === 'to') { to = place; toIn.value = place.label; } else { from = place; fromIn.value = place.label; fromIn.classList.remove('is-user'); }
     dirty.from = dirty.to = false; results = [];
-    recent = [place].concat(recent.filter((r) => !(r.lat === place.lat && r.lng === place.lng))).slice(0, 20);
-    store.set('traffic_recent', recent);
+    recent = [place].concat(recent.filter((r) => !searchResultsAreDuplicates(r, place))).slice(0, 20);
+    store.set('traffic_recent_v2', recent);
     if (from && to) go(); else { renderBody(); (active === 'to' ? fromIn : toIn).focus(); }
   }
 
+  // Client-side-only reverse-geocode endpoint: when called without coordinates,
+  // BigDataCloud returns a coarse IP-based location. Do not call this with
+  // stored or third-party coordinates; it is only the GPS-denial fallback.
+  async function getBigDataCloudLocation() {
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6000);
+    try {
+      const res=await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=en',{signal:controller.signal});
+      if(!res.ok)throw new Error('BigDataCloud '+res.status);
+      const data=await res.json(),lat=searchNum(data.latitude),lng=searchNum(data.longitude);
+      if(!Number.isFinite(lat)||!Number.isFinite(lng)||Math.abs(lat)>90||Math.abs(lng)>180)return null;
+      return {lat,lng,city:data.city||data.locality||'',country:data.countryName||'',subdivision:data.principalSubdivision||'',lookupSource:data.lookupSource||'ipGeolocation'};
+    } catch(_){return null;} finally {clearTimeout(timer);}
+  }
   function getUserLoc() {
-    return new Promise((resolve, reject) => {
-      const fail = () => (userLoc ? resolve(userLoc) : reject(new Error('geo')));
-      if (!navigator.geolocation) return fail();
+    return new Promise((resolve,reject)=>{
+      const fail=()=>{
+        if(userLoc){resolve(userLoc);return;}
+        getBigDataCloudLocation().then(location=>{
+          if(!location){reject(new Error('geo'));return;}
+          userLoc={lat:location.lat,lng:location.lng};userLocSource=location.lookupSource||'ipGeolocation';resolve(userLoc);
+        }).catch(()=>reject(new Error('geo')));
+      };
+      if(!navigator.geolocation){fail();return;}
       navigator.geolocation.getCurrentPosition(
-        (p) => { userLoc = { lat: p.coords.latitude, lng: p.coords.longitude }; resolve(userLoc); },
-        fail, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
+        position=>{userLoc={lat:position.coords.latitude,lng:position.coords.longitude};userLocSource='gps';resolve(userLoc);},
+        fail,{enableHighAccuracy:true,timeout:8000,maximumAge:30000}
+      );
     });
   }
   const coordsOf = (p) => (p.user ? getUserLoc() : Promise.resolve(p));
@@ -1906,7 +2667,7 @@
   let trafficUserMarker = null;
   function showTrafficUserLocation(lat, lng) {
     if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
-    userLoc = { lat: lat, lng: lng };
+    userLoc = { lat: lat, lng: lng }; userLocSource = 'gps';
     if (!trafficUserMarker) {
       const el = document.createElement('div');
       el.className = 'traffic-user-marker';
@@ -1926,6 +2687,11 @@
     if (!event.data) return;
     if (event.data.type === 'traffic-recenter') window.trafficRecenter();
     if (event.data.type === 'traffic-user-location') showTrafficUserLocation(event.data.lat, event.data.lng);
+  });
+</script>
+</body>
+</html>
+ion') showTrafficUserLocation(event.data.lat, event.data.lng);
   });
 </script>
 </body>
