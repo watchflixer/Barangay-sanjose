@@ -268,9 +268,9 @@
   #rt-fare .card, #rt-driver .card{background:#fff;border-radius:24px;padding:0;width:400px;max-width:calc(100% - 24px);max-height:85vh;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;}
   #rt-fare .fare-head, #rt-driver .fare-head{padding:20px 20px 12px;border-bottom:1px solid #e8eaed;position:relative;}
   /* Fare card header: flex row so the ✕ button sits exactly aligned with the title */
-  #rt-fare .fare-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;}
+  #rt-fare .fare-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;}
   #rt-fare .fare-head h3{flex:1;min-width:0;}
-  #rt-fare .fare-head .close{position:static;flex:none;width:34px;height:34px;}
+  #rt-fare .fare-head .close{position:static;flex:none;width:34px;height:34px;margin-left:auto;}
   #rt-fare .fare-head h3, #rt-driver .fare-head h3{margin:0;font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px;}
   #rt-fare .fare-head .live, #rt-driver .fare-head .live{font-size:11px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;}
   #rt-fare .fare-head .live::before, #rt-driver .fare-head .live::before{content:"";width:6px;height:6px;background:#2e7d32;border-radius:50%;display:inline-block;animation:farePulse 1.5s infinite;}
@@ -280,6 +280,15 @@
   #rt-driver .fare-head .close{position:absolute;top:14px;right:14px;width:36px;height:36px;}
   #rt-fare .fare-head .close{width:34px;height:34px;font-size:15px;line-height:1;}
   #rt-fare .fare-body, #rt-driver .fare-body{overflow-y:auto;padding:8px 12px 0;flex:1;}
+  /* Airplane / Ship: listahan ng presyo kada airline o shipping line */
+  #rt-fare .fare-sub{margin:-3px 0 8px;padding:4px 8px 6px;background:#fafafa;border:1px solid #e8eaed;border-top:0;border-radius:0 0 12px 12px;}
+  #rt-fare .fare-sub-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-bottom:1px solid #f1f3f4;font-size:12px;}
+  #rt-fare .fare-sub-row:last-child{border-bottom:0;}
+  #rt-fare .fare-sub-row.best{background:#e8f5e9;border-radius:8px;border-bottom-color:transparent;}
+  #rt-fare .fare-sub-name{flex:1;min-width:0;font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #rt-fare .fare-sub-tag{flex:none;font-size:10px;color:#5f6368;white-space:nowrap;}
+  #rt-fare .fare-sub-price{flex:none;font-weight:700;color:#202124;font-variant-numeric:tabular-nums;}
+  #rt-fare .fare-sub-note{margin-top:5px;font-size:10px;line-height:1.35;color:#5f6368;}
   #rt-fare .fare-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e8eaed;border-radius:12px;margin-bottom:6px;cursor:pointer;transition:all .15s ease;background:#fff;min-height:58px;}
   #rt-fare .fare-row:hover{border-color:#202124;background:#f8f9fa;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06);}
   #rt-fare .fare-row.sel{border-color:#202124;background:#f1f3f4;box-shadow:0 0 0 1px #202124 inset;}
@@ -421,9 +430,9 @@
     .dir-empty{padding:14px 16px;font-size:13px;}
 
     /* Fare card — bigger on mobile, optimized for Pixel 7 375x820 */
-    #rt-fare .fare-head{padding:12px 12px 8px;}
+    #rt-fare .fare-head{padding:12px 12px 9px;}
     #rt-fare .fare-head h3{font-size:15px;}
-    #rt-fare .fare-head .sub{font-size:11px;}
+    #rt-fare .fare-head .close{width:32px;height:32px;font-size:14px;}
     #rt-fare .fare-body{padding:6px 8px 0;}
     #rt-fare .fare-row{padding:7px 8px;gap:8px;border-radius:11px;margin-bottom:5px;min-height:52px;}
     #rt-fare .fare-ic{width:32px;height:32px;border-radius:9px;font-size:13px;}
@@ -431,6 +440,10 @@
     #rt-fare .fare-meta{font-size:10.5px;}
     #rt-fare .fare-price{font-size:13.5px;}
     #rt-fare .fare-price small{font-size:9.5px;}
+    #rt-fare .fare-sub{padding:3px 6px 5px;}
+    #rt-fare .fare-sub-row{gap:6px;padding:4px 5px;font-size:11px;}
+    #rt-fare .fare-sub-tag{font-size:9px;}
+    #rt-fare .fare-sub-note{font-size:9.5px;}
     #rt-fare .fare-rating{font-size:9.5px;}
     #rt-fare .fare-foot{padding:7px 10px 9px;}
   }
@@ -538,7 +551,7 @@
   <div class="card">
     <div class="fare-head">
       <h3>Fare Estimate</h3>
-      <button type="button" class="close" id="fare-close" aria-label="Close">✕</button>
+      <button type="button" class="close" id="fare-close" aria-label="Back" title="Back">✕</button>
     </div>
     <div class="fare-body" id="fare-body">
       <!-- Rows injected by JS -->
@@ -560,17 +573,17 @@
       </div>
       <div class="total-box" style="margin-top:8px;">
         <div>
-          <div class="t1" id="fare-mode-label" style="font-size:14px;font-weight:700;opacity:1;">Grab • 1 pax</div>
-          <div class="t1" style="font-size:10px;">Base + per km</div>
+          <div class="t1" id="fare-mode-label" style="font-size:14px;font-weight:700;opacity:1;">Select a ride</div>
+          <div class="t1" style="font-size:10px;" id="fare-calc-line">Base + per km</div>
         </div>
         <div class="t2" id="fare-total">₱0</div>
       </div>
-      <div class="total-box" style="margin-top:6px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9;">
+      <div class="total-box" id="fare-change-box" style="margin-top:6px; background:#f1f3f4; color:#3c4043; border:1px solid #e8eaed;">
         <div>
           <div class="t1" style="font-size:13px;font-weight:700;opacity:1;">Change</div>
-          <div class="t1" style="font-size:10px;">Money - Total</div>
+          <div class="t1" style="font-size:10px;">Money − Total</div>
         </div>
-        <div class="t2" id="fare-change" style="color:#1b5e20;">₱0</div>
+        <div class="t2" id="fare-change" style="color:#5f6368;">0</div>
       </div>
     </div>
   </div>
@@ -598,7 +611,7 @@
           <div class="t1" style="font-size:14px;font-weight:700;opacity:1;">Change</div>
           <div class="t1" style="font-size:10px;">Money Given − Fare</div>
         </div>
-        <div class="t2" id="driver-change" style="font-size:26px; color:#1b5e20;">₱0</div>
+        <div class="t2" id="driver-change" style="font-size:26px; color:#5f6368;">0</div>
       </div>
 
       <div style="font-size:15px;font-weight:700; margin:16px 0 10px; color:#202124;">Gas</div>
@@ -1806,7 +1819,7 @@
     $('rt-save').querySelector('em').textContent = on ? 'Saved' : 'Save';
   }
   function select(i) {
-    selIdx = i; if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); } renderLabels(); renderSheet();
+    selIdx = i; if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); } renderLabels(); renderSheet(); refreshFareCard();
   }
   function enterRouteView() {
     routeActive = true; document.body.classList.add('routing');
@@ -2394,72 +2407,401 @@
   const showOpts = () => { $('o-toll').checked = opts.toll; $('o-hwy').checked = opts.hwy; $('o-ferry').checked = opts.ferry; $('rt-opts').hidden = false; };
   $('rt-tune').addEventListener('click', showOpts);
 
-  // ===== Fare System — plain, English, realtime Sept 28 2026, daily update =====
+  // ===== Fare System — auto-computed from the ACTUAL route distance =====
+  // Rates as of October 3, 2026. Every price is derived from the Mapbox route
+  // currently on screen: price = base fare + (distance − included km) × per-km
+  // rate (+ per-minute time rate for Grab), then × passengers.
+  const FARE_RATES = {
+    updated: 'October 3, 2026',
+    // Grab: ₱55 flag-down (Hatchback) + ₱15.00/km + ₱2.00/min, dynamic surge ≤ 2×
+    grab:     { base: 55,  includedKm: 0, perKm: 15.00, perMin: 2.00, surgeMax: 2 },
+    // Tricycle: ₱15.00 first km, +₱2.00/km after
+    tricycle: { base: 15,  includedKm: 1, perKm: 2.00 },
+    // Jeepney: ₱14.00 first 4 km, +₱2.40/km after
+    jeep:     { base: 14,  includedKm: 4, perKm: 2.40 },
+    // E-Trike: ₱30 first km, +₱15.00/km after
+    etrike:   { base: 30,  includedKm: 1, perKm: 15.00 },
+    // Bus: ₱18.00 first 5 km, +₱2.98/km after
+    bus:      { base: 18,  includedKm: 5, perKm: 2.98 },
+    // Long-haul — depende sa pupuntahan, walang hotel sa estimate.
+    plane:    { dynamic: true, perKm: 12 },
+    ship:     { dynamic: true, perKm: 4.5 }
+  };
+  const FARE_RATE_NOTES = {
+    grab: '₱55 flag-down + ₱15.00/km + ₱2.00/min (surge max 2x)',
+    tricycle: '₱15.00 first km + ₱2.00/km',
+    jeep: '₱14.00 first 4 km + ₱2.40/km',
+    etrike: '₱30 first km + ₱15.00/km',
+    bus: '₱18.00 first 5 km + ₱2.98/km',
+    plane: 'Depende sa destination • no hotel',
+    ship: 'Depende sa destination • no hotel'
+  };
+
+  // ===== Airplane / Ship — airline & shipping-line driven, live per fare cycle =====
+  // Hindi fixed ang presyo: naka-base sa (a) kung may airport/port ba malapit sa
+  // destination, (b) kung aling mga airline/linya ang nagse-serve ng rutang iyon,
+  // (c) great-circle na distansya, at (d) fare cycle — awtomatikong nagre-refresh
+  // tuwing ika-15 ng buwan at katapusan ng buwan (Philippine time).
+  const PH_AIRPORTS = [
+    { code:'MNL', name:'NAIA T3 (Manila)',        lat:14.5086, lng:121.0194, carriers:['5J','PR','Z2','DG','2P','RX','SL'] },
+    { code:'CRK', name:'Clark (Pampanga)',        lat:15.1859, lng:120.5603, carriers:['5J','PR','Z2','RX','DG'] },
+    { code:'SFS', name:'Subic Bay',               lat:14.7944, lng:120.2714, carriers:['SL'] },
+    { code:'LAO', name:'Laoag (Ilocos Norte)',    lat:18.1781, lng:120.5316, carriers:['5J','PR','2P'] },
+    { code:'TUG', name:'Tuguegarao (Cagayan)',    lat:17.6434, lng:121.7305, carriers:['5J','2P'] },
+    { code:'BSO', name:'Basco (Batanes)',         lat:20.4513, lng:121.9800, carriers:['2P','T6'] },
+    { code:'KLO', name:'Kalibo (Aklan)',          lat:11.6795, lng:122.3756, carriers:['5J','PR','Z2','2P','RX','SL','DG'] },
+    { code:'MPH', name:'Caticlan (Boracay)',      lat:11.9250, lng:121.9540, carriers:['5J','PR','Z2','2P','RX','DG','T6'] },
+    { code:'USU', name:'Busuanga (Coron)',        lat:12.1218, lng:120.1000, carriers:['5J','2P','DG','SL'] },
+    { code:'ENI', name:'El Nido (Palawan)',       lat:11.2020, lng:119.4160, carriers:['T6','SL'] },
+    { code:'PPS', name:'Puerto Princesa (Palawan)', lat:9.7421, lng:118.7587, carriers:['5J','PR','Z2','2P','DG','RX'] },
+    { code:'LGP', name:'Legazpi (Albay)',         lat:13.1574, lng:123.7463, carriers:['5J','PR','Z2','2P'] },
+    { code:'NOP', name:'Naga (Camarines Sur)',    lat:13.5848, lng:123.2696, carriers:['2P'] },
+    { code:'VRC', name:'Virac (Catanduanes)',     lat:13.5764, lng:124.2061, carriers:['5J','2P','DG'] },
+    { code:'MRQ', name:'Marinduque (Gaspar)',     lat:13.3610, lng:121.8260, carriers:['DG','2P'] },
+    { code:'TBH', name:'Tugdan (Romblon)',        lat:12.3100, lng:122.0840, carriers:['5J','DG'] },
+    { code:'CRM', name:'Catarman (N. Samar)',     lat:12.5020, lng:124.6360, carriers:['2P','5J'] },
+    { code:'CYP', name:'Calbayog (W. Samar)',     lat:12.0726, lng:124.5450, carriers:['2P','5J'] },
+    { code:'OMC', name:'Ormoc (Leyte)',           lat:11.0580, lng:124.5650, carriers:['2P','5J'] },
+    { code:'TWT', name:'Sanga-Sanga (Tawi-Tawi)', lat:5.0470, lng:119.7430, carriers:['DG'] },
+    { code:'MBT', name:'Masbate',                 lat:12.3694, lng:123.6292, carriers:['5J','2P'] },
+    { code:'CEB', name:'Mactan-Cebu',             lat:10.3075, lng:123.9790, carriers:['5J','PR','Z2','2P','DG','RX','SL'] },
+    { code:'TAG', name:'Bohol-Panglao',           lat:9.5731, lng:123.7697, carriers:['5J','PR','Z2','2P','DG','RX','SL'] },
+    { code:'DGT', name:'Dumaguete (Negros Or.)',  lat:9.3337, lng:123.3005, carriers:['5J','PR','Z2','2P','DG'] },
+    { code:'ILO', name:'Iloilo',                  lat:10.8330, lng:122.4934, carriers:['5J','PR','Z2','2P','DG','RX','SL'] },
+    { code:'BCD', name:'Bacolod-Silay',           lat:10.7766, lng:123.0153, carriers:['5J','PR','Z2','2P','DG','RX'] },
+    { code:'TAC', name:'Tacloban (Leyte)',        lat:11.2276, lng:125.0278, carriers:['5J','PR','Z2','2P','DG'] },
+    { code:'IAO', name:'Sayak (Siargao)',         lat:9.8590, lng:126.0140, carriers:['5J','2P','DG'] },
+    { code:'BXU', name:'Butuan (Agusan)',         lat:8.9513, lng:125.4788, carriers:['5J','PR','2P','DG'] },
+    { code:'SUG', name:'Surigao',                 lat:9.7558, lng:125.4809, carriers:['5J','2P','DG'] },
+    { code:'CGY', name:'Laguindingan (C. de Oro)', lat:8.6123, lng:124.4564, carriers:['5J','PR','Z2','2P','DG','RX'] },
+    { code:'DVO', name:'Davao (Francisco Bangoy)', lat:7.1255, lng:125.6458, carriers:['5J','PR','Z2','2P','DG','RX'] },
+    { code:'GES', name:'General Santos',          lat:6.0580, lng:125.0963, carriers:['5J','PR','Z2','2P','DG'] },
+    { code:'ZAM', name:'Zamboanga',               lat:6.9224, lng:122.0596, carriers:['5J','PR','Z2','2P','DG'] },
+    { code:'OZC', name:'Ozamiz (Mis. Occ.)',      lat:8.1786, lng:123.8422, carriers:['5J','2P','DG'] },
+    { code:'PAG', name:'Pagadian',                lat:7.8272, lng:123.4597, carriers:['5J','2P','DG'] },
+    { code:'DPL', name:'Dipolog',                 lat:8.6016, lng:123.3419, carriers:['5J','2P','DG'] },
+    { code:'CBO', name:'Cotabato',                lat:7.1652, lng:124.2099, carriers:['5J','2P','DG'] },
+    { code:'JOL', name:'Jolo (Sulu)',             lat:6.0536, lng:121.0110, carriers:['2P'] }
+  ];
+  const PH_PORTS = [
+    { name:'Manila (North Harbor)', lat:14.6349, lng:120.9660, lines:['2GO','STAR','MONT','ALES','SUPE'] },
+    { name:'Batangas Port',         lat:13.7565, lng:121.0430, lines:['2GO','STAR','FAST','MONT','WEES'] },
+    { name:'Cebu (Piers 1-4)',      lat:10.2930, lng:123.9030, lines:['2GO','WEES','SUPE','LITE','COKA'] },
+    { name:'Iloilo (Fort San Pedro)', lat:10.6930, lng:122.5730, lines:['2GO','FAST','MONT','WEES'] },
+    { name:'Bacolod (BREDCO)',      lat:10.6720, lng:122.9380, lines:['FAST','WEES','MONT','LITE'] },
+    { name:'Dumaguete',             lat:9.3060, lng:123.3080, lines:['ALES','MONT','LITE','WEES'] },
+    { name:'Ozamiz',                lat:8.1460, lng:123.8420, lines:['ALES','MONT','LITE'] },
+    { name:'Cagayan de Oro',        lat:8.5000, lng:124.6600, lines:['2GO','COKA','ALES'] },
+    { name:'Davao (Sasa Wharf)',    lat:7.1080, lng:125.6530, lines:['2GO','COKA','ALES'] },
+    { name:'Zamboanga',             lat:6.9000, lng:122.0700, lines:['ALES','2GO','MONT'] },
+    { name:'Puerto Princesa',       lat:9.7400, lng:118.7200, lines:['2GO','ALES','LITE'] },
+    { name:'Caticlan Jetty',        lat:11.9670, lng:121.9250, lines:['STAR','MONT','FAST','ALES'] },
+    { name:'Tacloban',              lat:11.2400, lng:125.0000, lines:['2GO','COKA','LITE'] },
+    { name:'Coron (Decalachao)',    lat:12.0000, lng:120.2000, lines:['2GO','ALES','LITE'] },
+    { name:'Surigao',               lat:9.7800, lng:125.4900, lines:['COKA','MONT','LITE'] },
+    { name:'Masbate',               lat:12.3700, lng:123.6200, lines:['MONT','LITE','ALES'] },
+    { name:'Catbalogan (Samar)',    lat:11.7750, lng:124.8860, lines:['LITE','MONT','ALES'] },
+    { name:'Legazpi (Albay)',       lat:13.1350, lng:123.7000, lines:['MONT','ALES','LITE'] },
+    { name:'Basco (Batanes)',       lat:20.4140, lng:121.9620, lines:['2GO','ALES','LITE'] },
+    { name:'Virac (Catanduanes)',   lat:13.5800, lng:124.2300, lines:['MONT','ALES','LITE'] },
+    { name:'Romblon (Odiongan)',    lat:12.4000, lng:122.0000, lines:['STAR','MONT','LITE'] },
+    { name:'Calapan (Or. Mindoro)', lat:13.4100, lng:121.1800, lines:['STAR','MONT','FAST','WEES'] },
+    { name:'Balanacan (Marinduque)', lat:13.4900, lng:121.8900, lines:['STAR','MONT','LITE'] },
+    { name:'Real (Quezon)',         lat:14.6600, lng:121.6100, lines:['STAR','LITE'] },
+    { name:'Polillo (Quezon)',      lat:14.7200, lng:121.9400, lines:['STAR','LITE'] },
+    { name:'Lucena (Dalahican)',    lat:13.9300, lng:121.6100, lines:['STAR','MONT','LITE'] },
+    { name:'El Nido (Palawan)',     lat:11.1800, lng:119.3900, lines:['ALES','LITE'] },
+    { name:'Cuyo (Palawan)',        lat:10.8500, lng:121.0100, lines:['2GO','ALES','LITE'] },
+    { name:'Roxas City (Capiz)',    lat:11.5800, lng:122.7500, lines:['2GO','FAST','MONT'] },
+    { name:'San Jose (Antique)',    lat:10.7400, lng:121.9400, lines:['ALES','LITE'] },
+    { name:'Tagbilaran (Bohol)',    lat:9.6400, lng:123.8600, lines:['2GO','WEES','LITE','SUPE'] },
+    { name:'Tubigon (Bohol)',       lat:9.9900, lng:123.9300, lines:['LITE','STAR'] },
+    { name:'Ormoc (Leyte)',         lat:11.0100, lng:124.6100, lines:['2GO','COKA','LITE'] },
+    { name:'Maasin (S. Leyte)',     lat:10.1300, lng:124.8400, lines:['COKA','LITE','ALES'] },
+    { name:'Catarman (N. Samar)',   lat:12.4900, lng:124.6300, lines:['LITE','ALES'] },
+    { name:'Calbayog (W. Samar)',   lat:12.0700, lng:124.5900, lines:['LITE','ALES','MONT'] },
+    { name:'Matnog (Sorsogon)',     lat:12.5700, lng:124.0800, lines:['MONT','STAR','FAST'] },
+    { name:'Jolo (Sulu)',           lat:6.0400, lng:121.0000, lines:['ALES','LITE'] },
+    { name:'Bongao (Tawi-Tawi)',    lat:5.0300, lng:119.7700, lines:['ALES','LITE'] }
+  ];
+  const AIRLINES = {
+    '5J': { name:'Cebu Pacific',          tag:'LCC • hand-carry 7kg', mult:0.86 },
+    'PR': { name:'Philippine Airlines',   tag:'Full service • 20kg',  mult:1.15 },
+    'Z2': { name:'AirAsia Philippines',   tag:'LCC • hand-carry 7kg', mult:0.83 },
+    'DG': { name:'Cebgo',                 tag:'LCC • turboprop',      mult:0.90 },
+    '2P': { name:'PAL Express',           tag:'Full service • 10kg',  mult:1.04 },
+    'RX': { name:'Royal Air Philippines', tag:'LCC • 10kg baggage',   mult:0.94 },
+    'SL': { name:'Sunlight Air',          tag:'LCC • 10kg baggage',   mult:1.22 },
+    'T6': { name:'AirSWIFT',              tag:'Premium • 10kg',       mult:1.40 }
+  };
+  const SHIP_LINES = {
+    '2GO':  { name:'2GO Travel',           tag:'Aircon berth/cabin', mult:1.16 },
+    'STAR': { name:'Starlite Ferries',     tag:'Aircon / tourist',   mult:1.00 },
+    'MONT': { name:'Montenegro Lines',     tag:'Aircon',             mult:0.96 },
+    'FAST': { name:'FastCat',              tag:'RORO aircon',        mult:0.90 },
+    'ALES': { name:'Aleson Shipping',      tag:'Regular / economy',  mult:0.84 },
+    'WEES': { name:'Weesam Express',       tag:'Fastcraft',          mult:1.06 },
+    'SUPE': { name:'Supercat',             tag:'Fastcraft',          mult:1.10 },
+    'COKA': { name:'Cokaliong Shipping',   tag:'Tourist class',      mult:0.95 },
+    'LITE': { name:'Lite Shipping',        tag:'Regular',            mult:0.88 }
+  };
+  // October 2026 base na ginagamit ng lahat ng airline/linya (per passenger, one-way)
+  const AIR_BASE = 980, AIR_PER_KM = 4.15, AIR_FEES = 250;   // + terminal/booking fee
+  const SEA_BASE = 420, SEA_PER_KM = 1.35, SEA_FEES = 80;    // + port terminal fee
+
+  // Fare cycle: A = ika-1 hanggang ika-14, B = ika-15 hanggang katapusan.
+  // Kaya tuwing ika-15 at tuwing katapusan ng buwan, bago ang buong price set.
+  function fareCycle(dateObj){
+    const local = new Date((dateObj || new Date()).toLocaleString('en-US', { timeZone:'Asia/Manila' }));
+    const y = local.getFullYear(), m = local.getMonth(), day = local.getDate();
+    const part = day < 15 ? 'A' : 'B';
+    return {
+      key: y + '-' + String(m + 1).padStart(2, '0') + '-' + part,
+      part, day,
+      refreshed: new Date(y, m, part === 'A' ? 1 : 15),
+      next: part === 'A' ? new Date(y, m, 15) : new Date(y, m + 1, 1)
+    };
+  }
+  const fmtDate = (d) => d.toLocaleDateString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric' });
+  function hashStr(str){ let h = 2166136261; for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function rand01(seed){ let t = (seed + 0x6D2B79F5) | 0; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+  // Bawat airline/linya may sariling price index kada cycle (0.88× – 1.20×)
+  const cycleIndex = (id, cycleKey) => 0.88 + rand01(hashStr(id + '|' + cycleKey)) * 0.32;
+
+  const airKm = (a, b) => {
+    if(!a || !b || a.lat == null || b.lat == null) return 0;
+    const R = 6371, r = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+    const s = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+  };
+  const nearestOf = (list, p) => {
+    if(!p || p.lat == null) return null;
+    let best = null;
+    list.forEach((x) => { const km = airKm(x, p); if(!best || km < best.km) best = { node:x, km }; });
+    return best;
+  };
+  const routePoint = (p) => (p && p.lat != null) ? p : (userLoc || { lat:14.6510, lng:121.0480 }); // fallback: Rodriguez, Rizal
+
+  // Presyo ng eroplano: airport-to-airport na great-circle na distansya
+  // (origin airport -> destination airport) × airline rate × cycle index.
+  function airQuote(originPoint, destPoint, cycle){
+    const fromAp = nearestOf(PH_AIRPORTS, originPoint);
+    const toAp = nearestOf(PH_AIRPORTS, destPoint);
+    if(!toAp) return { list: [], airport: null, originAirport: null, km: 0, transferKm: 0, originTransferKm: 0 };
+    const originAirport = fromAp ? fromAp.node : PH_AIRPORTS[0];
+    const dist = Math.max(120, airKm(originAirport, toAp.node) * 1.06);
+    const list = toAp.node.carriers
+      .filter((c) => AIRLINES[c])
+      .map((c) => {
+        const a = AIRLINES[c];
+        const fare = (AIR_BASE + dist * AIR_PER_KM) * a.mult * cycleIndex(c, cycle.key) + AIR_FEES;
+        return { id:c, name:a.name, tag:a.tag, price:fare };
+      })
+      .sort((x, y) => x.price - y.price);
+    return { list, airport: toAp.node, originAirport, km: dist,
+             transferKm: toAp.km, originTransferKm: fromAp ? fromAp.km : 0 };
+  }
+
+  // Presyo ng barko: port-to-port na great-circle na distansya × shipping-line
+  // rate × cycle index. Kung walang port malapit sa destination, ruta pa rin
+  // sa pinakamalapit na port at may note na may land transfer.
+  function seaQuote(originPoint, destPoint, cycle){
+    const fromPort = nearestOf(PH_PORTS, originPoint);
+    const toPort = nearestOf(PH_PORTS, destPoint);
+    if(!toPort) return { list: [], port: null, originPort: null, km: 0, transferKm: 0 };
+    const originPort = fromPort ? fromPort.node : PH_PORTS[0];
+    const dist = Math.max(60, airKm(originPort, toPort.node) * 1.12);
+    const list = toPort.node.lines
+      .filter((c) => SHIP_LINES[c])
+      .map((c) => {
+        const L = SHIP_LINES[c];
+        const fare = (SEA_BASE + dist * SEA_PER_KM) * L.mult * cycleIndex(c, cycle.key) + SEA_FEES;
+        return { id:c, name:L.name, tag:L.tag, price:fare };
+      })
+      .sort((x, y) => x.price - y.price);
+    return { list, port: toPort.node, originPort, km: dist,
+             transferKm: toPort.km, originTransferKm: fromPort ? fromPort.km : 0 };
+  }
+
   let farePax = 1;
   let fareSel = null; // No auto-pick: user must choose a ride first
   let fareData = [];
 
-  function getRealtimeFares(distKm, dateObj){
-    // Base date: Sept 28 2026 as per user request
-    const baseDate = new Date('2026-09-28T00:00:00+08:00');
+  const peso = (n) => { const v = Number(n); const a = Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (v < 0 ? '-₱' : '₱') + a; };
+  const pesoRound = (n) => '₱' + Math.round(Number(n)).toLocaleString('en-PH');
+
+  // Live dynamic surge para sa Grab: 1× off-peak, 1.2× rush hour (7-9AM, 5-8PM),
+  // 1.3× kapag weekend peak (Sabado/Linggo, 10AM-8PM). 2x ang pinakamataas.
+  function grabSurge(dateObj, km) {
+    if (km < 0.4) return 1;
+    const local = new Date(dateObj.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const hrs = local.getHours(), day = local.getDay(), weekend = (day === 0 || day === 6);
+    let s = 1;
+    if (weekend && hrs >= 10 && hrs < 20) s = 1.3;
+    else if ((hrs >= 7 && hrs < 9) || (hrs >= 17 && hrs < 20)) s = 1.2;
+    return Math.min(FARE_RATES.grab.surgeMax, s);
+  }
+
+  function getRealtimeFares(distKm, dateObj) {
     const today = dateObj || new Date();
-    // Days since base — fuel surcharge increases 0.3% per day mock
-    const daysDiff = Math.max(0, Math.floor((today - baseDate)/(1000*60*60*24)));
-    const fuelMult = 1 + daysDiff * 0.003; // +0.3% per day
-    // Traffic surge based on hour (PH time)
-    const phHour = new Date(today.toLocaleString('en-US',{timeZone:'Asia/Manila'})).getHours();
-    const surge = (phHour>=7 && phHour<=9) || (phHour>=17 && phHour<=20) ? 1.18 : 1.0;
+    const km = Math.max(0, distKm || 0);
+    const surge = grabSurge(today, km);
+    const rt = curRoute();
+    const minutes = Math.max(1, (rt && rt.duration / 60) || km / 0.5);
+    const r = FARE_RATES;
 
-    // LTFRB approved 2026 rates (plain, realistic)
-    const jeepBase = 15, jeepPerKm = 2.2;
-    const busBase = 18, busPerKm = 2.8;
-    const grabBase = 55, grabPerKm = 16.5;
-    const trikeBase = 25, trikePerKm = 8.5;
-    const etrikeBase = 20, etrikePerKm = 6.5;
-    const planeBase = 1899, planePerKm = 12;
-    const shipBase = 750, shipPerKm = 4.5;
-
-    const calc = (base, perKm, min) => {
-      let price = (base + perKm*distKm) * fuelMult * surge;
-      return Math.max(min||base, Math.round(price/5)*5);
+    // Base + (km − kasamang unang km) × per-km. Full ang singil sa unang bloke
+    // kahit mas maikli ang biyahe (halimbawa: 4 km na kasama ng jeep).
+    const perTrip = (cfg) => {
+      const extraKm = Math.max(0, km - cfg.includedKm);
+      const distanceFare = cfg.base + extraKm * cfg.perKm;
+      const timeFare = cfg.perMin ? minutes * cfg.perMin : 0;
+      const sur = cfg.surgeMax ? Math.min(cfg.surgeMax, surge) : 1;
+      return {
+        price: distanceFare + timeFare,
+        sur,
+        billableKm: extraKm,
+        timeFare,
+        note: 'Base ' + peso(cfg.base) + (cfg.includedKm ? ' (first ' + cfg.includedKm + ' km)' : '') +
+              (extraKm > 0 ? ' + ' + extraKm.toFixed(1) + ' km × ' + peso(cfg.perKm) : '') +
+              (cfg.perMin ? ' + ' + Math.round(minutes) + ' min × ' + peso(cfg.perMin) : '') +
+              (sur > 1 ? ' • surge ×' + sur.toFixed(1) : '')
+      };
     };
 
-    return [
-      { id:'grab', name:'Grab', sub:'Car - 4 seats - Fastest', ic:'G', cls:'plain', price: calc(grabBase, grabPerKm, 90), perKm:grabPerKm, eta: Math.round(distKm/0.6)+' min', rating:'4.8', note: surge>1?'Surge 18% - Rush hour':'No surge', surge, energy:{label:'Gas',qty:2,rate:65,unit:'L'} },
-      { id:'tricycle', name:'Tricycle', sub:'Tricycle - Short distance', ic:'T', cls:'plain', price: calc(trikeBase, trikePerKm, 30), perKm:trikePerKm, eta: Math.round(distKm/0.3)+' min', rating:'4.2', note:'Local - Per trip', energy:{label:'Gas',qty:0.5,rate:65,unit:'L'} },
-      { id:'jeep', name:'Jeepney', sub:'Jeepney - Modern - Cheapest', ic:'J', cls:'plain', price: calc(jeepBase, jeepPerKm, 15), perKm:jeepPerKm, eta: Math.round(distKm/0.35)+' min', rating:'4.1', note:'Cheap - May transfer', energy:{label:'Gas',qty:1,rate:65,unit:'L'} },
-      { id:'etrike', name:'E-Trike', sub:'Electric tricycle - Eco friendly', ic:'E', cls:'plain', price: calc(etrikeBase, etrikePerKm, 25), perKm:etrikePerKm, eta: Math.round(distKm/0.32)+' min', rating:'4.4', note:'Eco - Quiet', energy:{label:'Charge',qty:0.8,rate:13,unit:'kWh'} },
-      { id:'bus', name:'Bus', sub:'Bus - Aircon - LTFRB 2026', ic:'B', cls:'plain', price: calc(busBase, busPerKm, 25), perKm:busPerKm, eta: Math.round(distKm/0.45)+' min', rating:'4.3', note:'LTFRB approved', energy:{label:'Gas',qty:1.4,rate:65,unit:'L'} },
-      { id:'plane', name:'Airplane', sub:'No airport in Rizal', ic:'A', cls:'plain', price: 0, perKm:planePerKm, eta:'-', rating:'4.6', note:'For long distance only', disabled:true },
-      { id:'ship', name:'Ship', sub:'No ferry port in Rizal', ic:'S', cls:'plain', price: 0, perKm:shipPerKm, eta:'-', rating:'4.2', note:'No sea route', disabled:true }
-    ];
+    const rows = [];
+
+    const grab = perTrip(r.grab);
+    rows.push({ id:'grab', name:'Grab', sub:'Hatchback • 4 seats • Fastest', ic:'G', cls:'plain',
+      price: grab.price * grab.sur, perKm:r.grab.perKm,
+      eta: Math.round(minutes) + ' min', rating:'4.8',
+      note: grab.sur > 1 ? 'Surge ×' + grab.sur.toFixed(1) + ' • rush hour' : 'No surge',
+      surge: grab.sur, autoNote: grab.note });
+
+    const trike = perTrip(r.tricycle);
+    rows.push({ id:'tricycle', name:'Tricycle', sub:'Base + ₱2.00/km', ic:'T', cls:'plain',
+      price: trike.price, perKm:r.tricycle.perKm, eta: Math.round(km / 0.3) + ' min', rating:'4.2',
+      note:'Local • per trip', autoNote: trike.note });
+
+    const jeep = perTrip(r.jeep);
+    rows.push({ id:'jeep', name:'Jeepney', sub:'Base + ₱2.40/km', ic:'J', cls:'plain',
+      price: jeep.price, perKm:r.jeep.perKm, eta: Math.round(km / 0.35) + ' min', rating:'4.1',
+      note:'Cheapest • possible transfer', autoNote: jeep.note });
+
+    const etrike = perTrip(r.etrike);
+    rows.push({ id:'etrike', name:'E-Trike', sub:'Base + ₱15.00/km', ic:'E', cls:'plain',
+      price: etrike.price, perKm:r.etrike.perKm, eta: Math.round(km / 0.32) + ' min', rating:'4.4',
+      note:'Electric • quiet', autoNote: etrike.note });
+
+    const bus = perTrip(r.bus);
+    rows.push({ id:'bus', name:'Bus', sub:'Base + ₱2.98/km', ic:'B', cls:'plain',
+      price: bus.price, perKm:r.bus.perKm, eta: Math.round(km / 0.45) + ' min', rating:'4.3',
+      note:'Aircon • provincial', autoNote: bus.note });
+
+    // Eroplano at barko: presyo galing sa aktwal na airlines/shipping lines na
+    // nagse-serve sa ruta. Nagre-refresh tuwing ika-15 at katapusan ng buwan.
+    const cycle = fareCycle(today);
+    const originPoint = routePoint(from), destPoint = routePoint(to);
+    const cycleNote = 'Na-refresh ' + fmtDate(cycle.refreshed) + ' • susunod ' + fmtDate(cycle.next);
+    const cycleDetail = 'Fare cycle ' + fmtDate(cycle.refreshed) + ' → ' + fmtDate(cycle.next) +
+      ' • awtomatikong nag-a-update tuwing ika-15 at katapusan ng buwan (presyo kada airline/linya, one-way, per pax)';
+
+    const straightKm = airKm(originPoint, destPoint);
+    const air = airQuote(originPoint, destPoint, cycle);
+    if (air.list.length && straightKm > 40) {   // < 40 km = land travel lang, walang flight
+      const flightMin = Math.round(air.km / 650 * 60 + 95); // + airport/boarding time
+      const noAirport = air.transferKm > 80;
+      const airSub = noAirport
+        ? ('Walang airport sa destination • via ' + air.airport.code + ' (' + Math.round(air.transferKm) + ' km byahe)')
+        : (air.list.length + ' airlines sa ruta • tap para sa presyo');
+      rows.push({
+        id:'plane', name:'Airplane', sub: airSub, ic:'A', cls:'plain',
+        price: air.list[0].price, priceHi: air.list[air.list.length - 1].price,
+        perKm: AIR_PER_KM, dynamic:true,
+        eta: Math.floor(flightMin / 60) + ' hr ' + (flightMin % 60) + ' min',
+        rating:'4.6',
+        note: cycleNote,
+        autoNote: 'Mula ' + air.originAirport.code + ' → ' + air.airport.code + ' • ' + Math.round(air.km) + ' km • ' + air.list.length + ' airlines',
+        subRows: air.list.map((x, i) => ({ name:x.name, meta:x.tag + (i === 0 ? ' • CHEAPEST' : ''), price:x.price })),
+        refreshNote: cycleDetail + (noAirport ? ' • hindi kasama ang land transfer papuntang ' + air.airport.code : '')
+      });
+    }
+
+    const sea = seaQuote(originPoint, destPoint, cycle);
+    // Kapag iisa lang ang port (parehong lungsod), walang barko — land travel na.
+    if (sea.list.length && sea.originPort && sea.port && airKm(sea.originPort, sea.port) > 40) {
+      const noPort = sea.transferKm > 60;
+      const seaHours = Math.floor(sea.km / 26) + 2; // ~26 km/h effective + boarding
+      const seaSub = noPort
+        ? ('Walang port sa destination • via ' + sea.port.name.split(' (')[0] + ' (' + Math.round(sea.transferKm) + ' km)')
+        : (sea.list.length + ' shipping lines • tap para sa presyo');
+      rows.push({
+        id:'ship', name:'Ship', sub: seaSub, ic:'S', cls:'plain',
+        price: sea.list[0].price, priceHi: sea.list[sea.list.length - 1].price,
+        perKm: SEA_PER_KM, dynamic:true,
+        eta: seaHours + ' hr',
+        rating:'4.2',
+        note: cycleNote,
+        autoNote: sea.originPort.name.split(' (')[0] + ' → ' + sea.port.name.split(' (')[0] + ' • ' + Math.round(sea.km) + ' km • ' + sea.list.length + ' lines',
+        subRows: sea.list.map((x, i) => ({ name:x.name, meta:x.tag + (i === 0 ? ' • CHEAPEST' : ''), price:x.price })),
+        refreshNote: cycleDetail + (noPort ? ' • hindi kasama ang land transfer papuntang ' + sea.port.name.split(' (')[0] : '')
+      });
+    }
+
+    return rows;
   }
 
   function renderFareRows(){
     const body = $('fare-body');
     body.textContent='';
     fareData.forEach(f=>{
-      const row = h('div','fare-row'+(f.id===fareSel?' sel':'' )+(f.disabled?'':''));
-      if(f.disabled) row.style.opacity='0.45';
+      const row = h('div','fare-row'+(f.id===fareSel?' sel':'' ));
       row.dataset.id=f.id;
       const ic = h('div','fare-ic '+f.cls, f.ic);
       const info = h('div','fare-info');
       const name = h('div','fare-name', f.name);
-      if(f.id==='grab' && f.surge>1) name.appendChild(h('small','','SURGE'));
-      if(f.disabled) name.appendChild(h('small','','N/A'));
+      if(f.surge>1) name.appendChild(h('small','','SURGE ×'+f.surge.toFixed(1)));
+      if(f.dynamic) name.appendChild(h('small','','DYNAMIC'));
       const meta = h('div','fare-meta');
       meta.appendChild(h('span','', f.sub));
-      if(!f.disabled) meta.appendChild(h('span','', '• '+f.eta));
+      meta.appendChild(h('span','', '• '+f.eta));
       const rating = h('div','fare-rating','★ '+f.rating+' • '+f.note);
       info.appendChild(name); info.appendChild(meta); info.appendChild(rating);
-      const price = h('div','fare-price', f.disabled?'—':'₱'+f.price.toLocaleString());
-      const small = h('small','', f.disabled?'Not available':'₱'+f.perKm.toFixed(1)+'/km');
-      price.appendChild(small);
+      const price = h('div','fare-price', f.dynamic ? pesoRound(f.price)+' – '+pesoRound(f.priceHi) : peso(f.price));
+      price.appendChild(h('small','', f.autoNote || ('₱'+f.perKm.toFixed(2)+'/km')));
       row.appendChild(ic); row.appendChild(info); row.appendChild(price);
       // Toggle: clicking the selected ride deselects it; clicking another selects it.
-      if(!f.disabled) row.addEventListener('click',()=>{ fareSel = (fareSel===f.id) ? null : f.id; renderFareRows(); updateFareTotal(); });
+      row.addEventListener('click',()=>{ fareSel = (fareSel===f.id) ? null : f.id; renderFareRows(); updateFareTotal(); });
       body.appendChild(row);
+      // Airplane/Ship: kapag napili, ipakita ang presyo kada airline / shipping line
+      if(f.id === fareSel && f.subRows && f.subRows.length){
+        const sub = h('div','fare-sub');
+        f.subRows.forEach((sx, i) => {
+          const line = h('div','fare-sub-row'+(i === 0 ? ' best' : ''));
+          line.appendChild(h('span','fare-sub-name', sx.name));
+          line.appendChild(h('span','fare-sub-tag', sx.meta));
+          line.appendChild(h('span','fare-sub-price', peso(sx.price)));
+          sub.appendChild(line);
+        });
+        if(f.refreshNote) sub.appendChild(h('div','fare-sub-note', f.refreshNote));
+        body.appendChild(sub);
+      }
     });
+  }
+
+  // Change box: "0" lang (walang ₱) hangga't wala pang Money Given. Saka lang
+  // magkakaroon ng numero kapag may inilagay na bayad ang user.
+  function paintChange(el, tone){
+    const skin = {
+      idle: { color:'#5f6368', bg:'#f1f3f4', border:'#e8eaed' },
+      pos:  { color:'#1b5e20', bg:'#e8f5e9', border:'#c8e6c9' },
+      neg:  { color:'#c62828', bg:'#ffebee', border:'#ef9a9a' }
+    }[tone];
+    if(!el) return;
+    el.style.color = skin.color;
+    const box = el.parentElement;
+    if(box){ box.style.background = skin.bg; box.style.borderColor = skin.border; }
   }
 
   function updateFareTotal(){
@@ -2468,26 +2810,34 @@
       // Nothing selected yet — keep totals empty until the user picks a ride.
       const ft = $('fare-total'); if(ft) ft.textContent = '₱0';
       const fl = $('fare-mode-label'); if(fl) fl.textContent = 'Select a ride';
+      const fcl = $('fare-calc-line'); if(fcl) fcl.textContent = 'Tap a ride to auto-compute';
       const fu = $('fare-unit'); if(fu) fu.textContent = '₱0';
       const fc2 = $('fare-change');
-      if(fc2){
-        fc2.textContent = '₱0'; fc2.style.color = '#1b5e20';
-        if(fc2.parentElement){ fc2.parentElement.style.background = '#e8f5e9'; fc2.parentElement.style.borderColor = '#c8e6c9'; }
-      }
+      if(fc2){ fc2.textContent = '0'; }
+      paintChange(fc2, 'idle');
       return;
     }
     const fare = f.price * farePax;
-    const en = f.energy || { label:'Gas', qty:0, rate:0, unit:'L' };
-    const energyCost = en.qty * en.rate;
-    const totalCost = fare + energyCost;
-    $('fare-unit').textContent = '₱'+f.price.toLocaleString();
-    $('fare-total').textContent = '₱'+totalCost.toLocaleString();
-    $('fare-mode-label').textContent = f.name+' • '+farePax+' pax'+(f.surge>1?' • Surge':'');
+    $('fare-unit').textContent = peso(f.price);
+    $('fare-total').textContent = f.dynamic ? pesoRound(fare)+' – '+pesoRound(f.priceHi * farePax) : peso(fare);
+    $('fare-mode-label').textContent = f.name+' • '+farePax+' pax'+(f.surge>1?' • Surge ×'+f.surge.toFixed(1):'');
+    const fcl = $('fare-calc-line'); if(fcl) fcl.textContent = f.autoNote || ('₱'+f.perKm.toFixed(2)+'/km');
     $('fare-count').textContent = farePax;
-    const money = parseFloat($('fare-money')?.value)||0;
-    const change = money - totalCost;
+    const moneyEl = $('fare-money');
+    const moneyRaw = moneyEl ? moneyEl.value.trim() : '';
+    const money = parseFloat(moneyRaw) || 0;
     const fc = $('fare-change');
-    if(fc){ fc.textContent = '₱'+change.toLocaleString(); fc.style.color = change < 0 ? '#c62828' : '#1b5e20'; if(fc.parentElement){ fc.parentElement.style.background = change < 0 ? '#ffebee' : '#e8f5e9'; fc.parentElement.style.borderColor = change < 0 ? '#ef9a9a' : '#c8e6c9'; } }
+    if(fc){
+      // Walang nakasulat na Money Given → "0" lang, neutral ang kulay.
+      if(!moneyRaw || moneyRaw === '0' || money <= 0){
+        fc.textContent = '0';
+        paintChange(fc, 'idle');
+      } else {
+        const change = money - fare;
+        fc.textContent = peso(change);
+        paintChange(fc, change < 0 ? 'neg' : 'pos');
+      }
+    }
   }
 
   function updateDriverTotal(){
@@ -2497,11 +2847,13 @@
     const sukli = binayad - pamashe;
     const changeEl = $('driver-change');
     if(changeEl){
-      changeEl.textContent = '₱'+sukli.toLocaleString();
-      changeEl.style.color = sukli < 0 ? '#c62828' : '#1b5e20';
-      if(changeEl.parentElement){
-        changeEl.parentElement.style.background = sukli < 0 ? '#ffebee' : '#e8f5e9';
-        changeEl.parentElement.style.borderColor = sukli < 0 ? '#ef9a9a' : '#c8e6c9';
+      const binayadRaw = ($('driver-binayad')?.value || '').trim();
+      if(!binayadRaw || binayad <= 0){
+        changeEl.textContent = '0';            // wala pang binayad → "0" lang
+        paintChange(changeEl, 'idle');
+      } else {
+        changeEl.textContent = peso(sukli);
+        paintChange(changeEl, sukli < 0 ? 'neg' : 'pos');
       }
     }
 
@@ -2525,7 +2877,9 @@
     fareData = getRealtimeFares(distKm, now);
     $('rt-driver').hidden = true;
     $('rt-fare').hidden = false;
-    fareSel = null; // start unselected — user picks the ride
+    // Auto-pick ang pinaka-mura (jeepney) — kung wala, tricycle.
+    const cheapest = fareData.slice().sort((a,b)=>a.price-b.price)[0];
+    fareSel = cheapest ? cheapest.id : null;
     farePax = 1;
     const moneyEl = $('fare-money');
     if(moneyEl) moneyEl.value = ''; // blank Money Given on open
@@ -2533,12 +2887,22 @@
     updateFareTotal();
   }
 
+  // Kung bukas ang fare card habang nagpapalit ng route sa map (halimbawa
+  // mas mabilis na landas), awtomatikong nagre-recompute ang lahat ng presyo.
+  function refreshFareCard(){
+    if ($('rt-fare').hidden) return;
+    const r = curRoute(); if(!r) return;
+    const distKm = r.distance/1000;
+    fareData = getRealtimeFares(distKm, new Date());
+    renderFareRows(); updateFareTotal();
+  }
+
   function showDriverCard(){
     const r = curRoute();
     if(!r){ flash('Please select a route first to see Driver.'); return; }
     const distKm = r.distance/1000;
     const now = new Date();
-    if(!fareData.length) fareData = getRealtimeFares(distKm, now);
+    fareData = getRealtimeFares(distKm, now);
     $('rt-fare').hidden = true;
     $('rt-driver').hidden = false;
     updateDriverTotal();
