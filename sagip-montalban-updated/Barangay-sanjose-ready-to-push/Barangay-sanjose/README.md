@@ -26,3 +26,21 @@ npm run build     # production build sa dist/
 
 Ang default redirect ay nasa `vite.config.ts` (plugin na `pixel7-by-default`), kaya pareho
 ang behavior sa dev at preview server.
+
+## Fare Estimate (Traffic map → 🎫 button)
+
+Nasa `public/rizal_traffic_map.html` (`FARE_RATES` + `getRealtimeFares()`). **Auto-compute** —
+galing sa totoong Mapbox route (km at minuto) ng piniling ruta, hindi manual na input:
+
+| Sasakyan | Rate (October 3, 2026) |
+| --- | --- |
+| Grab (Hatchback) | ₱55 flag-down + ₱15.00/km + ₱2.00/min, dynamic surge ≤ 2× (rush hour 1.2×, weekend peak 1.3×) |
+| Tricycle | ₱15.00 unang km, +₱2.00/km |
+| Jeepney | ₱14.00 unang 4 km, +₱2.40/km |
+| E-Trike | ₱30 unang km, +₱15.00/km |
+| Bus | ₱18.00 unang 5 km, +₱2.98/km |
+| Airplane / Ship | Depende sa destination (no hotel) — range na estimate, hindi fixed |
+
+Kada row may breakdown (`Base ₱55.00 + 8.0 km × ₱15.00 + 20 min × ₱2.00`) at awtomatikong
+nagre-recompute kapag nagpalit ng ruta o ng bilang ng pasahero. Kapag bagong rates, isang
+lugar lang ang babaguhin: `FARE_RATES`.

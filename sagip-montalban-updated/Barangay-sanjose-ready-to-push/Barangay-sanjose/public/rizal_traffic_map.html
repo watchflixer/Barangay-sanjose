@@ -537,8 +537,9 @@
 <div id="rt-fare" hidden>
   <div class="card">
     <div class="fare-head">
-      <h3>Fare Estimate</h3>
+      <h3>Fare Estimate <span class="live">AUTO</span></h3>
       <button type="button" class="close" id="fare-close" aria-label="Close">✕</button>
+      <div class="sub" id="fare-route-line">Select a route first</div>
     </div>
     <div class="fare-body" id="fare-body">
       <!-- Rows injected by JS -->
@@ -560,18 +561,19 @@
       </div>
       <div class="total-box" style="margin-top:8px;">
         <div>
-          <div class="t1" id="fare-mode-label" style="font-size:14px;font-weight:700;opacity:1;">Grab • 1 pax</div>
-          <div class="t1" style="font-size:10px;">Base + per km</div>
+          <div class="t1" id="fare-mode-label" style="font-size:14px;font-weight:700;opacity:1;">Select a ride</div>
+          <div class="t1" style="font-size:10px;" id="fare-calc-line">Base + per km</div>
         </div>
         <div class="t2" id="fare-total">₱0</div>
       </div>
       <div class="total-box" style="margin-top:6px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9;">
         <div>
           <div class="t1" style="font-size:13px;font-weight:700;opacity:1;">Change</div>
-          <div class="t1" style="font-size:10px;">Money - Total</div>
+          <div class="t1" style="font-size:10px;">Money − Total</div>
         </div>
         <div class="t2" id="fare-change" style="color:#1b5e20;">₱0</div>
       </div>
+      <div class="update-note" id="fare-note">Rates as of October 3, 2026 • Grab ₱55 + ₱15/km + ₱2/min (surge max 2×) • Tricycle ₱15 first km + ₱2/km • Jeepney ₱14 first 4 km + ₱2.40/km • E-Trike ₱30 first km + ₱15/km • Bus ₱18 first 5 km + ₱2.98/km • Airplane/Ship depende sa destination (no hotel)</div>
     </div>
   </div>
 </div>
@@ -1806,7 +1808,7 @@
     $('rt-save').querySelector('em').textContent = on ? 'Saved' : 'Save';
   }
   function select(i) {
-    selIdx = i; if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); } renderLabels(); renderSheet();
+    selIdx = i; if (map.getSource('route')) { map.getSource('route').setData(routeFC()); applyGradient(); } renderLabels(); renderSheet(); refreshFareCard();
   }
   function enterRouteView() {
     routeActive = true; document.body.classList.add('routing');
@@ -2394,70 +2396,146 @@
   const showOpts = () => { $('o-toll').checked = opts.toll; $('o-hwy').checked = opts.hwy; $('o-ferry').checked = opts.ferry; $('rt-opts').hidden = false; };
   $('rt-tune').addEventListener('click', showOpts);
 
-  // ===== Fare System — plain, English, realtime Sept 28 2026, daily update =====
+  // ===== Fare System — auto-computed from the ACTUAL route distance =====
+  // Rates as of October 3, 2026. Every price is derived from the Mapbox route
+  // currently on screen: price = base fare + (distance − included km) × per-km
+  // rate (+ per-minute time rate for Grab), then × passengers.
+  const FARE_RATES = {
+    updated: 'October 3, 2026',
+    // Grab: ₱55 flag-down (Hatchback) + ₱15.00/km + ₱2.00/min, dynamic surge ≤ 2×
+    grab:     { base: 55,  includedKm: 0, perKm: 15.00, perMin: 2.00, surgeMax: 2 },
+    // Tricycle: ₱15.00 first km, +₱2.00/km after
+    tricycle: { base: 15,  includedKm: 1, perKm: 2.00 },
+    // Jeepney: ₱14.00 first 4 km, +₱2.40/km after
+    jeep:     { base: 14,  includedKm: 4, perKm: 2.40 },
+    // E-Trike: ₱30 first km, +₱15.00/km after
+    etrike:   { base: 30,  includedKm: 1, perKm: 15.00 },
+    // Bus: ₱18.00 first 5 km, +₱2.98/km after
+    bus:      { base: 18,  includedKm: 5, perKm: 2.98 },
+    // Long-haul — depende sa pupuntahan, walang hotel sa estimate.
+    plane:    { dynamic: true, perKm: 12 },
+    ship:     { dynamic: true, perKm: 4.5 }
+  };
+  const FARE_RATE_NOTES = {
+    grab: '₱55 flag-down + ₱15.00/km + ₱2.00/min (surge max 2x)',
+    tricycle: '₱15.00 first km + ₱2.00/km',
+    jeep: '₱14.00 first 4 km + ₱2.40/km',
+    etrike: '₱30 first km + ₱15.00/km',
+    bus: '₱18.00 first 5 km + ₱2.98/km',
+    plane: 'Depende sa destination • no hotel',
+    ship: 'Depende sa destination • no hotel'
+  };
+
   let farePax = 1;
   let fareSel = null; // No auto-pick: user must choose a ride first
   let fareData = [];
 
-  function getRealtimeFares(distKm, dateObj){
-    // Base date: Sept 28 2026 as per user request
-    const baseDate = new Date('2026-09-28T00:00:00+08:00');
+  const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pesoRound = (n) => '₱' + Math.round(Number(n)).toLocaleString('en-PH');
+
+  // Live dynamic surge para sa Grab: 1× off-peak, 1.2× rush hour (7-9AM, 5-8PM),
+  // 1.3× kapag weekend peak (Sabado/Linggo, 10AM-8PM). 2x ang pinakamataas.
+  function grabSurge(dateObj, km) {
+    if (km < 0.4) return 1;
+    const local = new Date(dateObj.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const hrs = local.getHours(), day = local.getDay(), weekend = (day === 0 || day === 6);
+    let s = 1;
+    if (weekend && hrs >= 10 && hrs < 20) s = 1.3;
+    else if ((hrs >= 7 && hrs < 9) || (hrs >= 17 && hrs < 20)) s = 1.2;
+    return Math.min(FARE_RATES.grab.surgeMax, s);
+  }
+
+  function getRealtimeFares(distKm, dateObj) {
     const today = dateObj || new Date();
-    // Days since base — fuel surcharge increases 0.3% per day mock
-    const daysDiff = Math.max(0, Math.floor((today - baseDate)/(1000*60*60*24)));
-    const fuelMult = 1 + daysDiff * 0.003; // +0.3% per day
-    // Traffic surge based on hour (PH time)
-    const phHour = new Date(today.toLocaleString('en-US',{timeZone:'Asia/Manila'})).getHours();
-    const surge = (phHour>=7 && phHour<=9) || (phHour>=17 && phHour<=20) ? 1.18 : 1.0;
+    const km = Math.max(0, distKm || 0);
+    const surge = grabSurge(today, km);
+    const rt = curRoute();
+    const minutes = Math.max(1, (rt && rt.duration / 60) || km / 0.5);
+    const r = FARE_RATES;
 
-    // LTFRB approved 2026 rates (plain, realistic)
-    const jeepBase = 15, jeepPerKm = 2.2;
-    const busBase = 18, busPerKm = 2.8;
-    const grabBase = 55, grabPerKm = 16.5;
-    const trikeBase = 25, trikePerKm = 8.5;
-    const etrikeBase = 20, etrikePerKm = 6.5;
-    const planeBase = 1899, planePerKm = 12;
-    const shipBase = 750, shipPerKm = 4.5;
-
-    const calc = (base, perKm, min) => {
-      let price = (base + perKm*distKm) * fuelMult * surge;
-      return Math.max(min||base, Math.round(price/5)*5);
+    // Base + (km − kasamang unang km) × per-km. Full ang singil sa unang bloke
+    // kahit mas maikli ang biyahe (halimbawa: 4 km na kasama ng jeep).
+    const perTrip = (cfg) => {
+      const extraKm = Math.max(0, km - cfg.includedKm);
+      const distanceFare = cfg.base + extraKm * cfg.perKm;
+      const timeFare = cfg.perMin ? minutes * cfg.perMin : 0;
+      const sur = cfg.surgeMax ? Math.min(cfg.surgeMax, surge) : 1;
+      return {
+        price: distanceFare + timeFare,
+        sur,
+        billableKm: extraKm,
+        timeFare,
+        note: 'Base ' + peso(cfg.base) + (cfg.includedKm ? ' (first ' + cfg.includedKm + ' km)' : '') +
+              (extraKm > 0 ? ' + ' + extraKm.toFixed(1) + ' km × ' + peso(cfg.perKm) : '') +
+              (cfg.perMin ? ' + ' + Math.round(minutes) + ' min × ' + peso(cfg.perMin) : '') +
+              (sur > 1 ? ' • surge ×' + sur.toFixed(1) : '')
+      };
     };
 
-    return [
-      { id:'grab', name:'Grab', sub:'Car - 4 seats - Fastest', ic:'G', cls:'plain', price: calc(grabBase, grabPerKm, 90), perKm:grabPerKm, eta: Math.round(distKm/0.6)+' min', rating:'4.8', note: surge>1?'Surge 18% - Rush hour':'No surge', surge, energy:{label:'Gas',qty:2,rate:65,unit:'L'} },
-      { id:'tricycle', name:'Tricycle', sub:'Tricycle - Short distance', ic:'T', cls:'plain', price: calc(trikeBase, trikePerKm, 30), perKm:trikePerKm, eta: Math.round(distKm/0.3)+' min', rating:'4.2', note:'Local - Per trip', energy:{label:'Gas',qty:0.5,rate:65,unit:'L'} },
-      { id:'jeep', name:'Jeepney', sub:'Jeepney - Modern - Cheapest', ic:'J', cls:'plain', price: calc(jeepBase, jeepPerKm, 15), perKm:jeepPerKm, eta: Math.round(distKm/0.35)+' min', rating:'4.1', note:'Cheap - May transfer', energy:{label:'Gas',qty:1,rate:65,unit:'L'} },
-      { id:'etrike', name:'E-Trike', sub:'Electric tricycle - Eco friendly', ic:'E', cls:'plain', price: calc(etrikeBase, etrikePerKm, 25), perKm:etrikePerKm, eta: Math.round(distKm/0.32)+' min', rating:'4.4', note:'Eco - Quiet', energy:{label:'Charge',qty:0.8,rate:13,unit:'kWh'} },
-      { id:'bus', name:'Bus', sub:'Bus - Aircon - LTFRB 2026', ic:'B', cls:'plain', price: calc(busBase, busPerKm, 25), perKm:busPerKm, eta: Math.round(distKm/0.45)+' min', rating:'4.3', note:'LTFRB approved', energy:{label:'Gas',qty:1.4,rate:65,unit:'L'} },
-      { id:'plane', name:'Airplane', sub:'No airport in Rizal', ic:'A', cls:'plain', price: 0, perKm:planePerKm, eta:'-', rating:'4.6', note:'For long distance only', disabled:true },
-      { id:'ship', name:'Ship', sub:'No ferry port in Rizal', ic:'S', cls:'plain', price: 0, perKm:shipPerKm, eta:'-', rating:'4.2', note:'No sea route', disabled:true }
-    ];
+    const rows = [];
+
+    const grab = perTrip(r.grab);
+    rows.push({ id:'grab', name:'Grab', sub:'Hatchback • 4 seats • Fastest', ic:'G', cls:'plain',
+      price: grab.price * grab.sur, perKm:r.grab.perKm,
+      eta: Math.round(minutes) + ' min', rating:'4.8',
+      note: grab.sur > 1 ? 'Surge ×' + grab.sur.toFixed(1) + ' • rush hour' : 'No surge',
+      surge: grab.sur, autoNote: grab.note });
+
+    const trike = perTrip(r.tricycle);
+    rows.push({ id:'tricycle', name:'Tricycle', sub:'Base + ₱2.00/km', ic:'T', cls:'plain',
+      price: trike.price, perKm:r.tricycle.perKm, eta: Math.round(km / 0.3) + ' min', rating:'4.2',
+      note:'Local • per trip', autoNote: trike.note });
+
+    const jeep = perTrip(r.jeep);
+    rows.push({ id:'jeep', name:'Jeepney', sub:'Base + ₱2.40/km', ic:'J', cls:'plain',
+      price: jeep.price, perKm:r.jeep.perKm, eta: Math.round(km / 0.35) + ' min', rating:'4.1',
+      note:'Cheapest • possible transfer', autoNote: jeep.note });
+
+    const etrike = perTrip(r.etrike);
+    rows.push({ id:'etrike', name:'E-Trike', sub:'Base + ₱15.00/km', ic:'E', cls:'plain',
+      price: etrike.price, perKm:r.etrike.perKm, eta: Math.round(km / 0.32) + ' min', rating:'4.4',
+      note:'Electric • quiet', autoNote: etrike.note });
+
+    const bus = perTrip(r.bus);
+    rows.push({ id:'bus', name:'Bus', sub:'Base + ₱2.98/km', ic:'B', cls:'plain',
+      price: bus.price, perKm:r.bus.perKm, eta: Math.round(km / 0.45) + ' min', rating:'4.3',
+      note:'Aircon • provincial', autoNote: bus.note });
+
+    // Eroplano at barko: wala pang fixed rate table — depende sa destinasyon
+    // (no hotel sa estimate), kaya range ang ipinapakita.
+    const longHaul = (id, name, sub, ic, cfg) => {
+      const lo = 380 + km * cfg.perKm * 0.12;
+      return { id, name, sub, ic, cls:'plain', price: lo, priceHi: lo * 2.2, perKm: cfg.perKm,
+        eta: Math.round(km / 8) + ' hr', rating: id === 'plane' ? '4.6' : '4.2',
+        note:'Depende sa destination • no hotel', autoNote: FARE_RATE_NOTES[id], dynamic:true };
+    };
+    rows.push(longHaul('plane', 'Airplane', 'Depende sa destination', 'A', r.plane));
+    rows.push(longHaul('ship', 'Ship', 'Depende sa destination', 'S', r.ship));
+
+    return rows;
   }
 
   function renderFareRows(){
     const body = $('fare-body');
     body.textContent='';
     fareData.forEach(f=>{
-      const row = h('div','fare-row'+(f.id===fareSel?' sel':'' )+(f.disabled?'':''));
-      if(f.disabled) row.style.opacity='0.45';
+      const row = h('div','fare-row'+(f.id===fareSel?' sel':'' ));
       row.dataset.id=f.id;
       const ic = h('div','fare-ic '+f.cls, f.ic);
       const info = h('div','fare-info');
       const name = h('div','fare-name', f.name);
-      if(f.id==='grab' && f.surge>1) name.appendChild(h('small','','SURGE'));
-      if(f.disabled) name.appendChild(h('small','','N/A'));
+      if(f.surge>1) name.appendChild(h('small','','SURGE ×'+f.surge.toFixed(1)));
+      if(f.dynamic) name.appendChild(h('small','','DYNAMIC'));
       const meta = h('div','fare-meta');
       meta.appendChild(h('span','', f.sub));
-      if(!f.disabled) meta.appendChild(h('span','', '• '+f.eta));
+      meta.appendChild(h('span','', '• '+f.eta));
       const rating = h('div','fare-rating','★ '+f.rating+' • '+f.note);
       info.appendChild(name); info.appendChild(meta); info.appendChild(rating);
-      const price = h('div','fare-price', f.disabled?'—':'₱'+f.price.toLocaleString());
-      const small = h('small','', f.disabled?'Not available':'₱'+f.perKm.toFixed(1)+'/km');
-      price.appendChild(small);
+      const price = h('div','fare-price', f.dynamic ? pesoRound(f.price)+' – '+pesoRound(f.priceHi) : peso(f.price));
+      price.appendChild(h('small','', f.autoNote || ('₱'+f.perKm.toFixed(2)+'/km')));
       row.appendChild(ic); row.appendChild(info); row.appendChild(price);
       // Toggle: clicking the selected ride deselects it; clicking another selects it.
-      if(!f.disabled) row.addEventListener('click',()=>{ fareSel = (fareSel===f.id) ? null : f.id; renderFareRows(); updateFareTotal(); });
+      row.addEventListener('click',()=>{ fareSel = (fareSel===f.id) ? null : f.id; renderFareRows(); updateFareTotal(); });
       body.appendChild(row);
     });
   }
@@ -2468,6 +2546,7 @@
       // Nothing selected yet — keep totals empty until the user picks a ride.
       const ft = $('fare-total'); if(ft) ft.textContent = '₱0';
       const fl = $('fare-mode-label'); if(fl) fl.textContent = 'Select a ride';
+      const fcl = $('fare-calc-line'); if(fcl) fcl.textContent = 'Tap a ride to auto-compute';
       const fu = $('fare-unit'); if(fu) fu.textContent = '₱0';
       const fc2 = $('fare-change');
       if(fc2){
@@ -2477,17 +2556,16 @@
       return;
     }
     const fare = f.price * farePax;
-    const en = f.energy || { label:'Gas', qty:0, rate:0, unit:'L' };
-    const energyCost = en.qty * en.rate;
-    const totalCost = fare + energyCost;
-    $('fare-unit').textContent = '₱'+f.price.toLocaleString();
-    $('fare-total').textContent = '₱'+totalCost.toLocaleString();
-    $('fare-mode-label').textContent = f.name+' • '+farePax+' pax'+(f.surge>1?' • Surge':'');
+    $('fare-unit').textContent = peso(f.price);
+    $('fare-total').textContent = f.dynamic ? pesoRound(fare)+' – '+pesoRound(f.priceHi * farePax) : peso(fare);
+    $('fare-mode-label').textContent = f.name+' • '+farePax+' pax'+(f.surge>1?' • Surge ×'+f.surge.toFixed(1):'');
+    const fcl = $('fare-calc-line'); if(fcl) fcl.textContent = f.autoNote || ('₱'+f.perKm.toFixed(2)+'/km');
     $('fare-count').textContent = farePax;
-    const money = parseFloat($('fare-money')?.value)||0;
-    const change = money - totalCost;
+    const moneyEl = $('fare-money');
+    const money = moneyEl ? (parseFloat(moneyEl.value)||0) : 0;
+    const change = money - fare;
     const fc = $('fare-change');
-    if(fc){ fc.textContent = '₱'+change.toLocaleString(); fc.style.color = change < 0 ? '#c62828' : '#1b5e20'; if(fc.parentElement){ fc.parentElement.style.background = change < 0 ? '#ffebee' : '#e8f5e9'; fc.parentElement.style.borderColor = change < 0 ? '#ef9a9a' : '#c8e6c9'; } }
+    if(fc){ fc.textContent = peso(change); fc.style.color = change < 0 ? '#c62828' : '#1b5e20'; if(fc.parentElement){ fc.parentElement.style.background = change < 0 ? '#ffebee' : '#e8f5e9'; fc.parentElement.style.borderColor = change < 0 ? '#ef9a9a' : '#c8e6c9'; } }
   }
 
   function updateDriverTotal(){
@@ -2517,6 +2595,12 @@
     // Pamasahé stays blank unless the user types it — no auto-fill.
   }
 
+  function fareRouteLine(km, minuteCount){
+    const name = (p) => p && (p.user ? 'Your location' : p.label) || '';
+    const trip = name(from) + ' → ' + name(to);
+    return trip + ' • ' + km.toFixed(1) + ' km • ' + Math.round(minuteCount) + ' min • auto-compute';
+  }
+
   function showFareCard(){
     const r = curRoute();
     if(!r){ flash('Please select a route first to see fare.'); return; }
@@ -2525,7 +2609,10 @@
     fareData = getRealtimeFares(distKm, now);
     $('rt-driver').hidden = true;
     $('rt-fare').hidden = false;
-    fareSel = null; // start unselected — user picks the ride
+    const rl = $('fare-route-line'); if(rl) rl.textContent = fareRouteLine(distKm, r.duration/60);
+    // Auto-pick ang pinaka-mura (jeepney) — kung wala, tricycle.
+    const cheapest = fareData.slice().sort((a,b)=>a.price-b.price)[0];
+    fareSel = cheapest ? cheapest.id : null;
     farePax = 1;
     const moneyEl = $('fare-money');
     if(moneyEl) moneyEl.value = ''; // blank Money Given on open
@@ -2533,12 +2620,23 @@
     updateFareTotal();
   }
 
+  // Kung bukas ang fare card habang nagpapalit ng route sa map (halimbawa
+  // mas mabilis na landas), awtomatikong nagre-recompute ang lahat ng presyo.
+  function refreshFareCard(){
+    if ($('rt-fare').hidden) return;
+    const r = curRoute(); if(!r) return;
+    const distKm = r.distance/1000;
+    fareData = getRealtimeFares(distKm, new Date());
+    const rl = $('fare-route-line'); if(rl) rl.textContent = fareRouteLine(distKm, r.duration/60);
+    renderFareRows(); updateFareTotal();
+  }
+
   function showDriverCard(){
     const r = curRoute();
     if(!r){ flash('Please select a route first to see Driver.'); return; }
     const distKm = r.distance/1000;
     const now = new Date();
-    if(!fareData.length) fareData = getRealtimeFares(distKm, now);
+    fareData = getRealtimeFares(distKm, now);
     $('rt-fare').hidden = true;
     $('rt-driver').hidden = false;
     updateDriverTotal();
