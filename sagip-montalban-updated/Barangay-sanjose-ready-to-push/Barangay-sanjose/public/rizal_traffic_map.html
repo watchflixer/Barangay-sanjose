@@ -268,9 +268,11 @@
   #rt-fare .card, #rt-driver .card{background:#fff;border-radius:24px;padding:0;width:400px;max-width:calc(100% - 24px);max-height:85vh;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;}
   #rt-fare .fare-head, #rt-driver .fare-head{padding:20px 20px 12px;border-bottom:1px solid #e8eaed;position:relative;}
   /* Fare card header: flex row so the ✕ button sits exactly aligned with the title */
-  #rt-fare .fare-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;}
+  #rt-fare .fare-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;}
   #rt-fare .fare-head h3{flex:1;min-width:0;}
-  #rt-fare .fare-head .close{position:static;flex:none;width:34px;height:34px;}
+  #rt-fare .fare-head .close{position:static;flex:none;width:34px;height:34px;margin-left:auto;}
+  /* Trip strip — nasa ibaba ng header para "Fare Estimate" lang ang nasa taas */
+  #rt-fare .fare-trip{display:block;margin:0 12px 6px;padding:6px 10px;background:#f1f3f4;border:1px solid #e8eaed;border-radius:9px;font-size:11px;font-weight:500;color:#5f6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #rt-fare .fare-head h3, #rt-driver .fare-head h3{margin:0;font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px;}
   #rt-fare .fare-head .live, #rt-driver .fare-head .live{font-size:11px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;}
   #rt-fare .fare-head .live::before, #rt-driver .fare-head .live::before{content:"";width:6px;height:6px;background:#2e7d32;border-radius:50%;display:inline-block;animation:farePulse 1.5s infinite;}
@@ -421,9 +423,10 @@
     .dir-empty{padding:14px 16px;font-size:13px;}
 
     /* Fare card — bigger on mobile, optimized for Pixel 7 375x820 */
-    #rt-fare .fare-head{padding:12px 12px 8px;}
+    #rt-fare .fare-head{padding:12px 12px 9px;}
     #rt-fare .fare-head h3{font-size:15px;}
-    #rt-fare .fare-head .sub{font-size:11px;}
+    #rt-fare .fare-head .close{width:32px;height:32px;font-size:14px;}
+    #rt-fare .fare-trip{margin:0 8px 6px;padding:5px 9px;font-size:10.5px;}
     #rt-fare .fare-body{padding:6px 8px 0;}
     #rt-fare .fare-row{padding:7px 8px;gap:8px;border-radius:11px;margin-bottom:5px;min-height:52px;}
     #rt-fare .fare-ic{width:32px;height:32px;border-radius:9px;font-size:13px;}
@@ -537,10 +540,10 @@
 <div id="rt-fare" hidden>
   <div class="card">
     <div class="fare-head">
-      <h3>Fare Estimate <span class="live">AUTO</span></h3>
-      <button type="button" class="close" id="fare-close" aria-label="Close">✕</button>
-      <div class="sub" id="fare-route-line">Select a route first</div>
+      <h3>Fare Estimate</h3>
+      <button type="button" class="close" id="fare-close" aria-label="Back" title="Back">✕</button>
     </div>
+    <div class="fare-trip" id="fare-route-line">Select a route first</div>
     <div class="fare-body" id="fare-body">
       <!-- Rows injected by JS -->
     </div>
@@ -2598,7 +2601,7 @@
   function fareRouteLine(km, minuteCount){
     const name = (p) => p && (p.user ? 'Your location' : p.label) || '';
     const trip = name(from) + ' → ' + name(to);
-    return trip + ' • ' + km.toFixed(1) + ' km • ' + Math.round(minuteCount) + ' min • auto-compute';
+    return trip + '  •  ' + km.toFixed(1) + ' km  •  ' + Math.round(minuteCount) + ' min  •  auto';
   }
 
   function showFareCard(){
