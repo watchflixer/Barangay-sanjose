@@ -271,8 +271,6 @@
   #rt-fare .fare-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 10px;}
   #rt-fare .fare-head h3{flex:1;min-width:0;}
   #rt-fare .fare-head .close{position:static;flex:none;width:34px;height:34px;margin-left:auto;}
-  /* Trip strip — nasa ibaba ng header para "Fare Estimate" lang ang nasa taas */
-  #rt-fare .fare-trip{display:block;margin:0 12px 6px;padding:6px 10px;background:#f1f3f4;border:1px solid #e8eaed;border-radius:9px;font-size:11px;font-weight:500;color:#5f6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   #rt-fare .fare-head h3, #rt-driver .fare-head h3{margin:0;font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px;}
   #rt-fare .fare-head .live, #rt-driver .fare-head .live{font-size:11px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;}
   #rt-fare .fare-head .live::before, #rt-driver .fare-head .live::before{content:"";width:6px;height:6px;background:#2e7d32;border-radius:50%;display:inline-block;animation:farePulse 1.5s infinite;}
@@ -426,7 +424,6 @@
     #rt-fare .fare-head{padding:12px 12px 9px;}
     #rt-fare .fare-head h3{font-size:15px;}
     #rt-fare .fare-head .close{width:32px;height:32px;font-size:14px;}
-    #rt-fare .fare-trip{margin:0 8px 6px;padding:5px 9px;font-size:10.5px;}
     #rt-fare .fare-body{padding:6px 8px 0;}
     #rt-fare .fare-row{padding:7px 8px;gap:8px;border-radius:11px;margin-bottom:5px;min-height:52px;}
     #rt-fare .fare-ic{width:32px;height:32px;border-radius:9px;font-size:13px;}
@@ -543,7 +540,6 @@
       <h3>Fare Estimate</h3>
       <button type="button" class="close" id="fare-close" aria-label="Back" title="Back">✕</button>
     </div>
-    <div class="fare-trip" id="fare-route-line">Select a route first</div>
     <div class="fare-body" id="fare-body">
       <!-- Rows injected by JS -->
     </div>
@@ -569,12 +565,12 @@
         </div>
         <div class="t2" id="fare-total">₱0</div>
       </div>
-      <div class="total-box" style="margin-top:6px; background:#e8f5e9; color:#1b5e20; border:1px solid #c8e6c9;">
+      <div class="total-box" id="fare-change-box" style="margin-top:6px; background:#f1f3f4; color:#3c4043; border:1px solid #e8eaed;">
         <div>
           <div class="t1" style="font-size:13px;font-weight:700;opacity:1;">Change</div>
           <div class="t1" style="font-size:10px;">Money − Total</div>
         </div>
-        <div class="t2" id="fare-change" style="color:#1b5e20;">₱0</div>
+        <div class="t2" id="fare-change" style="color:#5f6368;">0</div>
       </div>
     </div>
   </div>
@@ -602,7 +598,7 @@
           <div class="t1" style="font-size:14px;font-weight:700;opacity:1;">Change</div>
           <div class="t1" style="font-size:10px;">Money Given − Fare</div>
         </div>
-        <div class="t2" id="driver-change" style="font-size:26px; color:#1b5e20;">₱0</div>
+        <div class="t2" id="driver-change" style="font-size:26px; color:#5f6368;">0</div>
       </div>
 
       <div style="font-size:15px;font-weight:700; margin:16px 0 10px; color:#202124;">Gas</div>
@@ -2432,7 +2428,7 @@
   let fareSel = null; // No auto-pick: user must choose a ride first
   let fareData = [];
 
-  const peso = (n) => '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const peso = (n) => { const v = Number(n); const a = Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); return (v < 0 ? '-₱' : '₱') + a; };
   const pesoRound = (n) => '₱' + Math.round(Number(n)).toLocaleString('en-PH');
 
   // Live dynamic surge para sa Grab: 1× off-peak, 1.2× rush hour (7-9AM, 5-8PM),
@@ -2542,6 +2538,20 @@
     });
   }
 
+  // Change box: "0" lang (walang ₱) hangga't wala pang Money Given. Saka lang
+  // magkakaroon ng numero kapag may inilagay na bayad ang user.
+  function paintChange(el, tone){
+    const skin = {
+      idle: { color:'#5f6368', bg:'#f1f3f4', border:'#e8eaed' },
+      pos:  { color:'#1b5e20', bg:'#e8f5e9', border:'#c8e6c9' },
+      neg:  { color:'#c62828', bg:'#ffebee', border:'#ef9a9a' }
+    }[tone];
+    if(!el) return;
+    el.style.color = skin.color;
+    const box = el.parentElement;
+    if(box){ box.style.background = skin.bg; box.style.borderColor = skin.border; }
+  }
+
   function updateFareTotal(){
     const f = fareData.find(x=>x.id===fareSel) || null;
     if(!f){
@@ -2551,10 +2561,8 @@
       const fcl = $('fare-calc-line'); if(fcl) fcl.textContent = 'Tap a ride to auto-compute';
       const fu = $('fare-unit'); if(fu) fu.textContent = '₱0';
       const fc2 = $('fare-change');
-      if(fc2){
-        fc2.textContent = '₱0'; fc2.style.color = '#1b5e20';
-        if(fc2.parentElement){ fc2.parentElement.style.background = '#e8f5e9'; fc2.parentElement.style.borderColor = '#c8e6c9'; }
-      }
+      if(fc2){ fc2.textContent = '0'; }
+      paintChange(fc2, 'idle');
       return;
     }
     const fare = f.price * farePax;
@@ -2564,10 +2572,20 @@
     const fcl = $('fare-calc-line'); if(fcl) fcl.textContent = f.autoNote || ('₱'+f.perKm.toFixed(2)+'/km');
     $('fare-count').textContent = farePax;
     const moneyEl = $('fare-money');
-    const money = moneyEl ? (parseFloat(moneyEl.value)||0) : 0;
-    const change = money - fare;
+    const moneyRaw = moneyEl ? moneyEl.value.trim() : '';
+    const money = parseFloat(moneyRaw) || 0;
     const fc = $('fare-change');
-    if(fc){ fc.textContent = peso(change); fc.style.color = change < 0 ? '#c62828' : '#1b5e20'; if(fc.parentElement){ fc.parentElement.style.background = change < 0 ? '#ffebee' : '#e8f5e9'; fc.parentElement.style.borderColor = change < 0 ? '#ef9a9a' : '#c8e6c9'; } }
+    if(fc){
+      // Walang nakasulat na Money Given → "0" lang, neutral ang kulay.
+      if(!moneyRaw || moneyRaw === '0' || money <= 0){
+        fc.textContent = '0';
+        paintChange(fc, 'idle');
+      } else {
+        const change = money - fare;
+        fc.textContent = peso(change);
+        paintChange(fc, change < 0 ? 'neg' : 'pos');
+      }
+    }
   }
 
   function updateDriverTotal(){
@@ -2577,11 +2595,13 @@
     const sukli = binayad - pamashe;
     const changeEl = $('driver-change');
     if(changeEl){
-      changeEl.textContent = '₱'+sukli.toLocaleString();
-      changeEl.style.color = sukli < 0 ? '#c62828' : '#1b5e20';
-      if(changeEl.parentElement){
-        changeEl.parentElement.style.background = sukli < 0 ? '#ffebee' : '#e8f5e9';
-        changeEl.parentElement.style.borderColor = sukli < 0 ? '#ef9a9a' : '#c8e6c9';
+      const binayadRaw = ($('driver-binayad')?.value || '').trim();
+      if(!binayadRaw || binayad <= 0){
+        changeEl.textContent = '0';            // wala pang binayad → "0" lang
+        paintChange(changeEl, 'idle');
+      } else {
+        changeEl.textContent = peso(sukli);
+        paintChange(changeEl, sukli < 0 ? 'neg' : 'pos');
       }
     }
 
@@ -2597,12 +2617,6 @@
     // Pamasahé stays blank unless the user types it — no auto-fill.
   }
 
-  function fareRouteLine(km, minuteCount){
-    const name = (p) => p && (p.user ? 'Your location' : p.label) || '';
-    const trip = name(from) + ' → ' + name(to);
-    return trip + '  •  ' + km.toFixed(1) + ' km  •  ' + Math.round(minuteCount) + ' min  •  auto';
-  }
-
   function showFareCard(){
     const r = curRoute();
     if(!r){ flash('Please select a route first to see fare.'); return; }
@@ -2611,7 +2625,6 @@
     fareData = getRealtimeFares(distKm, now);
     $('rt-driver').hidden = true;
     $('rt-fare').hidden = false;
-    const rl = $('fare-route-line'); if(rl) rl.textContent = fareRouteLine(distKm, r.duration/60);
     // Auto-pick ang pinaka-mura (jeepney) — kung wala, tricycle.
     const cheapest = fareData.slice().sort((a,b)=>a.price-b.price)[0];
     fareSel = cheapest ? cheapest.id : null;
@@ -2629,7 +2642,6 @@
     const r = curRoute(); if(!r) return;
     const distKm = r.distance/1000;
     fareData = getRealtimeFares(distKm, new Date());
-    const rl = $('fare-route-line'); if(rl) rl.textContent = fareRouteLine(distKm, r.duration/60);
     renderFareRows(); updateFareTotal();
   }
 
