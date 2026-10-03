@@ -3,144 +3,175 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pixel 7 - 375×820 - Barangay San Jose</title>
+  <meta name="theme-color" content="#020617" />
+  <title>Pixel 7 Preview · HazardSync</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-    body { 
+    html, body { overflow-x:hidden; }
+    body {
       background: radial-gradient(1200px 600px at 50% -20%, #1e293b 0%, #0f172a 60%, #020617 100%);
-      font-family: 'Plus Jakarta Sans', system-ui, sans-serif; 
-      display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:24px; color:white; 
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      display:flex; flex-direction:column; align-items:center;
+      min-height:100vh; padding:18px 12px 28px; color:white;
     }
-    header { text-align:center; margin-bottom:24px; }
-    header h1 { font-size:20px; font-weight:800; letter-spacing:-0.3px; }
+    .grid-bg {
+      position:fixed; inset:0; z-index:-1; opacity:0.035; pointer-events:none;
+      background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    header { text-align:center; margin-bottom:16px; }
+    header h1 { font-size:19px; font-weight:800; letter-spacing:-0.3px; }
     header h1 span { color:#10b981; }
-    header p { opacity:0.65; font-size:13px; margin-top:6px; }
-    .badge { display:inline-flex; align-items:center; gap:6px; background:#10b98120; border:1px solid #10b98140; color:#6ee7b7; padding:5px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:0.5px; margin-top:10px; }
-    
+    header p { opacity:0.6; font-size:12.5px; margin-top:5px; }
+    .badge {
+      display:inline-flex; align-items:center; gap:6px; margin-top:9px;
+      background:#10b98120; border:1px solid #10b98140; color:#6ee7b7;
+      padding:4px 10px; border-radius:999px; font-size:10.5px; font-weight:700; letter-spacing:0.6px;
+    }
+    .badge i { width:6px; height:6px; border-radius:50%; background:#10b981; box-shadow:0 0 8px #10b981; }
+
+    /* Stage is sized by JS so the phone always fits the preview panel. */
+    .stage { position:relative; width:100%; }
+    .phone-box { position:absolute; top:0; left:50%; transform-origin: top center; }
+
     .pixel7 {
       position:relative;
-      width: 399px; /* 375 + 12*2 border */
+      width: 100%;
       background: linear-gradient(180deg, #2a2f3a 0%, #1a1d24 100%);
       border-radius: 38px;
       padding: 12px;
-      box-shadow: 
+      box-shadow:
         0 0 0 2px #3a3f4b,
         0 0 0 6px #0f1115,
         0 25px 80px rgba(0,0,0,0.7),
         0 0 0 1px rgba(255,255,255,0.1) inset;
     }
-    /* Pixel 7 camera bar is on back, but front has punch hole */
     .pixel7-screen {
-      position:relative;
-      width:375px;
-      height:820px;
-      background:white;
-      border-radius: 28px;
-      overflow:hidden;
-      isolation:isolate;
+      position:relative; background:#fff; border-radius:28px;
+      overflow:hidden; isolation:isolate;
     }
     .pixel7-screen iframe {
-      width:375px;
-      height:820px;
-      border:0;
-      display:block;
-      background:white;
+      border:0; display:block; background:#fff;
     }
-    /* Punch hole camera */
     .punch-hole {
-      position:absolute;
-      top:10px;
-      left:50%;
-      transform:translateX(-50%);
-      width:14px;
-      height:14px;
-      background:#000;
-      border-radius:50%;
-      z-index:10;
-      box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
+      position:absolute; top:9px; left:50%; transform:translateX(-50%);
+      width:13px; height:13px; background:#000; border-radius:50%;
+      z-index:10; box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
     }
     .pixel7::after {
-      content:'';
-      position:absolute;
-      bottom:6px;
-      left:50%;
-      transform:translateX(-50%);
-      width:90px;
-      height:4px;
-      background:rgba(255,255,255,0.25);
-      border-radius:999px;
+      content:''; position:absolute; bottom:5px; left:50%; transform:translateX(-50%);
+      width:86px; height:4px; background:rgba(255,255,255,0.22); border-radius:999px;
     }
-    /* Side buttons */
     .btn { position:absolute; background:#2a2f3a; border:1px solid #3a3f4b; }
     .btn-power { right:-4px; top:110px; width:4px; height:70px; border-radius:0 4px 4px 0; }
-    .btn-vol { left:-4px; top:90px; width:4px; height:50px; border-radius:4px 0 0 4px; }
-    .btn-vol2 { left:-4px; top:150px; width:4px; height:50px; border-radius:4px 0 0 4px; }
+    .btn-vol  { left:-4px;  top:90px;  width:4px; height:50px; border-radius:4px 0 0 4px; }
+    .btn-vol2 { left:-4px;  top:150px; width:4px; height:50px; border-radius:4px 0 0 4px; }
 
-    .meta {
-      margin-top:22px;
-      display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
-    }
+    .meta { margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
     .meta div {
-      background:#1e293b;
-      border:1px solid #334155;
-      padding:8px 12px;
-      border-radius:10px;
-      font-size:11px;
+      background:#1e293b; border:1px solid #334155; padding:7px 11px;
+      border-radius:10px; font-size:10.5px; text-align:left;
     }
-    .meta div strong { color:#e2e8f0; display:block; font-size:12px; }
-    .meta div span { opacity:0.6; }
+    .meta div strong { color:#e2e8f0; display:block; font-size:11.5px; }
+    .meta div span { opacity:0.55; }
 
-    .actions { margin-top:20px; display:flex; gap:10px; }
-    .actions a {
-      background:#10b981;
-      color:white;
-      padding:10px 16px;
-      border-radius:10px;
-      text-decoration:none;
-      font-size:12px;
-      font-weight:700;
+    .actions { margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+    .actions a, .actions button {
+      background:#10b981; color:#fff; padding:9px 15px; border-radius:10px;
+      text-decoration:none; font-size:12px; font-weight:700; border:0; cursor:pointer;
+      font-family:inherit;
     }
-    .actions a.secondary { background:#334155; }
+    .actions .secondary { background:#334155; }
 
-    .grid-bg {
-      position:fixed; inset:0; z-index:-1; opacity:0.03;
-      background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px);
-      background-size: 40px 40px;
-    }
+    .tip { margin-top:14px; font-size:11px; opacity:0.5; max-width:380px; text-align:center; line-height:1.5; }
+    .tip code { color:#6ee7b7; }
   </style>
 </head>
 <body>
   <div class="grid-bg"></div>
+
   <header>
-    <h1>Pixel 7 Preview <span>375 × 820</span></h1>
-    <p>Barangay San Jose HazardSync - mobile view</p>
-    <div class="badge">● LIVE • PORT 4173 • RESPONSIVE</div>
+    <h1>Pixel 7 Preview <span id="sizeLabel">412 × 915</span></h1>
+    <p>Barangay San Jose · HazardSync — mobile view</p>
+    <div class="badge"><i></i> LIVE · NAKA-LOCK SA PIXEL 7</div>
   </header>
 
-  <div class="pixel7">
-    <div class="btn btn-power"></div>
-    <div class="btn btn-vol"></div>
-    <div class="btn btn-vol2"></div>
-    <div class="pixel7-screen">
-      <div class="punch-hole"></div>
-      <iframe src="/" title="Pixel 7 - Barangay San Jose"></iframe>
+  <div class="stage" id="stage">
+    <div class="phone-box" id="phoneBox">
+      <div class="pixel7">
+        <div class="btn btn-power"></div>
+        <div class="btn btn-vol"></div>
+        <div class="btn btn-vol2"></div>
+        <div class="pixel7-screen" id="screen">
+          <div class="punch-hole"></div>
+          <iframe id="appFrame" src="/index.html" title="HazardSync — Pixel 7 preview" scrolling="yes"></iframe>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="meta">
-    <div><strong>375 × 820</strong><span>Pixel 7 viewport</span></div>
+    <div><strong id="metaSize">412 × 915</strong><span>Pixel 7 viewport (CSS px)</span></div>
+    <div><strong>1080 × 2400</strong><span>Physical · 2.625× DPR</span></div>
     <div><strong>20:9</strong><span>Aspect ratio</span></div>
-    <div><strong>420dpi</strong><span>Density</span></div>
   </div>
 
   <div class="actions">
-    <a href="/">Open App</a>
-    <a class="secondary" href="/mobile-preview.html">All Devices</a>
-    <a class="secondary" href="javascript:location.reload()">Reload</a>
+    <a href="/?full=1" target="_blank">Open Desktop App</a>
+    <button class="secondary" type="button" id="reloadBtn">Reload App</button>
+    <a class="secondary" href="?w=375&amp;h=820" id="compactLink">Compact 375 × 820</a>
   </div>
 
-  <p style="margin-top:18px; font-size:11px; opacity:0.5; max-width:360px; text-align:center;">
-    Tip: Sa Arena LIVE PREVIEW panel mo ito buksan. Naka-embed yung main app (/) sa 375×820 frame para exact Pixel 7 size.
+  <p class="tip">
+    Ito na ang default sa <code>npm run preview</code> — diretsong Pixel 7.<br />
+    Desktop layout: <code>/?full=1</code> · Lahat ng devices: <code>/mobile-preview.html</code>
   </p>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var W = parseInt(params.get('w') || '', 10) || 412;
+      var H = parseInt(params.get('h') || '', 10) || 915;
+      var PAD = 24; // .pixel7 padding (12px each side)
+
+      var stage = document.getElementById('stage');
+      var box = document.getElementById('phoneBox');
+      var frame = document.getElementById('appFrame');
+      var screen = document.getElementById('screen');
+
+      box.style.width = (W + PAD) + 'px';
+      box.style.marginLeft = (-(W + PAD) / 2) + 'px';
+      screen.style.width = W + 'px';
+      screen.style.height = H + 'px';
+      frame.style.width = W + 'px';
+      frame.style.height = H + 'px';
+
+      document.getElementById('sizeLabel').textContent = W + ' × ' + H;
+      document.getElementById('metaSize').textContent = W + ' × ' + H;
+      var isDefault = W === 412 && H === 915;
+      document.getElementById('compactLink').textContent = isDefault ? 'Compact 375 × 820' : 'Back to 412 × 915';
+      if (!isDefault) document.getElementById('compactLink').setAttribute('href', '?w=412&h=915');
+
+      function fit() {
+        var availW = stage.clientWidth || document.body.clientWidth;
+        var top = stage.getBoundingClientRect().top;
+        var availH = window.innerHeight - top - 8;
+        var scale = Math.min(1, availW / (W + PAD), Math.max(0.3, availH) / (H + PAD));
+        scale = Math.max(0.25, scale);
+        box.style.transform = 'scale(' + scale.toFixed(4) + ')';
+        stage.style.height = Math.ceil((H + PAD) * scale) + 'px';
+      }
+
+      window.addEventListener('resize', fit);
+      window.addEventListener('orientationchange', fit);
+      fit();
+
+      document.getElementById('reloadBtn').addEventListener('click', function () {
+        try { frame.contentWindow.location.reload(); }
+        catch (e) { frame.src = frame.src; }
+      });
+    })();
+  </script>
 </body>
 </html>
