@@ -280,6 +280,15 @@
   #rt-driver .fare-head .close{position:absolute;top:14px;right:14px;width:36px;height:36px;}
   #rt-fare .fare-head .close{width:34px;height:34px;font-size:15px;line-height:1;}
   #rt-fare .fare-body, #rt-driver .fare-body{overflow-y:auto;padding:8px 12px 0;flex:1;}
+  /* Airplane / Ship: listahan ng presyo kada airline o shipping line */
+  #rt-fare .fare-sub{margin:-3px 0 8px;padding:4px 8px 6px;background:#fafafa;border:1px solid #e8eaed;border-top:0;border-radius:0 0 12px 12px;}
+  #rt-fare .fare-sub-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-bottom:1px solid #f1f3f4;font-size:12px;}
+  #rt-fare .fare-sub-row:last-child{border-bottom:0;}
+  #rt-fare .fare-sub-row.best{background:#e8f5e9;border-radius:8px;border-bottom-color:transparent;}
+  #rt-fare .fare-sub-name{flex:1;min-width:0;font-weight:600;color:#202124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #rt-fare .fare-sub-tag{flex:none;font-size:10px;color:#5f6368;white-space:nowrap;}
+  #rt-fare .fare-sub-price{flex:none;font-weight:700;color:#202124;font-variant-numeric:tabular-nums;}
+  #rt-fare .fare-sub-note{margin-top:5px;font-size:10px;line-height:1.35;color:#5f6368;}
   #rt-fare .fare-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid #e8eaed;border-radius:12px;margin-bottom:6px;cursor:pointer;transition:all .15s ease;background:#fff;min-height:58px;}
   #rt-fare .fare-row:hover{border-color:#202124;background:#f8f9fa;transform:translateY(-1px);box-shadow:0 2px 8px rgba(0,0,0,.06);}
   #rt-fare .fare-row.sel{border-color:#202124;background:#f1f3f4;box-shadow:0 0 0 1px #202124 inset;}
@@ -431,6 +440,10 @@
     #rt-fare .fare-meta{font-size:10.5px;}
     #rt-fare .fare-price{font-size:13.5px;}
     #rt-fare .fare-price small{font-size:9.5px;}
+    #rt-fare .fare-sub{padding:3px 6px 5px;}
+    #rt-fare .fare-sub-row{gap:6px;padding:4px 5px;font-size:11px;}
+    #rt-fare .fare-sub-tag{font-size:9px;}
+    #rt-fare .fare-sub-note{font-size:9.5px;}
     #rt-fare .fare-rating{font-size:9.5px;}
     #rt-fare .fare-foot{padding:7px 10px 9px;}
   }
@@ -2424,6 +2437,193 @@
     ship: 'Depende sa destination • no hotel'
   };
 
+  // ===== Airplane / Ship — airline & shipping-line driven, live per fare cycle =====
+  // Hindi fixed ang presyo: naka-base sa (a) kung may airport/port ba malapit sa
+  // destination, (b) kung aling mga airline/linya ang nagse-serve ng rutang iyon,
+  // (c) great-circle na distansya, at (d) fare cycle — awtomatikong nagre-refresh
+  // tuwing ika-15 ng buwan at katapusan ng buwan (Philippine time).
+  const PH_AIRPORTS = [
+    { code:'MNL', name:'NAIA T3 (Manila)',        lat:14.5086, lng:121.0194, carriers:['5J','PR','Z2','DG','2P','RX','SL'] },
+    { code:'CRK', name:'Clark (Pampanga)',        lat:15.1859, lng:120.5603, carriers:['5J','PR','Z2','RX','DG'] },
+    { code:'SFS', name:'Subic Bay',               lat:14.7944, lng:120.2714, carriers:['SL'] },
+    { code:'LAO', name:'Laoag (Ilocos Norte)',    lat:18.1781, lng:120.5316, carriers:['5J','PR','2P'] },
+    { code:'TUG', name:'Tuguegarao (Cagayan)',    lat:17.6434, lng:121.7305, carriers:['5J','2P'] },
+    { code:'BSO', name:'Basco (Batanes)',         lat:20.4513, lng:121.9800, carriers:['2P','T6'] },
+    { code:'KLO', name:'Kalibo (Aklan)',          lat:11.6795, lng:122.3756, carriers:['5J','PR','Z2','2P','RX','SL','DG'] },
+    { code:'MPH', name:'Caticlan (Boracay)',      lat:11.9250, lng:121.9540, carriers:['5J','PR','Z2','2P','RX','DG','T6'] },
+    { code:'USU', name:'Busuanga (Coron)',        lat:12.1218, lng:120.1000, carriers:['5J','2P','DG','SL'] },
+    { code:'ENI', name:'El Nido (Palawan)',       lat:11.2020, lng:119.4160, carriers:['T6','SL'] },
+    { code:'PPS', name:'Puerto Princesa (Palawan)', lat:9.7421, lng:118.7587, carriers:['5J','PR','Z2','2P','DG','RX'] },
+    { code:'LGP', name:'Legazpi (Albay)',         lat:13.1574, lng:123.7463, carriers:['5J','PR','Z2','2P'] },
+    { code:'NOP', name:'Naga (Camarines Sur)',    lat:13.5848, lng:123.2696, carriers:['2P'] },
+    { code:'VRC', name:'Virac (Catanduanes)',     lat:13.5764, lng:124.2061, carriers:['5J','2P','DG'] },
+    { code:'MRQ', name:'Marinduque (Gaspar)',     lat:13.3610, lng:121.8260, carriers:['DG','2P'] },
+    { code:'TBH', name:'Tugdan (Romblon)',        lat:12.3100, lng:122.0840, carriers:['5J','DG'] },
+    { code:'CRM', name:'Catarman (N. Samar)',     lat:12.5020, lng:124.6360, carriers:['2P','5J'] },
+    { code:'CYP', name:'Calbayog (W. Samar)',     lat:12.0726, lng:124.5450, carriers:['2P','5J'] },
+    { code:'OMC', name:'Ormoc (Leyte)',           lat:11.0580, lng:124.5650, carriers:['2P','5J'] },
+    { code:'TWT', name:'Sanga-Sanga (Tawi-Tawi)', lat:5.0470, lng:119.7430, carriers:['DG'] },
+    { code:'MBT', name:'Masbate',                 lat:12.3694, lng:123.6292, carriers:['5J','2P'] },
+    { code:'CEB', name:'Mactan-Cebu',             lat:10.3075, lng:123.9790, carriers:['5J','PR','Z2','2P','DG','RX','SL'] },
+    { code:'TAG', name:'Bohol-Panglao',           lat:9.5731, lng:123.7697, carriers:['5J','PR','Z2','2P','DG','RX','SL'] },
+    { code:'DGT', name:'Dumaguete (Negros Or.)',  lat:9.3337, lng:123.3005, carriers:['5J','PR','Z2','2P','DG'] },
+    { code:'ILO', name:'Iloilo',                  lat:10.8330, lng:122.4934, carriers:['5J','PR','Z2','2P','DG','RX','SL'] },
+    { code:'BCD', name:'Bacolod-Silay',           lat:10.7766, lng:123.0153, carriers:['5J','PR','Z2','2P','DG','RX'] },
+    { code:'TAC', name:'Tacloban (Leyte)',        lat:11.2276, lng:125.0278, carriers:['5J','PR','Z2','2P','DG'] },
+    { code:'IAO', name:'Sayak (Siargao)',         lat:9.8590, lng:126.0140, carriers:['5J','2P','DG'] },
+    { code:'BXU', name:'Butuan (Agusan)',         lat:8.9513, lng:125.4788, carriers:['5J','PR','2P','DG'] },
+    { code:'SUG', name:'Surigao',                 lat:9.7558, lng:125.4809, carriers:['5J','2P','DG'] },
+    { code:'CGY', name:'Laguindingan (C. de Oro)', lat:8.6123, lng:124.4564, carriers:['5J','PR','Z2','2P','DG','RX'] },
+    { code:'DVO', name:'Davao (Francisco Bangoy)', lat:7.1255, lng:125.6458, carriers:['5J','PR','Z2','2P','DG','RX'] },
+    { code:'GES', name:'General Santos',          lat:6.0580, lng:125.0963, carriers:['5J','PR','Z2','2P','DG'] },
+    { code:'ZAM', name:'Zamboanga',               lat:6.9224, lng:122.0596, carriers:['5J','PR','Z2','2P','DG'] },
+    { code:'OZC', name:'Ozamiz (Mis. Occ.)',      lat:8.1786, lng:123.8422, carriers:['5J','2P','DG'] },
+    { code:'PAG', name:'Pagadian',                lat:7.8272, lng:123.4597, carriers:['5J','2P','DG'] },
+    { code:'DPL', name:'Dipolog',                 lat:8.6016, lng:123.3419, carriers:['5J','2P','DG'] },
+    { code:'CBO', name:'Cotabato',                lat:7.1652, lng:124.2099, carriers:['5J','2P','DG'] },
+    { code:'JOL', name:'Jolo (Sulu)',             lat:6.0536, lng:121.0110, carriers:['2P'] }
+  ];
+  const PH_PORTS = [
+    { name:'Manila (North Harbor)', lat:14.6349, lng:120.9660, lines:['2GO','STAR','MONT','ALES','SUPE'] },
+    { name:'Batangas Port',         lat:13.7565, lng:121.0430, lines:['2GO','STAR','FAST','MONT','WEES'] },
+    { name:'Cebu (Piers 1-4)',      lat:10.2930, lng:123.9030, lines:['2GO','WEES','SUPE','LITE','COKA'] },
+    { name:'Iloilo (Fort San Pedro)', lat:10.6930, lng:122.5730, lines:['2GO','FAST','MONT','WEES'] },
+    { name:'Bacolod (BREDCO)',      lat:10.6720, lng:122.9380, lines:['FAST','WEES','MONT','LITE'] },
+    { name:'Dumaguete',             lat:9.3060, lng:123.3080, lines:['ALES','MONT','LITE','WEES'] },
+    { name:'Ozamiz',                lat:8.1460, lng:123.8420, lines:['ALES','MONT','LITE'] },
+    { name:'Cagayan de Oro',        lat:8.5000, lng:124.6600, lines:['2GO','COKA','ALES'] },
+    { name:'Davao (Sasa Wharf)',    lat:7.1080, lng:125.6530, lines:['2GO','COKA','ALES'] },
+    { name:'Zamboanga',             lat:6.9000, lng:122.0700, lines:['ALES','2GO','MONT'] },
+    { name:'Puerto Princesa',       lat:9.7400, lng:118.7200, lines:['2GO','ALES','LITE'] },
+    { name:'Caticlan Jetty',        lat:11.9670, lng:121.9250, lines:['STAR','MONT','FAST','ALES'] },
+    { name:'Tacloban',              lat:11.2400, lng:125.0000, lines:['2GO','COKA','LITE'] },
+    { name:'Coron (Decalachao)',    lat:12.0000, lng:120.2000, lines:['2GO','ALES','LITE'] },
+    { name:'Surigao',               lat:9.7800, lng:125.4900, lines:['COKA','MONT','LITE'] },
+    { name:'Masbate',               lat:12.3700, lng:123.6200, lines:['MONT','LITE','ALES'] },
+    { name:'Catbalogan (Samar)',    lat:11.7750, lng:124.8860, lines:['LITE','MONT','ALES'] },
+    { name:'Legazpi (Albay)',       lat:13.1350, lng:123.7000, lines:['MONT','ALES','LITE'] },
+    { name:'Basco (Batanes)',       lat:20.4140, lng:121.9620, lines:['2GO','ALES','LITE'] },
+    { name:'Virac (Catanduanes)',   lat:13.5800, lng:124.2300, lines:['MONT','ALES','LITE'] },
+    { name:'Romblon (Odiongan)',    lat:12.4000, lng:122.0000, lines:['STAR','MONT','LITE'] },
+    { name:'Calapan (Or. Mindoro)', lat:13.4100, lng:121.1800, lines:['STAR','MONT','FAST','WEES'] },
+    { name:'Balanacan (Marinduque)', lat:13.4900, lng:121.8900, lines:['STAR','MONT','LITE'] },
+    { name:'Real (Quezon)',         lat:14.6600, lng:121.6100, lines:['STAR','LITE'] },
+    { name:'Polillo (Quezon)',      lat:14.7200, lng:121.9400, lines:['STAR','LITE'] },
+    { name:'Lucena (Dalahican)',    lat:13.9300, lng:121.6100, lines:['STAR','MONT','LITE'] },
+    { name:'El Nido (Palawan)',     lat:11.1800, lng:119.3900, lines:['ALES','LITE'] },
+    { name:'Cuyo (Palawan)',        lat:10.8500, lng:121.0100, lines:['2GO','ALES','LITE'] },
+    { name:'Roxas City (Capiz)',    lat:11.5800, lng:122.7500, lines:['2GO','FAST','MONT'] },
+    { name:'San Jose (Antique)',    lat:10.7400, lng:121.9400, lines:['ALES','LITE'] },
+    { name:'Tagbilaran (Bohol)',    lat:9.6400, lng:123.8600, lines:['2GO','WEES','LITE','SUPE'] },
+    { name:'Tubigon (Bohol)',       lat:9.9900, lng:123.9300, lines:['LITE','STAR'] },
+    { name:'Ormoc (Leyte)',         lat:11.0100, lng:124.6100, lines:['2GO','COKA','LITE'] },
+    { name:'Maasin (S. Leyte)',     lat:10.1300, lng:124.8400, lines:['COKA','LITE','ALES'] },
+    { name:'Catarman (N. Samar)',   lat:12.4900, lng:124.6300, lines:['LITE','ALES'] },
+    { name:'Calbayog (W. Samar)',   lat:12.0700, lng:124.5900, lines:['LITE','ALES','MONT'] },
+    { name:'Matnog (Sorsogon)',     lat:12.5700, lng:124.0800, lines:['MONT','STAR','FAST'] },
+    { name:'Jolo (Sulu)',           lat:6.0400, lng:121.0000, lines:['ALES','LITE'] },
+    { name:'Bongao (Tawi-Tawi)',    lat:5.0300, lng:119.7700, lines:['ALES','LITE'] }
+  ];
+  const AIRLINES = {
+    '5J': { name:'Cebu Pacific',          tag:'LCC • hand-carry 7kg', mult:0.86 },
+    'PR': { name:'Philippine Airlines',   tag:'Full service • 20kg',  mult:1.15 },
+    'Z2': { name:'AirAsia Philippines',   tag:'LCC • hand-carry 7kg', mult:0.83 },
+    'DG': { name:'Cebgo',                 tag:'LCC • turboprop',      mult:0.90 },
+    '2P': { name:'PAL Express',           tag:'Full service • 10kg',  mult:1.04 },
+    'RX': { name:'Royal Air Philippines', tag:'LCC • 10kg baggage',   mult:0.94 },
+    'SL': { name:'Sunlight Air',          tag:'LCC • 10kg baggage',   mult:1.22 },
+    'T6': { name:'AirSWIFT',              tag:'Premium • 10kg',       mult:1.40 }
+  };
+  const SHIP_LINES = {
+    '2GO':  { name:'2GO Travel',           tag:'Aircon berth/cabin', mult:1.16 },
+    'STAR': { name:'Starlite Ferries',     tag:'Aircon / tourist',   mult:1.00 },
+    'MONT': { name:'Montenegro Lines',     tag:'Aircon',             mult:0.96 },
+    'FAST': { name:'FastCat',              tag:'RORO aircon',        mult:0.90 },
+    'ALES': { name:'Aleson Shipping',      tag:'Regular / economy',  mult:0.84 },
+    'WEES': { name:'Weesam Express',       tag:'Fastcraft',          mult:1.06 },
+    'SUPE': { name:'Supercat',             tag:'Fastcraft',          mult:1.10 },
+    'COKA': { name:'Cokaliong Shipping',   tag:'Tourist class',      mult:0.95 },
+    'LITE': { name:'Lite Shipping',        tag:'Regular',            mult:0.88 }
+  };
+  // October 2026 base na ginagamit ng lahat ng airline/linya (per passenger, one-way)
+  const AIR_BASE = 980, AIR_PER_KM = 4.15, AIR_FEES = 250;   // + terminal/booking fee
+  const SEA_BASE = 420, SEA_PER_KM = 1.35, SEA_FEES = 80;    // + port terminal fee
+
+  // Fare cycle: A = ika-1 hanggang ika-14, B = ika-15 hanggang katapusan.
+  // Kaya tuwing ika-15 at tuwing katapusan ng buwan, bago ang buong price set.
+  function fareCycle(dateObj){
+    const local = new Date((dateObj || new Date()).toLocaleString('en-US', { timeZone:'Asia/Manila' }));
+    const y = local.getFullYear(), m = local.getMonth(), day = local.getDate();
+    const part = day < 15 ? 'A' : 'B';
+    return {
+      key: y + '-' + String(m + 1).padStart(2, '0') + '-' + part,
+      part, day,
+      refreshed: new Date(y, m, part === 'A' ? 1 : 15),
+      next: part === 'A' ? new Date(y, m, 15) : new Date(y, m + 1, 1)
+    };
+  }
+  const fmtDate = (d) => d.toLocaleDateString('en-PH', { timeZone:'Asia/Manila', month:'short', day:'numeric', year:'numeric' });
+  function hashStr(str){ let h = 2166136261; for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function rand01(seed){ let t = (seed + 0x6D2B79F5) | 0; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+  // Bawat airline/linya may sariling price index kada cycle (0.88× – 1.20×)
+  const cycleIndex = (id, cycleKey) => 0.88 + rand01(hashStr(id + '|' + cycleKey)) * 0.32;
+
+  const airKm = (a, b) => {
+    if(!a || !b || a.lat == null || b.lat == null) return 0;
+    const R = 6371, r = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * r, dLng = (b.lng - a.lng) * r;
+    const s = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+  };
+  const nearestOf = (list, p) => {
+    if(!p || p.lat == null) return null;
+    let best = null;
+    list.forEach((x) => { const km = airKm(x, p); if(!best || km < best.km) best = { node:x, km }; });
+    return best;
+  };
+  const routePoint = (p) => (p && p.lat != null) ? p : (userLoc || { lat:14.6510, lng:121.0480 }); // fallback: Rodriguez, Rizal
+
+  // Presyo ng eroplano: airport-to-airport na great-circle na distansya
+  // (origin airport -> destination airport) × airline rate × cycle index.
+  function airQuote(originPoint, destPoint, cycle){
+    const fromAp = nearestOf(PH_AIRPORTS, originPoint);
+    const toAp = nearestOf(PH_AIRPORTS, destPoint);
+    if(!toAp) return { list: [], airport: null, originAirport: null, km: 0, transferKm: 0, originTransferKm: 0 };
+    const originAirport = fromAp ? fromAp.node : PH_AIRPORTS[0];
+    const dist = Math.max(120, airKm(originAirport, toAp.node) * 1.06);
+    const list = toAp.node.carriers
+      .filter((c) => AIRLINES[c])
+      .map((c) => {
+        const a = AIRLINES[c];
+        const fare = (AIR_BASE + dist * AIR_PER_KM) * a.mult * cycleIndex(c, cycle.key) + AIR_FEES;
+        return { id:c, name:a.name, tag:a.tag, price:fare };
+      })
+      .sort((x, y) => x.price - y.price);
+    return { list, airport: toAp.node, originAirport, km: dist,
+             transferKm: toAp.km, originTransferKm: fromAp ? fromAp.km : 0 };
+  }
+
+  // Presyo ng barko: port-to-port na great-circle na distansya × shipping-line
+  // rate × cycle index. Kung walang port malapit sa destination, ruta pa rin
+  // sa pinakamalapit na port at may note na may land transfer.
+  function seaQuote(originPoint, destPoint, cycle){
+    const fromPort = nearestOf(PH_PORTS, originPoint);
+    const toPort = nearestOf(PH_PORTS, destPoint);
+    if(!toPort) return { list: [], port: null, originPort: null, km: 0, transferKm: 0 };
+    const originPort = fromPort ? fromPort.node : PH_PORTS[0];
+    const dist = Math.max(60, airKm(originPort, toPort.node) * 1.12);
+    const list = toPort.node.lines
+      .filter((c) => SHIP_LINES[c])
+      .map((c) => {
+        const L = SHIP_LINES[c];
+        const fare = (SEA_BASE + dist * SEA_PER_KM) * L.mult * cycleIndex(c, cycle.key) + SEA_FEES;
+        return { id:c, name:L.name, tag:L.tag, price:fare };
+      })
+      .sort((x, y) => x.price - y.price);
+    return { list, port: toPort.node, originPort, km: dist,
+             transferKm: toPort.km, originTransferKm: fromPort ? fromPort.km : 0 };
+  }
+
   let farePax = 1;
   let fareSel = null; // No auto-pick: user must choose a ride first
   let fareData = [];
@@ -2499,16 +2699,55 @@
       price: bus.price, perKm:r.bus.perKm, eta: Math.round(km / 0.45) + ' min', rating:'4.3',
       note:'Aircon • provincial', autoNote: bus.note });
 
-    // Eroplano at barko: wala pang fixed rate table — depende sa destinasyon
-    // (no hotel sa estimate), kaya range ang ipinapakita.
-    const longHaul = (id, name, sub, ic, cfg) => {
-      const lo = 380 + km * cfg.perKm * 0.12;
-      return { id, name, sub, ic, cls:'plain', price: lo, priceHi: lo * 2.2, perKm: cfg.perKm,
-        eta: Math.round(km / 8) + ' hr', rating: id === 'plane' ? '4.6' : '4.2',
-        note:'Depende sa destination • no hotel', autoNote: FARE_RATE_NOTES[id], dynamic:true };
-    };
-    rows.push(longHaul('plane', 'Airplane', 'Depende sa destination', 'A', r.plane));
-    rows.push(longHaul('ship', 'Ship', 'Depende sa destination', 'S', r.ship));
+    // Eroplano at barko: presyo galing sa aktwal na airlines/shipping lines na
+    // nagse-serve sa ruta. Nagre-refresh tuwing ika-15 at katapusan ng buwan.
+    const cycle = fareCycle(today);
+    const originPoint = routePoint(from), destPoint = routePoint(to);
+    const cycleNote = 'Na-refresh ' + fmtDate(cycle.refreshed) + ' • susunod ' + fmtDate(cycle.next);
+    const cycleDetail = 'Fare cycle ' + fmtDate(cycle.refreshed) + ' → ' + fmtDate(cycle.next) +
+      ' • awtomatikong nag-a-update tuwing ika-15 at katapusan ng buwan (presyo kada airline/linya, one-way, per pax)';
+
+    const straightKm = airKm(originPoint, destPoint);
+    const air = airQuote(originPoint, destPoint, cycle);
+    if (air.list.length && straightKm > 40) {   // < 40 km = land travel lang, walang flight
+      const flightMin = Math.round(air.km / 650 * 60 + 95); // + airport/boarding time
+      const noAirport = air.transferKm > 80;
+      const airSub = noAirport
+        ? ('Walang airport sa destination • via ' + air.airport.code + ' (' + Math.round(air.transferKm) + ' km byahe)')
+        : (air.list.length + ' airlines sa ruta • tap para sa presyo');
+      rows.push({
+        id:'plane', name:'Airplane', sub: airSub, ic:'A', cls:'plain',
+        price: air.list[0].price, priceHi: air.list[air.list.length - 1].price,
+        perKm: AIR_PER_KM, dynamic:true,
+        eta: Math.floor(flightMin / 60) + ' hr ' + (flightMin % 60) + ' min',
+        rating:'4.6',
+        note: cycleNote,
+        autoNote: 'Mula ' + air.originAirport.code + ' → ' + air.airport.code + ' • ' + Math.round(air.km) + ' km • ' + air.list.length + ' airlines',
+        subRows: air.list.map((x, i) => ({ name:x.name, meta:x.tag + (i === 0 ? ' • CHEAPEST' : ''), price:x.price })),
+        refreshNote: cycleDetail + (noAirport ? ' • hindi kasama ang land transfer papuntang ' + air.airport.code : '')
+      });
+    }
+
+    const sea = seaQuote(originPoint, destPoint, cycle);
+    // Kapag iisa lang ang port (parehong lungsod), walang barko — land travel na.
+    if (sea.list.length && sea.originPort && sea.port && airKm(sea.originPort, sea.port) > 40) {
+      const noPort = sea.transferKm > 60;
+      const seaHours = Math.floor(sea.km / 26) + 2; // ~26 km/h effective + boarding
+      const seaSub = noPort
+        ? ('Walang port sa destination • via ' + sea.port.name.split(' (')[0] + ' (' + Math.round(sea.transferKm) + ' km)')
+        : (sea.list.length + ' shipping lines • tap para sa presyo');
+      rows.push({
+        id:'ship', name:'Ship', sub: seaSub, ic:'S', cls:'plain',
+        price: sea.list[0].price, priceHi: sea.list[sea.list.length - 1].price,
+        perKm: SEA_PER_KM, dynamic:true,
+        eta: seaHours + ' hr',
+        rating:'4.2',
+        note: cycleNote,
+        autoNote: sea.originPort.name.split(' (')[0] + ' → ' + sea.port.name.split(' (')[0] + ' • ' + Math.round(sea.km) + ' km • ' + sea.list.length + ' lines',
+        subRows: sea.list.map((x, i) => ({ name:x.name, meta:x.tag + (i === 0 ? ' • CHEAPEST' : ''), price:x.price })),
+        refreshNote: cycleDetail + (noPort ? ' • hindi kasama ang land transfer papuntang ' + sea.port.name.split(' (')[0] : '')
+      });
+    }
 
     return rows;
   }
@@ -2535,6 +2774,19 @@
       // Toggle: clicking the selected ride deselects it; clicking another selects it.
       row.addEventListener('click',()=>{ fareSel = (fareSel===f.id) ? null : f.id; renderFareRows(); updateFareTotal(); });
       body.appendChild(row);
+      // Airplane/Ship: kapag napili, ipakita ang presyo kada airline / shipping line
+      if(f.id === fareSel && f.subRows && f.subRows.length){
+        const sub = h('div','fare-sub');
+        f.subRows.forEach((sx, i) => {
+          const line = h('div','fare-sub-row'+(i === 0 ? ' best' : ''));
+          line.appendChild(h('span','fare-sub-name', sx.name));
+          line.appendChild(h('span','fare-sub-tag', sx.meta));
+          line.appendChild(h('span','fare-sub-price', peso(sx.price)));
+          sub.appendChild(line);
+        });
+        if(f.refreshNote) sub.appendChild(h('div','fare-sub-note', f.refreshNote));
+        body.appendChild(sub);
+      }
     });
   }
 

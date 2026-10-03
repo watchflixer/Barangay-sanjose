@@ -39,7 +39,23 @@ galing sa totoong Mapbox route (km at minuto) ng piniling ruta, hindi manual na 
 | Jeepney | ₱14.00 unang 4 km, +₱2.40/km |
 | E-Trike | ₱30 unang km, +₱15.00/km |
 | Bus | ₱18.00 unang 5 km, +₱2.98/km |
-| Airplane / Ship | Depende sa destination (no hotel) — range na estimate, hindi fixed |
+| Airplane | Depende sa **airlines na nagse-serve sa ruta** — presyo kada airline (Cebu Pacific, PAL, AirAsia, Cebgo, PAL Express, Royal Air, Sunlight Air, AirSWIFT) |
+| Ship | Depende sa **shipping line** (2GO, Starlite, Montenegro, FastCat, Aleson, Weesam, Supercat, Cokaliong, Lite) |
+
+### Airplane / Ship — paano nag-a-update
+
+- **Airport/port-based**: may table ng ~40 PH airports at ~40 ports. Ang presyo ay
+  airport-to-airport (great-circle) na distansya × rate ng airline/linya.
+- **Kung walang airport/port sa destination**: ipapakita ang pinakamalapit
+  (hal. *"Walang port sa destination • via Surigao (73 km)"*) at sinasabing hindi
+  kasama ang land transfer. Kung < 40 km ang layo ng pinanggalingan at pupuntahan,
+  tinatanggal na lang ang Airplane/Ship row (land travel na iyon).
+- **Fare cycle** (`fareCycle()`): nagre-refresh tuwing **ika-15** at **katapusan ng
+  buwan** (PH time), para sa lahat ng airline at shipping line. Naka-indeks kada
+  cycle ang bawat airline (0.88×–1.20×), kaya kusang nagbabago ang presyo at ang
+  pinaka-mura, at nakalagay sa card: *"Na-refresh Oct 15, 2026 • susunod Nov 1, 2026"*.
+- Buksan ang Airplane o Ship row para makita ang **listahan ng presyo kada airline/linya**
+  (may CHEAPEST tag) — per pax, one-way, hindi kasama ang hotel.
 
 Kada row may breakdown (`Base ₱55.00 + 8.0 km × ₱15.00 + 20 min × ₱2.00`) at awtomatikong
 nagre-recompute kapag nagpalit ng ruta o ng bilang ng pasahero. Kapag bagong rates, isang
