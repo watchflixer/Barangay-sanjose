@@ -117,9 +117,22 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
           {/* Brand & Location Info */}
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
-            <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0 tracking-wider">
-              HS
-            </div>
+            {/* HazardSync mark — rounded delta with a monitoring dot and a
+                shelter arch cut out of the base. Plain vector so it stays crisp
+                at 32px (and can't be blown up by mobile font-boosting). */}
+            <svg
+              viewBox="0 0 32 32"
+              className="h-8 w-8 shrink-0"
+              role="img"
+              aria-label="HazardSync"
+              fill="#111827"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M14.15 5.35Q16 1.8 17.85 5.35L29.41 27.54Q30.8 30.2 27.8 30.2H4.2Q1.2 30.2 2.59 27.54L14.15 5.35Z M16 8.9a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Z M11.25 30.2V26.45a4.75 4.75 0 0 1 9.5 0V30.2H11.25Z"
+              />
+            </svg>
             <div className="min-w-0">
               <div className="flex items-center space-x-1.5 sm:space-x-2">
                 <h1 className="text-sm sm:text-base font-bold text-slate-800 leading-tight tracking-tight whitespace-nowrap">
@@ -259,9 +272,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="btn-report-hazard"
               onClick={onOpenReportModal}
               disabled={floodProneOpen || trafficOpen}
-              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-white bg-slate-900 rounded-md shadow-xs transition-all shrink-0 whitespace-nowrap ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-800'}`}
+              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-slate-900 bg-white border border-slate-200 rounded-md transition-colors shrink-0 whitespace-nowrap ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-50'}`}
             >
-              <PlusCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <PlusCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>Report</span>
             </button>
 

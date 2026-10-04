@@ -4,38 +4,36 @@ import path from 'path';
 import {defineConfig, type Connect, type Plugin} from 'vite';
 
 /**
- * PIXEL 7 BY DEFAULT
- * ------------------
- * Every time this app is served (`npm run preview` or `npm run dev`) a plain
- * visit to "/" lands straight on the Pixel 7 device preview
- * (public/pixel7-preview.html) instead of the desktop layout.
+ * PIXEL 7 ON DEMAND
+ * -----------------
+ * "/" serves the real app on `npm run preview` and `npm run dev`. The Pixel 7
+ * device frame (public/pixel7-preview.html) is opt-in:
  *
- * How to reach the real (desktop) app:
- *   - "/?full=1"  or  "/?desktop=1"   -> normal desktop app at the root URL
- *   - "/index.html"                   -> normal desktop app (used by the
- *                                        device-frame iframes themselves)
- *   - deep links like "/?traffic=1&sfrom=..." always go to the app, so the
+ *   - "/?pixel7=1"                   -> 302 to the Pixel 7 device preview
+ *   - "/pixel7-preview.html"         -> the frame directly (sizes it embeds
+ *                                       "/index.html", which stays the real app)
+ *   - "/mobile-preview.html"         -> all devices page
+ *   - "/?full=1" or "/?desktop=1"    -> normal desktop app (kept for old links)
+ *   - deep links like "/?traffic=1&sfrom=..." go straight to the app, so the
  *     in-app "Share" links keep working.
  */
-const DESKTOP_FLAGS = ['full', 'desktop'];
+const PIXEL7_FLAG = 'pixel7';
 
-function pixel7ByDefault(): Plugin {
+function pixel7OnDemand(): Plugin {
   const pixel7First: Connect.NextHandleFunction = (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
 
     const [pathname, search = ''] = (req.url || '/').split('?');
 
-    // Only the bare root is redirected. "/index.html" stays the real app so
-    // the Pixel 7 frame (and the All Devices page) can embed it safely.
+    // Only the bare root can be redirected. "/index.html" stays the real app
+    // so the Pixel 7 frame (and the All Devices page) can embed it safely.
     if (pathname !== '/') return next();
 
     const params = new URLSearchParams(search);
     const keys = [...params.keys()];
-    const wantsDesktop = keys.some((key) => DESKTOP_FLAGS.includes(key));
-    const isDeepLink = keys.some((key) => !DESKTOP_FLAGS.includes(key));
 
-    // Desktop was asked for explicitly, or this is an app deep link.
-    if (wantsDesktop || isDeepLink) return next();
+    // Opt-in only — everything else is the app.
+    if (!keys.includes(PIXEL7_FLAG)) return next();
 
     res.statusCode = 302;
     res.setHeader('Location', '/pixel7-preview.html');
@@ -44,7 +42,7 @@ function pixel7ByDefault(): Plugin {
   };
 
   return {
-    name: 'pixel7-by-default',
+    name: 'pixel7-on-demand',
     configureServer(server) {
       server.middlewares.use(pixel7First);
     },
@@ -59,7 +57,7 @@ export default defineConfig(() => {
     // Relative base so the built site works on GitHub Pages project paths
     // (https://<user>.github.io/<repo>/) as well as at a domain root.
     base: './',
-    plugins: [pixel7ByDefault(), react(), tailwindcss()],
+    plugins: [pixel7OnDemand(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

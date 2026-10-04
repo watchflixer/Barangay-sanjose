@@ -276,14 +276,14 @@ export default function App() {
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
             aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
-            className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 items-center justify-center bg-transparent border-0 shadow-none p-1.5 transition-transform active:scale-90 cursor-pointer select-none"
+            className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none"
           >
             <svg
               viewBox="0 0 70 140"
-              className={`w-3.5 h-[22px] transition-transform duration-300 ${
+              className={`w-3 h-5 transition-transform duration-300 ${
                 mobileMenuOpen ? 'rotate-180' : 'rotate-0'
               }`}
-              fill="#0f172a"
+              fill="#000000"
             >
               <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
             </svg>
