@@ -262,9 +262,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="btn-report-hazard"
               onClick={onOpenReportModal}
               disabled={floodProneOpen || trafficOpen}
-              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-white bg-slate-900 rounded-md shadow-xs transition-all shrink-0 whitespace-nowrap ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-800'}`}
+              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-black bg-white border border-slate-300 rounded-md shadow-xs transition-all shrink-0 whitespace-nowrap ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100'}`}
             >
-              <PlusCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <PlusCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
               <span>Report</span>
             </button>
 
