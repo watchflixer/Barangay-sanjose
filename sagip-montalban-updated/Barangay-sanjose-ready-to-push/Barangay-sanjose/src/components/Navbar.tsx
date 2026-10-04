@@ -18,6 +18,7 @@ import {
   History
 } from 'lucide-react';
 import { HazardAlert } from '../types';
+import logo from '../assets/logo.svg';
 
 interface NavbarProps {
   alerts: HazardAlert[];
@@ -117,9 +118,11 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
           {/* Brand & Location Info */}
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
-            <div className="w-8 h-8 bg-blue-600 rounded-md flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0 tracking-wider">
-              HS
-            </div>
+            <img
+              src={logo}
+              alt="HazardSync logo"
+              className="w-8 h-8 object-contain shrink-0"
+            />
             <div className="min-w-0">
               <div className="flex items-center space-x-1.5 sm:space-x-2">
                 <h1 className="text-sm sm:text-base font-bold text-slate-800 leading-tight tracking-tight whitespace-nowrap">
