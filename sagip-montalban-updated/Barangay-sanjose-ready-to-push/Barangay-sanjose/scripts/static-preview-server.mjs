@@ -1,16 +1,19 @@
 /**
- * Side-by-side (Pixel 7 + Desktop) preview server.
+ * Static preview server for the built site.
  *
- * Serves the SAME `dist/` build as `npm run preview`, but makes
- * `compare.html` the index, so opening the bare host shows both viewports
- * at once. Handy for preview panes that can only open a port's root URL.
+ * Serves the SAME `dist/` build as `npm run preview`, but lets you choose
+ * which page is the index. That matters for preview panes that can only
+ * open a port's bare root URL — pointing the root at a device-preview page
+ * means the preview opens straight into the phone frames.
  *
  * Usage:
- *   npm run preview:compare            # dist on port 4174
- *   node scripts/compare-preview-server.mjs <root> <port>
+ *   node scripts/static-preview-server.mjs <root> <port> [indexFile]
  *
- * The app itself is still at /index.html on this same origin, so the
- * iframes in compare.html resolve without any cross-origin setup.
+ *   npm run preview:devices   -> dist on :4174, index = mobile-preview.html
+ *   npm run preview:compare   -> dist on :4175, index = compare.html
+ *
+ * The app itself stays at /index.html on the same origin, so the iframes
+ * inside those pages resolve with no cross-origin setup.
  */
 import {createReadStream, promises as fs} from 'node:fs';
 import {createServer} from 'node:http';
@@ -20,7 +23,7 @@ import {fileURLToPath} from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(process.argv[2] || path.join(HERE, '..', 'dist'));
 const PORT = Number(process.argv[3] || process.env.PORT || 4174);
-const INDEX = 'compare.html';
+const INDEX = process.argv[4] || process.env.INDEX || 'index.html';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -76,6 +79,5 @@ createServer(async (req, res) => {
     res.writeHead(500, {'Content-Type': 'text/plain'}).end('Server error: ' + err.message);
   }
 }).listen(PORT, '0.0.0.0', () => {
-  console.log(`  ➜  Pixel 7 + Desktop:  http://0.0.0.0:${PORT}/`);
-  console.log(`  ➜  Serving:            ${ROOT} (index = ${INDEX})`);
+  console.log(`  ➜  http://0.0.0.0:${PORT}/  (index = ${INDEX})`);
 });
