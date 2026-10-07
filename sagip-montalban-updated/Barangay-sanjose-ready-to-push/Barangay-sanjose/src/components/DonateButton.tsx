@@ -1,15 +1,9 @@
 import React from 'react';
 
 /**
- * Donate button — ang pill button na itim-puti, uppercase na may 0.22em
- * letter-spacing (galing sa standalone snippet).
- *
- * Nasa Navbar, sa dating pwesto ng ●●● button sa portrait phone
- * (at sa tabi ng Report/Hotlines sa desktop).
- *
- * Ang lahat ng style ay nasa `.donate-btn` sa `src/index.css`, sukat lang ang
- * pinaliit para pumasok sa 32px-tall navbar — ibalik lang ang mga orihinal na
- * value (nakalista sa komento doon) kung gusto ng buong laki.
+ * Donate button — simpleng normal na button lang (walang pill, walang
+ * uppercase/letter-spacing, walang shine o hover-invert animation).
+ * Kaparehong itsura ng ibang navbar buttons (Report / Hotlines).
  *
  * TODO: palitan ang DEFAULT_DONATE_URL ng totoong donation page / QR page mo.
  */
@@ -27,7 +21,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({
 }) => (
   <a
     id="btn-donate"
-    className={`donate-btn shrink-0 ${className}`}
+    className={`inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 ${className}`}
     href={href}
     target="_blank"
     rel="noopener noreferrer"

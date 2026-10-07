@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { OptionsMenu } from './OptionsMenu';
 import { DonateButton } from './DonateButton';
+import { GuideButton } from './GuideButton';
 import { ReportButton } from './ReportButton';
 import { HazardAlert } from '../types';
 
@@ -92,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs shrink-0">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
-        <div className="flex items-center justify-between h-16 gap-2 sm:gap-4">
+        <div className="flex items-center justify-between h-16 portrait:h-11 sm:portrait:h-16 gap-2 sm:gap-4">
           {/* Brand & Location Info */}
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
             {/* HazardSync mark — rounded delta with a monitoring dot and a
@@ -100,7 +101,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 at 32px (and can't be blown up by mobile font-boosting). */}
             <svg
               viewBox="0 0 32 32"
-              className="h-8 w-8 shrink-0"
+              className="h-8 w-8 shrink-0 portrait:h-7 portrait:w-7 sm:portrait:h-8 sm:portrait:w-8"
               role="img"
               aria-label="HazardSync"
               fill="#111827"
@@ -123,7 +124,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {/* Live clock beside “Rizal” — mobile phone views (narrow width or portrait).
                     On extra-narrow screens it steps aside so the Navbar buttons
                     (Buy Me a Coffee + Report) never overflow. */}
-                <span className="flex sm:hidden sm:portrait:flex max-[400px]:hidden items-center gap-1 normal-case tracking-tight text-slate-700 tabular-nums">
+                <span className="flex sm:hidden sm:portrait:flex items-center gap-1 normal-case tracking-tight text-slate-700 tabular-nums whitespace-nowrap">
                   <span className="w-0.5 h-2.5 rounded-full bg-slate-300" />
                   {currentTime || 'PST'}
                 </span>
@@ -189,12 +190,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={onOpenReportModal}
             />
 
-            {/* Donate — eksaktong dating DOM slot ng ●●● button.
-                Portrait phone (row-reverse): nasa KANAN ito ng Report, kung
-                saan mismo nakatayo ang ●●● noon — may maliit na espasyo sa
-                kanan (portrait:mr-2.5 = 10px) para hindi dumikit sa gilid.
-                Desktop/landscape: nasa tabi ng Report row. */}
-            <DonateButton className="portrait:mr-5" />
+            {/* Guide — nasa dating pwesto ng Donate: itim na bilog na may
+                puting question mark, tapos itim na text na "Guide". */}
+            <GuideButton className="ml-4 portrait:ml-0 portrait:mr-0.5 sm:portrait:mr-5 portrait:h-7 sm:portrait:h-8" />
+
+            {/* Donate — katabi ng Guide (nagpalitan sila ng pwesto). */}
+            <DonateButton className="portrait:h-7 sm:portrait:h-8" />
 
             <button
               id="btn-emergency-hotlines"

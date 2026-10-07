@@ -57,7 +57,7 @@
     .punch-hole {
       position:absolute; top:9px; left:50%; transform:translateX(-50%);
       width:13px; height:13px; background:#000; border-radius:50%;
-      z-index:10; box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
+      z-index:40; box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
     }
     .pixel7::after {
       content:''; position:absolute; bottom:5px; left:50%; transform:translateX(-50%);
@@ -128,6 +128,7 @@
     Desktop layout: <code>/?full=1</code> · Lahat ng devices: <code>/mobile-preview.html</code>
   </p>
 
+  <script src="status-bar.js"></script>
   <script>
     (function () {
       var params = new URLSearchParams(location.search);
@@ -140,12 +141,17 @@
       var frame = document.getElementById('appFrame');
       var screen = document.getElementById('screen');
 
+      // Android status bar (live clock) sits on top of the app viewport.
+      var BAR = window.HSStatusBar ? window.HSStatusBar.height('android') : 0;
+      if (window.HSStatusBar) window.HSStatusBar.mount(screen, {os: 'android'});
+
       box.style.width = (W + PAD) + 'px';
       box.style.marginLeft = (-(W + PAD) / 2) + 'px';
       screen.style.width = W + 'px';
       screen.style.height = H + 'px';
       frame.style.width = W + 'px';
-      frame.style.height = H + 'px';
+      frame.style.height = (H - BAR) + 'px';
+      frame.style.marginTop = BAR + 'px';
 
       document.getElementById('sizeLabel').textContent = W + ' × ' + H;
       document.getElementById('metaSize').textContent = W + ' × ' + H;
