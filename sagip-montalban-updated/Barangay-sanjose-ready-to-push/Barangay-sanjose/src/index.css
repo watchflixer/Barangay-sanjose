@@ -237,3 +237,90 @@ body,
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* ==========================================================================
+   Donate button (Navbar, sa dating pwesto ng ●●● button)
+   --------------------------------------------------------------------------
+   Galing sa ibinigay na standalone snippet — pareho ang disenyo (pill,
+   uppercase, 0.22em letter-spacing, 800 weight, kumikinang na guhit sa hover,
+   hover-invert, press, focus-visible, reduced-motion).
+   ANG MGA PINALITAN:
+     BOX (normal na box, tulad ng original na Report button):
+       border-radius: 999px   ->  6px        (rounded-md)
+       border: 2px solid #fff ->  1px solid #e2e8f0 (slate-200)
+       padding: 15px 50px     ->  0 12px     (h-8 + px-3)
+       height: ~50px          ->  32px       (h-8)
+       shadow: 0 10px 24px    ->  0 1px 2px  (halos flat)
+     TEXT: 1rem -> 11px (para kasya sa 32px na navbar; pareho pa rin ang
+           uppercase + 0.22em letter-spacing + 800 weight)
+   Kung gusto mong gamitin ang buong laki sa ibang page, ibalik lang ang mga
+   value na nasa komento sa tabi ng bawat property.
+   ========================================================================== */
+.donate-btn {
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;                   /* h-8 — kasing-taas ng Report/Hotlines */
+  padding: 0 12px;                /* px-3 — tulad ng original Report button */
+  border-radius: 6px;             /* rounded-md, hindi na pill */
+  border: 1px solid #e2e8f0;      /* slate-200, manipis na border */
+  cursor: pointer;
+  overflow: hidden;
+  text-decoration: none;
+  font-family: inherit;
+  font-size: 11px;              /* original: 1rem */
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--fg);
+  background: var(--bg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease,
+              background 0.25s ease, color 0.25s ease,
+              border-color 0.25s ease;
+}
+
+/* kumikinang na guhit */
+.donate-btn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg, transparent, rgba(0, 0, 0, 0.12), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+}
+
+/* hover: nagiging itim na may puting text (banayad na lift na lang) */
+.donate-btn:hover {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.22);
+}
+.donate-btn:hover::before {
+  left: 130%;
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+}
+
+.donate-btn:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22);
+}
+
+.donate-btn:focus-visible {
+  outline: 3px solid #ccc;
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .donate-btn,
+  .donate-btn::before { transition: none; }
+}

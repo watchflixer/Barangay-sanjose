@@ -12,3 +12,6 @@ server.js
 # Logs & misc
 *.log
 .DS_Store
+
+# Local preview artifacts (generated)
+preview-bundle/
