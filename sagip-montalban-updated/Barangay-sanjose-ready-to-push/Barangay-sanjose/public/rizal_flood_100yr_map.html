@@ -20,6 +20,22 @@
   #map{position:absolute;top:0;left:0;right:0;bottom:0;}
   /* Zoom buttons: top-left, below parent app's Show your location button */
   #map .leaflet-top.leaflet-left{top:132px;left:6px;}
+  /* Compact basemap switcher, matching the Street/Satellite control style. */
+  #base-switch{
+    position:absolute;top:10px;right:12px;
+    display:flex;gap:4px;
+    background:rgba(255,255,255,0.95);border:1px solid var(--line);border-radius:8px;
+    padding:4px;z-index:400;box-shadow:0 2px 6px rgba(0,0,0,0.15);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  #base-switch button{
+    border:1px solid transparent;border-radius:5px;background:transparent;
+    padding:4px 10px;font-size:0.72rem;font-weight:700;letter-spacing:0.02em;
+    color:#33413a;cursor:pointer;transition:background .15s ease,color .15s ease;
+  }
+  #base-switch button:hover{background:#eef1ec;}
+  #base-switch button.active{background:#111827;color:#ffffff;}
+  #base-switch button:focus-visible{outline:2px solid #2563eb;outline-offset:2px;}
   #legend{
     position:absolute;right:12px;bottom:24px;
     background:rgba(246,243,234,0.95);border:1px solid var(--line);border-radius:8px;
@@ -56,6 +72,10 @@
 </head>
 <body>
 <div id="map"></div>
+<div id="base-switch" role="group" aria-label="Map style">
+  <button type="button" data-base="satellite" class="active" aria-pressed="true">Satellite</button>
+  <button type="button" data-base="street" aria-pressed="false">Street</button>
+</div>
 <div id="legend">
   <div class="row"><span class="sw" style="background:var(--low);"></span>Low (0–0.5m)</div>
   <div class="row"><span class="sw" style="background:var(--med);"></span>Medium (0.5–1.5m)</div>
@@ -101,10 +121,23 @@ satelliteLayer.on('tileerror', function(e) {
 
 satelliteLayer.addTo(map);
 
-L.control.layers({
-  "Satellite": satelliteLayer,
-  "Street": streetLayer
-}, null, { position: 'topright', collapsed: false }).addTo(map);
+// Keep the compact selector scoped to this Flood Prone map only.
+document.getElementById('base-switch').addEventListener('click', function(event) {
+  const button = event.target instanceof Element ? event.target.closest('button[data-base]') : null;
+  if (!button) return;
+
+  const useSatellite = button.dataset.base === 'satellite';
+  const nextLayer = useSatellite ? satelliteLayer : streetLayer;
+  const previousLayer = useSatellite ? streetLayer : satelliteLayer;
+  if (map.hasLayer(previousLayer)) map.removeLayer(previousLayer);
+  if (!map.hasLayer(nextLayer)) nextLayer.addTo(map);
+
+  document.querySelectorAll('#base-switch button').forEach(function(option) {
+    const active = option === button;
+    option.classList.toggle('active', active);
+    option.setAttribute('aria-pressed', String(active));
+  });
+});
 
 const HAZARD_COLORS = { 1: "#a8d5ba", 2: "#f4b942", 3: "#c0392b" };
 
