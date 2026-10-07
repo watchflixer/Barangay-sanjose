@@ -93,7 +93,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs shrink-0">
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
-        <div className="flex items-center justify-between h-16 portrait:h-11 sm:portrait:h-16 gap-2 sm:gap-4">
+        {/* Phone portrait (Android/iPhone) gets a slightly taller bar than the
+            old h-11/44px — h-12/48px — so the brand block and the Guide/Donate
+            buttons breathe. Tablets in portrait and all landscape/desktop
+            widths stay at h-16/64px. */}
+        <div className="flex items-center justify-between h-16 portrait:h-12 sm:portrait:h-16 gap-2 sm:gap-4">
           {/* Brand & Location Info */}
           <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
             {/* HazardSync mark — rounded delta with a monitoring dot and a
