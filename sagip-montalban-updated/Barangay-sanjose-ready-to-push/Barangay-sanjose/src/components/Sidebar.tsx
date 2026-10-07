@@ -5,6 +5,8 @@ import {
   HazardStatus 
 } from '../types';
 import { WaterLevelLiveBanner } from './WaterLevelLiveBanner';
+import { OptionsMenu } from './OptionsMenu';
+import { ReportButton } from './ReportButton';
 import { 
   Search, 
   Flame, 
@@ -42,6 +44,13 @@ interface SidebarProps {
   onOpenLiveModal?: () => void;
   onRemoveLive?: () => void;
   onClose?: () => void;
+  /** ●●● options menu — lives in this header on mobile portrait. */
+  onOpenUpdates?: () => void;
+  onOpenEvacuationCenters?: () => void;
+  onOpenResolvedCleared?: () => void;
+  onOpenHistory?: () => void;
+  /** Flood Prone / Traffic map open — greys out the ⊕ at ●●● buttons (all devices). */
+  optionsDisabled?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -59,6 +68,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenLiveModal = () => {},
   onRemoveLive = () => {},
   onClose,
+  onOpenUpdates = () => {},
+  onOpenEvacuationCenters = () => {},
+  onOpenResolvedCleared = () => {},
+  onOpenHistory = () => {},
+  optionsDisabled = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -123,13 +137,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Top Header & Search */}
       <div className="p-4 border-b border-slate-100 space-y-3 bg-slate-50">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-              <span>Incident Feeds</span>
-              <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-900 text-white">
-                {filteredAlerts.length}
-              </span>
-            </h2>
+          {/* flex-1 keeps this block panel-wide, so the 14rem ●●● dropdown
+              (anchored to the title row below) stays inside the drawer. */}
+          <div className="min-w-0 flex-1">
+            {/* Title row: sa Android/iPhone portrait, ang ⊕ Report at ●●●
+                options button ay nasa dulong-kanan ng row (dito naka-hide ang
+                kopya ng Navbar). */}
+            <div className="relative flex items-center justify-between gap-2">
+              <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <span>Incident Feeds</span>
+                <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-900 text-white">
+                  {filteredAlerts.length}
+                </span>
+              </h2>
+
+              {/* Dulong-kanan na pares: ⊕ Report (itim na plus, puting
+                  bilog) tapos ang ⋮ options — magkatabi sila. */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <ReportButton
+                  id="btn-report-hazard-mobile"
+                  className="hidden portrait:inline-flex"
+                  disabled={optionsDisabled}
+                  onClick={onOpenReportModal}
+                />
+
+                <OptionsMenu
+                  className="hidden portrait:inline-flex"
+                  anchor="row"
+                  disabled={optionsDisabled}
+                  onOpenUpdates={onOpenUpdates}
+                  onOpenEvacuationCenters={onOpenEvacuationCenters}
+                  onOpenResolvedCleared={onOpenResolvedCleared}
+                  onOpenHistory={onOpenHistory}
+                />
+              </div>
+            </div>
             <p className="text-[10px] text-slate-500 font-medium">Verified reports in Barangay San Jose</p>
           </div>
         </div>

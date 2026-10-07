@@ -250,6 +250,8 @@ export default function App() {
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
+          {/* On mobile portrait the Sidebar also carries the ●●● options menu
+              (the Navbar hides its own copy of that button there). */}
           <Sidebar
             alerts={alerts}
             selectedAlert={selectedAlert}
@@ -268,6 +270,11 @@ export default function App() {
             onOpenLiveModal={() => setIsLiveModalOpen(true)}
             onRemoveLive={() => setLiveStreamUrl('')}
             onClose={() => setMobileMenuOpen(false)}
+            onOpenUpdates={() => setIsUpdatesModalOpen(true)}
+            onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
+            onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
+            onOpenHistory={() => setIsHistoryModalOpen(true)}
+            optionsDisabled={floodProneOpen || trafficOpen}
           />
 
           {/* Arrow toggle attached to the outer right edge of the incident feed drawer on mobile portrait */}

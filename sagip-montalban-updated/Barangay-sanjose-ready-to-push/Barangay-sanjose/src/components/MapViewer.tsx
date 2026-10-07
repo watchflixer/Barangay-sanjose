@@ -28,7 +28,8 @@ import {
   Check,
   ShieldCheck,
   X,
-  Radio
+  Radio,
+  LightbulbOff
 } from 'lucide-react';
 
 interface MapViewerProps {
@@ -508,19 +509,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     };
 
     // IMPORTANT: the geolocation call must run synchronously from the user's
-    // tap on "Allow" so the browser treats it as a direct user gesture. The
-    // permissions check below only refines the hint message — it must never
-    // delay the actual request, otherwise Safari/iOS suppresses the dialog.
+    // tap so the browser treats it as a direct user gesture, otherwise
+    // Safari/iOS suppresses its native dialog.
     const askPermissionState = () => {
       if (!navigator.permissions?.query) return;
       navigator.permissions
         .query({ name: 'geolocation' as PermissionName })
         .then((permission) => {
           // 'granted' → the location is fetched silently, no dialogs at all.
-          // 'prompt'  → the browser's one-time native allow dialog appears.
-          if (permission.state === 'prompt') {
-            setLocationMessage('Tap "Allow" on the browser popup to share your location.');
-          }
+          // 'prompt'  → the browser's native allow dialog appears on its own;
+          //             hindi na tayo nagpapakita ng "Tap Allow..." na text.
         })
         .catch(() => { /* hint only — the request itself is already running */ });
     };
@@ -554,6 +552,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const handleZoomOut = () => {
     mapInstanceRef.current?.zoomOut();
   };
+
+  // Maliit na legend sa ibaba ng main map — pangalan lang ng hazard type,
+  // WALANG bilang (icons: Flame, Waves, Zap, LightbulbOff, Droplets).
+  const legendItems = [
+    { label: 'Fire', Icon: Flame },
+    { label: 'Flood', Icon: Waves },
+    { label: 'No Power', Icon: Zap },
+    { label: 'Streetlight', Icon: LightbulbOff },
+    { label: 'Water', Icon: Droplets },
+  ];
 
   // Location is ONLY requested when the user clicks the "Show your location"
   // button — no automatic geolocation prompt on page load.
@@ -1090,6 +1098,28 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           </>
         )}
       </div>
+
+      {/* Maliit na hazard legend — nasa IBABANG-KALIWA ng main map, nakaangat
+          nang kaunti (bottom-10 = 40px), at PORTRAIT PHONE lang (Android/iPhone).
+          Hindi ito lumalabas sa Flood Prone at Traffic, kaya satellite/streets
+          na basemap lang ang may legend. Naka-hide din kapag bukas ang
+          incident feed drawer (may backdrop iyon).
+          pointer-events-none para dumadaan pa rin sa mapa ang mga tap. */}
+      {!showFloodProneBlank && !showTrafficMap && !isMobileMenuOpen && (
+        <div className="pointer-events-none absolute bottom-10 left-3 z-30 hidden portrait:flex sm:portrait:hidden">
+          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white/95 px-2.5 py-1.5 shadow-xs backdrop-blur-xs">
+            {legendItems.map(({ label, Icon }) => (
+              <span
+                key={label}
+                className="flex items-center gap-1 whitespace-nowrap text-[9px] font-semibold text-slate-700"
+              >
+                <Icon className="h-3 w-3 shrink-0 text-slate-600" />
+                <span>{label}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {locationMessage && !isMobileMenuOpen && (
         locationBanner !== 'none' ? (

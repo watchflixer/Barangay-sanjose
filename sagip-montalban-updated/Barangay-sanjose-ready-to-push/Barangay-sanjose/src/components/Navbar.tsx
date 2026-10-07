@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
   MapPin, 
@@ -12,11 +12,10 @@ import {
   Waves,
   LightbulbOff,
   RefreshCw,
-  BellRing,
-  Building2,
-  CheckCircle2,
-  History
 } from 'lucide-react';
+import { OptionsMenu } from './OptionsMenu';
+import { DonateButton } from './DonateButton';
+import { ReportButton } from './ReportButton';
 import { HazardAlert } from '../types';
 
 interface NavbarProps {
@@ -56,13 +55,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
-  const [isMenuDropdownOpen, setIsMenuDropdownOpen] = useState<boolean>(false);
-  const menuDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close the ●●● dropdown whenever Flood Prone or Traffic disables it (all devices).
-  useEffect(() => {
-    if (floodProneOpen || trafficOpen) setIsMenuDropdownOpen(false);
-  }, [floodProneOpen, trafficOpen]);
 
   const handleRecenter = () => {
     setIsSpinning(true);
@@ -71,20 +63,6 @@ export const Navbar: React.FC<NavbarProps> = ({
       setIsSpinning(false);
     }, 550);
   };
-
-  // Close dropdown on click outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        menuDropdownRef.current &&
-        !menuDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsMenuDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   useEffect(() => {
     const updateClock = () => {
@@ -142,8 +120,10 @@ export const Navbar: React.FC<NavbarProps> = ({
               <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                 <span>Rizal</span>
-                {/* Live clock beside “Rizal” — mobile phone views (narrow width or portrait) */}
-                <span className="flex sm:hidden sm:portrait:flex items-center gap-1 normal-case tracking-tight text-slate-700 tabular-nums">
+                {/* Live clock beside “Rizal” — mobile phone views (narrow width or portrait).
+                    On extra-narrow screens it steps aside so the Navbar buttons
+                    (Buy Me a Coffee + Report) never overflow. */}
+                <span className="flex sm:hidden sm:portrait:flex max-[400px]:hidden items-center gap-1 normal-case tracking-tight text-slate-700 tabular-nums">
                   <span className="w-0.5 h-2.5 rounded-full bg-slate-300" />
                   {currentTime || 'PST'}
                 </span>
@@ -181,83 +161,40 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Action Buttons — on mobile portrait the ●●● and Report buttons swap places */}
+          {/* Action Buttons — the ●●● button hides itself on mobile portrait,
+              where it moves into the Incident Feeds header (Sidebar.tsx). */}
           <div className="flex items-center space-x-2 shrink-0 portrait:flex-row-reverse">
             <div className="hidden sm:flex h-8 items-center justify-center mr-4 sm:mr-5 text-slate-800 font-sans font-semibold text-xs tracking-tight tabular-nums whitespace-nowrap portrait:hidden">
               {currentTime || 'PST'}
             </div>
 
-            {/* ●●● options menu beside Hotlines */}
-            <div className="relative shrink-0" ref={menuDropdownRef}>
-              <button
-                onClick={() => setIsMenuDropdownOpen((prev) => !prev)}
-                disabled={floodProneOpen || trafficOpen}
-                title="Options"
-                aria-label="Options"
-                className={`inline-flex h-8 w-9 items-center justify-center rounded-md border border-slate-200 transition-colors ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-100 cursor-pointer'}`}
-              >
-                {/* CSS dots, not text: Chrome Android/iOS font-boosts text glyphs
-                    (●●●) and blows the button up in mobile portrait. Plain
-                    rounded spans are immune to font inflation. */}
-                <span className="flex items-center gap-[2.5px]" aria-hidden="true">
-                  <span className="w-1 h-1 rounded-full bg-slate-900" />
-                  <span className="w-1 h-1 rounded-full bg-slate-900" />
-                  <span className="w-1 h-1 rounded-full bg-slate-900" />
-                </span>
-              </button>
+            {/* ●●● options menu. On mobile portrait (Android/iPhone) it is
+                moved INSIDE the Incident Feeds header — see Sidebar.tsx. */}
+            <OptionsMenu
+              className="shrink-0 portrait:hidden"
+              disabled={floodProneOpen || trafficOpen}
+              onOpenUpdates={onOpenUpdates}
+              onOpenEvacuationCenters={onOpenEvacuationCenters}
+              onOpenResolvedCleared={onOpenResolvedCleared}
+              onOpenHistory={onOpenHistory}
+            />
 
-              {isMenuDropdownOpen && (
-                <div className="absolute right-0 mt-7 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-slate-100">
-                  {/* Speech-bubble arrow pointing up at the ●●● button */}
-                  <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 rounded-[2px] border-l border-t border-slate-200 bg-white" />
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        setIsMenuDropdownOpen(false);
-                        onOpenUpdates();
-                      }}
-                      className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                    >
-                      <BellRing className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Updates</span>
-                    </button>
+            {/* Report — itim na plus sa puting bilog, katabi ng ●●●.
+                Sa portrait phone ito ay naka-hide dito at lumalabas sa
+                Incident Feeds header sa tabi ng ⋮ (Sidebar.tsx). */}
+            <ReportButton
+              id="btn-report-hazard"
+              className="portrait:hidden"
+              disabled={floodProneOpen || trafficOpen}
+              onClick={onOpenReportModal}
+            />
 
-                    <button
-                      onClick={() => {
-                        setIsMenuDropdownOpen(false);
-                        onOpenEvacuationCenters();
-                      }}
-                      className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                    >
-                      <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
-                      <span>Evacuation Centers</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setIsMenuDropdownOpen(false);
-                        onOpenResolvedCleared();
-                      }}
-                      className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                    >
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Resolved / Cleared</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setIsMenuDropdownOpen(false);
-                        onOpenHistory();
-                      }}
-                      className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
-                    >
-                      <History className="w-4 h-4 text-indigo-600 shrink-0" />
-                      <span>History</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
+            {/* Donate — eksaktong dating DOM slot ng ●●● button.
+                Portrait phone (row-reverse): nasa KANAN ito ng Report, kung
+                saan mismo nakatayo ang ●●● noon — may maliit na espasyo sa
+                kanan (portrait:mr-2.5 = 10px) para hindi dumikit sa gilid.
+                Desktop/landscape: nasa tabi ng Report row. */}
+            <DonateButton className="portrait:mr-5" />
 
             <button
               id="btn-emergency-hotlines"
@@ -266,16 +203,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <PhoneCall className="w-3.5 h-3.5 text-rose-500" />
               <span>Hotlines</span>
-            </button>
-
-            <button
-              id="btn-report-hazard"
-              onClick={onOpenReportModal}
-              disabled={floodProneOpen || trafficOpen}
-              className={`inline-flex items-center space-x-1.5 h-8 px-3 sm:px-3.5 text-xs font-semibold text-slate-900 bg-white border border-slate-200 rounded-md transition-colors shrink-0 whitespace-nowrap ${floodProneOpen || trafficOpen ? 'cursor-not-allowed opacity-40' : 'hover:bg-slate-50'}`}
-            >
-              <PlusCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Report</span>
             </button>
 
             {/* Mobile Menu Toggle (hidden on Android/iPhone portrait view) */}
