@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import qrImage from '../../maribank-qr-instapay-transparent.png';
 
@@ -27,6 +27,11 @@ import qrImage from '../../maribank-qr-instapay-transparent.png';
  * Walang dark/dimming backdrop: transparent ang overlay (click-catcher lang
  * para sumara kapag tumapik sa labas), kaya normal pa rin ang background —
  * ang puting card lang ang nakapatong sa lahat ng button.
+ *
+ * Hindi nagbabago ang sukat ng card kapag binuksan ang "How to send (step by
+ * step)": naka-lock ang height nito sa collapsed height (sinusukat sa
+ * pagbukas, bago ang unang paint), at ang steps na lang ang nag-i-scroll sa
+ * loob ng card — may smooth na pag-scroll pababa para agad makita ang steps.
  */
 
 const ACCOUNT_DISPLAY = '1607 0561 909';
@@ -46,6 +51,10 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
   const [open, setOpen] = useState(false);
   const [copyLabel, setCopyLabel] = useState(COPY_LABEL_DEFAULT);
   const [qrFailed, setQrFailed] = useState(false);
+  // Naka-lock na height ng card habang bukas ito (collapsed height). Hindi na
+  // ito nagbabago kapag binuksan ang "How to send (step by step)" — sa loob
+  // na lang ng card nag-i-scroll ang steps imbes na lumaki ang card.
+  const [lockedHeight, setLockedHeight] = useState<number | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const acctRef = useRef<HTMLSpanElement>(null);
@@ -66,6 +75,24 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
       document.body.style.overflow = prevOverflow;
     };
   }, [open]);
+
+  // Sukatin ang collapsed height sa sandaling bumukas ang card — bago ang
+  // unang paint (useLayoutEffect), kaya walang nakikitang paglukso ng sukat —
+  // at i-lock iyon para hindi lumaki ang card kapag binuksan ang details.
+  useLayoutEffect(() => {
+    if (!open) {
+      setLockedHeight(null);
+      return;
+    }
+    if (lockedHeight !== null) return;
+    const card = modalRef.current;
+    if (!card) return;
+    const measured = card.offsetHeight;
+    // Walang layout (jsdom, display:none, atbp.) — huwag i-lock, hayaan ang CSS.
+    if (!measured) return;
+    // Katugma ng max-h-[90vh] na cap sa card, para hindi lumabas sa screen.
+    setLockedHeight(Math.min(measured, Math.round(window.innerHeight * 0.9)));
+  }, [open, lockedHeight]);
 
   // I-clear ang copy-label timer kapag unmount.
   useEffect(
@@ -136,6 +163,29 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
     if (e.target === e.currentTarget) setOpen(false);
   };
 
+  // Kapag binuksan ang "How to send (step by step)", dumudulas pababa ang
+  // loob ng card para agad makita ang steps. Naka-lock ang height ng card,
+  // kaya hindi ito lumalaki — scroll lang sa loob.
+  const handleDetailsToggle = (e: React.SyntheticEvent<HTMLDetailsElement>) => {
+    const details = e.currentTarget;
+    const card = modalRef.current;
+    if (!details.open || !card) return;
+    const reduceMotion =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    requestAnimationFrame(() => {
+      const cardRect = card.getBoundingClientRect();
+      const detailsRect = details.getBoundingClientRect();
+      // I-align ang bukas na details sa itaas ng nakikitang bahagi ng card.
+      const top = card.scrollTop + (detailsRect.top - cardRect.top) - 8;
+      if (typeof card.scrollTo === 'function') {
+        card.scrollTo({ top, behavior: reduceMotion ? 'auto' : 'smooth' });
+      } else {
+        card.scrollTop = top;
+      }
+    });
+  };
+
   return (
     <>
       <button
@@ -164,6 +214,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
             aria-modal="true"
             aria-label="Support this project"
             tabIndex={-1}
+            style={lockedHeight !== null ? { height: lockedHeight } : undefined}
             className="w-[min(88vw,280px)] max-h-[90vh] overflow-y-auto rounded-lg border-0 bg-white p-[.85rem] text-[13px] leading-[1.4] text-[#111] shadow-2xl shadow-slate-900/40 outline-none custom-scrollbar"
           >
             <div className="mb-[.25rem] flex items-center justify-between gap-2">
@@ -217,7 +268,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
               </button>
             </p>
 
-            <details className="mb-[.6rem]">
+            <details className="mb-[.6rem]" onToggle={handleDetailsToggle}>
               <summary className="cursor-pointer text-[.7rem] font-semibold">
                 How to send (step by step)
               </summary>
