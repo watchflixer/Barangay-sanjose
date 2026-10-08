@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
+import { clearRefreshView, readRefreshView } from '../lib/refreshView';
 import { HazardAlert, MapSettings } from '../types';
 import {
   SAN_JOSE_POLYGON_COORDS,
@@ -93,6 +94,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const sitiosLayerRef = useRef<L.LayerGroup | null>(null);
   const activePopupsRef = useRef<{ [key: string]: L.Marker }>({});
+  // Read the one-time view snapshot set by the HazardSync brand refresh.
+  const [refreshView] = React.useState(readRefreshView);
+  React.useEffect(() => {
+    if (refreshView !== null) clearRefreshView();
+  }, [refreshView]);
 
   const [mouseCoords, setMouseCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [showLayerMenu, setShowLayerMenu] = React.useState(false);
@@ -100,7 +106,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const toggleLayerMenu = (open?: boolean) => {
     setShowLayerMenu((prev) => (typeof open === 'boolean' ? open : !prev));
   };
-  const [showFloodProneBlank, setShowFloodProneBlank] = React.useState(false);
+  const [showFloodProneBlank, setShowFloodProneBlank] = React.useState(refreshView === 'flood');
 
   // Notify the parent app whenever the Flood Prone map opens or closes.
   React.useEffect(() => {
@@ -163,7 +169,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       smode: q.get('smode') || '',
     };
   }, []);
-  const [showTrafficMap, setShowTrafficMap] = React.useState(sharedRoute.open);
+  const [showTrafficMap, setShowTrafficMap] = React.useState(
+    refreshView === null ? sharedRoute.open : refreshView === 'traffic',
+  );
   const trafficMapFrameRef = useRef<HTMLIFrameElement | null>(null);
   React.useEffect(() => {
     if (showTrafficMap) setShowFloodProneBlank(false);

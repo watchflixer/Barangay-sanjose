@@ -14,8 +14,8 @@ import qrImage from '../../maribank-qr-instapay-transparent.png';
  *     hover:bg-slate-50), pero 1px solid black ang border at itim din ang text
  *   - Step-by-step guide (QR scan / MariBank / GCash)
  *
- * Magsasara ang modal sa Escape o sa pag-click sa labas ng kahon
- * (gaya ng nasa orihinal na standalone HTML).
+ * X button lang ang nagsasara ng modal; hindi ito nagsasara sa Escape o
+ * pag-click sa labas ng card.
  *
  * Naka-portal ang modal sa `document.body`: nasa loob ito ng Navbar
  * `<header>` (sticky + z-30) bago, at dahil dito ay naka-stacking context
@@ -26,9 +26,9 @@ import qrImage from '../../maribank-qr-instapay-transparent.png';
  * Sa portal, nasa root stacking context na ito sa z-[100] kaya laging
  * nasa ibabaw ng mapa at ng iba pang controls.
  *
- * Walang dark/dimming backdrop: transparent ang overlay (click-catcher lang
- * para sumara kapag tumapik sa labas), kaya normal pa rin ang background —
- * ang puting card lang ang nakapatong sa lahat ng button.
+ * Walang dark/dimming backdrop: transparent ang overlay, kaya normal pa rin
+ * ang background. Hinaharang ng overlay ang pag-click sa mga nasa likod nito;
+ * ang puting card lang ang nakikita sa ibabaw ng page.
  *
  * Hindi nagbabago ang sukat ng card kapag binuksan ang "How to send (step by
  * step)": naka-lock ang height nito sa collapsed height (sinusukat sa
@@ -62,18 +62,14 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
   const acctRef = useRef<HTMLSpanElement>(null);
   const resetTimerRef = useRef<number | null>(null);
 
-  // Escape-to-close at scroll-lock habang bukas ang modal.
+  // I-lock ang page scroll habang bukas ang modal; X button lang ang
+  // nagsasara nito.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     modalRef.current?.focus();
     return () => {
-      document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
     };
   }, [open]);
@@ -161,10 +157,6 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
     resetTimerRef.current = window.setTimeout(() => setCopyLabel(COPY_LABEL_DEFAULT), 3000);
   };
 
-  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.target === e.currentTarget) setOpen(false);
-  };
-
   // Kapag binuksan ang "How to send (step by step)", dumudulas pababa ang
   // loob ng card para agad makita ang steps. Naka-lock ang height ng card,
   // kaya hindi ito lumalaki — scroll lang sa loob.
@@ -206,10 +198,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
           Walang dimming/black backdrop: normal pa rin ang background, at
           buo ang card sa ibabaw ng lahat (z-[100]). */}
       {open && createPortal(
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          onClick={handleOverlayClick}
-        >
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
             ref={modalRef}
             role="dialog"
