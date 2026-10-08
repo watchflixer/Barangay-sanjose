@@ -72,8 +72,13 @@ export default function App() {
 
   // Map and GIS settings
   const [mapSettings, setMapSettings] = useState<MapSettings>({
+    maskOpacity: 0.30, // Default 30% blackout for surrounding areas (San Mateo, Macabud, Burgos, QC)
+    maskColor: '#000000',
     tileLayer: 'streets',
+    showBoundaryStroke: true,
+    boundaryColor: '#10b981',
     showSitioLabels: false,
+    lockCameraToBounds: true,
     autoCenterOnSelect: true,
     activeFilterType: 'all',
     activeFilterStatus: 'all',
@@ -241,7 +246,6 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar (Alerts Feed & GIS Controls) */}
         <div
-          id="incident-feed-panel"
           className={`fixed top-16 bottom-0 left-0 z-20 w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:h-full lg:min-h-0 lg:translate-x-0 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
@@ -273,6 +277,24 @@ export default function App() {
             optionsDisabled={floodProneOpen || trafficOpen}
           />
 
+          {/* Arrow toggle attached to the outer right edge of the incident feed drawer on mobile portrait */}
+          <button
+            id="btn-mobile-sidebar-toggle-arrow"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+            aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+            className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none"
+          >
+            <svg
+              viewBox="0 0 70 140"
+              className={`w-3 h-5 transition-transform duration-300 ${
+                mobileMenuOpen ? 'rotate-180' : 'rotate-0'
+              }`}
+              fill="#000000"
+            >
+              <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
+            </svg>
+          </button>
         </div>
 
         {/* Backdrop for Mobile Sidebar */}
@@ -295,14 +317,12 @@ export default function App() {
             isAddingPinMode={isAddingPinMode}
             onMapClickCoordinate={handleMapClickCoordinate}
             recenterTrigger={recenterCount}
-            onOpenMobileMenu={() => setMobileMenuOpen(true)}
+            onOpenMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
             isMobileMenuOpen={mobileMenuOpen}
             onFloodProneChange={setFloodProneOpen}
             onTrafficChange={setTrafficOpen}
           />
-          {(mapSettings.tileLayer !== 'streets' || floodProneOpen || trafficOpen) && (
-            <PagasaFloodStatus />
-          )}
+          <PagasaFloodStatus />
         </main>
       </div>
 
