@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import qrImage from '../../maribank-qr-instapay-transparent.png';
 
 /**
@@ -13,6 +14,15 @@ import qrImage from '../../maribank-qr-instapay-transparent.png';
  *
  * Magsasara ang modal sa Escape o sa pag-click sa labas ng kahon
  * (gaya ng nasa orihinal na standalone HTML).
+ *
+ * Naka-portal ang modal sa `document.body`: nasa loob ito ng Navbar
+ * `<header>` (sticky + z-30) bago, at dahil dito ay naka-stacking context
+ * ito sa z-30 — kasing-level ng Flood Prone at Traffic iframe overlays
+ * (`absolute inset-0 z-30` sa MapViewer) na mas huli sa DOM, kaya
+ * tinatakpan ng mapa ang modal kapag bukas ang Flood Prone o Traffic
+ * (mukhang patay ang Donate button, bahagyang dumidilim lang ang navbar).
+ * Sa portal, nasa root stacking context na ito sa z-[100] kaya laging
+ * nasa ibabaw ng mapa at ng iba pang controls.
  */
 
 const ACCOUNT_DISPLAY = '1607 0561 909';
@@ -134,9 +144,12 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
         Donate
       </button>
 
-      {open && (
+      {/* Portal sa document.body — hindi nakakulong sa <header> (z-30) na
+          stacking context ng Navbar, kaya hindi na natatakpan ng Flood
+          Prone / Traffic iframe ang Donate modal. */}
+      {open && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4"
           onClick={handleOverlayClick}
         >
           <div
@@ -235,8 +248,8 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
               </ol>
             </details>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body)}
     </>
   );
 };
