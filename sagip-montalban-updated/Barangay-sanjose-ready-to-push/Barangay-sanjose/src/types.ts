@@ -33,13 +33,8 @@ export interface SitioLocation {
 }
 
 export interface MapSettings {
-  maskOpacity: number; // 0.3 to 1.0 (default: 0.30 for subtle blackout)
-  maskColor: string; // '#000000' or '#0b0f19'
   tileLayer: 'streets' | 'light' | 'dark' | 'satellite';
-  showBoundaryStroke: boolean;
-  boundaryColor: string;
   showSitioLabels: boolean;
-  lockCameraToBounds: boolean;
   autoCenterOnSelect: boolean;
   activeFilterType: HazardType | 'all';
   activeFilterStatus: HazardStatus | 'all';
