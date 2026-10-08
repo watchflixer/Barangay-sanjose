@@ -53,15 +53,25 @@
     display:flex;flex-direction:column;align-items:flex-end;gap:10px;
   }
   #directions-btn,#directions-btn-alt{
-    display:block;width:48px;height:48px;padding:0;border:0;border-radius:14px;
-    background:#0b7a87;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);
-    transition:transform .12s ease,box-shadow .12s ease;
+    display:block;width:48px;height:48px;padding:0;border:0;
+    cursor:pointer;transition:transform .12s ease,box-shadow .12s ease,opacity .12s ease;
     -webkit-tap-highlight-color:transparent;
   }
   #directions-btn svg,#directions-btn-alt svg{display:block;width:100%;height:100%;}
-  #directions-btn:hover,#directions-btn-alt:hover{box-shadow:0 3px 10px rgba(0,0,0,0.35);}
   #directions-btn:active,#directions-btn-alt:active{transform:scale(.94);}
-  #directions-btn:focus-visible,#directions-btn-alt:focus-visible{outline:3px solid #ffffff;outline-offset:-6px;}
+  /* Original Directions button: teal rounded square with the white arrow badge */
+  #directions-btn{
+    border-radius:14px;background:#0b7a87;box-shadow:0 2px 6px rgba(0,0,0,0.3);
+  }
+  #directions-btn:hover{box-shadow:0 3px 10px rgba(0,0,0,0.35);}
+  #directions-btn:focus-visible{outline:3px solid #ffffff;outline-offset:-6px;}
+  /* Top button: plain — no chrome at all, just a black exclamation mark that
+     sits straight on the map (same action as the Directions button below). */
+  #directions-btn-alt{
+    border-radius:14px;background:transparent;color:#000000;
+  }
+  #directions-btn-alt:hover{opacity:.72;}
+  #directions-btn-alt:focus-visible{outline:3px solid #000000;outline-offset:-4px;border-radius:14px;}
   #legend{
     min-width:150px;
     background:rgba(244,246,244,0.95);border:1px solid var(--line);border-radius:8px;
@@ -476,9 +486,8 @@
 <div id="legend-stack">
   <button type="button" id="directions-btn-alt" title="Directions" aria-label="Directions">
     <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff"/>
-      <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#0b7a87" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)"/>
+      <rect x="24" y="7" width="8" height="24" fill="currentColor"/>
+      <circle cx="28" cy="45.5" r="3.5" fill="currentColor"/>
     </svg>
   </button>
   <button type="button" id="directions-btn" title="Directions" aria-label="Directions">
