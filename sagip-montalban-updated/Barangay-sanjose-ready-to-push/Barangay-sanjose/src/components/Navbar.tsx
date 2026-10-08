@@ -18,6 +18,7 @@ import { DonateButton } from './DonateButton';
 import { GuideButton } from './GuideButton';
 import { ReportButton } from './ReportButton';
 import { HazardAlert } from '../types';
+import { rememberRefreshView } from '../lib/refreshView';
 
 interface NavbarProps {
   alerts: HazardAlert[];
@@ -65,10 +66,12 @@ export const Navbar: React.FC<NavbarProps> = ({
     }, 550);
   };
 
-  // Brand click (HazardSync mark + wordmark) — i-reload ang buong app:
-  // balik sa default na mapa/tile, sariwang PAGASA + weather fetch, at
-  // sariwang data. Hindi nawawala ang mga report (nasa localStorage sila).
+  // Brand click (HazardSync mark + wordmark) — i-reload ang buong app at
+  // ibalik sa kasalukuyang map view (Traffic/Flood Prone) pagkatapos mag-refresh.
+  // Sariwa ang data at hindi nawawala ang mga report (nasa localStorage sila).
   const handleRefresh = () => {
+    const view = trafficOpen ? 'traffic' : floodProneOpen ? 'flood' : 'main';
+    rememberRefreshView(view);
     window.location.reload();
   };
 
@@ -106,9 +109,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             widths stay at h-16/64px. */}
         <div className="flex items-center justify-between h-16 portrait:h-13 sm:portrait:h-16 gap-2 sm:gap-4">
           {/* Brand & Location Info — ang buong HazardSync mark at wordmark ay
-              isang button: isang click lang, nagre-refresh ang buong app
-              (bumalik sa default na mapa; hindi nawawala ang mga report dahil
-              naka-save sila sa localStorage). */}
+              isang button: nire-refresh ang app at ibinabalik sa aktibong
+              Traffic/Flood Prone map view; nananatili ang reports sa localStorage. */}
           <button
             type="button"
             id="btn-brand-refresh"
