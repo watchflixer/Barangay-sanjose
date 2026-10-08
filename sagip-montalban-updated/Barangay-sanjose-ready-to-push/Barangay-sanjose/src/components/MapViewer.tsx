@@ -998,7 +998,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer}
+                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : layer}
                     </button>
                   ))}
 
