@@ -998,9 +998,34 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer}
+                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : layer}
                     </button>
                   ))}
+
+                  {/* Road Warrior — enabled placeholder: clickable but
+                      intentionally does nothing yet. */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Placeholder: no action wired up yet.
+                    }}
+                    title="Road Warrior"
+                    aria-label="Road Warrior"
+                    className="px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:scale-95 cursor-pointer"
+                  >
+                    Road Warrior
+                  </button>
+
+                  {/* Coming Soon — reserved placeholder slot next to Road Warrior. */}
+                  <button
+                    type="button"
+                    disabled
+                    title="Coming soon"
+                    aria-label="Coming soon"
+                    className="px-2 py-1 rounded-md text-center text-xs font-semibold border border-dashed border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed select-none"
+                  >
+                    Coming Soon
+                  </button>
                 </div>
               </div>
 
