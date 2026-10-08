@@ -164,7 +164,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
             aria-modal="true"
             aria-label="Support this project"
             tabIndex={-1}
-            className="w-[min(88vw,280px)] max-h-[90vh] overflow-y-auto rounded-lg border border-[#111] bg-white p-[.85rem] text-[13px] leading-[1.4] text-[#111] shadow-2xl shadow-slate-900/40 outline-none custom-scrollbar"
+            className="w-[min(88vw,280px)] max-h-[90vh] overflow-y-auto rounded-lg border-0 bg-white p-[.85rem] text-[13px] leading-[1.4] text-[#111] shadow-2xl shadow-slate-900/40 outline-none custom-scrollbar"
           >
             <div className="mb-[.25rem] flex items-center justify-between gap-2">
               <h2 className="text-[1.05rem] font-bold">Support this project</h2>
