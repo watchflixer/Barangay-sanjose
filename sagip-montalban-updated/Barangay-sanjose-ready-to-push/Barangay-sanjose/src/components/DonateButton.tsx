@@ -10,8 +10,8 @@ import qrImage from '../../maribank-qr-instapay-transparent.png';
  *   - Account details (NINO IAN DAMGO · 1607 0561 909)
  *   - "Copy account number" button (clipboard API + execCommand fallback,
  *     at huling paraan: auto-select ng numero para sa Ctrl+C) — kaparehong
- *     itsura ng Donate button sa navbar: puti, border-slate-200, rounded-md,
- *     text-slate-700, semibold, hover:bg-slate-50
+ *     itsura ng Donate button sa navbar (puti, rounded-md, text-slate-700,
+ *     semibold, hover:bg-slate-50), pero 1px solid black ang border
  *   - Step-by-step guide (QR scan / MariBank / GCash)
  *
  * Magsasara ang modal sa Escape o sa pag-click sa labas ng kahon
@@ -264,7 +264,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
                 id="copy"
                 type="button"
                 onClick={handleCopy}
-                className="flex w-full cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 py-2 text-center text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                className="flex w-full cursor-pointer items-center justify-center rounded-md border border-black bg-white px-3 py-2 text-center text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
               >
                 {copyLabel}
               </button>
