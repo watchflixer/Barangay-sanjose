@@ -3,8 +3,11 @@ import L from 'leaflet';
 import { clearRefreshView, readRefreshView } from '../lib/refreshView';
 import { HazardAlert, MapSettings } from '../types';
 import {
+  SAN_JOSE_POLYGON_COORDS,
   SAN_JOSE_CENTER,
-  SAN_JOSE_SITIOS
+  SAN_JOSE_BOUNDS,
+  SAN_JOSE_SITIOS,
+  getInvertedMaskCoordinates
 } from '../data/geoData';
 import {
   Layers,
@@ -86,6 +89,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const maskLayerRef = useRef<L.Polygon | null>(null);
+  const boundaryLayerRef = useRef<L.Polygon | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const sitiosLayerRef = useRef<L.LayerGroup | null>(null);
   const activePopupsRef = useRef<{ [key: string]: L.Marker }>({});
@@ -97,9 +102,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
   const [mouseCoords, setMouseCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [showLayerMenu, setShowLayerMenu] = React.useState(false);
-  // Reports keeps its own basemap selection, independent of the Weather view.
-  const [reportsBasemap, setReportsBasemap] = React.useState<'streets' | 'satellite'>('streets');
-  const activeTileLayer = mapSettings.tileLayer === 'streets' ? reportsBasemap : mapSettings.tileLayer;
 
   const toggleLayerMenu = (open?: boolean) => {
     setShowLayerMenu((prev) => (typeof open === 'boolean' ? open : !prev));
@@ -206,22 +208,51 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    // Define strict bounding box for Barangay San Jose
+    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+    const maxBounds = L.latLngBounds(corner1, corner2);
+
     const map = L.map(mapContainerRef.current, {
       center: SAN_JOSE_CENTER,
       zoom: 13,
       minZoom: 13,
       maxZoom: 18,
+      maxBounds: mapSettings.lockCameraToBounds ? maxBounds : undefined,
+      maxBoundsViscosity: 1.0, // Hard lock - rubberband bouncing back
       zoomControl: false, // Zoom buttons are custom buttons in the left control stack, below 'Show your location'
       attributionControl: false,
     });
 
     // Initial Tile Layer
-    const tileConfig = TILE_SERVERS[activeTileLayer];
+    const tileConfig = TILE_SERVERS[mapSettings.tileLayer];
     const tileLayer = L.tileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       maxZoom: 19,
     }).addTo(map);
     tileLayerRef.current = tileLayer;
+
+    // Inverted Mask Layer (Blacks out everything except Barangay San Jose)
+    const maskCoords = getInvertedMaskCoordinates(SAN_JOSE_POLYGON_COORDS);
+    const mask = L.polygon(maskCoords as any, {
+      fillColor: mapSettings.maskColor,
+      fillOpacity: mapSettings.maskOpacity,
+      stroke: false,
+      interactive: false,
+      className: 'gis-blackout-mask'
+    }).addTo(map);
+    maskLayerRef.current = mask;
+
+    // Boundary Glow Stroke Layer
+    const boundary = L.polygon(SAN_JOSE_POLYGON_COORDS, {
+      color: mapSettings.boundaryColor,
+      weight: 2.5,
+      opacity: 0.9,
+      fillOpacity: 0,
+      dashArray: '4, 6',
+      interactive: false,
+    }).addTo(map);
+    boundaryLayerRef.current = boundary;
 
     // Marker Layer Group
     const markersGroup = L.layerGroup().addTo(map);
@@ -263,28 +294,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     };
   }, [isAddingPinMode, onMapClickCoordinate]);
 
-  // Use the same native Leaflet zoom control as Flood Prone, including
-  // Leaflet's device-specific sizing, disabled states and keyboard handling.
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || mapSettings.tileLayer !== 'streets' || showFloodProneBlank || showTrafficMap) return;
-    const zoomControl = L.control.zoom({ position: 'topleft' }).addTo(map);
-    return () => { zoomControl.remove(); };
-  }, [mapSettings.tileLayer, showFloodProneBlank, showTrafficMap]);
-
-  // Match Flood Prone's bottom-right Leaflet and basemap attribution.
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map || mapSettings.tileLayer !== 'streets' || showFloodProneBlank || showTrafficMap) return;
-    const attribution = L.control.attribution({ position: 'bottomright' }).addTo(map);
-    return () => { attribution.remove(); };
-  }, [mapSettings.tileLayer, showFloodProneBlank, showTrafficMap]);
-
   // 2. Update Tile Layer on setting change
   useEffect(() => {
     if (!mapInstanceRef.current || !tileLayerRef.current) return;
     const map = mapInstanceRef.current;
-    const tileConfig = TILE_SERVERS[activeTileLayer];
+    const tileConfig = TILE_SERVERS[mapSettings.tileLayer];
 
     // Coming back from Flood Prone mode the container was hidden (display:none),
     // so Leaflet cached a zero size and renders a blank map. Recompute now that
@@ -300,6 +314,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }).addTo(mapInstanceRef.current);
     tileLayerRef.current = newLayer;
 
+    // Ensure mask and boundary stay on top of tile layer in overlayPane
+    if (maskLayerRef.current) {
+      maskLayerRef.current.bringToFront();
+    }
+    if (boundaryLayerRef.current) {
+      boundaryLayerRef.current.bringToFront();
+    }
     if (sitiosLayerRef.current) {
       sitiosLayerRef.current.eachLayer((layer: any) => {
         if (typeof layer.bringToFront === 'function') {
@@ -314,7 +335,37 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         }
       });
     }
-  }, [activeTileLayer]);
+  }, [mapSettings.tileLayer]);
+
+  // 3. Update Mask Opacity, Mask Color, and Boundary Stroke
+  useEffect(() => {
+    if (maskLayerRef.current) {
+      maskLayerRef.current.setStyle({
+        fillColor: mapSettings.maskColor,
+        fillOpacity: mapSettings.maskOpacity,
+      });
+    }
+    if (boundaryLayerRef.current) {
+      boundaryLayerRef.current.setStyle({
+        color: mapSettings.boundaryColor,
+        opacity: mapSettings.showBoundaryStroke ? 0.9 : 0,
+      });
+    }
+  }, [mapSettings.maskOpacity, mapSettings.maskColor, mapSettings.boundaryColor, mapSettings.showBoundaryStroke]);
+
+  // 4. Update Camera Bounds lock
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+    const maxBounds = L.latLngBounds(corner1, corner2);
+
+    if (mapSettings.lockCameraToBounds) {
+      mapInstanceRef.current.setMaxBounds(maxBounds);
+    } else {
+      mapInstanceRef.current.setMaxBounds(null as any);
+    }
+  }, [mapSettings.lockCameraToBounds]);
 
   // 4b. Recompute map size when returning from Flood Prone mode.
   // While Flood Prone is active the real map is display:none, so Leaflet caches
@@ -424,7 +475,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               '*'
             );
           } else {
+            // The location can be outside Barangay San Jose. Temporarily release
+            // the GIS boundary lock so the button can always reach the user.
             const map = mapInstanceRef.current;
+            if (mapSettings.lockCameraToBounds) map.setMaxBounds(null as any);
             map.flyTo(coordinates, 16, {
               duration: 1.6,
               easeLinearity: 0.25,
@@ -773,6 +827,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // Close any active open popups
     mapInstanceRef.current.closePopup();
+    if (mapSettings.lockCameraToBounds) {
+      const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+      const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+      mapInstanceRef.current.setMaxBounds(L.latLngBounds(corner1, corner2));
+    }
 
     // Smooth fast recenter back to Barangay San Jose center
     mapInstanceRef.current.flyTo(SAN_JOSE_CENTER, 13, {
@@ -790,32 +849,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       <div
         id="leaflet-map-root"
         ref={mapContainerRef}
-        className={`reports-map-canvas block w-full h-full ${isMobileMenuOpen ? 'reports-controls-hidden' : ''} ${isAddingPinMode ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'}`}
+        className={`block w-full h-full ${isAddingPinMode ? 'cursor-crosshair' : 'cursor-grab active:cursor-grabbing'}`}
       />
-
-      {mapSettings.tileLayer === 'streets' && !showFloodProneBlank && !showTrafficMap && (
-        <div
-          role="group"
-          aria-label="Reports basemap"
-          className={`absolute top-4 right-4 z-40 flex gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-md ${isMobileMenuOpen ? 'portrait:hidden' : ''}`}
-        >
-          {(['streets', 'satellite'] as const).map((basemap) => (
-            <button
-              key={basemap}
-              type="button"
-              aria-pressed={reportsBasemap === basemap}
-              onClick={() => setReportsBasemap(basemap)}
-              className={`rounded px-3 py-1 text-[11px] font-semibold transition-colors ${
-                reportsBasemap === basemap
-                  ? 'bg-slate-950 text-white'
-                  : 'text-slate-700 hover:bg-slate-100'
-              }`}
-            >
-              {basemap === 'streets' ? 'Street' : 'Satellite'}
-            </button>
-          ))}
-        </div>
-      )}
 
       {showFloodProneBlank && (
         <div className="absolute inset-0 z-30 bg-white" aria-label="Rizal Flood Hazard Map">
@@ -845,50 +880,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             ref={trafficMapFrameRef}
             className="h-full w-full border-0"
           />
-        </div>
-      )}
-
-      {mapSettings.tileLayer === 'streets' && !showFloodProneBlank && !showTrafficMap && (
-        <div className="reports-legend-stack">
-          <button
-            type="button"
-            className="reports-directions-button"
-            onClick={onOpenMobileMenu}
-            title="Open incident feeds"
-            aria-label="Open incident feeds"
-            aria-controls="incident-feed-panel"
-          >
-            <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <defs>
-                <linearGradient id="reports-activity-gradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#65B071" />
-                  <stop offset="100%" stopColor="#4BA3C5" />
-                </linearGradient>
-                <mask id="reports-activity-cutouts">
-                  <rect width="512" height="512" fill="white" />
-                  <circle cx="427" cy="85" r="64" fill="black" />
-                  <path d="M149 317 179 255C194 222 235 221 252 254L256 263C273 292 314 287 330 256L363 195" fill="none" stroke="black" strokeWidth="31" strokeLinecap="round" strokeLinejoin="round" />
-                </mask>
-              </defs>
-              <path d="M256 48C91 48 48 58 48 256S91 464 256 464 464 454 464 256 421 48 256 48Z" fill="url(#reports-activity-gradient)" mask="url(#reports-activity-cutouts)" />
-              <circle cx="427" cy="85" r="43" fill="#65B071" />
-            </svg>
-          </button>
-        <div className="reports-traffic-legend" role="group" aria-label="Reports hazard legend">
-          {[
-            ['No Streetlight', '#8B5CF6'],
-            ['Flood Warning', '#3B82F6'],
-            ['Water Interruption', '#7DD3FC'],
-            ['No Electricity', '#FACC15'],
-            ['Road Closed', '#F97316'],
-            ['Fire Alert', '#FF0000'],
-          ].map(([label, color]) => (
-            <div className="reports-traffic-legend-row" key={label}>
-              <span className="reports-traffic-legend-swatch" style={{ background: color }} aria-hidden="true" />
-              {label}
-            </div>
-          ))}
-        </div>
         </div>
       )}
 
@@ -939,7 +930,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           <RefreshCw className={`w-4 h-4 transition-transform ${isRecenterSpinning ? 'animate-fast-spin text-slate-900' : 'text-slate-700'}`} />
         </button>
 
-        {/* Layer Selector */}
+        {/* Layer Selector & Mask Intensity Toggle */}
         <div className="relative">
           <button
             id="btn-toggle-layers-menu"
@@ -975,12 +966,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     BASEMAP STYLE:
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
-                    {(['streets', 'help', 'dark', 'light', 'satellite', 'road-warriors'] as const).map((layer) => (
+                    {(['streets', 'satellite', 'dark', 'light'] as const).map((layer) => (
                       <button
                         key={layer}
-                        type="button"
                         onClick={() => {
-                          if (layer === 'help' || layer === 'road-warriors') return;
                           if (layer === 'dark') {
                             // The former "Comming Soon" slot now opens the realtime Traffic map.
                             setShowTrafficMap(true);
@@ -1009,12 +998,64 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Weather' : layer === 'help' ? 'Help Center' : layer === 'road-warriors' ? 'Road Warriors' : 'Reports'}
+                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {!showFloodProneBlank && !showTrafficMap && (
+                <>
+              {/* Inverted Blackout Mask Opacity */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Outside Area Blackout:
+                  </label>
+                  <span className="font-mono text-xs text-slate-900 font-bold">
+                    {Math.round(mapSettings.maskOpacity * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0.30"
+                  max="1.0"
+                  step="0.05"
+                  value={mapSettings.maskOpacity}
+                  onChange={(e) => onUpdateMapSettings({ maskOpacity: parseFloat(e.target.value) })}
+                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
+                />
+                <div className="flex justify-between text-[9px] text-slate-400 mt-0.5 font-medium">
+                  <span>Subtle (30%)</span>
+                  <span className="text-slate-700 font-bold">Default 30%</span>
+                  <span>Pitch (100%)</span>
+                </div>
+              </div>
+
+              {/* Boundary Stroke & Labels Toggles */}
+              <div className="pt-2 border-t border-slate-100 space-y-2 text-xs">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-slate-700 font-medium">Show Boundary Line</span>
+                  <input
+                    type="checkbox"
+                    checked={mapSettings.showBoundaryStroke}
+                    onChange={(e) => onUpdateMapSettings({ showBoundaryStroke: e.target.checked })}
+                    className="w-3.5 h-3.5 accent-blue-600 rounded"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-slate-700 font-medium">Lock Camera Inside Bounds</span>
+                  <input
+                    type="checkbox"
+                    checked={mapSettings.lockCameraToBounds}
+                    onChange={(e) => onUpdateMapSettings({ lockCameraToBounds: e.target.checked })}
+                    className="w-3.5 h-3.5 accent-blue-600 rounded"
+                  />
+                </label>
+              </div>
+                </>
+              )}
             </div>
           </>
         )}
@@ -1031,7 +1072,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </button>
 
         {/* Zoom In / Zoom Out — below "Show your location"; hidden in Flood Prone mode */}
-        {!showFloodProneBlank && !showTrafficMap && mapSettings.tileLayer !== 'streets' && (
+        {!showFloodProneBlank && !showTrafficMap && (
           <>
             <button
               id="btn-zoom-in"
