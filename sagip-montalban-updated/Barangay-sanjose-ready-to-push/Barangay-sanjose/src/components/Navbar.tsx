@@ -65,6 +65,13 @@ export const Navbar: React.FC<NavbarProps> = ({
     }, 550);
   };
 
+  // Brand click (HazardSync mark + wordmark) — i-reload ang buong app:
+  // balik sa default na mapa/tile, sariwang PAGASA + weather fetch, at
+  // sariwang data. Hindi nawawala ang mga report (nasa localStorage sila).
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
   useEffect(() => {
     const updateClock = () => {
       const now = new Date();
@@ -98,8 +105,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             buttons breathe. Tablets in portrait and all landscape/desktop
             widths stay at h-16/64px. */}
         <div className="flex items-center justify-between h-16 portrait:h-13 sm:portrait:h-16 gap-2 sm:gap-4">
-          {/* Brand & Location Info */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
+          {/* Brand & Location Info — ang buong HazardSync mark at wordmark ay
+              isang button: isang click lang, nagre-refresh ang buong app
+              (bumalik sa default na mapa; hindi nawawala ang mga report dahil
+              naka-save sila sa localStorage). */}
+          <button
+            type="button"
+            id="btn-brand-refresh"
+            onClick={handleRefresh}
+            title="Refresh"
+            aria-label="Refresh page"
+            className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0 cursor-pointer rounded-md text-left transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[.99]"
+          >
             {/* HazardSync mark — rounded delta with a monitoring dot and a
                 shelter arch cut out of the base. Plain vector so it stays crisp
                 at 32px (and can't be blown up by mobile font-boosting). */}
@@ -116,13 +133,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 d="M14.15 5.35Q16 1.8 17.85 5.35L29.41 27.54Q30.8 30.2 27.8 30.2H4.2Q1.2 30.2 2.59 27.54L14.15 5.35Z M16 8.9a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Z M11.25 30.2V26.45a4.75 4.75 0 0 1 9.5 0V30.2H11.25Z"
               />
             </svg>
-            <div className="min-w-0">
-              <div className="flex items-center space-x-1.5 sm:space-x-2">
-                <h1 className="text-sm sm:text-base font-bold text-slate-800 leading-tight tracking-tight whitespace-nowrap">
+            {/* Spans (hindi div/h1/p) ang laman ng button — phrasing content
+                lang ang valid sa loob ng <button>. Nasa span pa rin ang
+                heading semantics via role="heading"/aria-level. */}
+            <span className="block min-w-0">
+              <span className="flex items-center space-x-1.5 sm:space-x-2">
+                <span
+                  role="heading"
+                  aria-level={1}
+                  className="text-sm sm:text-base font-bold text-slate-800 leading-tight tracking-tight whitespace-nowrap"
+                >
                   HazardSync
-                </h1>
-              </div>
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
+                </span>
+              </span>
+              <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                 <span>Rizal</span>
                 {/* Live clock beside “Rizal” — mobile phone views (narrow width or portrait).
@@ -132,9 +156,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="w-0.5 h-2.5 rounded-full bg-slate-300" />
                   {currentTime || 'PST'}
                 </span>
-              </p>
-            </div>
-          </div>
+              </span>
+            </span>
+          </button>
 
           {/* Center Quick Stats (Desktop) */}
           <div className="hidden lg:flex items-center gap-2 -mr-24">
