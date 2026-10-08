@@ -218,7 +218,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
             </p>
 
             <details className="mb-[.6rem]">
-              <summary className="cursor-pointer text-[.85rem] font-semibold">
+              <summary className="cursor-pointer text-[.7rem] font-semibold">
                 How to send (step by step)
               </summary>
 
