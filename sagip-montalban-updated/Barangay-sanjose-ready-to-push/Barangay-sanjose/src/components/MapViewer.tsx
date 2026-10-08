@@ -1001,6 +1001,29 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                       {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer}
                     </button>
                   ))}
+
+                  {/* Road Warrior — new basemap slot below Traffic; placeholder
+                      until its tile style is wired up, so it is disabled. */}
+                  <button
+                    type="button"
+                    disabled
+                    title="Road Warrior — coming soon"
+                    aria-label="Road Warrior — coming soon"
+                    className="px-2 py-1 rounded-md text-center text-xs font-semibold border border-dashed border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed select-none"
+                  >
+                    Road Warrior
+                  </button>
+
+                  {/* Coming Soon — reserved placeholder slot next to Road Warrior. */}
+                  <button
+                    type="button"
+                    disabled
+                    title="Coming soon"
+                    aria-label="Coming soon"
+                    className="px-2 py-1 rounded-md text-center text-xs font-semibold border border-dashed border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed select-none"
+                  >
+                    Coming Soon
+                  </button>
                 </div>
               </div>
 
