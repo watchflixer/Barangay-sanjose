@@ -1002,14 +1002,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     </button>
                   ))}
 
-                  {/* Road Warrior — new basemap slot below Traffic; placeholder
-                      until its tile style is wired up, so it is disabled. */}
+                  {/* Road Warrior — enabled placeholder: clickable but
+                      intentionally does nothing yet. */}
                   <button
                     type="button"
-                    disabled
-                    title="Road Warrior — coming soon"
-                    aria-label="Road Warrior — coming soon"
-                    className="px-2 py-1 rounded-md text-center text-xs font-semibold border border-dashed border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed select-none"
+                    onClick={() => {
+                      // Placeholder: no action wired up yet.
+                    }}
+                    title="Road Warrior"
+                    aria-label="Road Warrior"
+                    className="px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:scale-95 cursor-pointer"
                   >
                     Road Warrior
                   </button>
