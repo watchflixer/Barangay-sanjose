@@ -53,9 +53,15 @@
     display:flex;flex-direction:column;align-items:flex-end;gap:10px;
   }
   #directions-btn,#directions-btn-alt{
-    display:block;width:48px;height:48px;padding:0;border:0;
+    display:block;width:48px;height:48px;padding:0;border:0;margin:0;
+    /* Kill every native button decoration: Safari/iOS (and old Android
+       WebKit) still paint their own box unless appearance is reset. */
+    -webkit-appearance:none;appearance:none;
+    background:none;box-shadow:none;border-radius:0;
+    font:inherit;color:inherit;
     cursor:pointer;transition:transform .12s ease,box-shadow .12s ease,opacity .12s ease;
     -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout:none;user-select:none;
   }
   #directions-btn svg,#directions-btn-alt svg{display:block;width:100%;height:100%;}
   #directions-btn:active,#directions-btn-alt:active{transform:scale(.94);}
@@ -484,7 +490,7 @@
 </div>
 <div id="notice"></div>
 <div id="legend-stack">
-  <button type="button" id="directions-btn-alt" title="Directions" aria-label="Directions">
+  <button type="button" id="directions-btn-alt" aria-label="Directions">
     <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <rect x="24" y="7" width="8" height="24" fill="currentColor"/>
       <circle cx="28" cy="45.5" r="3.5" fill="currentColor"/>
