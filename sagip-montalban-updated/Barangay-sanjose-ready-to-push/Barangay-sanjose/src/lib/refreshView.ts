@@ -1,4 +1,4 @@
-export type RefreshView = 'main' | 'traffic' | 'flood';
+export type RefreshView = 'main' | 'traffic' | 'flood' | 'helpcenter';
 
 const REFRESH_VIEW_KEY = 'san-jose-refresh-view';
 
@@ -15,7 +15,7 @@ export function rememberRefreshView(view: RefreshView): void {
 export function readRefreshView(): RefreshView | null {
   try {
     const view = window.sessionStorage.getItem(REFRESH_VIEW_KEY);
-    return view === 'main' || view === 'traffic' || view === 'flood' ? view : null;
+    return view === 'main' || view === 'traffic' || view === 'flood' || view === 'helpcenter' ? view : null;
   } catch {
     return null;
   }
