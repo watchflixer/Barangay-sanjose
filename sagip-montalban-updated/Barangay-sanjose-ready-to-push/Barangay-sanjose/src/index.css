@@ -238,11 +238,12 @@ body,
   background: #94a3b8;
 }
 
-/* Help Center map — push Leaflet's native zoom control below the app's
+/* Help Center and Weather maps — push Leaflet's native zoom control below the app's
    floating control stack (same idea as the Flood Prone map's
    #map .leaflet-top.leaflet-left rule). 132px clears the 3-button stack
    (Recenter/Layers/Locate) shown in Help Center mode. */
-#help-center-map-root .leaflet-top.leaflet-left {
+#help-center-map-root .leaflet-top.leaflet-left,
+#weather-map-root .leaflet-top.leaflet-left {
   top: 132px;
   left: 6px;
 }

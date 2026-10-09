@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { clearRefreshView, readRefreshView } from '../lib/refreshView';
+import { TILE_SERVERS } from '../data/tileServers';
+import { WeatherMap } from './WeatherMap';
 import { HazardAlert, MapSettings } from '../types';
 import {
   SAN_JOSE_POLYGON_COORDS,
@@ -51,27 +53,9 @@ interface MapViewerProps {
   onTrafficChange?: (isOpen: boolean) => void;
   /** Lets the parent app know the Help Center view is open (for navbar gating). */
   onHelpCenterChange?: (isOpen: boolean) => void;
+  /** Lets the parent app know the Weather view is open (for navbar gating). */
+  onWeatherChange?: (isOpen: boolean) => void;
 }
-
-// Tile Layer URLs
-const TILE_SERVERS = {
-  streets: {
-    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-  },
-  light: {
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
-  },
-  dark: {
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://carto.com/">CARTO</a>'
-  },
-  satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-  }
-};
 
 export const MapViewer: React.FC<MapViewerProps> = ({
   alerts,
@@ -88,6 +72,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   onFloodProneChange,
   onTrafficChange,
   onHelpCenterChange,
+  onWeatherChange,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -186,17 +171,36 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Traffic map's Street/Satellite switch) — affects only the Help Center map.
   const [helpCenterBasemap, setHelpCenterBasemap] = React.useState<'streets' | 'satellite'>('satellite');
   const helpCenterTileLayerRef = useRef<L.TileLayer | null>(null);
-  // Opening Help Center closes the Flood Prone and Traffic maps.
+  // Weather — an INDEPENDENT view with its OWN Leaflet map (WeatherMap.tsx),
+  // mutually exclusive with the other map views. The app's floating Recenter
+  // and Locate buttons drive that map through the refs below.
+  const [showWeather, setShowWeather] = React.useState(refreshView === 'weather');
+  const weatherMapInstanceRef = useRef<L.Map | null>(null);
+  const weatherUserMarkerRef = useRef<L.Marker | null>(null);
+  // Opening Help Center closes the Flood Prone, Traffic and Weather maps.
   React.useEffect(() => {
     if (showHelpCenter) {
       setShowFloodProneBlank(false);
       setShowTrafficMap(false);
+      setShowWeather(false);
     }
   }, [showHelpCenter]);
   // Notify the parent app whenever the Help Center view opens or closes.
   React.useEffect(() => {
     onHelpCenterChange?.(showHelpCenter);
   }, [showHelpCenter, onHelpCenterChange]);
+  // Opening Weather closes the Flood Prone, Traffic and Help Center maps.
+  React.useEffect(() => {
+    if (showWeather) {
+      setShowFloodProneBlank(false);
+      setShowTrafficMap(false);
+      setShowHelpCenter(false);
+    }
+  }, [showWeather]);
+  // Notify the parent app whenever the Weather view opens or closes.
+  React.useEffect(() => {
+    onWeatherChange?.(showWeather);
+  }, [showWeather, onWeatherChange]);
   // Create the Help Center Leaflet map when the view opens; destroy it on
   // close so every visit starts fresh and Leaflet re-measures the container.
   React.useEffect(() => {
@@ -257,13 +261,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (showTrafficMap) {
       setShowFloodProneBlank(false);
       setShowHelpCenter(false);
+      setShowWeather(false);
     }
   }, [showTrafficMap]);
-  // Conversely, opening Flood Prone closes the Traffic map (and Help Center).
+  // Conversely, opening Flood Prone closes the Traffic, Help Center and Weather maps.
   React.useEffect(() => {
     if (showFloodProneBlank) {
       setShowTrafficMap(false);
       setShowHelpCenter(false);
+      setShowWeather(false);
     }
   }, [showFloodProneBlank]);
   // Notify the parent app whenever the Traffic map opens or closes.
@@ -566,6 +572,23 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             if (helpMap) {
               if (mapSettings.lockCameraToBounds) helpMap.setMaxBounds(null as any);
               helpMap.flyTo(coordinates, 16, {
+                duration: 1.6,
+                easeLinearity: 0.25,
+              });
+            }
+          } else if (showWeather) {
+            // While the Weather map is open, fly it to the user and drop the
+            // "Your location" dot on it too (the GIS map behind it is hidden).
+            const weatherMap = weatherMapInstanceRef.current;
+            if (weatherMap) {
+              weatherUserMarkerRef.current?.remove();
+              weatherUserMarkerRef.current = L.marker(coordinates, {
+                icon: locationIcon,
+                zIndexOffset: 1000,
+                title: 'Your location',
+              }).addTo(weatherMap);
+              if (mapSettings.lockCameraToBounds) weatherMap.setMaxBounds(null as any);
+              weatherMap.flyTo(coordinates, 16, {
                 duration: 1.6,
                 easeLinearity: 0.25,
               });
@@ -919,6 +942,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       trafficMapFrameRef.current?.contentWindow?.postMessage({ type: 'traffic-recenter' }, '*');
       return;
     }
+    // In Weather mode, recenter its own Leaflet map.
+    if (showWeather) {
+      weatherMapInstanceRef.current?.flyTo(SAN_JOSE_CENTER, 13, {
+        duration: 0.75,
+        easeLinearity: 0.25,
+      });
+      return;
+    }
     // In Help Center mode, recenter its own Leaflet map.
     if (showHelpCenter) {
       helpCenterMapInstanceRef.current?.flyTo(SAN_JOSE_CENTER, 13, {
@@ -998,6 +1029,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             className="block w-full h-full cursor-grab active:cursor-grabbing"
           />
         </div>
+      )}
+
+      {/* Weather overlay — an INDEPENDENT view with its OWN Leaflet map
+          (see WeatherMap.tsx). It mounts only while open, so closing it
+          destroys the map and every visit starts fresh. */}
+      {showWeather && (
+        <WeatherMap
+          lockCameraToBounds={mapSettings.lockCameraToBounds}
+          mapRef={weatherMapInstanceRef}
+        />
       )}
 
       {/* Help Center Street/Satellite switcher — mimics the Flood Prone map's
@@ -1180,7 +1221,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite || (showTrafficMap && trafficDirectionsOpen) ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank || showTrafficMap || showHelpCenter || showWeather ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite || (showTrafficMap && trafficDirectionsOpen) ? 'hidden' : ''}`}>
         <button
           id="btn-recenter-gis"
           onClick={handleRecenter}
@@ -1237,6 +1278,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             setShowTrafficMap(true);
                             setShowFloodProneBlank(false);
                             setShowHelpCenter(false);
+                            setShowWeather(false);
                             toggleLayerMenu(false);
                             return;
                           }
@@ -1244,6 +1286,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             setShowTrafficMap(false);
                             setShowFloodProneBlank(true);
                             setShowHelpCenter(false);
+                            setShowWeather(false);
                             onUpdateMapSettings({ tileLayer: layer });
                             toggleLayerMenu(false);
                             return;
@@ -1253,12 +1296,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             setShowTrafficMap(false);
                             setShowFloodProneBlank(false);
                             setShowHelpCenter(true);
+                            setShowWeather(false);
                             toggleLayerMenu(false);
                             return;
                           }
                           setShowTrafficMap(false);
                           setShowFloodProneBlank(false);
                           setShowHelpCenter(false);
+                          setShowWeather(false);
                           onUpdateMapSettings({ tileLayer: layer });
                         }}
                       className={`relative px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
@@ -1266,7 +1311,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                           ? showTrafficMap
                             ? 'bg-black text-white border-black'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          : (layer === 'light' ? showFloodProneBlank : layer === 'satellite' ? showHelpCenter : mapSettings.tileLayer === layer && !showTrafficMap && !showHelpCenter)
+                          : (layer === 'light' ? showFloodProneBlank : layer === 'satellite' ? showHelpCenter : mapSettings.tileLayer === layer && !showTrafficMap && !showHelpCenter && !showWeather)
                             ? 'bg-black text-white border-black'
                             : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
@@ -1275,16 +1320,25 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     </button>
                   ))}
 
-                  {/* Weather — enabled placeholder: clickable but
-                      intentionally does nothing yet. */}
+                  {/* Weather — opens the Weather view: its own Leaflet map with zoom,
+                      Street/Satellite and the floating Recenter/Locate controls
+                      (see WeatherMap.tsx). */}
                   <button
                     type="button"
                     onClick={() => {
-                      // Placeholder: no action wired up yet.
+                      setShowTrafficMap(false);
+                      setShowFloodProneBlank(false);
+                      setShowHelpCenter(false);
+                      setShowWeather(true);
+                      toggleLayerMenu(false);
                     }}
                     title="Weather"
                     aria-label="Weather"
-                    className="px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:scale-95 cursor-pointer"
+                    className={`px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors active:scale-95 cursor-pointer ${
+                      showWeather
+                        ? 'bg-black text-white border-black'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                    }`}
                   >
                     Weather
                   </button>
@@ -1302,7 +1356,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 </div>
               </div>
 
-              {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && (
+              {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && !showWeather && (
                 <>
               {/* Inverted Blackout Mask Opacity */}
               <div>
@@ -1370,9 +1424,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </button>
 
         {/* Zoom In / Zoom Out — below "Show your location"; hidden in Flood
-            Prone, Traffic, and Help Center modes (the Help Center map has
-            its own native Leaflet zoom control). */}
-        {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && (
+            Prone, Traffic, Help Center, and Weather modes (those maps have
+            their own native Leaflet zoom control). */}
+        {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && !showWeather && (
           <>
             <button
               id="btn-zoom-in"
