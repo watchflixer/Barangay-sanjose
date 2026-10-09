@@ -11,6 +11,11 @@ import {
   WeatherLayerType,
 } from '../types/weather';
 import { rainViewer } from '../services/rainviewer';
+import {
+  BASEMAP_ERROR_THRESHOLD,
+  BasemapSource,
+  getBasemapChain,
+} from '../services/basemaps';
 import { WindCanvas } from './WindCanvas';
 import { TemperatureCanvas } from './TemperatureCanvas';
 import { PAR_COORDINATES, POPULAR_LOCATIONS } from '../services/storms';
@@ -68,8 +73,12 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
 
+  // Basemap provider currently on screen + whether every provider failed
+  const [activeBasemap, setActiveBasemap] = useState<BasemapSource | null>(null);
+  const [basemapFailed, setBasemapFailed] = useState(false);
+
   // Layer refs
-  const baseTileLayerRef = useRef<L.TileLayer | null>(null);
+  const baseGroupRef = useRef<L.LayerGroup | null>(null);
   const elevationLayerRef = useRef<L.TileLayer | null>(null);
   const bathymetryLayerRef = useRef<L.TileLayer | null>(null);
   const weatherTileLayerRef = useRef<L.TileLayer | null>(null);
@@ -223,35 +232,82 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   }, [center, zoom]);
 
   // Update Base Tile Layer
+  //
+  // All four styles (Meteor Dark, Clean Hybrid, Satellite Imagery, Street
+  // View) are served by keyless providers — no CARTO, no API key, no
+  // "API KEY REQUIRED" watermark tiles. Every style has a fallback chain: if
+  // a provider keeps failing we silently switch to the next one instead of
+  // leaving a blank map.
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
 
-    if (baseTileLayerRef.current) {
-      map.removeLayer(baseTileLayerRef.current);
+    if (baseGroupRef.current) {
+      map.removeLayer(baseGroupRef.current);
+      baseGroupRef.current = null;
     }
 
-    let tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-    let subdomains = 'abcd';
-    let maxZoom = 19;
+    const chain = getBasemapChain(baseStyle);
+    const group = L.layerGroup().addTo(map);
+    baseGroupRef.current = group;
 
-    if (baseStyle === 'satellite') {
-      tileUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-      subdomains = 'a';
-    } else if (baseStyle === 'streets') {
-      tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-      subdomains = 'abc';
-    } else if (baseStyle === 'voyager') {
-      tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-    }
+    let sourceIndex = 0;
+    let errorCount = 0;
+    let disposed = false;
 
-    const newBase = L.tileLayer(tileUrl, {
-      subdomains,
-      maxZoom,
-      attribution: '© OpenStreetMap contributors',
-    }).addTo(map);
+    const mountSource = (index: number) => {
+      if (disposed) return;
+      const source = chain[index];
 
-    baseTileLayerRef.current = newBase;
+      group.clearLayers();
+      errorCount = 0;
+      setActiveBasemap(source);
+      setBasemapFailed(false);
+
+      const layerOptions = (extra: L.TileLayerOptions = {}): L.TileLayerOptions => ({
+        subdomains: source.subdomains ?? 'abc',
+        maxZoom: source.maxZoom ?? 19,
+        maxNativeZoom: source.maxNativeZoom,
+        className: source.className,
+        attribution: source.attribution,
+        ...extra,
+      });
+
+      const base = L.tileLayer(source.url, layerOptions({ zIndex: 100 }));
+
+      base.on('tileerror', () => {
+        if (disposed) return;
+        errorCount += 1;
+        if (errorCount < BASEMAP_ERROR_THRESHOLD) return;
+
+        if (index + 1 < chain.length) {
+          // Current provider is unreachable — try the next one.
+          sourceIndex += 1;
+          mountSource(sourceIndex);
+        } else {
+          setBasemapFailed(true);
+        }
+      });
+
+      base.addTo(group);
+
+      // Some Esri "canvas" basemaps ship their labels as a separate service.
+      if (source.labelsUrl) {
+        L.tileLayer(source.labelsUrl, layerOptions({ zIndex: 200 })).addTo(group);
+      }
+    };
+
+    mountSource(sourceIndex);
+
+    return () => {
+      disposed = true;
+      if (map.hasLayer(group)) {
+        map.removeLayer(group);
+      }
+      if (baseGroupRef.current === group) {
+        baseGroupRef.current = null;
+      }
+    };
   }, [baseStyle]);
 
   // Elevation / Hillshade Layer
@@ -635,11 +691,27 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       {/* Wind Streamline Particle Canvas Layer */}
       <WindCanvas map={mapInstanceRef.current} visible={activeLayer === 'wind' || activeLayer === 'temperature'} intensity={1.1} />
 
+      {/* Basemap tiles could not be reached from this network */}
+      {basemapFailed && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[500] max-w-[80%] rounded-xl border border-amber-500/40 bg-slate-900/90 px-3 py-2 text-center text-[11px] leading-snug text-amber-200 shadow-lg backdrop-blur">
+          Basemap tiles are unreachable on this network — radar, storm and
+          forecast overlays still work.
+        </div>
+      )}
+
       {/* Map Attribution and Click Hint */}
       <div className="absolute bottom-2 left-3 z-[400] text-[10px] text-slate-400/80 font-mono pointer-events-none flex items-center gap-2">
         <span>DOST-PAGASA Realtime</span>
         <span>·</span>
         <span>Click anywhere on the map to inspect weather</span>
+        <span>·</span>
+        <span>Weather data by RainViewer</span>
+        {activeBasemap && (
+          <>
+            <span>·</span>
+            <span className="opacity-70">{activeBasemap.attribution}</span>
+          </>
+        )}
       </div>
     </div>
   );
