@@ -246,3 +246,14 @@ body,
   top: 132px;
   left: 6px;
 }
+
+/* Help Center map — keep the Leaflet copyright box on a single line so it
+   looks the same on Street and Satellite (no wrapping, ellipsis if the text
+   ever gets too long). It sits below the bottom-right button/legend stack,
+   which is the same slot it uses on the Flood Prone map. */
+#help-center-map-root .leaflet-control-attribution {
+  max-width: calc(100% - 24px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

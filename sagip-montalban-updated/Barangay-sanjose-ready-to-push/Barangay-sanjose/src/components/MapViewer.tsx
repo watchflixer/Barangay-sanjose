@@ -73,6 +73,16 @@ const TILE_SERVERS = {
   }
 };
 
+// Help Center-only attributions. The Streets credit is reused as-is, and the
+// Satellite credit is shortened to the same length so the Leaflet copyright
+// box looks identical on both basemaps (one line, same width) inside the Help
+// Center map. Only the Help Center map uses these — the main GIS map keeps
+// the full Esri credit above.
+const HELP_CENTER_ATTRIBUTIONS = {
+  streets: TILE_SERVERS.streets.attribution,
+  satellite: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>',
+};
+
 export const MapViewer: React.FC<MapViewerProps> = ({
   alerts,
   selectedAlert,
@@ -248,7 +258,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
     const tileConfig = TILE_SERVERS[helpCenterBasemap];
     const tileLayer = L.tileLayer(tileConfig.url, {
-      attribution: tileConfig.attribution,
+      attribution: HELP_CENTER_ATTRIBUTIONS[helpCenterBasemap],
       maxZoom: 19,
     }).addTo(map);
     helpCenterTileLayerRef.current = tileLayer;
@@ -1038,25 +1048,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       )}
 
       {/* Help Center bottom-right stack — mimics the Traffic map's
-          #legend-stack: two placeholder buttons (bold "3D" text and
-          find-location icon — white with a 1px gray border, same size as the
-          Directions button, no action on click) sit above the Directions
-          button (Traffic's #directions-btn), which sits directly above
-          the flood legend (Flood Prone's #legend). */}
+          #legend-stack: the find-location placeholder button (white with a
+          1px gray border, same size as the Directions button, no action on
+          click) sits above the Directions button (Traffic's
+          #directions-btn), which sits directly above the flood legend
+          (Flood Prone's #legend). The 3D button was removed. */}
       {showHelpCenter && (
         <div className="absolute right-[12px] bottom-6 z-50 flex flex-col items-end gap-2.5 portrait:bottom-14">
-          {/* Placeholder button — plain bold "3D" text (no 3D effect).
-              White with a 1px solid gray border, same size as the
-              Directions button. No action on click (placeholder only). */}
-          <button
-            type="button"
-            title="3D"
-            aria-label="3D"
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-[14px] border border-gray-400 bg-white p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-gray-500"
-          >
-            <span className="text-[15px] font-extrabold leading-none text-black">3D</span>
-          </button>
-
           {/* Placeholder button — find-location icon (folded map with a
               magnifying glass). White with a 1px solid gray border, same
               size as the Directions button. No action on click (placeholder
