@@ -202,7 +202,7 @@ export default function App() {
   const [trafficOpen, setTrafficOpen] = useState(false);
   // True while the Help Center view (independent Traffic duplicate) is open.
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
-  // True while the Weather view (its own Leaflet map) is open — also gates navbar actions.
+  // True while the Weather view (the AuraCast app) is open — also gates navbar actions.
   const [weatherOpen, setWeatherOpen] = useState(false);
 
   const resolvedAlerts = alerts.filter((a) => a.status === 'resolved');

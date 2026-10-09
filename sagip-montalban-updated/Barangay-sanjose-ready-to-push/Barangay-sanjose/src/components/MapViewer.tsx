@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { clearRefreshView, readRefreshView } from '../lib/refreshView';
 import { TILE_SERVERS } from '../data/tileServers';
-import { WeatherMap } from './WeatherMap';
+import { WeatherView } from './WeatherView';
 import { HazardAlert, MapSettings } from '../types';
 import {
   SAN_JOSE_POLYGON_COORDS,
@@ -171,12 +171,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Traffic map's Street/Satellite switch) — affects only the Help Center map.
   const [helpCenterBasemap, setHelpCenterBasemap] = React.useState<'streets' | 'satellite'>('satellite');
   const helpCenterTileLayerRef = useRef<L.TileLayer | null>(null);
-  // Weather — an INDEPENDENT view with its OWN Leaflet map (WeatherMap.tsx),
-  // mutually exclusive with the other map views. The app's floating Recenter
-  // and Locate buttons drive that map through the refs below.
+  // Weather — the AuraCast weather & radar app (WeatherView.tsx), shown in its
+  // own document. Mutually exclusive with the other map views. It has its own
+  // map controls, so the app's Recenter and Locate buttons are hidden here.
   const [showWeather, setShowWeather] = React.useState(refreshView === 'weather');
-  const weatherMapInstanceRef = useRef<L.Map | null>(null);
-  const weatherUserMarkerRef = useRef<L.Marker | null>(null);
   // Opening Help Center closes the Flood Prone, Traffic and Weather maps.
   React.useEffect(() => {
     if (showHelpCenter) {
@@ -576,23 +574,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 easeLinearity: 0.25,
               });
             }
-          } else if (showWeather) {
-            // While the Weather map is open, fly it to the user and drop the
-            // "Your location" dot on it too (the GIS map behind it is hidden).
-            const weatherMap = weatherMapInstanceRef.current;
-            if (weatherMap) {
-              weatherUserMarkerRef.current?.remove();
-              weatherUserMarkerRef.current = L.marker(coordinates, {
-                icon: locationIcon,
-                zIndexOffset: 1000,
-                title: 'Your location',
-              }).addTo(weatherMap);
-              if (mapSettings.lockCameraToBounds) weatherMap.setMaxBounds(null as any);
-              weatherMap.flyTo(coordinates, 16, {
-                duration: 1.6,
-                easeLinearity: 0.25,
-              });
-            }
           } else {
             // The location can be outside Barangay San Jose. Temporarily release
             // the GIS boundary lock so the button can always reach the user.
@@ -942,14 +923,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       trafficMapFrameRef.current?.contentWindow?.postMessage({ type: 'traffic-recenter' }, '*');
       return;
     }
-    // In Weather mode, recenter its own Leaflet map.
-    if (showWeather) {
-      weatherMapInstanceRef.current?.flyTo(SAN_JOSE_CENTER, 13, {
-        duration: 0.75,
-        easeLinearity: 0.25,
-      });
-      return;
-    }
+    // In Weather mode, the AuraCast app has its own map controls.
+    if (showWeather) return;
     // In Help Center mode, recenter its own Leaflet map.
     if (showHelpCenter) {
       helpCenterMapInstanceRef.current?.flyTo(SAN_JOSE_CENTER, 13, {
@@ -1031,15 +1006,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Weather overlay — an INDEPENDENT view with its OWN Leaflet map
-          (see WeatherMap.tsx). It mounts only while open, so closing it
-          destroys the map and every visit starts fresh. */}
-      {showWeather && (
-        <WeatherMap
-          lockCameraToBounds={mapSettings.lockCameraToBounds}
-          mapRef={weatherMapInstanceRef}
-        />
-      )}
+      {/* Weather overlay — the AuraCast weather & radar app, embedded in its
+          own document (see WeatherView.tsx). It mounts only while open, so
+          closing it unloads the embedded app. */}
+      {showWeather && <WeatherView />}
 
       {/* Help Center Street/Satellite switcher — mimics the Flood Prone map's
           #base-switch: same order (Satellite | Street), same default
@@ -1222,14 +1192,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
       <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank || showTrafficMap || showHelpCenter || showWeather ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite || (showTrafficMap && trafficDirectionsOpen) ? 'hidden' : ''}`}>
-        <button
-          id="btn-recenter-gis"
-          onClick={handleRecenter}
-          title="Recenter"
-          className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-800 shadow-xs border border-slate-200 transition-colors active:scale-95 cursor-pointer"
-        >
-          <RefreshCw className={`w-4 h-4 transition-transform ${isRecenterSpinning ? 'animate-fast-spin text-slate-900' : 'text-slate-700'}`} />
-        </button>
+        {/* Hidden in Weather mode: the AuraCast app has its own recenter. */}
+        {!showWeather && (
+          <button
+            id="btn-recenter-gis"
+            onClick={handleRecenter}
+            title="Recenter"
+            className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-800 shadow-xs border border-slate-200 transition-colors active:scale-95 cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 transition-transform ${isRecenterSpinning ? 'animate-fast-spin text-slate-900' : 'text-slate-700'}`} />
+          </button>
+        )}
 
         {/* Layer Selector & Mask Intensity Toggle */}
         <div className="relative">
@@ -1320,9 +1293,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     </button>
                   ))}
 
-                  {/* Weather — opens the Weather view: its own Leaflet map with zoom,
-                      Street/Satellite and the floating Recenter/Locate controls
-                      (see WeatherMap.tsx). */}
+                  {/* Weather — opens the AuraCast weather & radar view (see WeatherView.tsx). */}
                   <button
                     type="button"
                     onClick={() => {
@@ -1413,15 +1384,18 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         )}
       </div>
 
-        <button
-          id="btn-show-user-location"
-          onClick={handleShowUserLocation}
-          title="Show your location"
-          aria-label="Show your location"
-          className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
-        >
-          <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
-        </button>
+        {/* Hidden in Weather mode: the AuraCast app has its own location button. */}
+        {!showWeather && (
+          <button
+            id="btn-show-user-location"
+            onClick={handleShowUserLocation}
+            title="Show your location"
+            aria-label="Show your location"
+            className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+          >
+            <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
+          </button>
+        )}
 
         {/* Zoom In / Zoom Out — below "Show your location"; hidden in Flood
             Prone, Traffic, Help Center, and Weather modes (those maps have
