@@ -1063,13 +1063,38 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       )}
 
       {/* Help Center bottom-right stack — mimics the Traffic map's
-          #legend-stack: the find-location placeholder button (white with a
-          1px gray border, same size as the Directions button, no action on
-          click) sits above the Directions button (Traffic's
-          #directions-btn), which sits directly above the flood legend
-          (Flood Prone's #legend). The 3D button was removed. */}
+          #legend-stack: the Directions button (Traffic's #directions-btn)
+          now sits on TOP, with the find-location placeholder button (white
+          with a 1px gray border, same size as the Directions button, no
+          action on click) directly below it. The legend card and the 3D
+          button were removed. */}
       {showHelpCenter && (
         <div className="absolute right-[12px] bottom-6 z-50 flex flex-col items-end gap-2.5 portrait:bottom-14">
+          <button
+            type="button"
+            title="Directions"
+            aria-label="Directions"
+            onClick={() => {
+              // Open Google Maps directions to the Help Center map's current
+              // center (fallback: Barangay San Jose center).
+              const center = helpCenterMapInstanceRef.current?.getCenter();
+              const lat = center ? center.lat : SAN_JOSE_CENTER[0];
+              const lng = center ? center.lng : SAN_JOSE_CENTER[1];
+              window.open(
+                `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
+                '_blank',
+                'noopener,noreferrer'
+              );
+            }}
+            className="h-12 w-12 cursor-pointer rounded-[14px] border-0 bg-[#0b7a87] p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-full w-full">
+              <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff" />
+              <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#0b7a87" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
+            </svg>
+          </button>
+
           {/* Placeholder button — find-location icon (folded map with a
               magnifying glass). White with a 1px solid gray border, same
               size as the Directions button. No action on click (placeholder
@@ -1100,60 +1125,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <line x1="440" y1="440" x2="488" y2="488" stroke="#000" strokeWidth="26" strokeLinecap="round" />
             </svg>
           </button>
-
-          <button
-            type="button"
-            title="Directions"
-            aria-label="Directions"
-            onClick={() => {
-              // Open Google Maps directions to the Help Center map's current
-              // center (fallback: Barangay San Jose center).
-              const center = helpCenterMapInstanceRef.current?.getCenter();
-              const lat = center ? center.lat : SAN_JOSE_CENTER[0];
-              const lng = center ? center.lng : SAN_JOSE_CENTER[1];
-              window.open(
-                `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-                '_blank',
-                'noopener,noreferrer'
-              );
-            }}
-            className="h-12 w-12 cursor-pointer rounded-[14px] border-0 bg-[#0b7a87] p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-white"
-          >
-            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-full w-full">
-              <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff" />
-              <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#0b7a87" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
-            </svg>
-          </button>
-
-          {/* Legend card — same card + swatch colors as the Flood Prone
-              map's #legend (Low #a8d5ba, Medium #f4b942, High #c0392b), but
-              with the Help Center's own labels (3D / Directions / Find). An
-              invisible sizer row keeps the card exactly as wide as the
-              original legend. Info card only; the Help Center map itself
-              stays a plain Leaflet basemap. */}
-          <div className="rounded-lg border border-[#d8d2c2] bg-[#f6f3ea]/95 px-3 py-2.5 text-[12.5px] text-[#1b2a2f] shadow-md">
-            {/* Invisible sizer — a replica of the original widest row, so
-                the card keeps exactly its original width even though the
-                custom labels (3D / Directions / Find) are shorter. Zero
-                height, clipped, and hidden from assistive tech. */}
-            <div aria-hidden="true" className="flex h-0 items-center gap-1.5 overflow-hidden">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              Medium (0.5–1.5m)
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#a8d5ba' }} />
-              3D
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#f4b942' }} />
-              Directions
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#c0392b' }} />
-              Find
-            </div>
-          </div>
         </div>
       )}
 
