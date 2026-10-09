@@ -250,8 +250,8 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
             onClick={onToggleMeasure}
             className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 border ${
               isMeasureActive
-                ? 'bg-[#d97706] text-white border-amber-300 ring-2 ring-white/40'
-                : 'bg-[#a2541a]/85 backdrop-blur-md text-white border-white/20 hover:bg-[#a2541a]'
+                ? 'bg-white/25 text-white border-white/40 ring-2 ring-white/30'
+                : 'bg-black/55 backdrop-blur-md text-white border-white/20 hover:bg-black/70'
             }`}
             title="Measure Distance"
           >
@@ -266,8 +266,8 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
             }}
             className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 border ${
               isSettingsOpen
-                ? 'bg-[#d97706] text-white border-amber-300 ring-2 ring-white/40'
-                : 'bg-[#a2541a]/85 backdrop-blur-md text-white border-white/20 hover:bg-[#a2541a]'
+                ? 'bg-white/25 text-white border-white/40 ring-2 ring-white/30'
+                : 'bg-black/55 backdrop-blur-md text-white border-white/20 hover:bg-black/70'
             }`}
             title="Settings"
           >
@@ -279,8 +279,8 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
             onClick={onToggleRadarStations}
             className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 border ${
               showRadarStations
-                ? 'bg-[#d97706] text-white border-amber-300'
-                : 'bg-[#a2541a]/85 backdrop-blur-md text-white border-white/20 hover:bg-[#a2541a]'
+                ? 'bg-white/25 text-white border-white/40'
+                : 'bg-black/55 backdrop-blur-md text-white border-white/20 hover:bg-black/70'
             }`}
             title="PAGASA Radar Stations"
           >
@@ -295,8 +295,8 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
             }}
             className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 border ${
               isLayersOpen
-                ? 'bg-[#d97706] text-white border-amber-300 ring-2 ring-white/40'
-                : 'bg-[#a2541a]/85 backdrop-blur-md text-white border-white/20 hover:bg-[#a2541a]'
+                ? 'bg-white/25 text-white border-white/40 ring-2 ring-white/30'
+                : 'bg-black/55 backdrop-blur-md text-white border-white/20 hover:bg-black/70'
             }`}
             title="Map and Weather Layers"
           >
@@ -700,7 +700,7 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
       <div className="fixed top-16 inset-x-3 z-[600] flex items-center gap-2 pointer-events-none">
         {/* Search Bar Pill */}
         <div className="relative flex-1 pointer-events-auto">
-          <div className="flex items-center w-full h-11 px-4 rounded-2xl bg-[#a2541a]/80 backdrop-blur-md border border-white/20 shadow-lg text-white">
+          <div className="flex items-center w-full h-11 px-4 rounded-2xl bg-black/55 backdrop-blur-md border border-white/20 shadow-lg text-white">
             <input
               type="text"
               value={searchQuery}
@@ -710,13 +710,13 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
               }}
               onFocus={() => setIsSearchOpen(true)}
               placeholder="Search location in Philippines"
-              className="w-full bg-transparent text-sm text-white placeholder-amber-200/60 focus:outline-none"
+              className="w-full bg-transparent text-sm text-white placeholder-slate-300/70 focus:outline-none"
             />
             {/* GPS crosshair target inside search bar */}
             <button
               onClick={onUseCurrentLocation}
               disabled={isLocating}
-              className="p-1 text-white hover:text-amber-200 transition-colors ml-1"
+              className="p-1 text-white hover:text-slate-300 transition-colors ml-1"
               title="Locate my position"
             >
               <Crosshair className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
@@ -777,7 +777,7 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
           {/* Zoom In */}
           <button
             onClick={onZoomIn}
-            className="w-11 h-11 rounded-full bg-[#a2541a]/85 backdrop-blur-md border border-white/20 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+            className="w-11 h-11 rounded-full bg-black/55 backdrop-blur-md border border-white/20 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
             title="Zoom In"
           >
             <ZoomIn className="w-4 h-4" />
@@ -786,7 +786,7 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
           {/* Zoom Out */}
           <button
             onClick={onZoomOut}
-            className="w-11 h-11 rounded-full bg-[#a2541a]/85 backdrop-blur-md border border-white/20 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
+            className="w-11 h-11 rounded-full bg-black/55 backdrop-blur-md border border-white/20 text-white shadow-lg flex items-center justify-center active:scale-95 transition-transform"
             title="Zoom Out"
           >
             <ZoomOut className="w-4 h-4" />
@@ -794,41 +794,59 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
         </div>
       </div>
 
-      {/* 3. RIGHT SIDE VERTICAL TEMPERATURE LEGEND SCALE */}
+      {/* 3. RIGHT SIDE VERTICAL LEGEND: rainfall (MM 1H) on radar, temperature otherwise */}
       <div className="fixed right-3 top-1/2 -translate-y-12 z-[500] pointer-events-auto">
-        <div className="flex flex-col items-center bg-[#8f4514]/85 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-2xl text-white font-sans">
-          <span className="text-[11px] font-bold text-white mb-1.5">°C</span>
-
-          <div className="relative flex items-center justify-center w-10 h-52">
-            <div
-              className="w-3.5 h-full rounded-full shadow-inner"
-              style={{
-                background:
-                  'linear-gradient(to bottom, #d90429 0%, #ea580c 25%, #eab308 50%, #84cc16 70%, #06b6d4 85%, #2563eb 100%)',
-              }}
-            />
-
-            <div className="absolute inset-y-0 right-0 flex flex-col justify-between text-[10px] font-bold text-white leading-none pointer-events-none py-1">
-              <span>58</span>
-              <span>43</span>
-              <span>28</span>
-              <span>12</span>
-              <span>-3</span>
+        {activeLayer === 'radar' ? (
+          <div className="flex flex-col items-center bg-black/55 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-2xl text-white font-sans">
+            <span className="text-[10px] font-bold text-white mb-1.5">MM (1H)</span>
+            <div className="flex gap-1.5 h-60">
+              <div
+                className="w-3 h-full rounded-full shadow-inner"
+                style={{
+                  background:
+                    'linear-gradient(to bottom, #ff1cf7 0%, #d10000 12%, #ff6a00 25%, #ffd800 38%, #00d832 50%, #0096fe 62%, #1e3cff 75%, #a1e6ff 100%)',
+                }}
+              />
+              <div className="flex flex-col justify-between text-[9px] font-bold text-white leading-none py-0.5">
+                {['60', '50', '40', '30', '20', '15', '10', '5', '3', '1', '0.5', '0.1'].map((v) => (
+                  <span key={v}>{v}</span>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-col items-center bg-black/55 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-2xl text-white font-sans">
+            <span className="text-[11px] font-bold text-white mb-1.5">°C</span>
+            <div className="flex gap-1.5 h-52">
+              <div
+                className="w-3 h-full rounded-full shadow-inner"
+                style={{
+                  background:
+                    'linear-gradient(to bottom, #d90429 0%, #ea580c 25%, #eab308 50%, #84cc16 70%, #06b6d4 85%, #2563eb 100%)',
+                }}
+              />
+              <div className="flex flex-col justify-between text-[10px] font-bold text-white leading-none py-0.5">
+                <span>58</span>
+                <span>43</span>
+                <span>28</span>
+                <span>12</span>
+                <span>-3</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 4. FLOATING TIMESTAMP PILL */}
       <div className="fixed bottom-24 left-4 z-[500] pointer-events-auto">
-        <div className="px-3.5 py-1.5 rounded-xl bg-[#6d2f09]/80 backdrop-blur-md border border-white/20 text-white text-xs font-semibold shadow-lg">
+        <div className="px-3.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/20 text-white text-xs font-semibold shadow-lg">
           {timestampStr || 'Fri, Oct 9 6:00 PM'}
         </div>
       </div>
 
       {/* 5. BOTTOM PLAYBACK CONTROL BAR */}
       <div className="fixed bottom-4 inset-x-3 z-[500] pointer-events-auto max-w-xl mx-auto">
-        <div className="flex items-center gap-3 px-4 py-2.5 rounded-3xl bg-[#7c370b]/85 backdrop-blur-md border border-white/20 shadow-2xl text-white">
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-3xl bg-black/60 backdrop-blur-md border border-white/20 shadow-2xl text-white">
           <button
             onClick={onTogglePlay}
             className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 flex items-center justify-center shrink-0 transition-transform"
@@ -851,7 +869,7 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
               className="w-full accent-white h-1.5 bg-white/30 rounded-lg cursor-pointer appearance-none outline-none"
             />
 
-            <div className="flex justify-between items-center text-[10px] text-amber-200/90 font-medium px-1">
+            <div className="flex justify-between items-center text-[10px] text-slate-200 font-medium px-1">
               {days.map((day, idx) => (
                 <span key={idx} className="tracking-tight">
                   {day}
