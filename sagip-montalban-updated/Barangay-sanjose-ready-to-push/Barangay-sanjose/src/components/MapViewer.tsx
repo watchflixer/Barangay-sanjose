@@ -1226,9 +1226,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     BASEMAP STYLE:
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
+                      {/* Help Center (the 'satellite' slot) is temporarily disabled so it can't be pressed. */}
                     {(['streets', 'satellite', 'dark', 'light'] as const).map((layer) => (
                       <button
                         key={layer}
+                        disabled={layer === 'satellite'}
                         onClick={() => {
                           if (layer === 'dark') {
                             // The former "Comming Soon" slot now opens the realtime Traffic map.
@@ -1259,7 +1261,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                           setShowHelpCenter(false);
                           onUpdateMapSettings({ tileLayer: layer });
                         }}
-                      className={`relative px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors ${
+                      className={`relative px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
                         layer === 'dark'
                           ? showTrafficMap
                             ? 'bg-black text-white border-black'
@@ -1273,21 +1275,21 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     </button>
                   ))}
 
-                  {/* Road Warrior — enabled placeholder: clickable but
+                  {/* Weather — enabled placeholder: clickable but
                       intentionally does nothing yet. */}
                   <button
                     type="button"
                     onClick={() => {
                       // Placeholder: no action wired up yet.
                     }}
-                    title="Road Warrior"
-                    aria-label="Road Warrior"
+                    title="Weather"
+                    aria-label="Weather"
                     className="px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border border-slate-200 bg-slate-50 text-slate-700 transition-colors hover:bg-slate-100 active:scale-95 cursor-pointer"
                   >
-                    Road Warrior
+                    Weather
                   </button>
 
-                  {/* Coming Soon — reserved placeholder slot next to Road Warrior. */}
+                  {/* Coming Soon — reserved placeholder slot next to Weather. */}
                   <button
                     type="button"
                     disabled
