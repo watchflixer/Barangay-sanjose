@@ -55,7 +55,7 @@ const COPY_LABEL_BLOCKED = 'Copy blocked: number selected, press Ctrl+C';
  */
 const FOLD_SIZE = 20;
 const ZIGZAG_HEIGHT = 8;
-const FOLD_CUT_GRADIENT = `linear-gradient(to bottom left, transparent ${(FOLD_SIZE / Math.SQRT2).toFixed(2)}px, #000 ${(FOLD_SIZE / Math.SQRT2 + 0.01).toFixed(2)}px)`;
+const FOLD_CUT_GRADIENT = `linear-gradient(225deg, transparent ${(FOLD_SIZE / Math.SQRT2).toFixed(2)}px, #000 ${(FOLD_SIZE / Math.SQRT2 + 0.01).toFixed(2)}px)`;
 const ZIGZAG_TOOTH_SVG =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpolygon points='0,0 12,0 6,8' fill='black'/%3E%3C/svg%3E\")";
 const RECEIPT_STYLE: React.CSSProperties = {
