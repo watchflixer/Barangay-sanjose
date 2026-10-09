@@ -53,9 +53,12 @@ const COPY_LABEL_BLOCKED = 'Copy blocked: number selected, press Ctrl+C';
  */
 const ZIGZAG_TOOTH_SVG =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpolygon points='0,0 12,0 6,8' fill='black'/%3E%3C/svg%3E\")";
+/** Pinutol na sulok sa kanang-itaas (tupi). Ang stop = FOLD_SIZE / sqrt(2). */
+const FOLD_SIZE = 16;
+const FOLD_CUT_GRADIENT = `linear-gradient(to bottom left, transparent ${(FOLD_SIZE / Math.SQRT2).toFixed(2)}px, #000 ${(FOLD_SIZE / Math.SQRT2 + 0.01).toFixed(2)}px)`;
 const RECEIPT_EDGE_STYLE: React.CSSProperties = {
-  WebkitMaskImage: `linear-gradient(#000 0 0), ${ZIGZAG_TOOTH_SVG}`,
-  maskImage: `linear-gradient(#000 0 0), ${ZIGZAG_TOOTH_SVG}`,
+  WebkitMaskImage: `${FOLD_CUT_GRADIENT}, ${ZIGZAG_TOOTH_SVG}`,
+  maskImage: `${FOLD_CUT_GRADIENT}, ${ZIGZAG_TOOTH_SVG}`,
   WebkitMaskSize: '100% calc(100% - 8px), 12px 8px',
   maskSize: '100% calc(100% - 8px), 12px 8px',
   WebkitMaskPosition: 'top, bottom',
@@ -325,6 +328,24 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
             </details>
           </div>
           </div>
+          {/* Tupi sa kanang-itaas: ang nakatuping flap ng pinutol na sulok,
+              nakalagay sa loob ng card sa tabi ng X button. */}
+          <svg
+            aria-hidden="true"
+            focusable="false"
+            width={FOLD_SIZE}
+            height={FOLD_SIZE}
+            viewBox={`0 0 ${FOLD_SIZE} ${FOLD_SIZE}`}
+            className="pointer-events-none absolute right-0 top-0"
+          >
+            <polygon
+              points={`0,0 ${FOLD_SIZE},${FOLD_SIZE} 0,${FOLD_SIZE}`}
+              fill="#e2e8f0"
+              stroke="#94a3b8"
+              strokeWidth="0.6"
+              strokeLinejoin="round"
+            />
+          </svg>
         </div>,
         document.body)}
     </>
