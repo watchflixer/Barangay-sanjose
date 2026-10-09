@@ -1113,11 +1113,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </svg>
           </button>
 
-          {/* Legend card — same rows and styling as the Flood Prone map's
-              #legend, with custom labels and swatch colors: light blue = 3D,
-              yellow = Directions, black = Find. An invisible sizer row keeps
-              the card exactly as wide as the original legend. Info card only;
-              the Help Center map itself stays a plain Leaflet basemap. */}
+          {/* Legend card — same card + swatch colors as the Flood Prone
+              map's #legend (Low #a8d5ba, Medium #f4b942, High #c0392b), but
+              with the Help Center's own labels (3D / Directions / Find). An
+              invisible sizer row keeps the card exactly as wide as the
+              original legend. Info card only; the Help Center map itself
+              stays a plain Leaflet basemap. */}
           <div className="rounded-lg border border-[#d8d2c2] bg-[#f6f3ea]/95 px-3 py-2.5 text-[12.5px] text-[#1b2a2f] shadow-md">
             {/* Invisible sizer — a replica of the original widest row, so
                 the card keeps exactly its original width even though the
@@ -1128,15 +1129,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               Medium (0.5–1.5m)
             </div>
             <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px] ring-1 ring-black/10" style={{ background: '#7dd3fc' }} />
+              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#a8d5ba' }} />
               3D
             </div>
             <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px] ring-1 ring-black/10" style={{ background: '#facc15' }} />
+              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#f4b942' }} />
               Directions
             </div>
             <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
+              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#c0392b' }} />
               Find
             </div>
           </div>
