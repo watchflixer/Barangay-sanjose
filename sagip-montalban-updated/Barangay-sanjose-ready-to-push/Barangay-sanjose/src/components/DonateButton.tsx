@@ -342,10 +342,10 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
           >
             <polygon
               points={`0,0 ${FOLD_SIZE},${FOLD_SIZE} 0,${FOLD_SIZE}`}
-              fill="#d1d5db"
-              stroke="#9ca3af"
-              strokeWidth="0.6"
-              strokeLinejoin="round"
+              fill="#e5e7eb"
+              stroke="#1f2937"
+              strokeWidth="1.8"
+              strokeLinejoin="miter"
             />
           </svg>
         </div>,
