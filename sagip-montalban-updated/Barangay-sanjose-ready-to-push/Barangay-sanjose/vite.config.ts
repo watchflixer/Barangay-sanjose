@@ -73,6 +73,15 @@ export default defineConfig(() => {
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          // The AuraCast weather & radar app, embedded by the Weather view.
+          weather: path.resolve(__dirname, 'weather.html'),
+        },
+      },
+    },
     preview: {
       port: 4173,
       host: '0.0.0.0',

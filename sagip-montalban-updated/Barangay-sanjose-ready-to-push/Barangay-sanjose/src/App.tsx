@@ -202,6 +202,8 @@ export default function App() {
   const [trafficOpen, setTrafficOpen] = useState(false);
   // True while the Help Center view (independent Traffic duplicate) is open.
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
+  // True while the Weather view (the AuraCast app) is open — also gates navbar actions.
+  const [weatherOpen, setWeatherOpen] = useState(false);
 
   const resolvedAlerts = alerts.filter((a) => a.status === 'resolved');
 
@@ -238,6 +240,7 @@ export default function App() {
         floodProneOpen={floodProneOpen}
         trafficOpen={trafficOpen}
         helpCenterOpen={helpCenterOpen}
+        weatherOpen={weatherOpen}
         onOpenLiveModal={() => setIsLiveModalOpen(true)}
         onOpenUpdates={() => setIsUpdatesModalOpen(true)}
         onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
@@ -277,7 +280,7 @@ export default function App() {
             onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
             onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
             onOpenHistory={() => setIsHistoryModalOpen(true)}
-            optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen}
+            optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
           />
 
           {/* Arrow toggle attached to the outer right edge of the incident feed drawer on mobile portrait */}
@@ -325,6 +328,7 @@ export default function App() {
             onFloodProneChange={setFloodProneOpen}
             onTrafficChange={setTrafficOpen}
             onHelpCenterChange={setHelpCenterOpen}
+            onWeatherChange={setWeatherOpen}
           />
           <PagasaFloodStatus />
         </main>
