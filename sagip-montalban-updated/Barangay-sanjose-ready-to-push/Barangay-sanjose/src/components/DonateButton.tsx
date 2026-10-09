@@ -53,7 +53,7 @@ const COPY_LABEL_BLOCKED = 'Copy blocked: number selected, press Ctrl+C';
  * Nasa wrapper ang anino (drop-shadow) dahil puputulin ng mask ang
  * box-shadow ng mismong card.
  */
-const FOLD_SIZE = 16;
+const FOLD_SIZE = 20;
 const ZIGZAG_HEIGHT = 8;
 const FOLD_CUT_GRADIENT = `linear-gradient(to bottom left, transparent ${(FOLD_SIZE / Math.SQRT2).toFixed(2)}px, #000 ${(FOLD_SIZE / Math.SQRT2 + 0.01).toFixed(2)}px)`;
 const ZIGZAG_TOOTH_SVG =
