@@ -1008,13 +1008,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         <div
           role="group"
           aria-label="Map style"
-          className="absolute right-[12px] top-[10px] z-50 flex gap-1 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-md"
+          className="absolute right-[12px] top-[10px] z-50 flex gap-1 rounded-lg border border-slate-200 bg-white/95 p-[3px] shadow-md"
         >
           <button
             type="button"
             onClick={() => setHelpCenterBasemap('satellite')}
             aria-pressed={helpCenterBasemap === 'satellite'}
-            className={`rounded-[5px] border border-transparent px-2.5 py-1 text-[11px] font-bold tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+            className={`rounded-[5px] border border-transparent px-2.5 py-[2px] text-[11px] font-bold leading-[14px] tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
               helpCenterBasemap === 'satellite'
                 ? 'bg-[#111827] text-white'
                 : 'bg-transparent text-[#33413a] hover:bg-[#eef1ec]'
@@ -1026,7 +1026,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             type="button"
             onClick={() => setHelpCenterBasemap('streets')}
             aria-pressed={helpCenterBasemap === 'streets'}
-            className={`rounded-[5px] border border-transparent px-2.5 py-1 text-[11px] font-bold tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+            className={`rounded-[5px] border border-transparent px-2.5 py-[2px] text-[11px] font-bold leading-[14px] tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
               helpCenterBasemap === 'streets'
                 ? 'bg-[#111827] text-white'
                 : 'bg-transparent text-[#33413a] hover:bg-[#eef1ec]'
