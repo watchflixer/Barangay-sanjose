@@ -45,26 +45,12 @@ const COPY_LABEL_DEFAULT = 'Copy account number';
 const COPY_LABEL_OK = 'Copied';
 const COPY_LABEL_BLOCKED = 'Copy blocked: number selected, press Ctrl+C';
 
-/**
- * Zigzag na ilalim (receipt edge): ang buong card ay minamask ng dalawang
- * layer — ang itaas (100% maliban sa 8px sa ilalim) at ang sawtooth strip sa
- * ilalim (12x8 na tile na may itim na tatsulok). Naka-fixed ang mask sa box ng
- * card, kaya nananatili ang zigzag kahit mag-scroll ang laman.
- */
-const ZIGZAG_TOOTH_SVG =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpolygon points='0,0 12,0 6,8' fill='black'/%3E%3C/svg%3E\")";
 /** Pinutol na sulok sa kanang-itaas (tupi). Ang stop = FOLD_SIZE / sqrt(2). */
 const FOLD_SIZE = 16;
 const FOLD_CUT_GRADIENT = `linear-gradient(to bottom left, transparent ${(FOLD_SIZE / Math.SQRT2).toFixed(2)}px, #000 ${(FOLD_SIZE / Math.SQRT2 + 0.01).toFixed(2)}px)`;
-const RECEIPT_EDGE_STYLE: React.CSSProperties = {
-  WebkitMaskImage: `${FOLD_CUT_GRADIENT}, ${ZIGZAG_TOOTH_SVG}`,
-  maskImage: `${FOLD_CUT_GRADIENT}, ${ZIGZAG_TOOTH_SVG}`,
-  WebkitMaskSize: '100% calc(100% - 8px), 12px 8px',
-  maskSize: '100% calc(100% - 8px), 12px 8px',
-  WebkitMaskPosition: 'top, bottom',
-  maskPosition: 'top, bottom',
-  WebkitMaskRepeat: 'no-repeat, repeat-x',
-  maskRepeat: 'no-repeat, repeat-x',
+const FOLD_CUT_STYLE: React.CSSProperties = {
+  WebkitMaskImage: FOLD_CUT_GRADIENT,
+  maskImage: FOLD_CUT_GRADIENT,
 };
 
 interface DonateButtonProps {
@@ -222,7 +208,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
       {open && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           {/* Wrapper para sa anino (drop-shadow) — kailangan dahil ang card
-              mismo ay may zigzag na ilalim (mask), at puputulin ng mask ang
+              mismo ay may pinutol na sulok (mask), at puputulin ng mask ang
               box-shadow kung doon ito nakalagay. */}
           <div
             className="relative w-[min(88vw,280px)] max-h-[90vh] drop-shadow-[0_10px_20px_rgba(15,23,42,0.4)]"
@@ -234,10 +220,10 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
             aria-label="Support this project"
             tabIndex={-1}
             style={{
-              ...RECEIPT_EDGE_STYLE,
+              ...FOLD_CUT_STYLE,
               ...(lockedHeight !== null ? { height: lockedHeight } : {}),
             }}
-            className="w-full max-h-[90vh] overflow-y-auto bg-white p-[.85rem] pb-[calc(.85rem+8px)] text-[13px] leading-[1.4] text-[#111] outline-none custom-scrollbar"
+            className="w-full max-h-[90vh] overflow-y-auto bg-white p-[.85rem] text-[13px] leading-[1.4] text-[#111] outline-none custom-scrollbar"
           >
             <div className="mb-[.25rem] flex items-center justify-between gap-2">
               <h2 className="text-[1.05rem] font-bold">Support this project</h2>
