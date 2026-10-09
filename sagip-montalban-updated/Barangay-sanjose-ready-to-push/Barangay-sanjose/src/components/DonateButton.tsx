@@ -45,6 +45,30 @@ const COPY_LABEL_DEFAULT = 'Copy account number';
 const COPY_LABEL_OK = 'Copied';
 const COPY_LABEL_BLOCKED = 'Copy blocked: number selected, press Ctrl+C';
 
+/**
+ * Hugis ng resibo ng card:
+ *  - Tupi (fold) sa kanang-itaas: pinutol ang sulok nang pahilis (mask) at
+ *    may nakatuping flap na may gray na shadow sa tabi ng X button.
+ *  - Zigzag sa ilalim: sawtooth na mask strip sa bottom edge.
+ * Nasa wrapper ang anino (drop-shadow) dahil puputulin ng mask ang
+ * box-shadow ng mismong card.
+ */
+const FOLD_SIZE = 16;
+const ZIGZAG_HEIGHT = 8;
+const FOLD_CUT_GRADIENT = `linear-gradient(to bottom left, transparent ${(FOLD_SIZE / Math.SQRT2).toFixed(2)}px, #000 ${(FOLD_SIZE / Math.SQRT2 + 0.01).toFixed(2)}px)`;
+const ZIGZAG_TOOTH_SVG =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpolygon points='0,0 12,0 6,8' fill='black'/%3E%3C/svg%3E\")";
+const RECEIPT_STYLE: React.CSSProperties = {
+  WebkitMaskImage: `${FOLD_CUT_GRADIENT}, ${ZIGZAG_TOOTH_SVG}`,
+  maskImage: `${FOLD_CUT_GRADIENT}, ${ZIGZAG_TOOTH_SVG}`,
+  WebkitMaskSize: `100% calc(100% - ${ZIGZAG_HEIGHT}px), 12px ${ZIGZAG_HEIGHT}px`,
+  maskSize: `100% calc(100% - ${ZIGZAG_HEIGHT}px), 12px ${ZIGZAG_HEIGHT}px`,
+  WebkitMaskPosition: 'top, bottom',
+  maskPosition: 'top, bottom',
+  WebkitMaskRepeat: 'no-repeat, repeat-x',
+  maskRepeat: 'no-repeat, repeat-x',
+};
+
 interface DonateButtonProps {
   className?: string;
 }
@@ -199,14 +223,18 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
           buo ang card sa ibabaw ng lahat (z-[100]). */}
       {open && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="relative w-[min(88vw,280px)] max-h-[90vh] drop-shadow-[0_10px_20px_rgba(15,23,42,0.4)]">
           <div
             ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-label="Support this project"
             tabIndex={-1}
-            style={lockedHeight !== null ? { height: lockedHeight } : undefined}
-            className="w-[min(88vw,280px)] max-h-[90vh] overflow-y-auto rounded-lg border-0 bg-white p-[.85rem] text-[13px] leading-[1.4] text-[#111] shadow-2xl shadow-slate-900/40 outline-none custom-scrollbar"
+            style={{
+              ...RECEIPT_STYLE,
+              ...(lockedHeight !== null ? { height: lockedHeight } : {}),
+            }}
+            className="w-full max-h-[90vh] overflow-y-auto bg-white p-[.85rem] pb-[calc(.85rem+8px)] text-[13px] leading-[1.4] text-[#111] outline-none custom-scrollbar"
           >
             <div className="mb-[.25rem] flex items-center justify-between gap-2">
               <h2 className="text-[1.05rem] font-bold">Support this project</h2>
@@ -295,6 +323,27 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
                 <li>Enter the amount and confirm.</li>
               </ol>
             </details>
+          </div>
+          {/* Tupi sa kanang-itaas: nakatuping flap ng pinutol na sulok,
+              katabi ng X button, may gray na shadow. */}
+          <svg
+            aria-hidden="true"
+            focusable="false"
+            width={FOLD_SIZE}
+            height={FOLD_SIZE}
+            viewBox={`0 0 ${FOLD_SIZE} ${FOLD_SIZE}`}
+            overflow="visible"
+            className="pointer-events-none absolute right-0 top-0"
+            style={{ filter: 'drop-shadow(-2px 2px 2px rgba(100, 116, 139, 0.6))' }}
+          >
+            <polygon
+              points={`0,0 ${FOLD_SIZE},${FOLD_SIZE} 0,${FOLD_SIZE}`}
+              fill="#e5e7eb"
+              stroke="#9ca3af"
+              strokeWidth="0.8"
+              strokeLinejoin="round"
+            />
+          </svg>
           </div>
         </div>,
         document.body)}
