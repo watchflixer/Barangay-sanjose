@@ -32,15 +32,15 @@ export default function App() {
   const [zoom, setZoom] = useState<number>(6.5);
 
   // Layers & Aesthetics: Default Temperature Heatmap + Street/Satellite layer
-  const [activeLayer, setActiveLayer] = useState<WeatherLayerType>('temperature');
-  const [baseStyle, setBaseStyle] = useState<MapBaseStyle>('streets');
+  const [activeLayer, setActiveLayer] = useState<WeatherLayerType>('radar');
+  const [baseStyle, setBaseStyle] = useState<MapBaseStyle>('dark');
   const [radarOpacity, setRadarOpacity] = useState<number>(0.85);
 
   // Display & Overlays settings (Panahon authentic map settings)
   const [showRadarStations, setShowRadarStations] = useState<boolean>(true);
   const [showRadarRings, setShowRadarRings] = useState<boolean>(true);
-  const [showElevation, setShowElevation] = useState<boolean>(true);
-  const [showBathymetry, setShowBathymetry] = useState<boolean>(true);
+  const [showElevation, setShowElevation] = useState<boolean>(false);
+  const [showBathymetry, setShowBathymetry] = useState<boolean>(false);
   const [showIsolines, setShowIsolines] = useState<boolean>(true);
   const [showPAR, setShowPAR] = useState<boolean>(true);
   const [showCityLabels, setShowCityLabels] = useState<boolean>(true);
@@ -243,7 +243,7 @@ export default function App() {
   };
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-[#e07a2c] font-sans select-none">
+    <div className="relative w-screen h-screen overflow-hidden bg-slate-950 font-sans select-none">
       
       {/* 1. Exact Mobile Portrait UI from user's screenshot with Settings & Layers Cards */}
       <PanahonMobileUI
