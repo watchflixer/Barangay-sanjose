@@ -73,14 +73,14 @@ const TILE_SERVERS = {
   }
 };
 
-// Help Center-only attributions. The Streets credit is reused as-is, and the
-// Satellite credit is shortened to the same length so the Leaflet copyright
-// box looks identical on both basemaps (one line, same width) inside the Help
-// Center map. Only the Help Center map uses these — the main GIS map keeps
-// the full Esri credit above.
+// Help Center-only attributions: BOTH basemaps show the same Leaflet
+// copyright — "Leaflet | © OpenStreetMap contributors" — so the box looks
+// identical on Street and Satellite (one line, same width). Only the Help
+// Center map uses these; the main GIS map keeps its own per-tile credits
+// (including the full Esri credit).
 const HELP_CENTER_ATTRIBUTIONS = {
   streets: TILE_SERVERS.streets.attribution,
-  satellite: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>',
+  satellite: TILE_SERVERS.streets.attribution,
 };
 
 export const MapViewer: React.FC<MapViewerProps> = ({
