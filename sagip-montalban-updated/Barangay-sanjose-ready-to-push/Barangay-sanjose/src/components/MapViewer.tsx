@@ -83,6 +83,17 @@ const HELP_CENTER_ATTRIBUTIONS = {
   satellite: TILE_SERVERS.streets.attribution,
 };
 
+// Help Center view framing: the WHOLE province of Rizal (SW / NE corners in
+// [lat, lng]). The Help Center map is locked to this box — it opens framed on
+// the entire province and can neither pan nor zoom out past it (maxBounds +
+// viscosity 1.0 and minZoom = the fit zoom). Barangay San Jose is at the
+// north-west end of this box.
+const RIZAL_VIEW_BOUNDS = L.latLngBounds(
+  L.latLng(14.47, 121.00),
+  L.latLng(14.90, 121.38)
+);
+const RIZAL_VIEW_PADDING: L.PointTuple = [14, 14];
+
 export const MapViewer: React.FC<MapViewerProps> = ({
   alerts,
   selectedAlert,
@@ -214,17 +225,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     const container = helpCenterMapRef.current;
     if (!container || helpCenterMapInstanceRef.current) return;
 
-    // Same strict Barangay San Jose bounding box as the main GIS map.
-    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-    const maxBounds = L.latLngBounds(corner1, corner2);
-
     const map = L.map(container, {
-      center: SAN_JOSE_CENTER,
-      zoom: 13,
-      minZoom: 13,
+      center: RIZAL_VIEW_BOUNDS.getCenter(),
+      zoom: 11,
+      // Deliberately low at creation so fitBounds() below can pick whatever
+      // zoom actually frames the province on this screen size; it is then
+      // raised to that exact fit zoom, which is what locks the view.
+      minZoom: 3,
       maxZoom: 18,
-      maxBounds: mapSettings.lockCameraToBounds ? maxBounds : undefined,
+      maxBounds: RIZAL_VIEW_BOUNDS, // Whole Rizal only - never pans outside
       maxBoundsViscosity: 1.0, // Hard lock - rubberband bouncing back
       zoomControl: false, // Added explicitly below, like the Flood Prone map
       attributionControl: true, // Leaflet copyright/attribution at the bottom, like the Flood Prone map
@@ -237,15 +246,21 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     helpCenterMapInstanceRef.current = map;
     // The container mounts fresh each time the view opens — make sure
-    // Leaflet measures it instead of caching a zero size.
-    const sizeTimer = setTimeout(() => map.invalidateSize(), 0);
+    // Leaflet measures it instead of caching a zero size, then frame the
+    // whole province and lock the zoom-out limit to exactly that view so the
+    // user can never see beyond Rizal.
+    const sizeTimer = setTimeout(() => {
+      map.invalidateSize();
+      map.fitBounds(RIZAL_VIEW_BOUNDS, { padding: RIZAL_VIEW_PADDING });
+      map.setMinZoom(map.getZoom());
+    }, 0);
     return () => {
       clearTimeout(sizeTimer);
       map.remove();
       helpCenterMapInstanceRef.current = null;
       helpCenterTileLayerRef.current = null;
     };
-  }, [showHelpCenter, mapSettings.lockCameraToBounds]);
+  }, [showHelpCenter]);
   // The Help Center tile layer is owned here: (re)created whenever the view
   // opens or the Streets/Satellite switcher changes. Declared after the init
   // effect above, so the map instance already exists when this fires.
@@ -931,9 +946,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
     // In Help Center mode, recenter its own Leaflet map.
     if (showHelpCenter) {
-      helpCenterMapInstanceRef.current?.flyTo(SAN_JOSE_CENTER, 13, {
+      helpCenterMapInstanceRef.current?.flyToBounds(RIZAL_VIEW_BOUNDS, {
+        padding: RIZAL_VIEW_PADDING,
         duration: 0.75,
-        easeLinearity: 0.25,
       });
       return;
     }
