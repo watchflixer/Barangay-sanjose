@@ -246,3 +246,19 @@ body,
   top: 132px;
   left: 6px;
 }
+
+/* ---------------------------------------------------------------------------
+   Keyless light / dark basemaps
+   ---------------------------------------------------------------------------
+   The `light` and `dark` basemap styles are plain OpenStreetMap raster tiles
+   (no API key needed) tinted with a CSS filter. They replace the old CARTO
+   tiles, which now stamp an "API KEY REQUIRED" watermark on every keyless
+   request.
+--------------------------------------------------------------------------- */
+.map-dark-tiles {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.7);
+}
+
+.map-clean-tiles {
+  filter: saturate(0.6) brightness(1.06) contrast(0.96);
+}

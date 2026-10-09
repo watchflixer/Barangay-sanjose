@@ -251,7 +251,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     const tileConfig = TILE_SERVERS[helpCenterBasemap];
     const tileLayer = L.tileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
+      subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
+      maxNativeZoom: tileConfig.maxNativeZoom,
+      className: tileConfig.className,
     }).addTo(map);
     helpCenterTileLayerRef.current = tileLayer;
   }, [helpCenterBasemap, showHelpCenter]);
@@ -318,7 +321,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     const tileConfig = TILE_SERVERS[mapSettings.tileLayer];
     const tileLayer = L.tileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
+      subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
+      maxNativeZoom: tileConfig.maxNativeZoom,
+      className: tileConfig.className,
     }).addTo(map);
     tileLayerRef.current = tileLayer;
 
@@ -400,7 +406,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     map.removeLayer(tileLayerRef.current);
     const newLayer = L.tileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
+      subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
+      maxNativeZoom: tileConfig.maxNativeZoom,
+      className: tileConfig.className,
     }).addTo(mapInstanceRef.current);
     tileLayerRef.current = newLayer;
 
