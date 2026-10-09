@@ -23,6 +23,8 @@
  * fallback at all.
  */
 
+import L from 'leaflet';
+
 import type { MapBaseStyle } from '../types/weather';
 
 export interface BasemapSource {
@@ -167,4 +169,90 @@ export function getBasemapChain(style: MapBaseStyle): BasemapSource[] {
   return BASEMAP_CHAINS[style] && BASEMAP_CHAINS[style].length > 0
     ? BASEMAP_CHAINS[style]
     : BASEMAP_CHAINS.dark;
+}
+
+export interface MountBasemapCallbacks {
+  /** Fired with the provider that is currently on screen. */
+  onSourceChange?: (source: BasemapSource) => void;
+  /** Fired once every provider in the chain has failed. */
+  onFailure?: () => void;
+}
+
+export interface BasemapHandle {
+  /** Removes every layer that was added and stops listening for errors. */
+  dispose(): void;
+}
+
+/**
+ * Mounts the basemap for `style` on `map`.
+ *
+ * Starts with the first provider in the chain and moves to the next one when
+ * tiles keep failing, so an unreachable provider degrades to another map
+ * instead of leaving a blank screen. Returns a handle that cleans everything
+ * up (used when the user switches styles or the map unmounts).
+ */
+export function mountBasemap(
+  map: L.Map,
+  style: MapBaseStyle,
+  callbacks: MountBasemapCallbacks = {},
+): BasemapHandle {
+  const chain = getBasemapChain(style);
+  const group = L.layerGroup().addTo(map);
+
+  let sourceIndex = 0;
+  let errorCount = 0;
+  let disposed = false;
+
+  const layerOptions = (source: BasemapSource, extra: L.TileLayerOptions = {}): L.TileLayerOptions => ({
+    subdomains: source.subdomains ?? 'abc',
+    maxZoom: source.maxZoom ?? 19,
+    maxNativeZoom: source.maxNativeZoom,
+    className: source.className,
+    attribution: source.attribution,
+    ...extra,
+  });
+
+  const mountSource = (index: number) => {
+    if (disposed) return;
+    const source = chain[index];
+
+    group.clearLayers();
+    errorCount = 0;
+    callbacks.onSourceChange?.(source);
+
+    const base = L.tileLayer(source.url, layerOptions(source, { zIndex: 100 }));
+
+    base.on('tileerror', () => {
+      if (disposed) return;
+      errorCount += 1;
+      if (errorCount < BASEMAP_ERROR_THRESHOLD) return;
+
+      if (index + 1 < chain.length) {
+        // Current provider is unreachable — try the next one.
+        sourceIndex += 1;
+        mountSource(sourceIndex);
+      } else {
+        callbacks.onFailure?.();
+      }
+    });
+
+    base.addTo(group);
+
+    // Esri "canvas" basemaps ship their labels as a separate service.
+    if (source.labelsUrl) {
+      L.tileLayer(source.labelsUrl, layerOptions(source, { zIndex: 200 })).addTo(group);
+    }
+  };
+
+  mountSource(sourceIndex);
+
+  return {
+    dispose() {
+      disposed = true;
+      if (map.hasLayer(group)) {
+        map.removeLayer(group);
+      }
+      group.clearLayers();
+    },
+  };
 }

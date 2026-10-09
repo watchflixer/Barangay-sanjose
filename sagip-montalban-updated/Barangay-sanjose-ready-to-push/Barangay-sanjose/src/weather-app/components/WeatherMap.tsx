@@ -11,11 +11,7 @@ import {
   WeatherLayerType,
 } from '../types/weather';
 import { rainViewer } from '../services/rainviewer';
-import {
-  BASEMAP_ERROR_THRESHOLD,
-  BasemapSource,
-  getBasemapChain,
-} from '../services/basemaps';
+import { BasemapSource, mountBasemap } from '../services/basemaps';
 import { WindCanvas } from './WindCanvas';
 import { TemperatureCanvas } from './TemperatureCanvas';
 import { PAR_COORDINATES, POPULAR_LOCATIONS } from '../services/storms';
@@ -78,7 +74,6 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   const [basemapFailed, setBasemapFailed] = useState(false);
 
   // Layer refs
-  const baseGroupRef = useRef<L.LayerGroup | null>(null);
   const elevationLayerRef = useRef<L.TileLayer | null>(null);
   const bathymetryLayerRef = useRef<L.TileLayer | null>(null);
   const weatherTileLayerRef = useRef<L.TileLayer | null>(null);
@@ -242,72 +237,15 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
 
-    if (baseGroupRef.current) {
-      map.removeLayer(baseGroupRef.current);
-      baseGroupRef.current = null;
-    }
+    const handle = mountBasemap(map, baseStyle, {
+      onSourceChange: (source) => {
+        setActiveBasemap(source);
+        setBasemapFailed(false);
+      },
+      onFailure: () => setBasemapFailed(true),
+    });
 
-    const chain = getBasemapChain(baseStyle);
-    const group = L.layerGroup().addTo(map);
-    baseGroupRef.current = group;
-
-    let sourceIndex = 0;
-    let errorCount = 0;
-    let disposed = false;
-
-    const mountSource = (index: number) => {
-      if (disposed) return;
-      const source = chain[index];
-
-      group.clearLayers();
-      errorCount = 0;
-      setActiveBasemap(source);
-      setBasemapFailed(false);
-
-      const layerOptions = (extra: L.TileLayerOptions = {}): L.TileLayerOptions => ({
-        subdomains: source.subdomains ?? 'abc',
-        maxZoom: source.maxZoom ?? 19,
-        maxNativeZoom: source.maxNativeZoom,
-        className: source.className,
-        attribution: source.attribution,
-        ...extra,
-      });
-
-      const base = L.tileLayer(source.url, layerOptions({ zIndex: 100 }));
-
-      base.on('tileerror', () => {
-        if (disposed) return;
-        errorCount += 1;
-        if (errorCount < BASEMAP_ERROR_THRESHOLD) return;
-
-        if (index + 1 < chain.length) {
-          // Current provider is unreachable — try the next one.
-          sourceIndex += 1;
-          mountSource(sourceIndex);
-        } else {
-          setBasemapFailed(true);
-        }
-      });
-
-      base.addTo(group);
-
-      // Some Esri "canvas" basemaps ship their labels as a separate service.
-      if (source.labelsUrl) {
-        L.tileLayer(source.labelsUrl, layerOptions({ zIndex: 200 })).addTo(group);
-      }
-    };
-
-    mountSource(sourceIndex);
-
-    return () => {
-      disposed = true;
-      if (map.hasLayer(group)) {
-        map.removeLayer(group);
-      }
-      if (baseGroupRef.current === group) {
-        baseGroupRef.current = null;
-      }
-    };
+    return () => handle.dispose();
   }, [baseStyle]);
 
   // Elevation / Hillshade Layer
