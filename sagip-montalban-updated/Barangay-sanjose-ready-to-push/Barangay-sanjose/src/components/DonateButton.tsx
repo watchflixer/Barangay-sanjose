@@ -334,14 +334,11 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
             viewBox={`0 0 ${FOLD_SIZE} ${FOLD_SIZE}`}
             overflow="visible"
             className="pointer-events-none absolute right-0 top-0"
-            style={{ filter: 'drop-shadow(-2px 2px 2px rgba(100, 116, 139, 0.6))' }}
+            style={{ filter: 'drop-shadow(-1px 1px 1.5px rgba(100, 116, 139, 0.5))' }}
           >
             <polygon
               points={`0,0 ${FOLD_SIZE},${FOLD_SIZE} 0,${FOLD_SIZE}`}
               fill="#e5e7eb"
-              stroke="#9ca3af"
-              strokeWidth="0.8"
-              strokeLinejoin="round"
             />
           </svg>
           </div>
