@@ -200,6 +200,8 @@ export default function App() {
   const [floodProneOpen, setFloodProneOpen] = useState(false);
   // True while the realtime Traffic map is open — also gates navbar actions.
   const [trafficOpen, setTrafficOpen] = useState(false);
+  // True while the Help Center view (independent Traffic duplicate) is open.
+  const [helpCenterOpen, setHelpCenterOpen] = useState(false);
 
   const resolvedAlerts = alerts.filter((a) => a.status === 'resolved');
 
@@ -235,6 +237,7 @@ export default function App() {
         hasLiveUrl={!!liveStreamUrl}
         floodProneOpen={floodProneOpen}
         trafficOpen={trafficOpen}
+        helpCenterOpen={helpCenterOpen}
         onOpenLiveModal={() => setIsLiveModalOpen(true)}
         onOpenUpdates={() => setIsUpdatesModalOpen(true)}
         onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
@@ -274,7 +277,7 @@ export default function App() {
             onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
             onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
             onOpenHistory={() => setIsHistoryModalOpen(true)}
-            optionsDisabled={floodProneOpen || trafficOpen}
+            optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen}
           />
 
           {/* Arrow toggle attached to the outer right edge of the incident feed drawer on mobile portrait */}
@@ -321,6 +324,7 @@ export default function App() {
             isMobileMenuOpen={mobileMenuOpen}
             onFloodProneChange={setFloodProneOpen}
             onTrafficChange={setTrafficOpen}
+            onHelpCenterChange={setHelpCenterOpen}
           />
           <PagasaFloodStatus />
         </main>

@@ -32,6 +32,8 @@ interface NavbarProps {
   floodProneOpen?: boolean;
   /** Traffic map is open — also disables Report/●●● on ALL devices. */
   trafficOpen?: boolean;
+  /** Help Center view is open — also disables Report/●●● on ALL devices. */
+  helpCenterOpen?: boolean;
   onOpenLiveModal?: () => void;
   onOpenUpdates?: () => void;
   onOpenEvacuationCenters?: () => void;
@@ -49,6 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   hasLiveUrl = false,
   floodProneOpen = false,
   trafficOpen = false,
+  helpCenterOpen = false,
   onOpenLiveModal = () => {},
   onOpenUpdates = () => {},
   onOpenEvacuationCenters = () => {},
@@ -70,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   // ibalik sa kasalukuyang map view (Traffic/Flood Prone) pagkatapos mag-refresh.
   // Sariwa ang data at hindi nawawala ang mga report (nasa localStorage sila).
   const handleRefresh = () => {
-    const view = trafficOpen ? 'traffic' : floodProneOpen ? 'flood' : 'main';
+    const view = trafficOpen ? 'traffic' : helpCenterOpen ? 'helpcenter' : floodProneOpen ? 'flood' : 'main';
     rememberRefreshView(view);
     window.location.reload();
   };
@@ -203,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 moved INSIDE the Incident Feeds header — see Sidebar.tsx. */}
             <OptionsMenu
               className="shrink-0 portrait:hidden"
-              disabled={floodProneOpen || trafficOpen}
+              disabled={floodProneOpen || trafficOpen || helpCenterOpen}
               onOpenUpdates={onOpenUpdates}
               onOpenEvacuationCenters={onOpenEvacuationCenters}
               onOpenResolvedCleared={onOpenResolvedCleared}
@@ -216,7 +219,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <ReportButton
               id="btn-report-hazard"
               className="portrait:hidden"
-              disabled={floodProneOpen || trafficOpen}
+              disabled={floodProneOpen || trafficOpen || helpCenterOpen}
               onClick={onOpenReportModal}
             />
 
