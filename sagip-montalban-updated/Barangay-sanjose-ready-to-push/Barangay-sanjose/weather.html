@@ -80,6 +80,9 @@
   .leaflet-control-attribution { font-size: 10px; background: var(--panel) !important; color: var(--muted); }
   .leaflet-control-attribution a { color: var(--muted); }
 
+  /* PAR boundary: always solid red, never dashed or faded */
+  .par-boundary { stroke: #ff1f1f !important; stroke-opacity: 1 !important; stroke-dasharray: none !important; fill: none !important; }
+
   @media (max-width: 640px) {
     .bar { flex-wrap: wrap; }
     .spacer { display: none; }
@@ -239,9 +242,13 @@
   setBase();
   if (mq.addEventListener) mq.addEventListener('change', setBase);
 
-  /* ---------- PAR (Philippine Area of Responsibility) boundary, always shown in red ---------- */
+  /* ---------- PAR (Philippine Area of Responsibility) boundary, always shown in solid red ---------- */
+  map.createPane('par');
+  map.getPane('par').style.zIndex = 420;
+  map.getPane('par').style.pointerEvents = 'none';
   L.polygon([[25, 120], [25, 135], [5, 135], [5, 115], [15, 115], [21, 120]], {
-    color: '#ff1f1f', weight: 3, fill: false, opacity: 1, interactive: false
+    pane: 'par', className: 'par-boundary', color: '#ff1f1f', weight: 3, opacity: 1,
+    fill: false, dashArray: null, lineCap: 'round', lineJoin: 'round', interactive: false
   }).addTo(map);
 
   /* ---------- Data ---------- */
