@@ -102,7 +102,7 @@
 <div id="map" role="application" aria-label="Weather map"></div>
 
 <div class="bar">
-  <div class="brand glass"><span class="live"><i></i>Auto-update 15 min</span> Panahon<small id="updated">Loading…</small></div>
+  <div class="brand glass"><span class="live"><i></i>Live radar</span> Panahon<small id="updated">Loading…</small></div>
   <div class="tabs glass" role="group" aria-label="Map layer">
     <button type="button" data-layer="weather" aria-pressed="false">Weather</button>
     <button type="button" data-layer="temperature" aria-pressed="false">Temperature</button>
@@ -676,14 +676,13 @@
   function applyData(all, t) {
     gridData = all.slice(0, GP.length);
     cityData = all.slice(GP.length);
-    setupRain();
-    $('#updated').textContent = 'Forecast model · updated ' + hhmm(new Date(t));
+    $('#updated').textContent = 'Radar live · data updated ' + hhmm(new Date(t));
     setStatus('');
     render();
   }
 
   function loadWeather() {
-    return Promise.all([fetchAll(GP, 60, true), fetchAll(CP, 100, false)]).then(function (res) {
+    return Promise.all([fetchAll(GP, 60, false), fetchAll(CP, 100, false)]).then(function (res) {
       var t = Date.now(), all = res[0].concat(res[1]);
       var got = all.filter(function (x) { return x; }).length;
       if (!got) throw new Error('no data');
@@ -730,23 +729,35 @@
     return L.imageOverlay(cv.toDataURL(), [[EXT.s, EXT.w], [EXT.n, EXT.e]], { pane: 'field', opacity: 0.92, interactive: false });
   }
 
-  /* ---------- Rain frames (Open-Meteo hourly: past 3 h, now, next 6 h) ---------- */
-  var rain = { times: [], idx: 0, timer: null, overlay: null, nowIdx: 0 };
-  function setupRain() {
-    var h = gridData && gridData[0] && gridData[0].hourly;
-    if (!h) return;
-    rain.times = h.time;
-    var now = Math.floor(Date.now() / 3600000) * 3600, k = rain.times.indexOf(now);
-    rain.nowIdx = k >= 0 ? k : Math.min(3, rain.times.length - 1);
-    $('#frame').max = rain.times.length - 1;
+  /* ---------- Rain: live radar from RainViewer (observed rain, new frame every 10 min) ---------- */
+  var RADAR_URL = 'https://api.rainviewer.com/public/weather-maps.json', RADAR_MS = 10 * 60 * 1000;
+  var rain = { frames: [], host: '', idx: 0, timer: null, overlay: null, nowIdx: 0 };
+  function loadRadar() {
+    return fetch(RADAR_URL).then(function (r) { if (!r.ok) throw new Error('RainViewer ' + r.status); return r.json(); })
+      .then(function (j) {
+        var past = (j.radar && j.radar.past) || [], nowcast = (j.radar && j.radar.nowcast) || [];
+        rain.host = j.host;
+        rain.frames = past.map(function (f) { return { time: f.time, path: f.path, past: true }; })
+          .concat(nowcast.map(function (f) { return { time: f.time, path: f.path, past: false }; }));
+        rain.nowIdx = Math.max(0, past.length - 1);
+        $('#frame').max = Math.max(0, rain.frames.length - 1);
+        if (current === 'rain') showFrame(rain.nowIdx);
+      }).catch(function (e) {
+        console.error(e);
+        if (current === 'rain') setStatus('Radar is unavailable right now. Try again shortly.');
+      });
   }
   function showFrame(i) {
-    if (!rain.times.length) return;
+    if (!rain.frames.length) return;
+    i = Math.max(0, Math.min(rain.frames.length - 1, i));
     rain.idx = i; $('#frame').value = i;
+    var f = rain.frames[i];
     if (rain.overlay) map.removeLayer(rain.overlay);
-    rain.overlay = field(function (d) { return d.hourly && d.hourly.precipitation[i]; }, RAIN_STOPS).addTo(map);
-    var t = new Date(rain.times[i] * 1000), rel = i === rain.nowIdx ? 'now' : (i < rain.nowIdx ? 'past' : 'forecast');
-    $('#frameTime').textContent = hhmm(t) + ' ' + rel;
+    // colour scheme 2 (universal blue), smooth 1, no snow
+    rain.overlay = L.tileLayer(rain.host + f.path + '/256/{z}/{x}/{y}/2/1_0.png', {
+      pane: 'field', opacity: 0.8, maxNativeZoom: 7, maxZoom: 10, attribution: 'Radar &copy; RainViewer'
+    }).addTo(map);
+    $('#frameTime').textContent = hhmm(new Date(f.time * 1000)) + ' ' + (f.past ? 'observed' : 'nowcast');
     renderPins();
   }
   function clearRain() {
@@ -757,7 +768,7 @@
   function togglePlay() {
     if (rain.timer) return stopPlay();
     $('#play').innerHTML = '&#10074;&#10074;'; $('#play').setAttribute('aria-label', 'Pause rain loop');
-    rain.timer = setInterval(function () { showFrame((rain.idx + 1) % rain.times.length); }, 800);
+    rain.timer = setInterval(function () { showFrame((rain.idx + 1) % rain.frames.length); }, 700);
   }
   $('#play').addEventListener('click', togglePlay);
   $('#frame').addEventListener('input', function (e) { stopPlay(); showFrame(+e.target.value); });
@@ -769,7 +780,7 @@
     weather: { title: 'Cloud cover', ramp: css(CLOUD_STOPS), ticks: ['0%', '40%', '70%', '100%'], note: 'Warm = sunny, deep blue = overcast. Icons show current weather.' },
     temperature: { title: 'Temperature (°C)', ramp: css(TEMP_STOPS), ticks: ['16', '22', '26', '29', '32', '35', '39+'], note: 'Air temperature at 2 m.' },
     storm: { title: 'Wind gusts (km/h)', ramp: css(GUST_STOPS), ticks: ['0', '20', '40', '60', '80', '100', '130+'], note: 'Arrows show wind direction. Storm icon marks thunderstorms.' },
-    rain: { title: 'Rain (mm per hour)', ramp: css(RAIN_STOPS), ticks: ['0', '0.2', '1', '3', '7', '15', '30', '50+'], note: 'Model data: 3 hours back, now, and 6 hours ahead.' }
+    rain: { title: 'Rain (mm per hour)', ramp: css(RAIN_STOPS), ticks: ['0', '0.2', '1', '3', '7', '15', '30', '50+'], note: 'Live radar (RainViewer), new frame every 10 min. Pins show rain now (model).' }
   };
 
   function pinAt(latlng, html) {
@@ -781,7 +792,7 @@
     if (current === 'weather') return '<div class="pin">' + SVG[w[1]] + '<span class="t">' + t + '</span><span class="nm">' + name + '</span></div>';
     if (current === 'temperature') return '<div class="pin"><span class="dot" style="background:' + rgb(colorAt(TEMP_STOPS, d.temperature_2m)) + '"></span><span class="t">' + t + '</span><span class="nm">' + name + '</span></div>';
     if (current === 'storm') return '<div class="pin">' + (w[1] === 'bolt' ? SVG.bolt : '') + '<span class="t">' + Math.round(d.wind_gusts_10m) + ' km/h</span><span class="nm">' + name + '</span></div>';
-    var mm = d.hourly && d.hourly.precipitation[rain.idx] || 0;
+    var mm = d.precipitation || 0;
     return '<div class="pin">' + (mm >= 0.1 ? SVG.rain : '') + '<span class="t">' + (mm >= 0.1 ? mm.toFixed(1) + ' mm' : '0') + '</span><span class="nm">' + name + '</span></div>';
   }
   function gridPinHtml(d) {
@@ -822,7 +833,7 @@
 
     if (current === 'temperature') fieldObjs.push(field(function (d) { return d.temperature_2m; }, TEMP_STOPS).addTo(map));
     if (current === 'storm') fieldObjs.push(field(function (d) { return d.wind_gusts_10m; }, GUST_STOPS).addTo(map));
-    if (current === 'rain' && rain.times.length) { showFrame(rain.idx ? rain.idx : rain.nowIdx); return; }
+    if (current === 'rain') { if (rain.frames.length) showFrame(rain.overlay ? rain.idx : rain.nowIdx); else setStatus('Loading radar…'); return; }
     renderPins();
   }
 
@@ -859,6 +870,8 @@
   }
   loadWeather();
   setInterval(loadWeather, REFRESH_MS);
+  loadRadar();
+  setInterval(loadRadar, RADAR_MS);
 })();
 </script>
 </body>
