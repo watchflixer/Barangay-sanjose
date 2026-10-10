@@ -220,16 +220,20 @@
     var t = document.documentElement.getAttribute('data-theme');
     return t ? t === 'dark' : mq.matches;
   }
+  // Keyless basemaps (no account, no API key, no watermark): Esri Canvas light/dark gray with matching label layers.
+  var ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
+  var ESRI_ATTR = 'Basemap &copy; Esri, HERE, Garmin, USGS | Weather: Open-Meteo';
   function setBase() {
     baseLayers.forEach(function (l) { map.removeLayer(l); });
-    var s = isDark() ? 'dark' : 'light', u = 'https://{s}.basemaps.cartocdn.com/' + s;
-    var attr = '&copy; OpenStreetMap, &copy; CARTO | Weather: Open-Meteo';
+    var dark = isDark(), theme = dark ? 'Dark_Gray' : 'Light_Gray';
+    var base = ESRI + 'World_' + theme + '_Base/MapServer/tile/{z}/{y}/{x}';
+    var labels = ESRI + 'World_' + theme + '_Reference/MapServer/tile/{z}/{y}/{x}';
     // The same map is drawn again above the colour field and blended in, so coastlines, borders and roads stay visible.
-    map.getPane('lines').style.mixBlendMode = isDark() ? 'screen' : 'multiply';
+    map.getPane('lines').style.mixBlendMode = dark ? 'screen' : 'multiply';
     baseLayers = [
-      L.tileLayer(u + '_nolabels/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', attribution: attr, maxZoom: 19 }).addTo(map),
-      L.tileLayer(u + '_nolabels/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', pane: 'lines', maxZoom: 19 }).addTo(map),
-      L.tileLayer(u + '_only_labels/{z}/{x}/{y}{r}.png', { subdomains: 'abcd', pane: 'basetxt', maxZoom: 19, opacity: 0.9 }).addTo(map)
+      L.tileLayer(base, { attribution: ESRI_ATTR, maxZoom: 16 }).addTo(map),
+      L.tileLayer(base, { pane: 'lines', maxZoom: 16 }).addTo(map),
+      L.tileLayer(labels, { pane: 'basetxt', maxZoom: 16, opacity: 0.9 }).addTo(map)
     ];
   }
   setBase();
