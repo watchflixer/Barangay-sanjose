@@ -13,6 +13,18 @@ import {
   X,
   Loader2,
   Compass,
+  Satellite,
+  Map as MapIcon,
+  CloudRain,
+  CloudLightning,
+  Droplets,
+  Wind,
+  Thermometer,
+  Gauge,
+  Waves,
+  Eye,
+  Check,
+  Radar,
 } from 'lucide-react';
 import {
   LocationCoordinates,
@@ -24,6 +36,20 @@ import {
 } from '../types/weather';
 import { searchCities } from '../services/openMeteo';
 import { PHILIPPINE_CITIES } from '../services/storms';
+
+// Visual metadata for the Layers card (icon, gradient tile, short description)
+const LAYER_META: Record<string, { icon: React.ComponentType<{ className?: string }>; tone: string; desc: string }> = {
+  'radar-reflectivity': { icon: Radar, tone: 'from-cyan-400 to-blue-600', desc: 'Intensity ng ulan (dBZ)' },
+  'radar-rainrate': { icon: Droplets, tone: 'from-sky-400 to-blue-500', desc: 'Bilis ng pagbuhos (mm/h)' },
+  'himawari-ir': { icon: Satellite, tone: 'from-indigo-400 to-violet-600', desc: 'Infrared satellite, araw at gabi' },
+  'himawari-bw': { icon: Eye, tone: 'from-slate-400 to-slate-600', desc: 'Black & white na satellite view' },
+  rain: { icon: CloudRain, tone: 'from-blue-400 to-indigo-600', desc: 'Forecast ng pag-ulan' },
+  storm: { icon: CloudLightning, tone: 'from-fuchsia-500 to-violet-700', desc: 'Bagyo at tinatahak nito' },
+  'rain-accumulation': { icon: Waves, tone: 'from-teal-400 to-emerald-600', desc: 'Kabuuang ipon na ulan' },
+  wind: { icon: Wind, tone: 'from-emerald-400 to-green-600', desc: 'Amihan at habagat' },
+  pressure: { icon: Gauge, tone: 'from-amber-400 to-orange-600', desc: 'Presyon ng hangin' },
+  temperature: { icon: Thermometer, tone: 'from-rose-400 to-pink-600', desc: 'Init sa bawat lugar' },
+};
 
 interface PanahonMobileUIProps {
   activeLayer: WeatherLayerType;
@@ -223,6 +249,58 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
     activeLayer === 'radar-rainrate' ||
     activeLayer === 'rain-accumulation';
 
+  const activeLayerItem = [...observationLayers, ...nwpLayers].find((item) => item.id === activeLayer);
+
+  const renderLayerRow = (item: { id: WeatherLayerType; label: string }) => {
+    const isActive = activeLayer === item.id;
+    const meta = LAYER_META[item.id] ?? { icon: Layers, tone: 'from-slate-400 to-slate-600', desc: '' };
+    const Icon = meta.icon;
+    return (
+      <button
+        key={item.id}
+        onClick={() => {
+          onChangeLayer(item.id);
+          setIsLayersOpen(false);
+        }}
+        className={`group w-full flex items-center gap-3 rounded-2xl px-2.5 py-2 text-left transition-all duration-200 ${
+          isActive
+            ? 'bg-gradient-to-r from-[#4361ee]/35 to-cyan-400/10 ring-1 ring-inset ring-[#4361ee]/50 shadow-[0_0_22px_-8px_rgba(67,97,238,0.9)]'
+            : 'hover:bg-white/[0.06] active:scale-[0.98]'
+        }`}
+      >
+        <div
+          className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center bg-gradient-to-br ${meta.tone} ring-1 ring-inset ring-white/20 shadow-lg transition-transform duration-200 ${
+            isActive ? 'scale-105' : 'group-hover:scale-105'
+          }`}
+        >
+          <Icon className="w-4 h-4 text-white drop-shadow" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className={`text-[13px] leading-tight truncate ${isActive ? 'text-white font-semibold' : 'text-slate-100 font-medium'}`}>
+            {item.label}
+          </div>
+          {meta.desc && <div className="text-[11px] leading-tight text-slate-400 truncate mt-0.5">{meta.desc}</div>}
+        </div>
+        <span
+          className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center border transition-all duration-200 ${
+            isActive
+              ? 'bg-gradient-to-br from-cyan-300 to-cyan-500 border-cyan-200 shadow-[0_0_10px_rgba(34,211,238,0.6)]'
+              : 'border-white/15 opacity-0 group-hover:opacity-100'
+          }`}
+        >
+          {isActive && <Check className="w-3 h-3 text-slate-950" strokeWidth={3} />}
+        </span>
+      </button>
+    );
+  };
+
+  const renderSectionHeader = (title: string) => (
+    <div className="flex items-center gap-2 px-1.5 pt-3 pb-1.5">
+      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">{title}</span>
+      <span className="h-px flex-1 bg-gradient-to-r from-white/15 to-transparent" />
+    </div>
+  );
+
   return (
     <>
       {/* SECOND ROW: SETTINGS, RADAR & LAYERS CONTROLS */}
@@ -280,73 +358,41 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
           {isLayersOpen && (
             <div
               ref={layersCardRef}
-              className="absolute top-12 right-0 w-64 bg-[#18181b]/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden py-1.5 z-[750] animate-in fade-in slide-in-from-top-2 duration-150 text-slate-100 font-sans"
+              className="absolute top-12 right-0 w-72 max-h-[78vh] overflow-y-auto custom-scrollbar rounded-3xl border border-white/10 bg-gradient-to-b from-[#1f2228]/95 to-[#0e1014]/95 backdrop-blur-2xl shadow-[0_24px_60px_-15px_rgba(0,0,0,0.75)] ring-1 ring-inset ring-white/5 p-3 z-[750] animate-in fade-in slide-in-from-top-2 duration-200 text-slate-100 font-sans"
             >
-              {/* SECTION 1: Observations */}
-              <div className="text-[11px] font-medium text-slate-400 px-3.5 pt-2 pb-1 tracking-tight select-none">
-                Observations
-              </div>
-              <div className="space-y-0.5">
-                {observationLayers.map((item) => {
-                  const isActive = activeLayer === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        onChangeLayer(item.id);
-                        setIsLayersOpen(false);
-                      }}
-                      className={`w-full text-left px-3.5 py-2 text-[13px] transition-colors leading-tight flex items-center justify-between ${
-                        isActive
-                          ? 'bg-[#4361ee] text-white font-medium'
-                          : 'text-slate-100 hover:bg-white/10'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
+              {/* Header */}
+              <div className="flex items-center justify-between gap-2 px-1 pt-0.5 pb-1">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-[#4361ee] to-cyan-400 flex items-center justify-center shadow-lg shadow-[#4361ee]/40 ring-1 ring-inset ring-white/25">
+                    <Layers className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-semibold tracking-tight leading-tight">Map Layers</div>
+                    <div className="text-[11px] text-slate-400 leading-tight">Piliin ang ipapakita sa mapa</div>
+                  </div>
+                </div>
+                {activeLayerItem && (
+                  <span className="max-w-[40%] truncate text-[10px] font-semibold uppercase tracking-wider text-cyan-200 bg-cyan-400/10 border border-cyan-400/25 px-2 py-0.5 rounded-full">
+                    {activeLayerItem.label}
+                  </span>
+                )}
               </div>
 
-              {/* Thin separator line */}
-              <div className="h-px bg-white/5 my-1" />
+              {/* SECTION 1: Observations */}
+              {renderSectionHeader('Observations')}
+              <div className="space-y-1">{observationLayers.map(renderLayerRow)}</div>
 
               {/* SECTION 2: Numerical Weather Prediction */}
-              <div className="text-[11px] font-medium text-slate-400 px-3.5 pt-2 pb-1 tracking-tight select-none">
-                Numerical Weather Prediction
-              </div>
-              <div className="space-y-0.5">
-                {nwpLayers.map((item) => {
-                  const isActive = activeLayer === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        onChangeLayer(item.id);
-                        setIsLayersOpen(false);
-                      }}
-                      className={`w-full text-left px-3.5 py-2 text-[13px] transition-colors leading-tight flex items-center justify-between ${
-                        isActive
-                          ? 'bg-[#4361ee] text-white font-medium'
-                          : 'text-slate-100 hover:bg-white/10'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {renderSectionHeader('Numerical Weather Prediction')}
+              <div className="space-y-1">{nwpLayers.map(renderLayerRow)}</div>
 
-              {/* Thin separator line */}
-              <div className="h-px bg-white/5 my-1" />
-
-              {/* SECTION 3: Base Map (Satellite, Street, Dark, Hybrid) */}
-              <div className="text-[11px] font-medium text-slate-400 px-3.5 pt-2 pb-1 tracking-tight select-none">
-                Map Style
-              </div>
-              <div className="space-y-0.5 pb-1">
+              {/* SECTION 3: Base Map */}
+              {renderSectionHeader('Map Style')}
+              <div className="grid grid-cols-2 gap-2">
                 {baseMapItems.map((item) => {
                   const isActive = baseStyle === item.id;
+                  const Icon = item.id === 'satellite' ? Satellite : MapIcon;
+                  const sub = item.id === 'satellite' ? 'Imagery' : 'Kalsada';
                   return (
                     <button
                       key={item.id}
@@ -354,14 +400,26 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
                         onChangeBaseStyle(item.id);
                         setIsLayersOpen(false);
                       }}
-                      className={`w-full text-left px-3.5 py-1.5 text-[12px] transition-colors leading-tight flex items-center justify-between ${
+                      className={`relative overflow-hidden rounded-2xl p-2.5 text-left transition-all duration-200 active:scale-[0.97] ${
                         isActive
-                          ? 'bg-[#4361ee]/40 text-cyan-200 font-medium'
-                          : 'text-slate-300 hover:bg-white/10'
+                          ? 'bg-gradient-to-br from-[#4361ee]/40 to-cyan-400/15 ring-1 ring-inset ring-cyan-300/60 shadow-[0_0_22px_-8px_rgba(34,211,238,0.8)]'
+                          : 'bg-white/[0.04] ring-1 ring-inset ring-white/10 hover:bg-white/[0.08]'
                       }`}
                     >
-                      <span>{item.label}</span>
-                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />}
+                      <div className="flex items-center justify-between">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${isActive ? 'bg-cyan-400/20 text-cyan-200' : 'bg-white/5 text-slate-300'}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        {isActive && (
+                          <span className="w-4 h-4 rounded-full bg-gradient-to-br from-cyan-300 to-cyan-500 flex items-center justify-center shadow-[0_0_8px_rgba(34,211,238,0.7)]">
+                            <Check className="w-2.5 h-2.5 text-slate-950" strokeWidth={3} />
+                          </span>
+                        )}
+                      </div>
+                      <div className={`mt-2 text-[12.5px] leading-tight ${isActive ? 'font-semibold text-white' : 'font-medium text-slate-200'}`}>
+                        {item.label.replace(/^\S+\s/, '')}
+                      </div>
+                      <div className="text-[10.5px] text-slate-400 leading-tight mt-0.5">{sub}</div>
                     </button>
                   );
                 })}
