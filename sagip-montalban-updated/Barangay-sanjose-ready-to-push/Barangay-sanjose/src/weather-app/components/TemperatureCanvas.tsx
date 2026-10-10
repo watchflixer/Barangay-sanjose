@@ -42,6 +42,37 @@ const THERMAL_STATIONS: ThermalPoint[] = [
   { lat: 6.1, lon: 125.2, temp: 32, radiusKm: 150 },  // General Santos
 ];
 
+/** Pixel size of one sampled cell. Bigger = faster, slightly softer field. */
+const GRID_STEP = 6;
+
+/** Colour ramp for the whole-map temperature field (°C -> RGB). */
+const TEMP_RAMP: { t: number; rgb: [number, number, number] }[] = [
+  { t: 20, rgb: [132, 204, 22] }, // cool highlands: lime
+  { t: 24, rgb: [250, 204, 21] }, // mild: yellow
+  { t: 28, rgb: [251, 146, 60] }, // warm: orange
+  { t: 31, rgb: [249, 115, 22] }, // hot: deep orange
+  { t: 34, rgb: [225, 29, 72] },  // very hot: red
+];
+
+function rampColor(temp: number): [number, number, number] {
+  if (temp <= TEMP_RAMP[0].t) return TEMP_RAMP[0].rgb;
+  const last = TEMP_RAMP[TEMP_RAMP.length - 1];
+  if (temp >= last.t) return last.rgb;
+  for (let i = 1; i < TEMP_RAMP.length; i++) {
+    const a = TEMP_RAMP[i - 1];
+    const b = TEMP_RAMP[i];
+    if (temp <= b.t) {
+      const k = (temp - a.t) / (b.t - a.t);
+      return [
+        a.rgb[0] + (b.rgb[0] - a.rgb[0]) * k,
+        a.rgb[1] + (b.rgb[1] - a.rgb[1]) * k,
+        a.rgb[2] + (b.rgb[2] - a.rgb[2]) * k,
+      ];
+    }
+  }
+  return last.rgb;
+}
+
 export const TemperatureCanvas: React.FC<TemperatureCanvasProps> = ({
   map,
   visible,
@@ -57,71 +88,88 @@ export const TemperatureCanvas: React.FC<TemperatureCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const render = () => {
+    // Offscreen buffer holds the coarse temperature field; it is scaled up
+    // onto the visible canvas so the whole map is coloured with few pixels.
+    const offscreen = document.createElement('canvas');
+    const offCtx = offscreen.getContext('2d');
+    if (!offCtx) return;
+
+    let frameId: number | null = null;
+
+    // Paint the full map: inverse-distance interpolation of the station
+    // temperatures evaluated on a coarse grid (cheap even on big screens).
+    const paint = () => {
+      frameId = null;
       const size = map.getSize();
       if (canvas.width !== size.x || canvas.height !== size.y) {
         canvas.width = size.x;
         canvas.height = size.y;
       }
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const cols = Math.max(1, Math.ceil(size.x / GRID_STEP));
+      const rows = Math.max(1, Math.ceil(size.y / GRID_STEP));
+      if (offscreen.width !== cols || offscreen.height !== rows) {
+        offscreen.width = cols;
+        offscreen.height = rows;
+      }
 
-      // Base sea background warmth (warm tropical sea ~30°C - vibrant orange)
-      const seaGrad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-      seaGrad.addColorStop(0, '#f97316'); // bright orange
-      seaGrad.addColorStop(0.5, '#ea580c');
-      seaGrad.addColorStop(1, '#ea580c');
-
-      ctx.fillStyle = seaGrad;
-      ctx.globalAlpha = 0.75;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Render radial temperature gradients for land stations
-      THERMAL_STATIONS.forEach((st) => {
+      const stations = THERMAL_STATIONS.map((st) => {
         const pt = map.latLngToContainerPoint([st.lat, st.lon]);
-        // Scale pixel radius by zoom level
-        const zoom = map.getZoom();
-        const basePixelRadius = Math.max(40, (st.radiusKm / 10) * Math.pow(1.8, zoom - 5));
-
-        const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, basePixelRadius);
-
-        if (st.temp <= 22) {
-          // Cool highlands (Baguio - green/yellow signature look from screenshot!)
-          grad.addColorStop(0, 'rgba(163, 230, 53, 0.95)'); // lime green
-          grad.addColorStop(0.35, 'rgba(234, 179, 8, 0.9)'); // yellow
-          grad.addColorStop(0.7, 'rgba(249, 115, 22, 0.7)');  // orange
-          grad.addColorStop(1, 'rgba(234, 88, 12, 0)');
-        } else if (st.temp >= 33) {
-          // Hot valley (Tuguegarao / Central Luzon - intense red-orange)
-          grad.addColorStop(0, 'rgba(225, 29, 72, 0.85)'); // red
-          grad.addColorStop(0.4, 'rgba(234, 88, 12, 0.85)');
-          grad.addColorStop(0.8, 'rgba(249, 115, 22, 0.5)');
-          grad.addColorStop(1, 'rgba(249, 115, 22, 0)');
-        } else {
-          // Normal warm tropical land (yellow-orange)
-          grad.addColorStop(0, 'rgba(250, 204, 21, 0.8)'); // warm yellow
-          grad.addColorStop(0.5, 'rgba(249, 115, 22, 0.6)');
-          grad.addColorStop(1, 'rgba(234, 88, 12, 0)');
-        }
-
-        ctx.fillStyle = grad;
-        ctx.globalAlpha = 0.9;
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, basePixelRadius, 0, Math.PI * 2);
-        ctx.fill();
+        return { x: pt.x, y: pt.y, temp: st.temp };
       });
+
+      const img = offCtx.createImageData(cols, rows);
+      const data = img.data;
+
+      for (let r = 0; r < rows; r++) {
+        const py = r * GRID_STEP + GRID_STEP / 2;
+        for (let c = 0; c < cols; c++) {
+          const px = c * GRID_STEP + GRID_STEP / 2;
+
+          let num = 0;
+          let den = 0;
+          for (let i = 0; i < stations.length; i++) {
+            const st = stations[i];
+            const dx = px - st.x;
+            const dy = py - st.y;
+            const w = 1 / (dx * dx + dy * dy + 400); // softened inverse-square
+            num += w * st.temp;
+            den += w;
+          }
+          const temp = den > 0 ? num / den : 28;
+          const [R, G, B] = rampColor(temp);
+
+          const o = (r * cols + c) * 4;
+          data[o] = R;
+          data[o + 1] = G;
+          data[o + 2] = B;
+          data[o + 3] = 255;
+        }
+      }
+
+      offCtx.putImageData(img, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'low';
+      ctx.drawImage(offscreen, 0, 0, cols * GRID_STEP, rows * GRID_STEP);
     };
 
-    render();
+    // Coalesce map movement into at most one repaint per animation frame.
+    const schedule = () => {
+      if (frameId === null) frameId = requestAnimationFrame(paint);
+    };
 
-    map.on('move', render);
-    map.on('zoom', render);
-    map.on('resize', render);
+    paint();
+
+    map.on('move', schedule);
+    map.on('zoom', schedule);
+    map.on('resize', schedule);
 
     return () => {
-      map.off('move', render);
-      map.off('zoom', render);
-      map.off('resize', render);
+      if (frameId !== null) cancelAnimationFrame(frameId);
+      map.off('move', schedule);
+      map.off('zoom', schedule);
+      map.off('resize', schedule);
     };
   }, [map, visible, opacity]);
 
@@ -131,7 +179,7 @@ export const TemperatureCanvas: React.FC<TemperatureCanvasProps> = ({
     <canvas
       ref={canvasRef}
       style={{ opacity }}
-      className="pointer-events-none absolute inset-0 z-[250] w-full h-full mix-blend-multiply"
+      className="pointer-events-none absolute inset-0 z-[250] w-full h-full"
     />
   );
 };

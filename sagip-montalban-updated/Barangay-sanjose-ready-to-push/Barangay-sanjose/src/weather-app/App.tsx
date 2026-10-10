@@ -137,7 +137,7 @@ export default function App() {
   const loadRainfallRadar = async (forStorm = false) => {
     showToast(forStorm ? 'Loading Himawari storm view…' : 'Loading rainfall / storm radar…');
     try {
-      const data = await rainViewer.getRadarData(true);
+      const data = await rainViewer.getRadarData(false);
       const frames = rainViewer.getAllFrames(data);
       setRadarData(data);
       setRadarFrames(frames);

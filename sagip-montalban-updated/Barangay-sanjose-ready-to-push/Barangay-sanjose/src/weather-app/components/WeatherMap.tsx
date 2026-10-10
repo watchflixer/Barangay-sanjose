@@ -92,6 +92,9 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   const elevationLayerRef = useRef<L.TileLayer | null>(null);
   const bathymetryLayerRef = useRef<L.TileLayer | null>(null);
   const weatherTileLayerRef = useRef<L.TileLayer | null>(null);
+  // Radar/satellite frames are cached as layers and toggled by opacity, so
+  // stepping through the animation never rebuilds tiles from scratch.
+  const radarLayerCacheRef = useRef<Map<string, L.TileLayer>>(new Map());
   const stormSatelliteLayerRef = useRef<L.TileLayer | null>(null);
   const stormGraticuleGroupRef = useRef<L.LayerGroup | null>(null);
   const parPolygonRef = useRef<L.Polygon | null>(null);
@@ -358,14 +361,18 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   }, [activeLayer, stormImageryTime, onStormTileError]);
 
   // Update Radar / Satellite Tile Layer
+  //
+  // Each (colour scheme, frame) pair gets its own cached tile layer. Changing
+  // frame or layer only flips opacities, so playback stays smooth and tiles
+  // already on screen do not reload.
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
+    const cache = radarLayerCacheRef.current;
 
-    if (weatherTileLayerRef.current) {
-      map.removeLayer(weatherTileLayerRef.current);
-      weatherTileLayerRef.current = null;
-    }
+    // Hide everything first; the active frame is shown below.
+    cache.forEach((l) => l.setOpacity(0));
+    weatherTileLayerRef.current = null;
 
     if (!radarData || !currentRadarFrame) return;
 
@@ -383,6 +390,10 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       activeLayer === 'himawari-ir' ||
       activeLayer === 'himawari-bw';
 
+    let url: string | null = null;
+    let key: string | null = null;
+    let options: L.TileLayerOptions;
+
     if (isRadar) {
       const scheme =
         activeLayer === 'rain' || activeLayer === 'storm' ? 2 :
@@ -390,12 +401,12 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         activeLayer === 'radar-rainrate' ? 4 :
         activeLayer === 'rain-accumulation' ? 1 : radarColorScheme;
 
-      const radarUrl = rainViewer.getTileUrl(radarData.host, currentRadarFrame.path, {
+      url = rainViewer.getTileUrl(radarData.host, currentRadarFrame.path, {
         colorScheme: scheme,
         smooth: true,
       });
-
-      const layer = L.tileLayer(radarUrl, {
+      key = `radar|${url}`;
+      options = {
         opacity: radarOpacity,
         zIndex: 300,
         tileSize: 256,
@@ -403,29 +414,49 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         // tiles so zooming into the Philippines does not make the layer vanish.
         maxNativeZoom: 7,
         maxZoom: 17,
-      }).addTo(map);
-
-      if ((activeLayer === 'rain' || activeLayer === 'storm') && onRadarTileError) {
-        let didReportError = false;
-        layer.on('tileerror', () => {
-          if (didReportError || !map.hasLayer(layer)) return;
-          didReportError = true;
-          onRadarTileError();
-        });
-      }
-
-      weatherTileLayerRef.current = layer;
+      };
     } else if (isSatellite) {
-      const satUrl = rainViewer.getSatelliteTileUrl(radarData.host, currentRadarFrame.path);
-      const layer = L.tileLayer(satUrl, {
+      url = rainViewer.getSatelliteTileUrl(radarData.host, currentRadarFrame.path);
+      key = `sat|${activeLayer}|${url}`;
+      options = {
         opacity: 0.8,
         zIndex: 300,
         tileSize: 256,
         className: activeLayer === 'himawari-bw' ? 'grayscale contrast-125' : '',
-      }).addTo(map);
-
-      weatherTileLayerRef.current = layer;
+      };
+    } else {
+      return;
     }
+
+    let layer = cache.get(key);
+    if (!layer) {
+      const created = L.tileLayer(url, { ...options, opacity: 0 });
+      if (isRadar && (activeLayer === 'rain' || activeLayer === 'storm') && onRadarTileError) {
+        let didReportError = false;
+        created.on('tileerror', () => {
+          if (didReportError || !map.hasLayer(created)) return;
+          didReportError = true;
+          onRadarTileError();
+        });
+      }
+      created.addTo(map);
+      cache.set(key, created);
+      layer = created;
+
+      // Keep memory bounded: drop the oldest cached frames beyond the limit.
+      const MAX_CACHED = 48;
+      if (cache.size > MAX_CACHED) {
+        for (const [oldKey, oldLayer] of cache) {
+          if (cache.size <= MAX_CACHED) break;
+          if (oldKey === key) continue;
+          map.removeLayer(oldLayer);
+          cache.delete(oldKey);
+        }
+      }
+    }
+
+    layer.setOpacity(options.opacity ?? 0.8);
+    weatherTileLayerRef.current = layer;
   }, [activeLayer, radarData, currentRadarFrame, radarColorScheme, radarOpacity, onRadarTileError]);
 
   // Storm view latitude/longitude grid, like the reference satellite map.
@@ -755,10 +786,10 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       <div ref={mapContainerRef} className={`w-full h-full z-0 ${isMeasureActive ? 'cursor-crosshair' : 'cursor-default'}`} />
 
       {/* Temperature Thermal Heatmap Canvas Layer */}
-      <TemperatureCanvas map={mapInstanceRef.current} visible={activeLayer === 'temperature'} opacity={0.88} />
+      <TemperatureCanvas map={mapInstanceRef.current} visible={activeLayer === 'temperature'} opacity={0.78} />
 
       {/* Wind Streamline Particle Canvas Layer */}
-      <WindCanvas map={mapInstanceRef.current} visible={activeLayer === 'wind' || activeLayer === 'temperature'} intensity={1.1} />
+      <WindCanvas map={mapInstanceRef.current} visible={activeLayer === 'wind'} intensity={1.1} />
 
       {/* Basemap tiles could not be reached from this network */}
       {basemapFailed && (
