@@ -242,35 +242,56 @@
   /* ---------- Data ---------- */
   var gridData = null, cityData = null;
 
+  // All batches are requested in parallel (not one after another).
   function fetchPoints(list) {
-    var out = [], chain = Promise.resolve();
-    for (var i = 0; i < list.length; i += 60) {
-      (function (batch) {
-        chain = chain.then(function () {
-          var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + batch.map(function (p) { return p[0]; }).join(',') +
-            '&longitude=' + batch.map(function (p) { return p[1]; }).join(',') + '&current=' + CURRENT +
-            '&hourly=precipitation&past_hours=3&forecast_hours=6&timeformat=unixtime';
-          return fetch(url).then(function (r) { if (!r.ok) throw new Error('Open-Meteo ' + r.status); return r.json(); })
-            .then(function (j) { (Array.isArray(j) ? j : [j]).forEach(function (o) { var c = o.current; c.hourly = o.hourly; out.push(c); }); });
-        });
-      })(list.slice(i, i + 60));
-    }
-    return chain.then(function () { return out; });
+    var batches = [];
+    for (var i = 0; i < list.length; i += 60) batches.push(list.slice(i, i + 60));
+    return Promise.all(batches.map(function (batch) {
+      var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + batch.map(function (p) { return p[0]; }).join(',') +
+        '&longitude=' + batch.map(function (p) { return p[1]; }).join(',') + '&current=' + CURRENT +
+        '&hourly=precipitation&past_hours=3&forecast_hours=6&timeformat=unixtime';
+      return fetch(url).then(function (r) { if (!r.ok) throw new Error('Open-Meteo ' + r.status); return r.json(); })
+        .then(function (j) { return Array.isArray(j) ? j : [j]; });
+    })).then(function (parts) {
+      var out = [];
+      parts.forEach(function (arr) { arr.forEach(function (o) { var c = o.current; c.hourly = o.hourly; out.push(c); }); });
+      return out;
+    });
+  }
+
+  // Last successful download is kept in localStorage so the map shows up instantly on reopen.
+  var CACHE_KEY = 'panahon-wx-cache-v2', CACHE_MAX_AGE = 6 * 3600 * 1000;
+  function readCache() {
+    try {
+      var c = JSON.parse(localStorage.getItem(CACHE_KEY));
+      if (c && Array.isArray(c.all) && Date.now() - c.t < CACHE_MAX_AGE) return c;
+    } catch (e) { /* ignore corrupt cache */ }
+    return null;
+  }
+  function writeCache(all, t) {
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: t, all: all })); } catch (e) { /* storage full or disabled */ }
+  }
+
+  var GP = [];
+  for (var gi = 0; gi < NLAT; gi++) for (var gj = 0; gj < NLON; gj++) GP.push([LAT0 + gi * STEP, LON0 + gj * STEP]);
+  var CP = CITIES.map(function (c) { return [c[1], c[2]]; });
+
+  function applyData(all, t) {
+    gridData = all.slice(0, GP.length);
+    cityData = all.slice(GP.length);
+    setupRain();
+    $('#updated').textContent = 'Updated ' + hhmm(new Date(t));
+    setStatus('');
+    render();
   }
 
   function loadWeather() {
-    var gp = [];
-    for (var i = 0; i < NLAT; i++) for (var j = 0; j < NLON; j++) gp.push([LAT0 + i * STEP, LON0 + j * STEP]);
-    var cp = CITIES.map(function (c) { return [c[1], c[2]]; });
-    return fetchPoints(gp.concat(cp)).then(function (all) {
-      gridData = all.slice(0, gp.length);
-      cityData = all.slice(gp.length);
-      setupRain();
-      $('#updated').textContent = 'Updated ' + hhmm(new Date());
-      setStatus('');
-      render();
+    return fetchPoints(GP.concat(CP)).then(function (all) {
+      var t = Date.now();
+      writeCache(all, t);
+      applyData(all, t);
     }).catch(function (e) {
-      setStatus('Could not load weather data. Check your connection and refresh.');
+      if (!gridData) setStatus('Could not load weather data. Check your connection and refresh.');
       console.error(e);
     });
   }
@@ -426,7 +447,12 @@
 
   /* ---------- Start ---------- */
   render();
-  setStatus('Loading weather…');
+  var cached = readCache();
+  if (cached) {
+    applyData(cached.all, cached.t);
+  } else {
+    setStatus('Loading weather…');
+  }
   loadWeather();
   setInterval(loadWeather, REFRESH_MS);
 })();
