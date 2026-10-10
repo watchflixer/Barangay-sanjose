@@ -217,30 +217,9 @@
   map.getPane('basetxt').style.pointerEvents = 'none';
   map.attributionControl.setPrefix(false);
 
-  var mq = window.matchMedia('(prefers-color-scheme: dark)');
-  var baseLayers = [];
-  function isDark() {
-    var t = document.documentElement.getAttribute('data-theme');
-    return t ? t === 'dark' : mq.matches;
-  }
-  // Keyless basemaps (no account, no API key, no watermark): Esri Canvas light/dark gray with matching label layers.
-  var ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/';
-  var ESRI_ATTR = 'Basemap &copy; Esri, HERE, Garmin, USGS | Weather: Open-Meteo';
-  function setBase() {
-    baseLayers.forEach(function (l) { map.removeLayer(l); });
-    var dark = isDark(), theme = dark ? 'Dark_Gray' : 'Light_Gray';
-    var base = ESRI + 'World_' + theme + '_Base/MapServer/tile/{z}/{y}/{x}';
-    var labels = ESRI + 'World_' + theme + '_Reference/MapServer/tile/{z}/{y}/{x}';
-    // The same map is drawn again above the colour field and blended in, so coastlines, borders and roads stay visible.
-    map.getPane('lines').style.mixBlendMode = dark ? 'screen' : 'multiply';
-    baseLayers = [
-      L.tileLayer(base, { attribution: ESRI_ATTR, maxZoom: 16 }).addTo(map),
-      L.tileLayer(base, { pane: 'lines', maxZoom: 16 }).addTo(map),
-      L.tileLayer(labels, { pane: 'basetxt', maxZoom: 16, opacity: 0.9 }).addTo(map)
-    ];
-  }
-  setBase();
-  if (mq.addEventListener) mq.addEventListener('change', setBase);
+  // Plain street map (Esri World Street Map: keyless, no API key). Single light style.
+  var STREET = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+  L.tileLayer(STREET, { attribution: 'Basemap &copy; Esri, HERE, Garmin, USGS | Weather: Open-Meteo', maxZoom: 16 }).addTo(map);
 
   /* ---------- PAR (Philippine Area of Responsibility) boundary, always shown as a white broken line ---------- */
   map.createPane('par');
@@ -376,7 +355,7 @@
   $('#frame').addEventListener('input', function (e) { stopPlay(); showFrame(+e.target.value); });
 
   /* ---------- Rendering by layer ---------- */
-  var current = null, fieldObjs = [], pinObjs = [];
+  var current = 'weather', fieldObjs = [], pinObjs = [];
 
   var LEGENDS = {
     weather: { title: 'Cloud cover', ramp: css(CLOUD_STOPS), ticks: ['0%', '40%', '70%', '100%'], note: 'Warm = sunny, deep blue = overcast. Icons show current weather.' },
@@ -397,6 +376,10 @@
     var mm = d.hourly && d.hourly.precipitation[rain.idx] || 0;
     return '<div class="pin">' + (mm >= 0.1 ? SVG.rain : '') + '<span class="t">' + (mm >= 0.1 ? mm.toFixed(1) + ' mm' : '0') + '</span><span class="nm">' + name + '</span></div>';
   }
+  function gridPinHtml(d) {
+    var w = wx(d.weather_code);
+    return '<div class="pin">' + SVG[w[1]] + '<span class="t">' + Math.round(d.temperature_2m) + '°</span></div>';
+  }
   function renderPins() {
     pinObjs.forEach(function (o) { map.removeLayer(o); }); pinObjs = [];
     if (!cityData || !current) return;
@@ -406,6 +389,16 @@
       var h = pinHtml(i); if (!h) return;
       var m = pinAt([c[1], c[2]], h); m.addTo(map); pinObjs.push(m);
     });
+    if (current === 'weather' && gridData) {
+      // Weather icon + temperature across the whole Philippines (grid points inside PH).
+      for (var ga = 0; ga < NLAT; ga++) for (var gb = 0; gb < NLON; gb++) {
+        var glat = LAT0 + ga * STEP, glon = LON0 + gb * STEP;
+        if (glat < 4 || glat > 22 || glon < 116 || glon > 127) continue;
+        var gd = gridData[ga * NLON + gb]; if (!gd) continue;
+        var gm = pinAt([glat, glon], gridPinHtml(gd));
+        gm.addTo(map); pinObjs.push(gm);
+      }
+    }
     if (current === 'storm' && gridData) {
       for (var a = 0; a < NLAT; a += 2) for (var b = 0; b < NLON; b += 2) {
         var d = gridData[a * NLON + b]; if (!d) continue;
@@ -420,7 +413,7 @@
     fieldObjs.forEach(function (o) { map.removeLayer(o); }); fieldObjs = [];
     if (current !== 'rain') clearRain();
     map.getPane('lines').style.display = current ? '' : 'none';
-    $('#legend').hidden = !current;
+    $('#legend').hidden = !current || current === 'weather';
     $('#timeline').hidden = current !== 'rain';
     if (!current) { renderPins(); return; }
     var L_ = LEGENDS[current];
@@ -428,7 +421,6 @@
       L_.ticks.map(function (t) { return '<span>' + t + '</span>'; }).join('') + '</div><p class="note">' + L_.note + '</p>';
     if (!gridData) return;
 
-    if (current === 'weather') fieldObjs.push(field(function (d) { return d.cloud_cover; }, CLOUD_STOPS).addTo(map));
     if (current === 'temperature') fieldObjs.push(field(function (d) { return d.temperature_2m; }, TEMP_STOPS).addTo(map));
     if (current === 'storm') fieldObjs.push(field(function (d) { return d.wind_gusts_10m; }, GUST_STOPS).addTo(map));
     if (current === 'rain' && rain.times.length) { showFrame(rain.idx ? rain.idx : rain.nowIdx); return; }
@@ -458,6 +450,7 @@
   });
 
   /* ---------- Start ---------- */
+  document.querySelectorAll('.tabs button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.layer === current)); });
   render();
   var cached = readCache();
   if (cached) {
