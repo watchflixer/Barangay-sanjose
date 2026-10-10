@@ -102,7 +102,7 @@
 <div id="map" role="application" aria-label="Weather map"></div>
 
 <div class="bar">
-  <div class="brand glass"><span class="live"><i></i>Realtime</span> Panahon<small id="updated">Loading…</small></div>
+  <div class="brand glass"><span class="live"><i></i>Auto-update 15 min</span> Panahon<small id="updated">Loading…</small></div>
   <div class="tabs glass" role="group" aria-label="Map layer">
     <button type="button" data-layer="weather" aria-pressed="false">Weather</button>
     <button type="button" data-layer="temperature" aria-pressed="false">Temperature</button>
@@ -677,7 +677,7 @@
     gridData = all.slice(0, GP.length);
     cityData = all.slice(GP.length);
     setupRain();
-    $('#updated').textContent = 'Updated ' + hhmm(new Date(t));
+    $('#updated').textContent = 'Forecast model · updated ' + hhmm(new Date(t));
     setStatus('');
     render();
   }
