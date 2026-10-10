@@ -42,6 +42,9 @@
   .bar > * { pointer-events: auto; }
   .glass { background: var(--panel); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: var(--shadow); border: 1px solid var(--line); }
   .brand { border-radius: 12px; padding: 8px 14px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+  .live { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #e11d48; margin-right: 6px; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: #e11d48; box-shadow: 0 0 0 0 rgba(225,29,72,.6); animation: livepulse 1.6s infinite; }
+  @keyframes livepulse { 0% { box-shadow: 0 0 0 0 rgba(225,29,72,.6); } 70% { box-shadow: 0 0 0 7px rgba(225,29,72,0); } 100% { box-shadow: 0 0 0 0 rgba(225,29,72,0); } }
   .brand small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; letter-spacing: 0; font-variant-numeric: tabular-nums; }
   .tabs { display: flex; gap: 2px; border-radius: 12px; padding: 4px; }
   .tabs button { font: inherit; font-weight: 600; color: var(--muted); background: transparent; border: 0; border-radius: 9px; padding: 8px 16px; cursor: pointer; min-height: 36px; }
@@ -99,7 +102,7 @@
 <div id="map" role="application" aria-label="Weather map"></div>
 
 <div class="bar">
-  <div class="brand glass">Panahon<small id="updated">Loading…</small></div>
+  <div class="brand glass"><span class="live"><i></i>Realtime</span> Panahon<small id="updated">Loading…</small></div>
   <div class="tabs glass" role="group" aria-label="Map layer">
     <button type="button" data-layer="weather" aria-pressed="false">Weather</button>
     <button type="button" data-layer="temperature" aria-pressed="false">Temperature</button>
@@ -131,7 +134,7 @@
   var NLAT = Math.round((LAT1 - LAT0) / STEP) + 1;
   var NLON = Math.round((LON1 - LON0) / STEP) + 1;
   var CURRENT = 'temperature_2m,weather_code,cloud_cover,wind_gusts_10m,wind_speed_10m,wind_direction_10m,precipitation';
-  var REFRESH_MS = 45 * 60 * 1000;
+  var REFRESH_MS = 15 * 60 * 1000;
 
   // name, lat, lon, rank: 1 = cities (shown when zoomed out), 2 = municipalities (shown when zoomed in). Coordinates = centre of each area (2023 boundaries)
   var CITIES = [
@@ -611,30 +614,44 @@
   /* ---------- Data ---------- */
   var gridData = null, cityData = null;
 
-  // One request per batch; Open-Meteo returns an array for multi-location calls.
-  function fetchBatch(batch, withHourly) {
+  // One request per batch. Open-Meteo rate-limits bursts, so a 429 or 5xx is retried with a short backoff.
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function fetchBatch(batch, withHourly, attempt) {
+    attempt = attempt || 0;
     var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + batch.map(function (p) { return p[0]; }).join(',') +
       '&longitude=' + batch.map(function (p) { return p[1]; }).join(',') + '&current=' + CURRENT +
       (withHourly ? '&hourly=precipitation&past_hours=3&forecast_hours=6&timeformat=unixtime' : '');
-    return fetch(url).then(function (r) { if (!r.ok) throw new Error('Open-Meteo ' + r.status); return r.json(); })
-      .then(function (j) { return Array.isArray(j) ? j : [j]; });
+    return fetch(url).then(function (r) {
+      if (r.status === 429 || r.status >= 500) throw new Error('retry ' + r.status);
+      if (!r.ok) throw new Error('Open-Meteo ' + r.status);
+      return r.json();
+    }).then(function (j) { return Array.isArray(j) ? j : [j]; })
+      .catch(function (e) {
+        if (attempt >= 3) throw e;
+        return sleep(1500 * (attempt + 1)).then(function () { return fetchBatch(batch, withHourly, attempt + 1); });
+      });
   }
 
-  // Batches run in parallel, at most 4 requests at a time (keeps Open-Meteo from rate-limiting).
+  // Batches run two at a time with a short pause between them. A batch that still fails
+  // keeps its slots empty (null) so every place stays aligned with its name.
   function fetchAll(list, size, withHourly) {
     var batches = [];
     for (var i = 0; i < list.length; i += size) batches.push(list.slice(i, i + size));
     var results = new Array(batches.length), next = 0;
     function worker() {
       if (next >= batches.length) return Promise.resolve();
-      var idx = next++;
-      return fetchBatch(batches[idx], withHourly).then(function (arr) { results[idx] = arr; return worker(); });
+      var idx = next++, batch = batches[idx];
+      return fetchBatch(batch, withHourly).then(function (arr) {
+        results[idx] = arr.map(function (o) { return o && o.current ? (o.current.hourly = o.hourly, o.current) : null; });
+      }, function () {
+        results[idx] = batch.map(function () { return null; });
+      }).then(function () { return sleep(250); }).then(worker);
     }
     var runners = [];
-    for (var k = 0; k < Math.min(4, batches.length); k++) runners.push(worker());
+    for (var k = 0; k < Math.min(2, batches.length); k++) runners.push(worker());
     return Promise.all(runners).then(function () {
       var out = [];
-      results.forEach(function (arr) { arr.forEach(function (o) { var c = o.current; c.hourly = o.hourly; out.push(c); }); });
+      results.forEach(function (arr) { out = out.concat(arr); });
       return out;
     });
   }
@@ -668,6 +685,8 @@
   function loadWeather() {
     return Promise.all([fetchAll(GP, 60, true), fetchAll(CP, 100, false)]).then(function (res) {
       var t = Date.now(), all = res[0].concat(res[1]);
+      var got = all.filter(function (x) { return x; }).length;
+      if (!got) throw new Error('no data');
       writeCache(all, t);
       applyData(all, t);
     }).catch(function (e) {
