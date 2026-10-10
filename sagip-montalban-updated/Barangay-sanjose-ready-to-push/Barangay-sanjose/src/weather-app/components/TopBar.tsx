@@ -122,9 +122,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   ];
 
   const baseStyles: { id: MapBaseStyle; label: string }[] = [
-    { id: 'dark', label: 'Dark Meteor' },
     { id: 'satellite', label: 'Satellite' },
-    { id: 'voyager', label: 'Clean Hybrid' },
+    { id: 'streets', label: 'Street View' },
   ];
 
   return (

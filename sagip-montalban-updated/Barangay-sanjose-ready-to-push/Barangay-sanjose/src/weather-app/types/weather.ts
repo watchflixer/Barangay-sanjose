@@ -4,6 +4,7 @@ export type WeatherLayerType =
   | 'himawari-ir'
   | 'himawari-bw'
   | 'rain'
+  | 'storm'
   | 'rain-accumulation'
   | 'wind'
   | 'pressure'
@@ -12,7 +13,7 @@ export type WeatherLayerType =
   | 'satellite'
   | 'clouds';
 
-export type MapBaseStyle = 'dark' | 'satellite' | 'voyager' | 'streets';
+export type MapBaseStyle = 'satellite' | 'streets';
 
 export type TemperatureUnit = 'celsius' | 'fahrenheit';
 export type SpeedUnit = 'kmh' | 'mph' | 'ms' | 'knots';

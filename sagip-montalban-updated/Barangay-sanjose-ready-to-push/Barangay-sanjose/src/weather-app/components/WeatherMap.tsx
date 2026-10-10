@@ -11,6 +11,7 @@ import {
   WeatherLayerType,
 } from '../types/weather';
 import { rainViewer } from '../services/rainviewer';
+import { getHimawariInfraredTileUrl, getLatestHimawariTime, HIMAWARI_MAX_NATIVE_ZOOM } from '../services/himawari';
 import { BasemapSource, mountBasemap } from '../services/basemaps';
 import { WindCanvas } from './WindCanvas';
 import { TemperatureCanvas } from './TemperatureCanvas';
@@ -32,6 +33,8 @@ interface WeatherMapProps {
   storms: TropicalStorm[];
   onSelectStorm: (storm: TropicalStorm) => void;
   radarOpacity?: number;
+  onRadarTileError?: () => void;
+  onStormTileError?: () => void;
   showRadarStations?: boolean;
   showRadarRings?: boolean;
   showPAR?: boolean;
@@ -56,13 +59,15 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   storms,
   onSelectStorm,
   radarOpacity = 0.85,
-  showRadarStations = true,
-  showRadarRings = true,
+  onRadarTileError,
+  onStormTileError,
+  showRadarStations = false,
+  showRadarRings = false,
   showPAR = true,
-  showCityLabels = true,
+  showCityLabels = false,
   showElevation = true,
   showBathymetry = true,
-  showIsolines = true,
+  showIsolines = false,
   isMeasureActive = false,
   onMeasureUpdate,
 }) => {
@@ -72,11 +77,23 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   // Basemap provider currently on screen + whether every provider failed
   const [activeBasemap, setActiveBasemap] = useState<BasemapSource | null>(null);
   const [basemapFailed, setBasemapFailed] = useState(false);
+  const [stormImageryTime, setStormImageryTime] = useState(() => getLatestHimawariTime());
+
+  useEffect(() => {
+    if (activeLayer !== 'storm') return;
+
+    const updateImageryTime = () => setStormImageryTime(getLatestHimawariTime());
+    updateImageryTime();
+    const timer = window.setInterval(updateImageryTime, 10 * 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, [activeLayer]);
 
   // Layer refs
   const elevationLayerRef = useRef<L.TileLayer | null>(null);
   const bathymetryLayerRef = useRef<L.TileLayer | null>(null);
   const weatherTileLayerRef = useRef<L.TileLayer | null>(null);
+  const stormSatelliteLayerRef = useRef<L.TileLayer | null>(null);
+  const stormGraticuleGroupRef = useRef<L.LayerGroup | null>(null);
   const parPolygonRef = useRef<L.Polygon | null>(null);
   const isolinesGroupRef = useRef<L.LayerGroup | null>(null);
   const stormMarkersGroupRef = useRef<L.LayerGroup | null>(null);
@@ -98,9 +115,11 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       zoom: zoom,
       zoomControl: false,
       attributionControl: false,
-      minZoom: 5.5,
+      minZoom: 5,
       maxZoom: 17,
-      maxBounds: L.latLngBounds([3.5, 114.0], [23.5, 136.0]),
+      zoomSnap: 0.5,
+      // Include the complete PAR envelope so Storm mode can show the regional view.
+      maxBounds: L.latLngBounds([0, 105], [30, 145]),
       maxBoundsViscosity: 0.9,
       worldCopyJump: false,
     });
@@ -128,6 +147,13 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       mapInstanceRef.current = null;
     };
   }, []);
+
+  // Let Storm mode zoom out far enough to show the full PAR area; retain the
+  // existing country-wide minimum zoom for the other map layers.
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    mapInstanceRef.current.setMinZoom(activeLayer === 'storm' ? 4 : 5);
+  }, [activeLayer]);
 
   // Update map click handler dynamically when isMeasureActive changes
   useEffect(() => {
@@ -228,11 +254,9 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
   // Update Base Tile Layer
   //
-  // All four styles (Meteor Dark, Clean Hybrid, Satellite Imagery, Street
-  // View) are served by keyless providers — no CARTO, no API key, no
-  // "API KEY REQUIRED" watermark tiles. Every style has a fallback chain: if
-  // a provider keeps failing we silently switch to the next one instead of
-  // leaving a blank map.
+  // Satellite Imagery and Street View use keyless providers — no CARTO, no
+  // API key, no "API KEY REQUIRED" watermark tiles. Each style has a fallback
+  // chain: if a provider keeps failing we silently switch to the next one.
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -294,6 +318,45 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
   }, [showBathymetry, baseStyle]);
 
+  // Storm view: NASA GIBS Himawari clean-infrared imagery, refreshed every ten minutes.
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    if (stormSatelliteLayerRef.current) {
+      map.removeLayer(stormSatelliteLayerRef.current);
+      stormSatelliteLayerRef.current = null;
+    }
+
+    if (activeLayer !== 'storm') return;
+
+    const layer = L.tileLayer(getHimawariInfraredTileUrl(stormImageryTime), {
+      opacity: 1,
+      zIndex: 200,
+      tileSize: 256,
+      maxNativeZoom: HIMAWARI_MAX_NATIVE_ZOOM,
+      maxZoom: 17,
+      attribution: 'Himawari imagery © JMA / NASA EOSDIS GIBS',
+    }).addTo(map);
+
+    if (onStormTileError) {
+      let didReportError = false;
+      layer.on('tileerror', () => {
+        if (didReportError || !map.hasLayer(layer)) return;
+        didReportError = true;
+        onStormTileError();
+      });
+    }
+
+    stormSatelliteLayerRef.current = layer;
+    return () => {
+      if (map.hasLayer(layer)) map.removeLayer(layer);
+      if (stormSatelliteLayerRef.current === layer) {
+        stormSatelliteLayerRef.current = null;
+      }
+    };
+  }, [activeLayer, stormImageryTime, onStormTileError]);
+
   // Update Radar / Satellite Tile Layer
   useEffect(() => {
     if (!mapInstanceRef.current) return;
@@ -306,10 +369,12 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     if (!radarData || !currentRadarFrame) return;
 
+    // The NWP "Rain" choice displays RainViewer's live rainfall/storm radar.
     const isRadar =
       activeLayer === 'radar' ||
       activeLayer === 'radar-reflectivity' ||
       activeLayer === 'rain' ||
+      activeLayer === 'storm' ||
       activeLayer === 'radar-rainrate' ||
       activeLayer === 'rain-accumulation';
 
@@ -320,6 +385,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     if (isRadar) {
       const scheme =
+        activeLayer === 'rain' || activeLayer === 'storm' ? 2 :
         activeLayer === 'radar-reflectivity' ? 3 :
         activeLayer === 'radar-rainrate' ? 4 :
         activeLayer === 'rain-accumulation' ? 1 : radarColorScheme;
@@ -333,7 +399,20 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         opacity: radarOpacity,
         zIndex: 300,
         tileSize: 256,
+        // RainViewer's raster API tops out at z=7. Let Leaflet upscale these
+        // tiles so zooming into the Philippines does not make the layer vanish.
+        maxNativeZoom: 7,
+        maxZoom: 17,
       }).addTo(map);
+
+      if ((activeLayer === 'rain' || activeLayer === 'storm') && onRadarTileError) {
+        let didReportError = false;
+        layer.on('tileerror', () => {
+          if (didReportError || !map.hasLayer(layer)) return;
+          didReportError = true;
+          onRadarTileError();
+        });
+      }
 
       weatherTileLayerRef.current = layer;
     } else if (isSatellite) {
@@ -347,7 +426,58 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
       weatherTileLayerRef.current = layer;
     }
-  }, [activeLayer, radarData, currentRadarFrame, radarColorScheme, radarOpacity]);
+  }, [activeLayer, radarData, currentRadarFrame, radarColorScheme, radarOpacity, onRadarTileError]);
+
+  // Storm view latitude/longitude grid, like the reference satellite map.
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    if (stormGraticuleGroupRef.current) {
+      map.removeLayer(stormGraticuleGroupRef.current);
+      stormGraticuleGroupRef.current = null;
+    }
+
+    if (activeLayer !== 'storm') return;
+
+    const group = L.layerGroup();
+    const gridStyle: L.PolylineOptions = {
+      color: '#17e6b5',
+      weight: 1,
+      opacity: 0.55,
+      interactive: false,
+      bubblingMouseEvents: false,
+    };
+
+    for (let lat = 0; lat <= 30; lat += 5) {
+      group.addLayer(L.polyline([[lat, 105], [lat, 145]], gridStyle));
+      if (lat >= 5 && lat <= 25) {
+        const label = L.divIcon({
+          className: 'storm-graticule-label',
+          html: `<span style="display:block;padding:1px 3px;border-radius:3px;background:rgba(2,18,20,.72);color:#b9ffe9;font:700 8px/12px system-ui;white-space:nowrap">${lat}°N</span>`,
+          iconSize: [28, 14],
+          iconAnchor: [0, 7],
+        });
+        group.addLayer(L.marker([lat, 114.15], { icon: label, interactive: false, keyboard: false }));
+      }
+    }
+
+    for (let lon = 110; lon <= 140; lon += 5) {
+      group.addLayer(L.polyline([[0, lon], [30, lon]], gridStyle));
+      if (lon >= 115 && lon <= 135) {
+        const label = L.divIcon({
+          className: 'storm-graticule-label',
+          html: `<span style="display:block;padding:1px 3px;border-radius:3px;background:rgba(2,18,20,.72);color:#b9ffe9;font:700 8px/12px system-ui;white-space:nowrap">${lon}°E</span>`,
+          iconSize: [34, 14],
+          iconAnchor: [17, 0],
+        });
+        group.addLayer(L.marker([4.1, lon], { icon: label, interactive: false, keyboard: false }));
+      }
+    }
+
+    group.addTo(map);
+    stormGraticuleGroupRef.current = group;
+  }, [activeLayer]);
 
   // PAR (Philippine Area of Responsibility) boundary polygon
   useEffect(() => {
@@ -360,12 +490,13 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
 
     if (showPAR) {
+      const parColor = activeLayer === 'storm' ? '#ff3048' : '#10b981';
       const parPoly = L.polygon(PAR_COORDINATES, {
-        color: '#10b981', // emerald
-        weight: 2,
-        dashArray: '6, 6',
-        fillColor: '#10b981',
-        fillOpacity: 0.03,
+        color: parColor,
+        weight: activeLayer === 'storm' ? 2.5 : 2,
+        dashArray: activeLayer === 'storm' ? undefined : '6, 6',
+        fillColor: parColor,
+        fillOpacity: activeLayer === 'storm' ? 0 : 0.03,
       }).addTo(map);
 
       parPoly.bindTooltip('PAR Boundary (Philippine Area of Responsibility)', {
@@ -375,7 +506,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
       parPolygonRef.current = parPoly;
     }
-  }, [showPAR]);
+  }, [showPAR, activeLayer]);
 
   // Isolines (Pressure Isobars)
   useEffect(() => {
@@ -639,11 +770,15 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
       {/* Map Attribution and Click Hint */}
       <div className="absolute bottom-2 left-3 z-[400] text-[10px] text-slate-400/80 font-mono pointer-events-none flex items-center gap-2">
-        <span>DOST-PAGASA Realtime</span>
+        <span>{activeLayer === 'storm' ? 'HIMAWARI STORM VIEW' : 'DOST-PAGASA Realtime'}</span>
         <span>·</span>
         <span>Click anywhere on the map to inspect weather</span>
         <span>·</span>
-        <span>Weather data by RainViewer</span>
+        {activeLayer === 'storm' ? (
+          <span>Himawari IR © JMA / NASA GIBS · radar © RainViewer</span>
+        ) : (
+          <span>Weather data by RainViewer</span>
+        )}
         {activeBasemap && (
           <>
             <span>·</span>

@@ -203,6 +203,7 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
   // Numerical Weather Prediction Layers
   const nwpLayers: { id: WeatherLayerType; label: string }[] = [
     { id: 'rain', label: 'Rain' },
+    { id: 'storm', label: 'Storm' },
     { id: 'rain-accumulation', label: 'Rain Accumulation' },
     { id: 'wind', label: 'Wind' },
     { id: 'pressure', label: 'Pressure' },
@@ -213,52 +214,22 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
   const baseMapItems: { id: MapBaseStyle; label: string }[] = [
     { id: 'satellite', label: '🛰️ Satellite Imagery' },
     { id: 'streets', label: '🗺️ Street View' },
-    { id: 'dark', label: '🌙 Meteor Dark' },
-    { id: 'voyager', label: '🧭 Clean Hybrid' },
   ];
+  const isRainfallRadarLayer =
+    activeLayer === 'radar' ||
+    activeLayer === 'rain' ||
+    activeLayer === 'storm' ||
+    activeLayer === 'radar-reflectivity' ||
+    activeLayer === 'radar-rainrate' ||
+    activeLayer === 'rain-accumulation';
 
   return (
     <>
-      {/* 1. TOP HEADER ROW: LOGO + 4 CIRCULAR ACTION BUTTONS */}
-      <div className="fixed top-3 inset-x-3 z-[600] flex items-center justify-between pointer-events-none">
-        {/* Left: Official DOST/PAGASA 4-lobed crest + blue PANAHON badge */}
-        <div className="flex items-center gap-2 pointer-events-auto">
-          {/* 4-lobed DOST / PAGASA Emblem */}
-          <div className="w-10 h-10 rounded-xl bg-slate-950/80 backdrop-blur-md p-1 border border-white/20 shadow-lg flex items-center justify-center">
-            <div className="relative w-7 h-7 flex items-center justify-center">
-              <span className="absolute top-0 left-0 w-3.5 h-3.5 rounded-full bg-slate-900 border border-slate-700" />
-              <span className="absolute top-0 right-0 w-3.5 h-3.5 rounded-full bg-[#00a8ff] shadow-sm" />
-              <span className="absolute bottom-0 left-0 w-3.5 h-3.5 rounded-full bg-[#00a8ff] shadow-sm" />
-              <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-slate-900 border border-slate-700" />
-              <span className="relative z-10 text-[9px] font-black text-amber-300">☀️</span>
-            </div>
-          </div>
-
-          {/* Blue PANAHON App Badge */}
-          <div className="h-10 px-2.5 rounded-xl bg-[#009be5] shadow-lg flex items-center gap-1.5 text-white border border-white/30">
-            <span className="font-extrabold text-base leading-none">P</span>
-            <span className="text-[9px] font-black tracking-tight uppercase leading-none">
-              PANAHON
-            </span>
-          </div>
-        </div>
-
-        {/* Right: 4 Warm-amber circular translucent buttons (matching screenshot) */}
+      {/* SECOND ROW: SETTINGS, RADAR & LAYERS CONTROLS */}
+      <div className="fixed top-16 inset-x-3 z-[600] flex items-center justify-end pointer-events-none">
+        {/* Right: 3 warm-amber circular translucent action buttons */}
         <div className="flex items-center gap-2 pointer-events-auto relative">
-          {/* 1. Ruler / Distance Tool */}
-          <button
-            onClick={onToggleMeasure}
-            className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 border ${
-              isMeasureActive
-                ? 'bg-white/25 text-white border-white/40 ring-2 ring-white/30'
-                : 'bg-black/55 backdrop-blur-md text-white border-white/20 hover:bg-black/70'
-            }`}
-            title="Measure Distance"
-          >
-            <Ruler className="w-4 h-4" />
-          </button>
-
-          {/* 2. Sliders / Settings */}
+          {/* 1. Sliders / Settings */}
           <button
             onClick={() => {
               setIsSettingsOpen(!isSettingsOpen);
@@ -274,7 +245,7 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
             <Sliders className="w-4 h-4" />
           </button>
 
-          {/* 3. Locator / Radar Stations Toggle */}
+          {/* 2. Locator / Radar Stations Toggle */}
           <button
             onClick={onToggleRadarStations}
             className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95 border ${
@@ -287,7 +258,7 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
             <MapPin className="w-4 h-4" />
           </button>
 
-          {/* 4. Layers Stack Button */}
+          {/* 3. Layers Stack Button */}
           <button
             onClick={() => {
               setIsLayersOpen(!isLayersOpen);
@@ -696,8 +667,8 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
         </div>
       )}
 
-      {/* 2. SEARCH BAR & ZOOM BUTTONS ROW */}
-      <div className="fixed top-16 inset-x-3 z-[600] flex items-center gap-2 pointer-events-none">
+      {/* TOP ROW: SEARCH BAR & ZOOM BUTTONS */}
+      <div className="fixed top-3 inset-x-3 z-[600] flex items-center gap-2 pointer-events-none">
         {/* Search Bar Pill */}
         <div className="relative flex-1 pointer-events-auto">
           <div className="flex items-center w-full h-11 px-4 rounded-2xl bg-black/55 backdrop-blur-md border border-white/20 shadow-lg text-white">
@@ -794,21 +765,21 @@ export const PanahonMobileUI: React.FC<PanahonMobileUIProps> = ({
         </div>
       </div>
 
-      {/* 3. RIGHT SIDE VERTICAL LEGEND: rainfall (MM 1H) on radar, temperature otherwise */}
+      {/* 3. RIGHT SIDE VERTICAL LEGEND: RainViewer radar reflectivity or temperature */}
       <div className="fixed right-3 top-1/2 -translate-y-12 z-[500] pointer-events-auto">
-        {activeLayer === 'radar' ? (
+        {isRainfallRadarLayer ? (
           <div className="flex flex-col items-center bg-black/55 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 shadow-2xl text-white font-sans">
-            <span className="text-[10px] font-bold text-white mb-1.5">MM (1H)</span>
+            <span className="text-[10px] font-bold text-white mb-1.5">dBZ</span>
             <div className="flex gap-1.5 h-60">
               <div
                 className="w-3 h-full rounded-full shadow-inner"
                 style={{
                   background:
-                    'linear-gradient(to bottom, #ff1cf7 0%, #d10000 12%, #ff6a00 25%, #ffd800 38%, #00d832 50%, #0096fe 62%, #1e3cff 75%, #a1e6ff 100%)',
+                    'linear-gradient(to bottom, #ff62ff 0%, #d91b00 18%, #ff9500 32%, #ffee00 44%, #005588 62%, #00a3e0 77%, #88ddeeff 90%, #827b6949 100%)',
                 }}
               />
               <div className="flex flex-col justify-between text-[9px] font-bold text-white leading-none py-0.5">
-                {['60', '50', '40', '30', '20', '15', '10', '5', '3', '1', '0.5', '0.1'].map((v) => (
+                {['60', '50', '40', '30', '20', '10', '0'].map((v) => (
                   <span key={v}>{v}</span>
                 ))}
               </div>

@@ -27,23 +27,23 @@ import { WeatherDrawer } from './components/WeatherDrawer';
 import { StormTrackerModal } from './components/StormTrackerModal';
 
 export default function App() {
-  // Map View State (Centered on Luzon and Philippine Archipelago as shown in screenshot)
-  const [center, setCenter] = useState<[number, number]>([15.5, 121.0]);
-  const [zoom, setZoom] = useState<number>(6.5);
+  // Start centered on the full Philippine archipelago at a country-wide zoom.
+  const [center, setCenter] = useState<[number, number]>([12.8797, 121.774]);
+  const [zoom, setZoom] = useState<number>(5);
 
   // Layers & Aesthetics: Default Temperature Heatmap + Street/Satellite layer
   const [activeLayer, setActiveLayer] = useState<WeatherLayerType>('radar');
-  const [baseStyle, setBaseStyle] = useState<MapBaseStyle>('dark');
+  const [baseStyle, setBaseStyle] = useState<MapBaseStyle>('satellite');
   const [radarOpacity, setRadarOpacity] = useState<number>(0.85);
 
   // Display & Overlays settings (Panahon authentic map settings)
-  const [showRadarStations, setShowRadarStations] = useState<boolean>(true);
-  const [showRadarRings, setShowRadarRings] = useState<boolean>(true);
+  const [showRadarStations, setShowRadarStations] = useState<boolean>(false);
+  const [showRadarRings, setShowRadarRings] = useState<boolean>(false);
   const [showElevation, setShowElevation] = useState<boolean>(false);
   const [showBathymetry, setShowBathymetry] = useState<boolean>(false);
-  const [showIsolines, setShowIsolines] = useState<boolean>(true);
+  const [showIsolines, setShowIsolines] = useState<boolean>(false);
   const [showPAR, setShowPAR] = useState<boolean>(true);
-  const [showCityLabels, setShowCityLabels] = useState<boolean>(true);
+  const [showCityLabels, setShowCityLabels] = useState<boolean>(false);
 
   // Distance Measurement tool
   const [isMeasureActive, setIsMeasureActive] = useState<boolean>(false);
@@ -85,10 +85,18 @@ export default function App() {
   // Notification Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
-  };
+  }, []);
+
+  const handleRadarTileError = useCallback(() => {
+    showToast('RainViewer radar tiles failed to load. Please try again shortly.');
+  }, [showToast]);
+
+  const handleStormTileError = useCallback(() => {
+    showToast('Himawari storm imagery tiles failed to load. Please try again shortly.');
+  }, [showToast]);
 
   // 1. Initial Load of RainViewer Radar Data
   const loadRadar = useCallback(async () => {
@@ -96,14 +104,22 @@ export default function App() {
       const data = await rainViewer.getRadarData();
       setRadarData(data);
 
-      const frames =
-        activeLayer === 'satellite'
-          ? rainViewer.getSatelliteFrames(data)
-          : rainViewer.getAllFrames(data);
+      const isSatelliteLayer =
+        activeLayer === 'satellite' ||
+        activeLayer === 'himawari-ir' ||
+        activeLayer === 'himawari-bw';
+      const frames = isSatelliteLayer
+        ? rainViewer.getSatelliteFrames(data)
+        : rainViewer.getAllFrames(data);
 
       setRadarFrames(frames);
       const pastFrames = data.radar?.past || [];
-      const defaultIndex = pastFrames.length > 0 ? pastFrames.length - 1 : frames.length - 1;
+      const defaultIndex =
+        isSatelliteLayer || activeLayer === 'rain' || activeLayer === 'storm'
+        ? frames.length - 1
+        : pastFrames.length > 0
+          ? pastFrames.length - 1
+          : frames.length - 1;
       setCurrentFrameIndex(Math.max(0, defaultIndex));
     } catch (err) {
       console.error('Error fetching radar:', err);
@@ -115,6 +131,41 @@ export default function App() {
     const interval = setInterval(loadRadar, 4 * 60 * 1000);
     return () => clearInterval(interval);
   }, [loadRadar]);
+
+  // Rain and Storm are explicit live-radar actions: bypass stale cache and
+  // start at the newest available frame. Storm also adds Himawari IR imagery.
+  const loadRainfallRadar = async (forStorm = false) => {
+    showToast(forStorm ? 'Loading Himawari storm view…' : 'Loading rainfall / storm radar…');
+    try {
+      const data = await rainViewer.getRadarData(true);
+      const frames = rainViewer.getAllFrames(data);
+      setRadarData(data);
+      setRadarFrames(frames);
+
+      if (frames.length === 0) {
+        showToast(
+          forStorm
+            ? 'Storm view is available, but radar frames are unavailable right now.'
+            : 'Rainfall radar is unavailable right now.'
+        );
+        return;
+      }
+
+      setCurrentFrameIndex(frames.length - 1);
+      showToast(
+        forStorm
+          ? 'Storm radar frames ready; loading Himawari tiles.'
+          : 'Rainfall / storm radar loaded'
+      );
+    } catch (err) {
+      console.error('Failed to load rainfall radar:', err);
+      showToast(
+        forStorm
+          ? 'Storm view is loading, but the RainViewer radar feed is unavailable.'
+          : 'Rainfall radar could not load. Check your connection and try again.'
+      );
+    }
+  };
 
   // 2. Load Weather Details for Selected Location
   const loadWeather = useCallback(async (loc: LocationCoordinates) => {
@@ -232,13 +283,13 @@ export default function App() {
   };
 
   const handleZoomOut = () => {
-    setZoom((z) => Math.max(z - 1, 5));
+    setZoom((z) => Math.max(z - 1, activeLayer === 'storm' ? 4 : 5));
   };
 
-  // Recenter to Entire Philippines
+  // Recenter to a country-wide view of the entire Philippines.
   const handleRecenterPhilippines = () => {
-    setCenter([12.8797, 121.7740]);
-    setZoom(6.2);
+    setCenter([12.8797, 121.774]);
+    setZoom(5);
     showToast('Map centered to Entire Philippines');
   };
 
@@ -248,18 +299,36 @@ export default function App() {
       {/* 1. Exact Mobile Portrait UI from user's screenshot with Settings & Layers Cards */}
       <PanahonMobileUI
         activeLayer={activeLayer}
-        onChangeLayer={(l) => {
-          setActiveLayer(l);
-          if (l === 'satellite' && radarData) {
-            const satFrames = rainViewer.getSatelliteFrames(radarData);
-            setRadarFrames(satFrames);
-            setCurrentFrameIndex(Math.max(0, satFrames.length - 1));
-          } else if (l === 'radar' && radarData) {
-            const allFrames = rainViewer.getAllFrames(radarData);
-            setRadarFrames(allFrames);
-            const past = radarData.radar?.past || [];
-            setCurrentFrameIndex(Math.max(0, past.length > 0 ? past.length - 1 : allFrames.length - 1));
+        onChangeLayer={(layer) => {
+          setActiveLayer(layer);
+          if (layer === 'storm') {
+            setCenter([15, 125]);
+            setZoom(4);
+          } else if (activeLayer === 'storm') {
+            setZoom((currentZoom) => Math.max(currentZoom, 5));
           }
+          if (layer === 'rain' || layer === 'storm') {
+            void loadRainfallRadar(layer === 'storm');
+            return;
+          }
+          if (!radarData) return;
+
+          const isSatelliteLayer =
+            layer === 'satellite' ||
+            layer === 'himawari-ir' ||
+            layer === 'himawari-bw';
+          const frames = isSatelliteLayer
+            ? rainViewer.getSatelliteFrames(radarData)
+            : rainViewer.getAllFrames(radarData);
+          setRadarFrames(frames);
+
+          const pastFrames = radarData.radar?.past || [];
+          const defaultIndex = isSatelliteLayer
+            ? frames.length - 1
+            : pastFrames.length > 0
+              ? pastFrames.length - 1
+              : frames.length - 1;
+          setCurrentFrameIndex(Math.max(0, defaultIndex));
         }}
         baseStyle={baseStyle}
         onChangeBaseStyle={setBaseStyle}
@@ -329,6 +398,8 @@ export default function App() {
           setIsStormModalOpen(true);
         }}
         radarOpacity={radarOpacity}
+        onRadarTileError={handleRadarTileError}
+        onStormTileError={handleStormTileError}
         showRadarStations={showRadarStations}
         showRadarRings={showRadarRings}
         showPAR={showPAR}

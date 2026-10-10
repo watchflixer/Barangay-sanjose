@@ -76,19 +76,3 @@
 .leaflet-tooltip-bottom:before {
   display: none !important;
 }
-
-
-/* ---------------------------------------------------------------------------
-   Keyless basemap fallbacks
-   ---------------------------------------------------------------------------
-   The OSM raster tiles below are used as a safety net when the Esri "canvas"
-   basemaps can't be reached. A CSS filter turns them into the dark / muted
-   look the layer names promise, so no API key is ever required.
---------------------------------------------------------------------------- */
-.weather-dark-tiles {
-  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.92) saturate(0.7);
-}
-
-.weather-clean-tiles {
-  filter: saturate(0.6) brightness(1.06) contrast(0.96);
-}

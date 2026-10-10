@@ -1,7 +1,7 @@
 import { RainViewerData, RainViewerFrame } from '../types/weather';
 
 export interface RadarTileOptions {
-  colorScheme?: number; // 1 to 8 (default 2: Universal Blue or 1: RainViewer default)
+  colorScheme?: number; // RainViewer's documented radar palette: 2 (Universal Blue)
   smooth?: boolean;
   snow?: boolean;
 }
