@@ -239,6 +239,11 @@
   setBase();
   if (mq.addEventListener) mq.addEventListener('change', setBase);
 
+  /* ---------- PAR (Philippine Area of Responsibility) boundary, always shown in red ---------- */
+  L.polygon([[25, 120], [25, 135], [5, 135], [5, 115], [15, 115], [21, 120]], {
+    color: '#ff1f1f', weight: 3, fill: false, opacity: 1, interactive: false
+  }).addTo(map);
+
   /* ---------- Data ---------- */
   var gridData = null, cityData = null;
 
