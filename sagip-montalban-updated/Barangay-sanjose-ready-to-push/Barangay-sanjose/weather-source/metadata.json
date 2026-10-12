@@ -1,0 +1,8 @@
+{
+  "name": "Panahon - Philippine Realtime Weather Map",
+  "description": "Realtime weather, temperature, storm, and RainViewer radar tracking for the entire Philippines, updated every 10 minutes with Open-Meteo and OpenWeatherMap.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
