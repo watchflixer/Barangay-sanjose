@@ -171,10 +171,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Traffic map's Street/Satellite switch) — affects only the Help Center map.
   const [helpCenterBasemap, setHelpCenterBasemap] = React.useState<'streets' | 'satellite'>('satellite');
   const helpCenterTileLayerRef = useRef<L.TileLayer | null>(null);
-  // Weather — the AuraCast weather & radar app (WeatherView.tsx), shown in its
-  // own document. Mutually exclusive with the other map views. It has its own
-  // map controls, so the app's Recenter and Locate buttons are hidden here.
+  // Weather — the Panahon weather & radar app (WeatherView.tsx), shown in its
+  // own document. Mutually exclusive with the other map views. The GIS-style
+  // floating controls send actions into the embedded weather map.
   const [showWeather, setShowWeather] = React.useState(refreshView === 'weather');
+  const weatherMapFrameRef = useRef<HTMLIFrameElement | null>(null);
+  const sendWeatherAction = (action: 'recenter' | 'zoom-in' | 'zoom-out' | 'location', coordinates?: { lat: number; lng: number }) => {
+    weatherMapFrameRef.current?.contentWindow?.postMessage(
+      { type: 'panahon-map-action', action, ...coordinates }, window.location.origin
+    );
+  };
   // Opening Help Center closes the Flood Prone, Traffic and Weather maps.
   React.useEffect(() => {
     if (showHelpCenter) {
@@ -561,9 +567,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             }).addTo(mapInstanceRef.current!);
           }
 
-          // While the Flood Prone map is open the location goes into the
-          // iframe instead of the hidden GIS map behind it.
-          if (showFloodProneBlank) {
+          // Forward the approved coordinates to whichever map is visible.
+          if (showWeather) {
+            sendWeatherAction('location', { lat: position.coords.latitude, lng: position.coords.longitude });
+          } else if (showFloodProneBlank) {
             floodMapFrameRef.current?.contentWindow?.postMessage(
               { type: 'flood-user-location', lat: position.coords.latitude, lng: position.coords.longitude },
               '*'
@@ -663,10 +670,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   };
 
   const handleZoomIn = () => {
+    if (showWeather) { sendWeatherAction('zoom-in'); return; }
     mapInstanceRef.current?.zoomIn();
   };
 
   const handleZoomOut = () => {
+    if (showWeather) { sendWeatherAction('zoom-out'); return; }
     mapInstanceRef.current?.zoomOut();
   };
 
@@ -932,8 +941,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       trafficMapFrameRef.current?.contentWindow?.postMessage({ type: 'traffic-recenter' }, '*');
       return;
     }
-    // In Weather mode, the AuraCast app has its own map controls.
-    if (showWeather) return;
+    // The weather map lives in its own iframe; recenter that map, not the GIS map underneath.
+    if (showWeather) { sendWeatherAction('recenter'); return; }
     // In Help Center mode, recenter its own Leaflet map.
     if (showHelpCenter) {
       helpCenterMapInstanceRef.current?.flyTo(SAN_JOSE_CENTER, 13, {
@@ -1015,10 +1024,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Weather overlay — the AuraCast weather & radar app, embedded in its
+      {/* Weather overlay — the Panahon weather & radar app, embedded in its
           own document (see WeatherView.tsx). It mounts only while open, so
           closing it unloads the embedded app. */}
-      {showWeather && <WeatherView />}
+      {showWeather && <WeatherView frameRef={weatherMapFrameRef} />}
 
       {/* Help Center Street/Satellite switcher — mimics the Flood Prone map's
           #base-switch: same order (Satellite | Street), same default
@@ -1200,18 +1209,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showFloodProneBlank || showTrafficMap || showHelpCenter || showWeather ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite || (showTrafficMap && trafficDirectionsOpen) ? 'hidden' : ''}`}>
-        {/* Hidden in Weather mode: the AuraCast app has its own recenter. */}
-        {!showWeather && (
-          <button
-            id="btn-recenter-gis"
+      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite || (showTrafficMap && trafficDirectionsOpen) ? 'hidden' : ''}`}>
+        {/* These controls operate on the embedded Panahon map in Weather mode. */}
+        <button
+          id="btn-recenter-gis"
             onClick={handleRecenter}
             title="Recenter"
             className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-800 shadow-xs border border-slate-200 transition-colors active:scale-95 cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 transition-transform ${isRecenterSpinning ? 'animate-fast-spin text-slate-900' : 'text-slate-700'}`} />
           </button>
-        )}
 
         {/* Layer Selector & Mask Intensity Toggle */}
         <div className="relative">
@@ -1250,11 +1257,19 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
                       {/* Help Center (the 'satellite' slot) is temporarily disabled so it can't be pressed. */}
-                    {(['streets', 'satellite', 'dark', 'light'] as const).map((layer) => (
+                    {(['streets', 'dark', 'weather', 'light', 'satellite'] as const).map((layer) => (
                       <button
                         key={layer}
                         disabled={layer === 'satellite'}
                         onClick={() => {
+                          if (layer === 'weather') {
+                            setShowTrafficMap(false);
+                            setShowFloodProneBlank(false);
+                            setShowHelpCenter(false);
+                            setShowWeather(true);
+                            toggleLayerMenu(false);
+                            return;
+                          }
                           if (layer === 'dark') {
                             // The former "Comming Soon" slot now opens the realtime Traffic map.
                             setShowTrafficMap(true);
@@ -1289,41 +1304,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                           onUpdateMapSettings({ tileLayer: layer });
                         }}
                       className={`relative px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
-                        layer === 'dark'
-                          ? showTrafficMap
-                            ? 'bg-black text-white border-black'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                          : (layer === 'light' ? showFloodProneBlank : layer === 'satellite' ? showHelpCenter : mapSettings.tileLayer === layer && !showTrafficMap && !showHelpCenter && !showWeather)
-                            ? 'bg-black text-white border-black'
-                            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                        (layer === 'weather' ? showWeather
+                          : layer === 'dark' ? showTrafficMap
+                          : layer === 'light' ? showFloodProneBlank
+                          : layer === 'satellite' ? showHelpCenter
+                          : mapSettings.tileLayer === layer && !showTrafficMap && !showHelpCenter && !showWeather)
+                          ? 'bg-black text-white border-black'
+                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
-                      {layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : layer}
+                      {layer === 'weather' ? 'Weather' : layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : layer}
                     </button>
                   ))}
 
-                  {/* Weather — opens the AuraCast weather & radar view (see WeatherView.tsx). */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowTrafficMap(false);
-                      setShowFloodProneBlank(false);
-                      setShowHelpCenter(false);
-                      setShowWeather(true);
-                      toggleLayerMenu(false);
-                    }}
-                    title="Weather"
-                    aria-label="Weather"
-                    className={`px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors active:scale-95 cursor-pointer ${
-                      showWeather
-                        ? 'bg-black text-white border-black'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Weather
-                  </button>
-
-                  {/* Coming Soon — reserved placeholder slot next to Weather. */}
+                  {/* Coming Soon — reserved placeholder slot next to Help Center. */}
                   <button
                     type="button"
                     disabled
@@ -1393,10 +1387,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         )}
       </div>
 
-        {/* Hidden in Weather mode: the AuraCast app has its own location button. */}
-        {!showWeather && (
-          <button
-            id="btn-show-user-location"
+        {/* Use the existing permission card; forward approved coordinates to Panahon. */}
+        <button
+          id="btn-show-user-location"
             onClick={handleShowUserLocation}
             title="Show your location"
             aria-label="Show your location"
@@ -1404,33 +1397,29 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           >
             <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
           </button>
-        )}
 
-        {/* Zoom In / Zoom Out — below "Show your location"; hidden in Flood
-            Prone, Traffic, Help Center, and Weather modes (those maps have
-            their own native Leaflet zoom control). */}
-        {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && !showWeather && (
-          <>
+        {/* Weather's zoom pair shares one white card, as in the GIS controls. */}
+        {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && (
+          <div className={showWeather ? 'flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs' : 'contents'}>
             <button
               id="btn-zoom-in"
               onClick={handleZoomIn}
               title="Zoom in"
               aria-label="Zoom in"
-              className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+              className={`p-2 text-slate-800 transition-colors hover:bg-slate-50 ${showWeather ? 'rounded-none border-b border-slate-300' : 'rounded-md border border-slate-200 bg-white shadow-xs active:scale-95'}`}
             >
-              <Plus className="h-4 w-4 text-slate-700" />
+              <Plus className={`h-4 w-4 ${showWeather ? 'text-black' : 'text-slate-700'}`} strokeWidth={showWeather ? 3 : 2} />
             </button>
-
             <button
               id="btn-zoom-out"
               onClick={handleZoomOut}
               title="Zoom out"
               aria-label="Zoom out"
-              className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+              className={`p-2 text-slate-800 transition-colors hover:bg-slate-50 ${showWeather ? 'rounded-none' : 'rounded-md border border-slate-200 bg-white shadow-xs active:scale-95'}`}
             >
-              <Minus className="h-4 w-4 text-slate-700" />
+              <Minus className={`h-4 w-4 ${showWeather ? 'text-black' : 'text-slate-700'}`} strokeWidth={showWeather ? 3 : 2} />
             </button>
-          </>
+          </div>
         )}
       </div>
 

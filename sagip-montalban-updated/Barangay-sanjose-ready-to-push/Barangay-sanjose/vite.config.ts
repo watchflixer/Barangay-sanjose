@@ -77,7 +77,7 @@ export default defineConfig(() => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          // The AuraCast weather & radar app, embedded by the Weather view.
+          // The complete Panahon project from the Drive folder, embedded by the Weather view.
           weather: path.resolve(__dirname, 'weather.html'),
         },
       },

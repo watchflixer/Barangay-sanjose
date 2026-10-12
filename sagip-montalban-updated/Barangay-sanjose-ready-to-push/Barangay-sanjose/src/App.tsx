@@ -252,7 +252,7 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar (Alerts Feed & GIS Controls) */}
         <div
-          className={`fixed top-16 bottom-0 left-0 z-20 w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:h-full lg:min-h-0 lg:translate-x-0 ${
+          className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 z-20 w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:h-full lg:min-h-0 lg:translate-x-0 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -312,7 +312,7 @@ export default function App() {
         )}
 
         {/* Center/Right Leaflet Map Viewport */}
-        <main className="flex-1 h-full w-full relative">
+        <main className="relative min-w-0 w-full flex-1 h-full">
           <MapViewer
             alerts={alerts}
             selectedAlert={selectedAlert}

@@ -28,6 +28,17 @@ npm run build     # production build sa dist/
 Ang Pixel 7 redirect ay nasa `vite.config.ts` (plugin na `pixel7-on-demand`), kaya pareho
 ang behavior sa dev at preview server.
 
+## Weather (Panahon project)
+
+Ang Weather button ay nagbubukas ng `weather.html` na nag-e-embed ng **buong
+Panahon project** mula sa ibinigay na Drive folder. Nasa `weather-source/` ang
+lahat ng 22 orihinal na files (kasama ang App, components, services, CSS, HTML,
+config, metadata, at lockfile). Ang `weather.html` wrapper ang tumuturo sa
+weather entrypoint; inayos din ang na-export na Cloudflare script tag sa
+`weather-source/index.html` para mapatakbo nang hiwalay sa Cloudflare. Nananatili ang Weather, Temperature, Storm, at Rain views.
+May hiwalay pa ring lumang `src/weather-app/` sa repo, pero hindi iyon ang
+ginagamit ng Weather button.
+
 ## Fare Estimate (Traffic map → 🎫 button)
 
 Nasa `public/rizal_traffic_map.html` (`FARE_RATES` + `getRealtimeFares()`). **Auto-compute** —
