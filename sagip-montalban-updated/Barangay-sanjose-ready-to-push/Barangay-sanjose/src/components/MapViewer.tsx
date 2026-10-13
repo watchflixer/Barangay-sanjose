@@ -30,7 +30,6 @@ import {
   Minus,
   Check,
   ShieldCheck,
-  X,
   Radio,
   LightbulbOff
 } from 'lucide-react';
@@ -96,50 +95,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   };
   const [showFloodProneBlank, setShowFloodProneBlank] = React.useState(refreshView === 'flood');
 
-  // Notify the parent app whenever the Flood Prone map opens or closes.
-  React.useEffect(() => {
+  // Notify the parent app before paint so the sidebar never flashes over a layer.
+  React.useLayoutEffect(() => {
     onFloodProneChange?.(showFloodProneBlank);
   }, [showFloodProneBlank, onFloodProneChange]);
-
-  // True while the Flood Prone iframe has navigated away to the external
-  // Leaflet site (leafletjs.com): the floating controls hide and an X
-  // button appears (all devices) to come back.
-  const [floodOnExternalSite, setFloodOnExternalSite] = React.useState(false);
-  // Bumped to remount the Flood Prone iframe, resetting it to the map.
-  const [floodMapNonce, setFloodMapNonce] = React.useState(0);
-  // The Traffic iframe's full-screen Directions screen reports open/close so
-  // the app's floating controls don't cover its back arrow and search fields.
-  const [trafficDirectionsOpen, setTrafficDirectionsOpen] = React.useState(false);
-
-  // The Flood Prone iframe reports taps on its underlined "Leaflet" credit.
-  // The credit still navigates the iframe to leafletjs.com; the app answers
-  // by hiding its floating controls (Recenter/Layers/Show your location) and
-  // raising an X button that returns to the Flood Prone map.
-  React.useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if ((event.data as { type?: string } | null)?.type === 'flood-leaflet-click') {
-        setFloodOnExternalSite(true);
-      }
-      const type = (event.data as { type?: string } | null)?.type;
-      if (type === 'traffic-directions-open') setTrafficDirectionsOpen(true);
-      if (type === 'traffic-directions-close') setTrafficDirectionsOpen(false);
-    };
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, []);
-
-  // Closing Flood Prone by any other means (streets/satellite basemap) also
-  // resets the external-site state so a stale X never comes back later.
-  React.useEffect(() => {
-    if (!showFloodProneBlank) setFloodOnExternalSite(false);
-  }, [showFloodProneBlank]);
-
-  // X button: remount the iframe so the Flood Prone map loads fresh and
-  // bring the floating controls back.
-  const handleBackToFloodProne = () => {
-    setFloodOnExternalSite(false);
-    setFloodMapNonce((n) => n + 1);
-  };
 
   // Realtime Traffic map (the former "Comming Soon" Layers slot). A second
   // full-map overlay rendered on top of the GIS map, mutually exclusive with
@@ -189,8 +148,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       setShowWeather(false);
     }
   }, [showHelpCenter]);
-  // Notify the parent app whenever the Help Center view opens or closes.
-  React.useEffect(() => {
+  // Notify the parent app before paint so the sidebar never flashes over a layer.
+  React.useLayoutEffect(() => {
     onHelpCenterChange?.(showHelpCenter);
   }, [showHelpCenter, onHelpCenterChange]);
   // Opening Weather closes the Flood Prone, Traffic and Help Center maps.
@@ -201,8 +160,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       setShowHelpCenter(false);
     }
   }, [showWeather]);
-  // Notify the parent app whenever the Weather view opens or closes.
-  React.useEffect(() => {
+  // Notify the parent app before paint so the sidebar never flashes over a layer.
+  React.useLayoutEffect(() => {
     onWeatherChange?.(showWeather);
   }, [showWeather, onWeatherChange]);
   // Create the Help Center Leaflet map when the view opens; destroy it on
@@ -279,17 +238,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       setShowWeather(false);
     }
   }, [showFloodProneBlank]);
-  // Notify the parent app whenever the Traffic map opens or closes.
-  React.useEffect(() => {
+  // Notify the parent app before paint so the sidebar never flashes over a layer.
+  React.useLayoutEffect(() => {
     onTrafficChange?.(showTrafficMap);
   }, [showTrafficMap, onTrafficChange]);
-  // Leaving the Traffic map also resets its Directions state, so a stale
-  // "controls hidden" flag can't survive into the next visit. This must sit
-  // after the showTrafficMap declaration: the dependency array is evaluated
-  // during render, so reading it earlier throws a TDZ ReferenceError.
-  React.useEffect(() => {
-    if (!showTrafficMap) setTrafficDirectionsOpen(false);
-  }, [showTrafficMap]);
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const [locationMessage, setLocationMessage] = React.useState('');
@@ -526,6 +478,57 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (!navigator.geolocation) { setLocationMessage('Location is unavailable.'); return; }
     setShowLocationPermissionCard(true);
   };
+
+  // Embedded map pages own their map buttons and ask the host only for the
+  // existing location-consent flow or when switching to another app layer.
+  React.useEffect(() => {
+    const onEmbeddedMapAction = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const isTrafficFrame = event.source === trafficMapFrameRef.current?.contentWindow;
+      const isFloodFrame = event.source === floodMapFrameRef.current?.contentWindow;
+      const isWeatherFrame = event.source === weatherMapFrameRef.current?.contentWindow;
+      if (!isTrafficFrame && !isFloodFrame && !isWeatherFrame) return;
+
+      const message = event.data as { type?: string; layer?: string } | null;
+      if (message?.type === 'hazardsync-location-request') {
+        handleShowUserLocation();
+        return;
+      }
+      if (message?.type !== 'hazardsync-layer-select') return;
+
+      toggleLayerMenu(false);
+      if (message.layer === 'dark') {
+        setShowTrafficMap(true);
+        setShowFloodProneBlank(false);
+        setShowHelpCenter(false);
+        setShowWeather(false);
+      } else if (message.layer === 'light') {
+        setShowTrafficMap(false);
+        setShowFloodProneBlank(true);
+        setShowHelpCenter(false);
+        setShowWeather(false);
+        onUpdateMapSettings({ tileLayer: 'light' });
+      } else if (message.layer === 'weather') {
+        setShowTrafficMap(false);
+        setShowFloodProneBlank(false);
+        setShowHelpCenter(false);
+        setShowWeather(true);
+      } else if (message.layer === 'satellite') {
+        setShowTrafficMap(false);
+        setShowFloodProneBlank(false);
+        setShowHelpCenter(true);
+        setShowWeather(false);
+      } else if (message.layer === 'streets') {
+        setShowTrafficMap(false);
+        setShowFloodProneBlank(false);
+        setShowHelpCenter(false);
+        setShowWeather(false);
+        onUpdateMapSettings({ tileLayer: 'streets' });
+      }
+    };
+    window.addEventListener('message', onEmbeddedMapAction);
+    return () => window.removeEventListener('message', onEmbeddedMapAction);
+  }, []);
 
   const runLocationRequest = (highAccuracy: boolean) => {
     if (!mapInstanceRef.current || !navigator.geolocation) return;
@@ -983,7 +986,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       {showFloodProneBlank && (
         <div className="absolute inset-0 z-30 bg-white" aria-label="Rizal Flood Hazard Map">
           <iframe
-            key={floodMapNonce}
             title="Rizal Flood Hazard Map (100-year)"
             src={`${import.meta.env.BASE_URL}rizal_flood_100yr_map.html`}
             ref={floodMapFrameRef}
@@ -1172,20 +1174,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* X button shown while the Flood Prone iframe is viewing the external
-          Leaflet site (leafletjs.com). Bare X icon — no circle card — visible
-          on ALL devices and returns the user to the Flood Prone map. */}
-      {showFloodProneBlank && floodOnExternalSite && (
-        <button
-          onClick={handleBackToFloodProne}
-          title="Back to Flood Prone map"
-          aria-label="Back to Flood Prone map"
-          className="absolute right-6 top-4 z-[45] flex h-10 w-10 items-center justify-center text-slate-900 drop-shadow-sm transition-transform hover:scale-110 active:scale-90"
-        >
-          <X className="h-7 w-7" strokeWidth={3} />
-        </button>
-      )}
-
       {/* Adding Pin Active Overlay Banner */}
       {isAddingPinMode && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-slate-900 text-white px-4 py-2 rounded-md shadow-lg border border-emerald-500/60 flex items-center gap-2 animate-bounce">
@@ -1209,7 +1197,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${floodOnExternalSite || (showTrafficMap && trafficDirectionsOpen) ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showTrafficMap || showWeather ? 'hidden' : ''}`}>
         {/* These controls operate on the embedded Panahon map in Weather mode. */}
         <button
           id="btn-recenter-gis"
@@ -1423,14 +1411,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         )}
       </div>
 
-      {locationMessage && !isMobileMenuOpen && (
+      {locationMessage && !isMobileMenuOpen && !showFloodProneBlank && !showTrafficMap && !showHelpCenter && !showWeather && (
         locationBanner !== 'none' ? (
           // Minimal centered toast — green when found, red when denied —
           // italic monospace, small and subtle, auto-hides after 3 seconds.
-          // z-[40] keeps it visible above the Flood Prone iframe (z-30).
-          // Portrait sits a bit lower on the main map; Flood Prone keeps the
-          // raised spot so it stays clear of the iframe's bottom overlays.
-          <div className={`pointer-events-none absolute inset-x-0 bottom-20 ${showFloodProneBlank || showTrafficMap || showHelpCenter ? 'portrait:bottom-28' : 'portrait:bottom-20'} z-[40] flex justify-center px-4`}>
+          <div className="pointer-events-none absolute inset-x-0 bottom-20 z-[40] flex justify-center px-4">
             <p className={`animate-in fade-in zoom-in-95 font-['JetBrains_Mono',monospace] text-xs font-medium italic tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] duration-300 ${locationBanner === 'success' ? 'text-green-400/90' : 'text-red-400/90'}`}>
               {locationMessage}
             </p>

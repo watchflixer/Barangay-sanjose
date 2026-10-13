@@ -31,6 +31,42 @@
      while the full-screen Directions screen is open. */
   body.routing .leaflet-top.leaflet-left,
   body.directions-open .leaflet-top.leaflet-left{display:none;}
+  /* These controls now live in the Traffic page itself. Match the app's
+     existing compact Recenter / Layers / Locate button styling exactly. */
+  #host-map-controls{
+    position:absolute;top:16px;left:16px;z-index:1200;display:flex;flex-direction:column;gap:6px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  .host-map-control{
+    width:34px;height:34px;padding:8px;border:1px solid #e2e8f0;border-radius:6px;
+    background:#fff;color:#334155;font-family:inherit;box-shadow:0 1px 2px rgba(15,23,42,.08);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:background .15s ease,transform .15s ease;-webkit-tap-highlight-color:transparent;
+  }
+  .host-map-control:hover{background:#f8fafc;}
+  .host-map-control:active{transform:scale(.95);}
+  .host-map-control svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  #host-map-controls .control-with-menu{position:relative;}
+  #host-layer-menu{
+    position:absolute;top:0;left:44px;width:256px;padding:10px;background:#fff;border:1px solid #e2e8f0;
+    border-radius:9px;box-shadow:0 12px 28px rgba(15,23,42,.18);color:#1e293b;z-index:1250;
+    font-size:11px;
+  }
+  #host-layer-menu[hidden]{display:none;}
+  #host-layer-menu .menu-head{display:flex;align-items:center;justify-content:space-between;padding:0 1px 7px;border-bottom:1px solid #f1f5f9;}
+  #host-layer-menu .menu-title{font-size:11px;font-weight:800;letter-spacing:.08em;color:#0f172a;}
+  #host-layer-menu .menu-close{border:0;background:transparent;color:#94a3b8;font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px;}
+  #host-layer-menu .section-title{margin:7px 0 5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#64748b;}
+  #host-layer-menu .style-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  #host-layer-menu .style-choice{
+    position:relative;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;
+    color:#334155;font-family:inherit;font-size:12px;line-height:16px;font-weight:600;text-align:center;cursor:pointer;transition:background .15s ease;
+  }
+  #host-layer-menu .style-choice:hover{background:#f1f5f9;}
+  #host-layer-menu .style-choice.active{border-color:#000;background:#000;color:#fff;}
+  #host-layer-menu .style-choice:disabled{opacity:.4;pointer-events:none;}
+  #host-layer-menu .style-choice.coming{border-style:dashed;color:#94a3b8;cursor:not-allowed;}
+  body.routing #host-map-controls,body.directions-open #host-map-controls{display:none;}
   /* Base map switcher: same slot the Flood Prone map's layers control uses */
   #base-switch{
     position:absolute;top:10px;right:12px;
@@ -467,6 +503,31 @@
     <a class="leaflet-control-zoom-out" href="#" title="Zoom out" role="button" aria-label="Zoom out">&minus;</a>
   </div>
 </div>
+<div id="host-map-controls" role="group" aria-label="Traffic map controls">
+  <button type="button" id="host-recenter" class="host-map-control" title="Recenter" aria-label="Recenter">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.36-6.36L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.36 6.36L3 16"/><path d="M3 21v-5h5"/></svg>
+  </button>
+  <div class="control-with-menu">
+    <button type="button" id="host-layers" class="host-map-control" title="Layers" aria-label="Layers" aria-expanded="false" aria-controls="host-layer-menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 4.5-8 4.5-8-4.5L12 2z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 17.5 8 4.5 8-4.5"/></svg>
+    </button>
+    <div id="host-layer-menu" hidden>
+      <div class="menu-head"><span class="menu-title">MAP SETTINGS</span><button type="button" class="menu-close" aria-label="Close layers">✕</button></div>
+      <div class="section-title">BASEMAP STYLE:</div>
+      <div class="style-grid">
+        <button type="button" class="style-choice" data-app-layer="streets">streets</button>
+        <button type="button" class="style-choice active" data-app-layer="dark">Traffic</button>
+        <button type="button" class="style-choice" data-app-layer="weather">Weather</button>
+        <button type="button" class="style-choice" data-app-layer="light">Flood Prone</button>
+        <button type="button" class="style-choice" data-app-layer="satellite" disabled>Help Center</button>
+        <button type="button" class="style-choice coming" disabled>Coming Soon</button>
+      </div>
+    </div>
+  </div>
+  <button type="button" id="host-locate" class="host-map-control" title="Show your location" aria-label="Show your location">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 19.07-1.41-1.41"/><path d="m6.34 6.34-1.41-1.41"/><circle cx="12" cy="12" r="4"/></svg>
+  </button>
+</div>
 <div id="base-switch">
   <button type="button" data-base="traffic" class="active">Street</button>
   <button type="button" data-base="satellite">Satellite</button>
@@ -747,7 +808,6 @@
   const saved = { home: store.get('traffic_home', null), work: store.get('traffic_work', null) };
   const dirty = { from: false, to: false };
   const setHint = (t) => { $('dir-hint').textContent = t || ''; };
-  const tellParent = (open) => { try { window.parent.postMessage({ type: open ? 'traffic-directions-open' : 'traffic-directions-close' }, '*'); } catch (e) {} };
 
   // Live drive time from your location to Home / Work, shown in green like Google Maps.
   const eta = {};
@@ -771,7 +831,7 @@
   // Blank origin dot in the Directions panel while the origin is not "Your location".
   const syncDirDot = () => panel.classList.toggle('from-not-user', !(from && from.user));
   function openPanel() {
-    panel.hidden = false; tellParent(true); setHint('');
+    panel.hidden = false; setHint('');
     document.body.classList.add('directions-open'); // hides the zoom buttons
     // Warm the static PSGC index without holding the panel or first search open.
     if(!psgcSearchIndexData){loadPSGCSearchIndex().catch(()=>{});loadPSGCPointsIndex().catch(()=>{});}
@@ -786,7 +846,7 @@
     if(activeSourceSearchController){activeSourceSearchController.abort();activeSourceSearchController=null;}
     seq++;
     searching=false;searchEnriching=false;
-    panel.hidden = true; if (!routeActive) tellParent(false);
+    panel.hidden = true;
     document.body.classList.remove('directions-open'); // bring the zoom buttons back
     if (addingStop) { addingStop = false; toIn.placeholder = 'Choose destination'; toIn.value = to ? (to.user ? 'Your location' : to.label) : ''; }
     document.activeElement && document.activeElement.blur();
@@ -1823,7 +1883,7 @@
   }
   function enterRouteView() {
     routeActive = true; document.body.classList.add('routing');
-    panel.hidden = true; tellParent(true); document.activeElement && document.activeElement.blur();
+    panel.hidden = true; document.activeElement && document.activeElement.blur();
     // body.routing now owns hiding the zoom buttons, so drop the Directions
     // flag — otherwise it would linger and keep them hidden after clearRoute.
     document.body.classList.remove('directions-open');
@@ -1836,7 +1896,7 @@
     if (map.getSource('route')) map.removeSource('route');
     [destMarker, originMarker].concat(stopMarkers, labelMarkers).forEach((m) => m && m.remove());
     destMarker = originMarker = null; stopMarkers = []; labelMarkers = []; stops = []; routes = {};
-    to = null; toIn.value = ''; $('rt-menu').hidden = true; $('rt-opts').hidden = true; tellParent(false);
+    to = null; toIn.value = ''; $('rt-menu').hidden = true; $('rt-opts').hidden = true;
   }
 
   // ----- Route view controls -----
@@ -3044,6 +3104,54 @@
     }
     map.flyTo({ center: [lng, lat], zoom: 16, duration: 1600 });
   }
+
+  const hostLayerMenu = $('host-layer-menu');
+  const hostLayersButton = $('host-layers');
+  function setHostLayerMenu(open) {
+    hostLayerMenu.hidden = !open;
+    hostLayersButton.setAttribute('aria-expanded', String(open));
+  }
+  $('host-layers').addEventListener('click', (event) => {
+    event.stopPropagation();
+    setHostLayerMenu(hostLayerMenu.hidden);
+  });
+  hostLayerMenu.addEventListener('click', (event) => {
+    const clickedElement = event.target instanceof Element ? event.target : null;
+    const choice = clickedElement?.closest('[data-app-layer]');
+    if (!choice || choice.disabled) return;
+    const layer = choice.dataset.appLayer;
+    setHostLayerMenu(false);
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'hazardsync-layer-select', layer }, location.origin);
+      return;
+    }
+    if (layer === 'dark') return;
+    const target = layer === 'light' ? 'rizal_flood_100yr_map.html'
+      : layer === 'weather' ? 'weather.html'
+      : 'index.html';
+    location.assign(new URL(target, location.href).href);
+  });
+  document.querySelector('#host-layer-menu .menu-close').addEventListener('click', (event) => {
+    event.stopPropagation();
+    setHostLayerMenu(false);
+  });
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target?.closest('#host-map-controls')) setHostLayerMenu(false);
+  });
+  $('host-recenter').addEventListener('click', () => window.trafficRecenter());
+  $('host-locate').addEventListener('click', () => {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'hazardsync-location-request' }, location.origin);
+      return;
+    }
+    if (!navigator.geolocation) return showNotice('Hindi available ang lokasyon sa device na ito.');
+    navigator.geolocation.getCurrentPosition(
+      (position) => showTrafficUserLocation(position.coords.latitude, position.coords.longitude),
+      () => showNotice('Hindi nakuha ang lokasyon. Pakisubukang muli.'),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  });
 
   // Messages from the parent app: recenter, and "Show your location" which
   // drops a pulsing blue dot on this map and flies to it.

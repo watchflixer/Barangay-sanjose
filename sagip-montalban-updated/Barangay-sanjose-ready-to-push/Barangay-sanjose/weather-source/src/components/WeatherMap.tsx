@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
+import { Layers, LocateFixed, Minus, Plus, RefreshCw } from 'lucide-react';
 import { CityWeather, WeatherMode, RainViewerFrame } from '../types/weather';
 import { PHILIPPINES_CENTER, getOwmTileUrl } from '../services/openWeatherService';
 import { getRainViewerTileUrl } from '../services/rainViewerService';
@@ -16,6 +17,8 @@ interface WeatherMapProps {
   timelineForecastHour: number;
   userLocationCoords?: [number, number] | null;
   userLocationCity?: CityWeather | null;
+  isLocating?: boolean;
+  onRequestLocation: () => void;
 }
 
 // Geographic boundary of the Philippines with generous margin around it:
@@ -41,7 +44,9 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   owmKey,
   timelineForecastHour,
   userLocationCoords,
-  userLocationCity
+  userLocationCity,
+  isLocating = false,
+  onRequestLocation
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -49,9 +54,46 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   const dynamicLayerRef = useRef<L.LayerGroup | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const windEngineRef = useRef<WindCloudEngine | null>(null);
+  const layerMenuRef = useRef<HTMLDivElement>(null);
+  const layersButtonRef = useRef<HTMLButtonElement>(null);
 
+  const [showLayerMenu, setShowLayerMenu] = useState<boolean>(false);
+  const [isRecenterSpinning, setIsRecenterSpinning] = useState<boolean>(false);
   const [currentZoom, setCurrentZoom] = useState<number>(5.0);
   const [minZoomLevel, setMinZoomLevel] = useState<number>(5.0);
+
+  const handleRecenter = () => {
+    setIsRecenterSpinning(true);
+    window.setTimeout(() => setIsRecenterSpinning(false), 550);
+    mapInstanceRef.current?.setView(PH_CENTER, minZoomLevel, { animate: true });
+  };
+  const handleZoomIn = () => mapInstanceRef.current?.zoomIn(0.6);
+  const handleZoomOut = () => mapInstanceRef.current?.zoomOut(0.6);
+  const selectAppLayer = (layer: string) => {
+    setShowLayerMenu(false);
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'hazardsync-layer-select', layer }, window.location.origin);
+      return;
+    }
+    if (layer === 'weather') return;
+    const target = layer === 'dark' ? 'rizal_traffic_map.html'
+      : layer === 'light' ? 'rizal_flood_100yr_map.html'
+      : 'index.html';
+    window.location.assign(`${import.meta.env.BASE_URL}${target}`);
+  };
+
+  useEffect(() => {
+    if (!showLayerMenu) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node) ||
+          (layerMenuRef.current?.contains(target) ?? false) ||
+          (layersButtonRef.current?.contains(target) ?? false)) return;
+      setShowLayerMenu(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+  }, [showLayerMenu]);
 
   // Initialize Map with locked overview and strict boundary locking
   useEffect(() => {
@@ -148,8 +190,8 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     };
   }, []);
 
-  // The GIS-style buttons outside the iframe control this Leaflet map,
-  // rather than the hidden Barangay GIS map underneath it.
+  // Continue accepting host-originated zoom/recenter actions (such as navbar
+  // reset); the regular visible map controls are rendered and owned below.
   useEffect(() => {
     const onMapAction = (event: MessageEvent) => {
       if (event.source !== window.parent || event.origin !== window.location.origin ||
@@ -598,6 +640,119 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     <div className="relative w-full h-full bg-[#0c0f14] overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full" />
 
+      {/* The weather page owns these map controls, just like the other map layers. */}
+      <div className="absolute left-4 top-[110px] z-[1050] flex flex-col gap-1.5 sm:top-[82px]">
+        <button
+          type="button"
+          onClick={handleRecenter}
+          title="Recenter"
+          aria-label="Recenter"
+          className="cursor-pointer rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+        >
+          <RefreshCw className={`h-4 w-4 transition-transform ${isRecenterSpinning ? 'animate-fast-spin text-slate-900' : 'text-slate-700'}`} />
+        </button>
+
+        <div className="relative">
+          <button
+            ref={layersButtonRef}
+            type="button"
+            onClick={() => setShowLayerMenu((open) => !open)}
+            title="Layers"
+            aria-label="Layers"
+            aria-expanded={showLayerMenu}
+            className="cursor-pointer rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+          >
+            <Layers className="h-4 w-4 text-slate-700" />
+          </button>
+
+          {showLayerMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-30 md:hidden"
+                onClick={() => setShowLayerMenu(false)}
+              />
+              <div
+                ref={layerMenuRef}
+                className="absolute left-11 top-0 z-40 w-64 space-y-2.5 rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] text-slate-800 shadow-xl animate-in fade-in zoom-in-95 duration-150"
+              >
+                <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900">MAP SETTINGS</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowLayerMenu(false)}
+                    aria-label="Close layers"
+                    className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="-mt-1">
+                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    BASEMAP STYLE:
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {(['streets', 'dark', 'weather', 'light', 'satellite'] as const).map((layer) => (
+                      <button
+                        key={layer}
+                        type="button"
+                        disabled={layer === 'satellite'}
+                        onClick={() => selectAppLayer(layer)}
+                        className={`relative rounded-md border px-2 py-1 text-center text-xs font-semibold capitalize transition-colors disabled:pointer-events-none disabled:opacity-40 ${
+                          layer === 'weather'
+                            ? 'border-black bg-black text-white'
+                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {layer === 'weather' ? 'Weather' : layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : layer}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      disabled
+                      title="Coming soon"
+                      aria-label="Coming soon"
+                      className="cursor-not-allowed select-none rounded-md border border-dashed border-slate-300 bg-slate-100 px-2 py-1 text-center text-xs font-semibold text-slate-400"
+                    >
+                      Coming Soon
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onRequestLocation}
+          title="Show your location"
+          aria-label="Show your location"
+          className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+        >
+          <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
+        </button>
+
+        <div className="flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs">
+          <button
+            type="button"
+            onClick={handleZoomIn}
+            title="Zoom in"
+            aria-label="Zoom in"
+            className="border-b border-slate-300 p-2 text-slate-800 transition-colors hover:bg-slate-50"
+          >
+            <Plus className="h-4 w-4 text-black" strokeWidth={3} />
+          </button>
+          <button
+            type="button"
+            onClick={handleZoomOut}
+            title="Zoom out"
+            aria-label="Zoom out"
+            className="rounded-none p-2 text-slate-800 transition-colors hover:bg-slate-50"
+          >
+            <Minus className="h-4 w-4 text-black" strokeWidth={3} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -162,8 +162,8 @@ export default function App() {
     return forecastHourStep;
   };
 
-  // The parent GIS control requests permission during the user's click,
-  // then sends the approved coordinates to the embedded weather view.
+  // The Weather page's location control asks the host to run the existing
+  // consent flow when embedded, then receives the approved coordinates.
   const showApprovedLocation = useCallback(async (latitude: number, longitude: number) => {
     setUserLocationCoords([latitude, longitude]);
     setIsLocating(true);
@@ -202,6 +202,19 @@ export default function App() {
       setIsLocating(false);
     }
   }, []);
+
+  const requestUserLocation = useCallback(() => {
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'hazardsync-location-request' }, window.location.origin);
+      return;
+    }
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => void showApprovedLocation(position.coords.latitude, position.coords.longitude),
+      (error) => console.warn('Unable to get current location:', error.message),
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }, [showApprovedLocation]);
 
   useEffect(() => {
     const onMapAction = (event: MessageEvent) => {
@@ -257,6 +270,8 @@ export default function App() {
             timelineForecastHour={currentMode === 'rain' ? 0 : forecastHourStep}
             userLocationCoords={userLocationCoords}
             userLocationCity={userLocationCity}
+            isLocating={isLocating}
+            onRequestLocation={requestUserLocation}
           />
         </div>
 
