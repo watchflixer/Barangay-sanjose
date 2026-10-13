@@ -204,6 +204,12 @@ export default function App() {
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
   // True while the Weather view (the AuraCast app) is open — also gates navbar actions.
   const [weatherOpen, setWeatherOpen] = useState(false);
+  // Keep the app navbar, but let each alternate map page own the rest of its UI.
+  const alternateMapOpen = floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen;
+
+  useEffect(() => {
+    if (alternateMapOpen) setMobileMenuOpen(false);
+  }, [alternateMapOpen]);
 
   const resolvedAlerts = alerts.filter((a) => a.status === 'resolved');
 
@@ -254,7 +260,7 @@ export default function App() {
         <div
           className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 z-20 w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:h-full lg:min-h-0 lg:translate-x-0 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
+          } ${alternateMapOpen ? 'hidden' : ''}`}
         >
           {/* On mobile portrait the Sidebar also carries the ●●● options menu
               (the Navbar hides its own copy of that button there). */}
@@ -304,7 +310,7 @@ export default function App() {
         </div>
 
         {/* Backdrop for Mobile Sidebar */}
-        {mobileMenuOpen && (
+        {mobileMenuOpen && !alternateMapOpen && (
           <div
             onClick={() => setMobileMenuOpen(false)}
             className="fixed inset-0 z-10 bg-slate-900/50 backdrop-blur-xs lg:hidden"
@@ -330,7 +336,7 @@ export default function App() {
             onHelpCenterChange={setHelpCenterOpen}
             onWeatherChange={setWeatherOpen}
           />
-          <PagasaFloodStatus />
+          {!alternateMapOpen && <PagasaFloodStatus />}
         </main>
       </div>
 

@@ -18,8 +18,40 @@
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;}
   #map{position:absolute;top:0;left:0;right:0;bottom:0;}
-  /* Zoom buttons: top-left, below parent app's Show your location button */
+  /* Zoom buttons stay immediately below the three app-style controls now owned by this page. */
   #map .leaflet-top.leaflet-left{top:132px;left:6px;}
+  #host-map-controls{
+    position:absolute;top:16px;left:16px;z-index:1200;display:flex;flex-direction:column;gap:6px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  .host-map-control{
+    width:34px;height:34px;padding:8px;border:1px solid #e2e8f0;border-radius:6px;
+    background:#fff;color:#334155;font-family:inherit;box-shadow:0 1px 2px rgba(15,23,42,.08);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:background .15s ease,transform .15s ease;-webkit-tap-highlight-color:transparent;
+  }
+  .host-map-control:hover{background:#f8fafc;}
+  .host-map-control:active{transform:scale(.95);}
+  .host-map-control svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  #host-map-controls .control-with-menu{position:relative;}
+  #host-layer-menu{
+    position:absolute;top:0;left:44px;width:256px;padding:10px;background:#fff;border:1px solid #e2e8f0;
+    border-radius:9px;box-shadow:0 12px 28px rgba(15,23,42,.18);color:#1e293b;z-index:1250;font-size:11px;
+  }
+  #host-layer-menu[hidden]{display:none;}
+  #host-layer-menu .menu-head{display:flex;align-items:center;justify-content:space-between;padding:0 1px 7px;border-bottom:1px solid #f1f5f9;}
+  #host-layer-menu .menu-title{font-size:11px;font-weight:800;letter-spacing:.08em;color:#0f172a;}
+  #host-layer-menu .menu-close{border:0;background:transparent;color:#94a3b8;font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px;}
+  #host-layer-menu .section-title{margin:7px 0 5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#64748b;}
+  #host-layer-menu .style-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  #host-layer-menu .style-choice{
+    position:relative;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;
+    color:#334155;font-family:inherit;font-size:12px;line-height:16px;font-weight:600;text-align:center;cursor:pointer;transition:background .15s ease;
+  }
+  #host-layer-menu .style-choice:hover{background:#f1f5f9;}
+  #host-layer-menu .style-choice.active{border-color:#000;background:#000;color:#fff;}
+  #host-layer-menu .style-choice:disabled{opacity:.4;pointer-events:none;}
+  #host-layer-menu .style-choice.coming{border-style:dashed;color:#94a3b8;cursor:not-allowed;}
   /* Compact basemap switcher, matching the Street/Satellite control style. */
   #base-switch{
     position:absolute;top:10px;right:12px;
@@ -72,6 +104,31 @@
 </head>
 <body>
 <div id="map"></div>
+<div id="host-map-controls" role="group" aria-label="Flood map controls">
+  <button type="button" id="host-recenter" class="host-map-control" title="Recenter" aria-label="Recenter">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.36-6.36L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.36 6.36L3 16"/><path d="M3 21v-5h5"/></svg>
+  </button>
+  <div class="control-with-menu">
+    <button type="button" id="host-layers" class="host-map-control" title="Layers" aria-label="Layers" aria-expanded="false" aria-controls="host-layer-menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 4.5-8 4.5-8-4.5L12 2z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 17.5 8 4.5 8-4.5"/></svg>
+    </button>
+    <div id="host-layer-menu" hidden>
+      <div class="menu-head"><span class="menu-title">MAP SETTINGS</span><button type="button" class="menu-close" aria-label="Close layers">✕</button></div>
+      <div class="section-title">BASEMAP STYLE:</div>
+      <div class="style-grid">
+        <button type="button" class="style-choice" data-app-layer="streets">streets</button>
+        <button type="button" class="style-choice" data-app-layer="dark">Traffic</button>
+        <button type="button" class="style-choice" data-app-layer="weather">Weather</button>
+        <button type="button" class="style-choice active" data-app-layer="light">Flood Prone</button>
+        <button type="button" class="style-choice" data-app-layer="satellite" disabled>Help Center</button>
+        <button type="button" class="style-choice coming" disabled>Coming Soon</button>
+      </div>
+    </div>
+  </div>
+  <button type="button" id="host-locate" class="host-map-control" title="Show your location" aria-label="Show your location">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 19.07-1.41-1.41"/><path d="m6.34 6.34-1.41-1.41"/><circle cx="12" cy="12" r="4"/></svg>
+  </button>
+</div>
 <div id="base-switch" role="group" aria-label="Map style">
   <button type="button" data-base="satellite" class="active" aria-pressed="true">Satellite</button>
   <button type="button" data-base="street" aria-pressed="false">Street</button>
@@ -182,15 +239,16 @@ window.addEventListener('message', (event) => {
   if (event.data.type === 'flood-user-location') showFloodUserLocation(event.data.lat, event.data.lng);
 });
 
-// Tapping the underlined "Leaflet" credit navigates to leafletjs.com as
-// usual. The tap is also reported to the parent app so it can hide its
-// floating map controls while the external site is open.
+// Keep the flood map (and its in-page controls) open when someone follows
+// the Leaflet credit; open the project site in a separate tab instead.
 document.addEventListener('click', function (e) {
-  const target = e.target;
-  if (!target || typeof target.closest !== 'function') return;
-  if (target.closest('.leaflet-control-attribution a[href*="leafletjs"]')) {
-    window.parent.postMessage({ type: 'flood-leaflet-click' }, '*');
-  }
+  const target = e.target instanceof Element ? e.target : null;
+  if (!target) return;
+  const link = target.closest('.leaflet-control-attribution a[href*="leafletjs"]');
+  if (!link) return;
+  e.preventDefault();
+  e.stopPropagation();
+  window.open(link.href, '_blank', 'noopener,noreferrer');
 }, true);
 
 let floodUserMarker = null;
@@ -210,6 +268,55 @@ function showFloodUserLocation(lat, lng) {
   }
   map.flyTo([lat, lng], 15, { duration: 1.6, easeLinearity: 0.25 });
 }
+
+const hostLayerMenu = document.getElementById('host-layer-menu');
+const hostLayersButton = document.getElementById('host-layers');
+function setHostLayerMenu(open) {
+  hostLayerMenu.hidden = !open;
+  hostLayersButton.setAttribute('aria-expanded', String(open));
+}
+hostLayersButton.addEventListener('click', function(event) {
+  event.stopPropagation();
+  setHostLayerMenu(hostLayerMenu.hidden);
+});
+hostLayerMenu.addEventListener('click', function(event) {
+  const choice = event.target instanceof Element ? event.target.closest('[data-app-layer]') : null;
+  if (!choice || choice.disabled) return;
+  const layer = choice.dataset.appLayer;
+  setHostLayerMenu(false);
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'hazardsync-layer-select', layer: layer }, location.origin);
+    return;
+  }
+  if (layer === 'light') return;
+  const target = layer === 'dark' ? 'rizal_traffic_map.html'
+    : layer === 'weather' ? 'weather.html'
+    : 'index.html';
+  location.assign(new URL(target, location.href).href);
+});
+document.querySelector('#host-layer-menu .menu-close').addEventListener('click', function(event) {
+  event.stopPropagation();
+  setHostLayerMenu(false);
+});
+document.addEventListener('click', function(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target || !target.closest('#host-map-controls')) setHostLayerMenu(false);
+});
+document.getElementById('host-recenter').addEventListener('click', function() {
+  if (typeof window.recenterFloodMap === 'function') window.recenterFloodMap();
+});
+document.getElementById('host-locate').addEventListener('click', function() {
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'hazardsync-location-request' }, location.origin);
+    return;
+  }
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    function(position) { showFloodUserLocation(position.coords.latitude, position.coords.longitude); },
+    function() { console.warn('Unable to get current location.'); },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
+});
 </script>
 </body>
 </html>
