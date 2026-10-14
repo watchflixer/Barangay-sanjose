@@ -255,6 +255,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const floodMapFrameRef = useRef<HTMLIFrameElement | null>(null);
 
+  React.useEffect(() => {
+    floodMapFrameRef.current?.contentWindow?.postMessage({ type: 'hazardsync-locating', isLocating }, '*');
+    trafficMapFrameRef.current?.contentWindow?.postMessage({ type: 'hazardsync-locating', isLocating }, '*');
+  }, [isLocating]);
+
   // 1. Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -1411,11 +1416,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         )}
       </div>
 
-      {locationMessage && !isMobileMenuOpen && !showFloodProneBlank && !showTrafficMap && !showHelpCenter && !showWeather && (
+      {locationMessage && !isMobileMenuOpen && (
         locationBanner !== 'none' ? (
           // Minimal centered toast — green when found, red when denied —
           // italic monospace, small and subtle, auto-hides after 3 seconds.
-          <div className="pointer-events-none absolute inset-x-0 bottom-20 z-[40] flex justify-center px-4">
+          <div className={`pointer-events-none absolute inset-x-0 bottom-20 ${showFloodProneBlank || showTrafficMap || showHelpCenter ? 'portrait:bottom-28' : 'portrait:bottom-20'} z-[40] flex justify-center px-4`}>
             <p className={`animate-in fade-in zoom-in-95 font-['JetBrains_Mono',monospace] text-xs font-medium italic tracking-wide drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] duration-300 ${locationBanner === 'success' ? 'text-green-400/90' : 'text-red-400/90'}`}>
               {locationMessage}
             </p>

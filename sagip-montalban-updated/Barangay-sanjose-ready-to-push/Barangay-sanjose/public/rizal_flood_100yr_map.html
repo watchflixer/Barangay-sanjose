@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rizal Flood Hazard Map (100-year)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
@@ -20,38 +23,66 @@
   #map{position:absolute;top:0;left:0;right:0;bottom:0;}
   /* Zoom buttons stay immediately below the three app-style controls now owned by this page. */
   #map .leaflet-top.leaflet-left{top:132px;left:6px;}
+  @keyframes fast-spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+  }
+  @keyframes host-locate-pulse{
+    50%{opacity:.5;}
+  }
+  @keyframes hostMenuIn{
+    0%{opacity:0;transform:scale(.95);}
+    100%{opacity:1;transform:scale(1);}
+  }
   #host-map-controls{
     position:absolute;top:16px;left:16px;z-index:1200;display:flex;flex-direction:column;gap:6px;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-family:'Plus Jakarta Sans',sans-serif;user-select:none;-webkit-user-select:none;
   }
   .host-map-control{
     width:34px;height:34px;padding:8px;border:1px solid #e2e8f0;border-radius:6px;
-    background:#fff;color:#334155;font-family:inherit;box-shadow:0 1px 2px rgba(15,23,42,.08);
+    background:#fff;color:#1e293b;font-family:inherit;box-shadow:0 1px 2px 0 rgba(0,0,0,.05);
     display:flex;align-items:center;justify-content:center;cursor:pointer;
-    transition:background .15s ease,transform .15s ease;-webkit-tap-highlight-color:transparent;
+    transition:color .15s cubic-bezier(.4,0,.2,1),background-color .15s cubic-bezier(.4,0,.2,1),border-color .15s cubic-bezier(.4,0,.2,1),transform .15s cubic-bezier(.4,0,.2,1);
+    -webkit-tap-highlight-color:transparent;
   }
   .host-map-control:hover{background:#f8fafc;}
   .host-map-control:active{transform:scale(.95);}
-  .host-map-control svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .host-map-control svg{
+    width:16px;height:16px;color:#334155;stroke:currentColor;fill:none;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;display:block;flex-shrink:0;
+    transition:transform .15s cubic-bezier(.4,0,.2,1);
+  }
+  .host-map-control svg.is-spinning{
+    animation:fast-spin .28s linear infinite !important;
+    color:#0f172a;
+  }
+  .host-map-control svg.is-locating{
+    color:#2563eb;
+    animation:host-locate-pulse 2s cubic-bezier(.4,0,.6,1) infinite;
+  }
   #host-map-controls .control-with-menu{position:relative;}
   #host-layer-menu{
     position:absolute;top:0;left:44px;width:256px;padding:10px;background:#fff;border:1px solid #e2e8f0;
-    border-radius:9px;box-shadow:0 12px 28px rgba(15,23,42,.18);color:#1e293b;z-index:1250;font-size:11px;
+    border-radius:8px;box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
+    color:#1e293b;z-index:1250;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;line-height:1.5;
+    animation:hostMenuIn .15s cubic-bezier(0,0,.2,1);
   }
   #host-layer-menu[hidden]{display:none;}
-  #host-layer-menu .menu-head{display:flex;align-items:center;justify-content:space-between;padding:0 1px 7px;border-bottom:1px solid #f1f5f9;}
-  #host-layer-menu .menu-title{font-size:11px;font-weight:800;letter-spacing:.08em;color:#0f172a;}
-  #host-layer-menu .menu-close{border:0;background:transparent;color:#94a3b8;font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px;}
-  #host-layer-menu .section-title{margin:7px 0 5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#64748b;}
-  #host-layer-menu .style-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  #host-layer-menu .menu-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:4px;border-bottom:1px solid #f1f5f9;}
+  #host-layer-menu .menu-title{font-size:11px;line-height:1.5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#0f172a;}
+  #host-layer-menu .menu-close{border:0;background:transparent;color:#94a3b8;font-family:inherit;font-size:12px;line-height:16px;font-weight:700;cursor:pointer;padding:0;}
+  #host-layer-menu .menu-close:hover{color:#475569;}
+  #host-layer-menu .section-title{display:block;margin:6px 0 6px;font-size:10px;line-height:1.5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b;}
+  #host-layer-menu .style-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
   #host-layer-menu .style-choice{
     position:relative;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;
-    color:#334155;font-family:inherit;font-size:12px;line-height:16px;font-weight:600;text-align:center;cursor:pointer;transition:background .15s ease;
+    color:#334155;font-family:inherit;font-size:12px;line-height:16px;font-weight:600;text-align:center;text-transform:capitalize;cursor:pointer;
+    transition:color .15s cubic-bezier(.4,0,.2,1),background-color .15s cubic-bezier(.4,0,.2,1),border-color .15s cubic-bezier(.4,0,.2,1);
   }
   #host-layer-menu .style-choice:hover{background:#f1f5f9;}
   #host-layer-menu .style-choice.active{border-color:#000;background:#000;color:#fff;}
-  #host-layer-menu .style-choice:disabled{opacity:.4;pointer-events:none;}
-  #host-layer-menu .style-choice.coming{border-style:dashed;color:#94a3b8;cursor:not-allowed;}
+  #host-layer-menu .style-choice:disabled:not(.coming){opacity:.4;pointer-events:none;}
+  #host-layer-menu .style-choice.coming{border:1px dashed #cbd5e1;background:#f1f5f9;color:#94a3b8;cursor:not-allowed;user-select:none;}
   /* Compact basemap switcher, matching the Street/Satellite control style. */
   #base-switch{
     position:absolute;top:10px;right:12px;
@@ -106,27 +137,27 @@
 <div id="map"></div>
 <div id="host-map-controls" role="group" aria-label="Flood map controls">
   <button type="button" id="host-recenter" class="host-map-control" title="Recenter" aria-label="Recenter">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.36-6.36L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.36 6.36L3 16"/><path d="M3 21v-5h5"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
   </button>
   <div class="control-with-menu">
     <button type="button" id="host-layers" class="host-map-control" title="Layers" aria-label="Layers" aria-expanded="false" aria-controls="host-layer-menu">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 4.5-8 4.5-8-4.5L12 2z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 17.5 8 4.5 8-4.5"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>
     </button>
     <div id="host-layer-menu" hidden>
       <div class="menu-head"><span class="menu-title">MAP SETTINGS</span><button type="button" class="menu-close" aria-label="Close layers">✕</button></div>
-      <div class="section-title">BASEMAP STYLE:</div>
+      <label class="section-title">BASEMAP STYLE:</label>
       <div class="style-grid">
-        <button type="button" class="style-choice" data-app-layer="streets">streets</button>
+        <button type="button" class="style-choice" data-app-layer="streets">Streets</button>
         <button type="button" class="style-choice" data-app-layer="dark">Traffic</button>
         <button type="button" class="style-choice" data-app-layer="weather">Weather</button>
         <button type="button" class="style-choice active" data-app-layer="light">Flood Prone</button>
         <button type="button" class="style-choice" data-app-layer="satellite" disabled>Help Center</button>
-        <button type="button" class="style-choice coming" disabled>Coming Soon</button>
+        <button type="button" class="style-choice coming" disabled title="Coming soon" aria-label="Coming soon">Coming Soon</button>
       </div>
     </div>
   </div>
   <button type="button" id="host-locate" class="host-map-control" title="Show your location" aria-label="Show your location">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v2"/><path d="M12 20v2"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m19.07 4.93-1.41 1.41"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 19.07-1.41-1.41"/><path d="m6.34 6.34-1.41-1.41"/><circle cx="12" cy="12" r="4"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>
   </button>
 </div>
 <div id="base-switch" role="group" aria-label="Map style">
@@ -197,6 +228,31 @@ document.getElementById('base-switch').addEventListener('click', function(event)
 });
 
 const HAZARD_COLORS = { 1: "#a8d5ba", 2: "#f4b942", 3: "#c0392b" };
+let activeFloodBounds = L.latLngBounds([[14.2874, 121.09592], [14.8348, 121.45105]]);
+const hostRecenterIcon = document.querySelector('#host-recenter svg');
+const hostLocateIcon = document.querySelector('#host-locate svg');
+let recenterSpinTimer = null;
+
+function spinFloodRecenter() {
+  if (!hostRecenterIcon) return;
+  hostRecenterIcon.classList.add('is-spinning');
+  if (recenterSpinTimer) clearTimeout(recenterSpinTimer);
+  recenterSpinTimer = setTimeout(function() {
+    hostRecenterIcon.classList.remove('is-spinning');
+  }, 550);
+}
+
+function setFloodLocating(locating) {
+  if (!hostLocateIcon) return;
+  hostLocateIcon.classList.toggle('is-locating', Boolean(locating));
+}
+
+window.recenterFloodMap = function() {
+  spinFloodRecenter();
+  map.closePopup();
+  map.setMaxBounds(activeFloodBounds.pad(0.05));
+  map.flyToBounds(activeFloodBounds, { padding: [40, 40], maxZoom: 11, duration: 0.75, easeLinearity: 0.25 });
+};
 
 // Load the (large) flood dataset from its own JSON file so this HTML stays readable.
 const BASE = new URL('.', location.href).href;
@@ -217,26 +273,24 @@ fetch(BASE + 'rizal_flood_data.json')
 
     // Start zoomed out enough to show the complete flood-prone dataset.
     // The map remains bounded to the flood layer while users can zoom freely.
-    const floodBounds = floodLayer.getBounds();
-    map.fitBounds(floodBounds, { padding: [40, 40], maxZoom: 11 });
-    map.setMaxBounds(floodBounds.pad(0.05));
+    activeFloodBounds = floodLayer.getBounds();
+    map.fitBounds(activeFloodBounds, { padding: [40, 40], maxZoom: 11 });
+    map.setMaxBounds(activeFloodBounds.pad(0.05));
     map.options.maxBoundsViscosity = 1.0;
     map.setMinZoom(9);
-
-    // Recenter button from the parent app returns to the fixed overview.
-    window.recenterFloodMap = function() {
-      map.flyToBounds(floodBounds, { padding: [40, 40], maxZoom: 11, duration: 1.25, easeLinearity: 0.15 });
-    };
   })
   .catch(err => console.error('Failed to load flood data:', err));
 
-// Messages from the parent app: recenter, and "Show your location" which
-// drops a pulsing blue dot on this map and flies to it. Registered outside
-// the fetch so messages that arrive before the data loads are not lost.
+// Messages from the parent app: recenter, locating state, and "Show your location"
+// which drops a pulsing blue dot on this map and flies to it.
 window.addEventListener('message', (event) => {
   if (!event.data) return;
   if (event.data.type === 'flood-recenter') window.recenterFloodMap && window.recenterFloodMap();
-  if (event.data.type === 'flood-user-location') showFloodUserLocation(event.data.lat, event.data.lng);
+  if (event.data.type === 'hazardsync-locating') setFloodLocating(event.data.isLocating);
+  if (event.data.type === 'flood-user-location') {
+    setFloodLocating(false);
+    showFloodUserLocation(event.data.lat, event.data.lng);
+  }
 });
 
 // Keep the flood map (and its in-page controls) open when someone follows
@@ -266,7 +320,19 @@ function showFloodUserLocation(lat, lng) {
   } else {
     floodUserMarker = L.marker([lat, lng], { icon: icon, zIndexOffset: 1000, interactive: false }).addTo(map);
   }
-  map.flyTo([lat, lng], 15, { duration: 1.6, easeLinearity: 0.25 });
+  // Release maxBounds so the camera can always reach the user's location, just like the Incident Map.
+  map.setMaxBounds(null);
+  map.flyTo([lat, lng], 16, { duration: 1.6, easeLinearity: 0.25 });
+}
+
+function hasHostAppParent() {
+  if (window.parent === window) return false;
+  try {
+    return window.parent.location.origin === window.location.origin &&
+      Boolean(window.parent.document.getElementById('leaflet-map-root'));
+  } catch (err) {
+    return false;
+  }
 }
 
 const hostLayerMenu = document.getElementById('host-layer-menu');
@@ -284,7 +350,7 @@ hostLayerMenu.addEventListener('click', function(event) {
   if (!choice || choice.disabled) return;
   const layer = choice.dataset.appLayer;
   setHostLayerMenu(false);
-  if (window.parent !== window) {
+  if (hasHostAppParent()) {
     window.parent.postMessage({ type: 'hazardsync-layer-select', layer: layer }, location.origin);
     return;
   }
@@ -298,23 +364,33 @@ document.querySelector('#host-layer-menu .menu-close').addEventListener('click',
   event.stopPropagation();
   setHostLayerMenu(false);
 });
-document.addEventListener('click', function(event) {
+document.addEventListener('pointerdown', function(event) {
   const target = event.target instanceof Element ? event.target : null;
   if (!target || !target.closest('#host-map-controls')) setHostLayerMenu(false);
+});
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') setHostLayerMenu(false);
 });
 document.getElementById('host-recenter').addEventListener('click', function() {
   if (typeof window.recenterFloodMap === 'function') window.recenterFloodMap();
 });
 document.getElementById('host-locate').addEventListener('click', function() {
-  if (window.parent !== window) {
+  if (hasHostAppParent()) {
     window.parent.postMessage({ type: 'hazardsync-location-request' }, location.origin);
     return;
   }
   if (!navigator.geolocation) return;
+  setFloodLocating(true);
   navigator.geolocation.getCurrentPosition(
-    function(position) { showFloodUserLocation(position.coords.latitude, position.coords.longitude); },
-    function() { console.warn('Unable to get current location.'); },
-    { enableHighAccuracy: true, timeout: 15000 }
+    function(position) {
+      setFloodLocating(false);
+      showFloodUserLocation(position.coords.latitude, position.coords.longitude);
+    },
+    function() {
+      setFloodLocating(false);
+      console.warn('Unable to get current location.');
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
   );
 });
 </script>

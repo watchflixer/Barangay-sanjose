@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rizal Realtime Traffic Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <!-- Mapbox GL JS — real live traffic via the traffic-day-v2 style -->
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
@@ -24,8 +27,22 @@
   /* Zoom buttons: the exact markup/classes Leaflet 1.9.4 generates
      (.leaflet-top.leaflet-left > .leaflet-control.leaflet-bar), so the
      Leaflet stylesheet above gives identical size, margin and look as the
-     Flood Prone map. The slot rule below is copied from that map. */
-  .leaflet-top.leaflet-left{top:132px;left:6px;}
+     Flood Prone map. Inline the core rules too so the control never flashes
+     at the smaller 26px non-touch size while scripts/stylesheets load. */
+  .leaflet-top.leaflet-left{position:absolute;top:132px;left:6px;z-index:1000;pointer-events:none;}
+  .leaflet-top .leaflet-control{margin-top:10px;}
+  .leaflet-left .leaflet-control{margin-left:10px;}
+  .leaflet-control{position:relative;float:left;clear:both;pointer-events:auto;}
+  .leaflet-bar{border:2px solid rgba(0,0,0,0.2);background-clip:padding-box;border-radius:4px;box-shadow:none;}
+  .leaflet-bar a{
+    background-color:#fff;border-bottom:1px solid #ccc;width:30px;height:30px;line-height:30px;
+    display:block;text-align:center;text-decoration:none;color:#000;
+    font:bold 22px 'Lucida Console',Monaco,monospace;text-indent:1px;
+  }
+  .leaflet-bar a:hover,.leaflet-bar a:focus{background-color:#f4f4f4;}
+  .leaflet-bar a:first-child{border-top-left-radius:2px;border-top-right-radius:2px;}
+  .leaflet-bar a:last-child{border-bottom-left-radius:2px;border-bottom-right-radius:2px;border-bottom:none;}
+  .leaflet-bar a.leaflet-disabled{cursor:default;background-color:#f4f4f4;color:#bbb;}
   /* Hide the zoom buttons while a route is on screen (the bottom sheet + top
      card already own the layout, like Google Maps during navigation) and
      while the full-screen Directions screen is open. */
@@ -33,39 +50,66 @@
   body.directions-open .leaflet-top.leaflet-left{display:none;}
   /* These controls now live in the Traffic page itself. Match the app's
      existing compact Recenter / Layers / Locate button styling exactly. */
+  @keyframes fast-spin{
+    0%{transform:rotate(0deg);}
+    100%{transform:rotate(360deg);}
+  }
+  @keyframes host-locate-pulse{
+    50%{opacity:.5;}
+  }
+  @keyframes hostMenuIn{
+    0%{opacity:0;transform:scale(.95);}
+    100%{opacity:1;transform:scale(1);}
+  }
   #host-map-controls{
     position:absolute;top:16px;left:16px;z-index:1200;display:flex;flex-direction:column;gap:6px;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-family:'Plus Jakarta Sans',sans-serif;user-select:none;-webkit-user-select:none;
   }
   .host-map-control{
     width:34px;height:34px;padding:8px;border:1px solid #e2e8f0;border-radius:6px;
-    background:#fff;color:#334155;font-family:inherit;box-shadow:0 1px 2px rgba(15,23,42,.08);
+    background:#fff;color:#1e293b;font-family:inherit;box-shadow:0 1px 2px 0 rgba(0,0,0,.05);
     display:flex;align-items:center;justify-content:center;cursor:pointer;
-    transition:background .15s ease,transform .15s ease;-webkit-tap-highlight-color:transparent;
+    transition:color .15s cubic-bezier(.4,0,.2,1),background-color .15s cubic-bezier(.4,0,.2,1),border-color .15s cubic-bezier(.4,0,.2,1),transform .15s cubic-bezier(.4,0,.2,1);
+    -webkit-tap-highlight-color:transparent;
   }
   .host-map-control:hover{background:#f8fafc;}
   .host-map-control:active{transform:scale(.95);}
-  .host-map-control svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .host-map-control svg{
+    width:16px;height:16px;color:#334155;stroke:currentColor;fill:none;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;display:block;flex-shrink:0;
+    transition:transform .15s cubic-bezier(.4,0,.2,1);
+  }
+  .host-map-control svg.is-spinning{
+    animation:fast-spin .28s linear infinite !important;
+    color:#0f172a;
+  }
+  .host-map-control svg.is-locating{
+    color:#2563eb;
+    animation:host-locate-pulse 2s cubic-bezier(.4,0,.6,1) infinite;
+  }
   #host-map-controls .control-with-menu{position:relative;}
   #host-layer-menu{
     position:absolute;top:0;left:44px;width:256px;padding:10px;background:#fff;border:1px solid #e2e8f0;
-    border-radius:9px;box-shadow:0 12px 28px rgba(15,23,42,.18);color:#1e293b;z-index:1250;
-    font-size:11px;
+    border-radius:8px;box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
+    color:#1e293b;z-index:1250;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;line-height:1.5;
+    animation:hostMenuIn .15s cubic-bezier(0,0,.2,1);
   }
   #host-layer-menu[hidden]{display:none;}
-  #host-layer-menu .menu-head{display:flex;align-items:center;justify-content:space-between;padding:0 1px 7px;border-bottom:1px solid #f1f5f9;}
-  #host-layer-menu .menu-title{font-size:11px;font-weight:800;letter-spacing:.08em;color:#0f172a;}
-  #host-layer-menu .menu-close{border:0;background:transparent;color:#94a3b8;font:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:2px 4px;}
-  #host-layer-menu .section-title{margin:7px 0 5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:#64748b;}
-  #host-layer-menu .style-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  #host-layer-menu .menu-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:4px;border-bottom:1px solid #f1f5f9;}
+  #host-layer-menu .menu-title{font-size:11px;line-height:1.5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#0f172a;}
+  #host-layer-menu .menu-close{border:0;background:transparent;color:#94a3b8;font-family:inherit;font-size:12px;line-height:16px;font-weight:700;cursor:pointer;padding:0;}
+  #host-layer-menu .menu-close:hover{color:#475569;}
+  #host-layer-menu .section-title{display:block;margin:6px 0 6px;font-size:10px;line-height:1.5;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b;}
+  #host-layer-menu .style-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}
   #host-layer-menu .style-choice{
     position:relative;padding:4px 8px;border:1px solid #e2e8f0;border-radius:6px;background:#f8fafc;
-    color:#334155;font-family:inherit;font-size:12px;line-height:16px;font-weight:600;text-align:center;cursor:pointer;transition:background .15s ease;
+    color:#334155;font-family:inherit;font-size:12px;line-height:16px;font-weight:600;text-align:center;text-transform:capitalize;cursor:pointer;
+    transition:color .15s cubic-bezier(.4,0,.2,1),background-color .15s cubic-bezier(.4,0,.2,1),border-color .15s cubic-bezier(.4,0,.2,1);
   }
   #host-layer-menu .style-choice:hover{background:#f1f5f9;}
   #host-layer-menu .style-choice.active{border-color:#000;background:#000;color:#fff;}
-  #host-layer-menu .style-choice:disabled{opacity:.4;pointer-events:none;}
-  #host-layer-menu .style-choice.coming{border-style:dashed;color:#94a3b8;cursor:not-allowed;}
+  #host-layer-menu .style-choice:disabled:not(.coming){opacity:.4;pointer-events:none;}
+  #host-layer-menu .style-choice.coming{border:1px dashed #cbd5e1;background:#f1f5f9;color:#94a3b8;cursor:not-allowed;user-select:none;}
   body.routing #host-map-controls,body.directions-open #host-map-controls{display:none;}
   /* Base map switcher: same slot the Flood Prone map's layers control uses */
   #base-switch{
@@ -495,7 +539,7 @@
   }
 </style>
 </head>
-<body>
+<body class="leaflet-touch">
 <div id="map"></div>
 <div class="leaflet-top leaflet-left">
   <div id="traffic-zoom" class="leaflet-control-zoom leaflet-bar leaflet-control">
@@ -505,27 +549,27 @@
 </div>
 <div id="host-map-controls" role="group" aria-label="Traffic map controls">
   <button type="button" id="host-recenter" class="host-map-control" title="Recenter" aria-label="Recenter">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 15.36-6.36L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.36 6.36L3 16"/><path d="M3 21v-5h5"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
   </button>
   <div class="control-with-menu">
     <button type="button" id="host-layers" class="host-map-control" title="Layers" aria-label="Layers" aria-expanded="false" aria-controls="host-layer-menu">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 8 4.5-8 4.5-8-4.5L12 2z"/><path d="m4 12 8 4.5 8-4.5"/><path d="m4 17.5 8 4.5 8-4.5"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>
     </button>
     <div id="host-layer-menu" hidden>
       <div class="menu-head"><span class="menu-title">MAP SETTINGS</span><button type="button" class="menu-close" aria-label="Close layers">✕</button></div>
-      <div class="section-title">BASEMAP STYLE:</div>
+      <label class="section-title">BASEMAP STYLE:</label>
       <div class="style-grid">
-        <button type="button" class="style-choice" data-app-layer="streets">streets</button>
+        <button type="button" class="style-choice" data-app-layer="streets">Streets</button>
         <button type="button" class="style-choice active" data-app-layer="dark">Traffic</button>
         <button type="button" class="style-choice" data-app-layer="weather">Weather</button>
         <button type="button" class="style-choice" data-app-layer="light">Flood Prone</button>
         <button type="button" class="style-choice" data-app-layer="satellite" disabled>Help Center</button>
-        <button type="button" class="style-choice coming" disabled>Coming Soon</button>
+        <button type="button" class="style-choice coming" disabled title="Coming soon" aria-label="Coming soon">Coming Soon</button>
       </div>
     </div>
   </div>
   <button type="button" id="host-locate" class="host-map-control" title="Show your location" aria-label="Show your location">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>
   </button>
 </div>
 <div id="base-switch">
@@ -698,6 +742,131 @@
 <script>
   const notice = document.getElementById('notice');
   const showNotice = (text) => { notice.textContent = text; notice.style.display = 'block'; };
+
+  const hostRecenterIcon = document.querySelector('#host-recenter svg');
+  const hostLocateIcon = document.querySelector('#host-locate svg');
+  let trafficRecenterSpinTimer = null;
+
+  function spinTrafficRecenter() {
+    if (!hostRecenterIcon) return;
+    hostRecenterIcon.classList.add('is-spinning');
+    if (trafficRecenterSpinTimer) clearTimeout(trafficRecenterSpinTimer);
+    trafficRecenterSpinTimer = setTimeout(() => {
+      hostRecenterIcon.classList.remove('is-spinning');
+    }, 550);
+  }
+
+  function setTrafficLocating(locating) {
+    if (!hostLocateIcon) return;
+    hostLocateIcon.classList.toggle('is-locating', Boolean(locating));
+  }
+
+  function hasHostAppParent() {
+    if (window.parent === window) return false;
+    try {
+      return window.parent.location.origin === window.location.origin &&
+        Boolean(window.parent.document.getElementById('leaflet-map-root'));
+    } catch (err) {
+      return false;
+    }
+  }
+
+  (function initHostMapControls() {
+    const hostLayerMenu = document.getElementById('host-layer-menu');
+    const hostLayersButton = document.getElementById('host-layers');
+    const hostRecenterButton = document.getElementById('host-recenter');
+    const hostLocateButton = document.getElementById('host-locate');
+    const hostMenuClose = document.querySelector('#host-layer-menu .menu-close');
+
+    function setHostLayerMenu(open) {
+      if (!hostLayerMenu || !hostLayersButton) return;
+      hostLayerMenu.hidden = !open;
+      hostLayersButton.setAttribute('aria-expanded', String(open));
+    }
+
+    if (hostLayersButton) {
+      hostLayersButton.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setHostLayerMenu(hostLayerMenu ? hostLayerMenu.hidden : false);
+      });
+    }
+    if (hostLayerMenu) {
+      hostLayerMenu.addEventListener('click', (event) => {
+        const clickedElement = event.target instanceof Element ? event.target : null;
+        const choice = clickedElement?.closest('[data-app-layer]');
+        if (!choice || choice.disabled) return;
+        const layer = choice.dataset.appLayer;
+        setHostLayerMenu(false);
+        if (hasHostAppParent()) {
+          window.parent.postMessage({ type: 'hazardsync-layer-select', layer }, location.origin);
+          return;
+        }
+        if (layer === 'dark') return;
+        const target = layer === 'light' ? 'rizal_flood_100yr_map.html'
+          : layer === 'weather' ? 'weather.html'
+          : 'index.html';
+        location.assign(new URL(target, location.href).href);
+      });
+    }
+    if (hostMenuClose) {
+      hostMenuClose.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setHostLayerMenu(false);
+      });
+    }
+    document.addEventListener('pointerdown', (event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (!target?.closest('#host-map-controls')) setHostLayerMenu(false);
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setHostLayerMenu(false);
+    });
+    if (hostRecenterButton) {
+      hostRecenterButton.addEventListener('click', () => {
+        spinTrafficRecenter();
+        if (typeof window.trafficRecenter === 'function') window.trafficRecenter();
+      });
+    }
+    if (hostLocateButton) {
+      hostLocateButton.addEventListener('click', () => {
+        if (hasHostAppParent()) {
+          window.parent.postMessage({ type: 'hazardsync-location-request' }, location.origin);
+          return;
+        }
+        if (!navigator.geolocation) return showNotice('Hindi available ang lokasyon sa device na ito.');
+        setTrafficLocating(true);
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setTrafficLocating(false);
+            if (typeof window.showTrafficUserLocation === 'function') {
+              window.showTrafficUserLocation(position.coords.latitude, position.coords.longitude);
+            }
+          },
+          () => {
+            setTrafficLocating(false);
+            showNotice('Hindi nakuha ang lokasyon. Pakisubukang muli.');
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+        );
+      });
+    }
+    window.addEventListener('message', (event) => {
+      if (!event.data) return;
+      if (event.data.type === 'traffic-recenter') {
+        spinTrafficRecenter();
+        if (typeof window.trafficRecenter === 'function') window.trafficRecenter();
+      }
+      if (event.data.type === 'hazardsync-locating') {
+        setTrafficLocating(event.data.isLocating);
+      }
+      if (event.data.type === 'traffic-user-location') {
+        setTrafficLocating(false);
+        if (typeof window.showTrafficUserLocation === 'function') {
+          window.showTrafficUserLocation(event.data.lat, event.data.lng);
+        }
+      }
+    });
+  })();
 
   // Token precedence: the ?key= query parameter (runtime injection from
   // VITE_MAPBOX_TRAFFIC_TOKEN) wins; otherwise the fallback below is used.
@@ -3085,7 +3254,8 @@
   // The traffic-day-v2 style renders LIVE congestion by itself — no polling
   // needed. The Recenter button from the parent app returns to the overview.
   window.trafficRecenter = function () {
-    map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 1200 });
+    map.setMaxBounds(MAX_BOUNDS);
+    map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 750 });
   };
 
   let trafficUserMarker = null;
@@ -3102,64 +3272,10 @@
     } else {
       trafficUserMarker.setLngLat([lng, lat]);
     }
+    map.setMaxBounds(null);
     map.flyTo({ center: [lng, lat], zoom: 16, duration: 1600 });
   }
-
-  const hostLayerMenu = $('host-layer-menu');
-  const hostLayersButton = $('host-layers');
-  function setHostLayerMenu(open) {
-    hostLayerMenu.hidden = !open;
-    hostLayersButton.setAttribute('aria-expanded', String(open));
-  }
-  $('host-layers').addEventListener('click', (event) => {
-    event.stopPropagation();
-    setHostLayerMenu(hostLayerMenu.hidden);
-  });
-  hostLayerMenu.addEventListener('click', (event) => {
-    const clickedElement = event.target instanceof Element ? event.target : null;
-    const choice = clickedElement?.closest('[data-app-layer]');
-    if (!choice || choice.disabled) return;
-    const layer = choice.dataset.appLayer;
-    setHostLayerMenu(false);
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: 'hazardsync-layer-select', layer }, location.origin);
-      return;
-    }
-    if (layer === 'dark') return;
-    const target = layer === 'light' ? 'rizal_flood_100yr_map.html'
-      : layer === 'weather' ? 'weather.html'
-      : 'index.html';
-    location.assign(new URL(target, location.href).href);
-  });
-  document.querySelector('#host-layer-menu .menu-close').addEventListener('click', (event) => {
-    event.stopPropagation();
-    setHostLayerMenu(false);
-  });
-  document.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target?.closest('#host-map-controls')) setHostLayerMenu(false);
-  });
-  $('host-recenter').addEventListener('click', () => window.trafficRecenter());
-  $('host-locate').addEventListener('click', () => {
-    if (window.parent !== window) {
-      window.parent.postMessage({ type: 'hazardsync-location-request' }, location.origin);
-      return;
-    }
-    if (!navigator.geolocation) return showNotice('Hindi available ang lokasyon sa device na ito.');
-    navigator.geolocation.getCurrentPosition(
-      (position) => showTrafficUserLocation(position.coords.latitude, position.coords.longitude),
-      () => showNotice('Hindi nakuha ang lokasyon. Pakisubukang muli.'),
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
-  });
-
-  // Messages from the parent app: recenter, and "Show your location" which
-  // drops a pulsing blue dot on this map and flies to it.
-  window.addEventListener('message', (event) => {
-    if (!event.data) return;
-    if (event.data.type === 'traffic-recenter') window.trafficRecenter();
-    if (event.data.type === 'traffic-user-location') showTrafficUserLocation(event.data.lat, event.data.lng);
-  });
+  window.showTrafficUserLocation = showTrafficUserLocation;
 </script>
 </body>
 </html>
