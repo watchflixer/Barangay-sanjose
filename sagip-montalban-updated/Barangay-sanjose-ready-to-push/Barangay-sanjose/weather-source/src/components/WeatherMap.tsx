@@ -91,8 +91,15 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
           (layersButtonRef.current?.contains(target) ?? false)) return;
       setShowLayerMenu(false);
     };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowLayerMenu(false);
+    };
     document.addEventListener('pointerdown', closeOnOutsideClick);
-    return () => document.removeEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
   }, [showLayerMenu]);
 
   // Initialize Map with locked overview and strict boundary locking
@@ -673,21 +680,21 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
               />
               <div
                 ref={layerMenuRef}
-                className="absolute left-11 top-0 z-40 w-64 space-y-2.5 rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] text-slate-800 shadow-xl animate-in fade-in zoom-in-95 duration-150"
+                className="absolute left-11 top-0 z-40 w-64 space-y-2.5 rounded-lg border border-slate-200 bg-white p-2.5 font-['Plus_Jakarta_Sans',sans-serif] text-[11px] leading-[1.5] text-slate-800 shadow-xl animate-in fade-in zoom-in-95 duration-150"
               >
                 <div className="flex items-center justify-between border-b border-slate-100 pb-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-900">MAP SETTINGS</span>
+                  <span className="text-[11px] leading-[1.5] font-bold uppercase tracking-wider text-slate-900">MAP SETTINGS</span>
                   <button
                     type="button"
                     onClick={() => setShowLayerMenu(false)}
                     aria-label="Close layers"
-                    className="text-xs font-bold text-slate-400 hover:text-slate-600"
+                    className="cursor-pointer text-xs font-bold text-slate-400 hover:text-slate-600"
                   >
                     ✕
                   </button>
                 </div>
                 <div className="-mt-1">
-                  <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <label className="mb-1.5 block text-[10px] leading-[1.5] font-bold uppercase tracking-wider text-slate-500">
                     BASEMAP STYLE:
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
@@ -697,13 +704,13 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
                         type="button"
                         disabled={layer === 'satellite'}
                         onClick={() => selectAppLayer(layer)}
-                        className={`relative rounded-md border px-2 py-1 text-center text-xs font-semibold capitalize transition-colors disabled:pointer-events-none disabled:opacity-40 ${
+                        className={`relative cursor-pointer rounded-md border px-2 py-1 text-center text-xs font-semibold capitalize transition-colors disabled:pointer-events-none disabled:opacity-40 ${
                           layer === 'weather'
                             ? 'border-black bg-black text-white'
                             : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
                         }`}
                       >
-                        {layer === 'weather' ? 'Weather' : layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : layer}
+                        {layer === 'weather' ? 'Weather' : layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : 'Streets'}
                       </button>
                     ))}
                     <button
