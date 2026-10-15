@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { clearRefreshView, readRefreshView } from '../lib/refreshView';
-import { TILE_SERVERS, TRAFFIC_TILE_SERVERS } from '../data/tileServers';
+import { TILE_SERVERS } from '../data/tileServers';
 import { WeatherView } from './WeatherView';
 import { HazardAlert, MapSettings } from '../types';
 import {
@@ -33,15 +33,6 @@ import {
   Radio,
   LightbulbOff
 } from 'lucide-react';
-
-/**
- * Optional TomTom key for official live-traffic flow tiles (see .env.example).
- * Read defensively: `import.meta.env` only exists under Vite, so a missing env
- * block falls back to the keyless Google traffic raster instead of throwing.
- */
-const TOMTOM_TRAFFIC_KEY = (
-  (import.meta.env?.VITE_TOMTOM_TRAFFIC_KEY as string | undefined) ?? ''
-).trim();
 
 interface MapViewerProps {
   alerts: HazardAlert[];
@@ -109,11 +100,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     onFloodProneChange?.(showFloodProneBlank);
   }, [showFloodProneBlank, onFloodProneChange]);
 
-  // Realtime Traffic map (the former "Comming Soon" Layers slot) — now an
-  // in-app Leaflet view, mutually exclusive with the Flood Prone overlay.
-  // Old shared links (?traffic=1&sfrom=lat,lng&sto=lat,lng&smode=car) still
-  // open the Traffic view; the route coordinates are carried only so the map
-  // can explain that the Mapbox routing/share route no longer exists here.
+  // Realtime Traffic map (the former "Comming Soon" Layers slot). A second
+  // full-map overlay rendered on top of the GIS map, mutually exclusive with
+  // the Flood Prone overlay.
+  // A shared link (?traffic=1&sfrom=lat,lng&sto=lat,lng&smode=car) opens the
+  // Traffic map on load with the shared route pre-computed — the in-app
+  // Share button builds exactly this URL so recipients land on the website,
+  // not on Google Maps.
   const sharedRoute = React.useMemo(() => {
     const q = new URLSearchParams(window.location.search);
     return {
@@ -126,23 +119,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [showTrafficMap, setShowTrafficMap] = React.useState(
     refreshView === null ? sharedRoute.open : refreshView === 'traffic',
   );
-  // The Traffic view is an IN-APP Leaflet map (no iframe, no Mapbox GL):
-  // same shell as the Help Center view — its own map instance, its own
-  // Street/Satellite switch — with the live-traffic raster layer on top.
-  const trafficMapRef = useRef<HTMLDivElement | null>(null);
-  const trafficMapInstanceRef = useRef<L.Map | null>(null);
-  const trafficTileLayerRef = useRef<L.TileLayer | null>(null);
-  const trafficFlowLayerRef = useRef<L.TileLayer | null>(null);
-  const trafficUserMarkerRef = useRef<L.Marker | null>(null);
-  // Street is the Traffic default, exactly like the old embedded traffic map.
-  const [trafficBasemap, setTrafficBasemap] = React.useState<'streets' | 'satellite'>('streets');
-  // Live-traffic layer switch (Layers menu). Keyless: Google's traffic street
-  // raster; with VITE_TOMTOM_TRAFFIC_KEY: TomTom's official flow overlay.
-  const [trafficLive, setTrafficLive] = React.useState(true);
-  const [trafficTilesFailed, setTrafficTilesFailed] = React.useState(false);
-  // A shared link can still carry route coordinates from the old Mapbox build;
-  // the Leaflet traffic map has no routing, so it explains that instead.
-  const hasSharedRouteLink = Boolean(sharedRoute.sfrom && sharedRoute.sto);
+  const trafficMapFrameRef = useRef<HTMLIFrameElement | null>(null);
   // Help Center — an INDEPENDENT view with its OWN Leaflet map (plain OSM
   // tiles, no iframe), fully separate from the Traffic feature, so changing
   // Help Center never affects Traffic (and vice versa).
@@ -246,92 +223,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }).addTo(map);
     helpCenterTileLayerRef.current = tileLayer;
   }, [helpCenterBasemap, showHelpCenter]);
-  // Create the Traffic Leaflet map when the view opens; destroy it on close so
-  // every visit starts fresh and Leaflet re-measures the container.
-  React.useEffect(() => {
-    if (!showTrafficMap) return;
-    const container = trafficMapRef.current;
-    if (!container || trafficMapInstanceRef.current) return;
-
-    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-
-    const map = L.map(container, {
-      center: SAN_JOSE_CENTER,
-      zoom: 13,
-      minZoom: 13,
-      maxZoom: 18,
-      maxBounds: mapSettings.lockCameraToBounds ? L.latLngBounds(corner1, corner2) : undefined,
-      maxBoundsViscosity: 1.0,
-      zoomControl: false, // Added explicitly below, like the Flood Prone map
-      attributionControl: true,
-    });
-
-    // Native Leaflet zoom control. index.css pushes it below the app's
-    // floating Recenter/Layers/Locate stack, same as the Flood Prone map.
-    L.control.zoom({ position: 'topleft' }).addTo(map);
-
-    trafficMapInstanceRef.current = map;
-    const sizeTimer = setTimeout(() => map.invalidateSize(), 0);
-    return () => {
-      clearTimeout(sizeTimer);
-      map.remove();
-      trafficMapInstanceRef.current = null;
-      trafficTileLayerRef.current = null;
-      trafficFlowLayerRef.current = null;
-      trafficUserMarkerRef.current = null;
-    };
-  }, [showTrafficMap, mapSettings.lockCameraToBounds]);
-  // Traffic base + live-traffic layers. (Re)built whenever the view opens, the
-  // Street/Satellite switch changes or the live-traffic toggle flips.
-  React.useEffect(() => {
-    const map = trafficMapInstanceRef.current;
-    if (!showTrafficMap || !map) return;
-
-    if (trafficTileLayerRef.current) {
-      map.removeLayer(trafficTileLayerRef.current);
-      trafficTileLayerRef.current = null;
-    }
-    if (trafficFlowLayerRef.current) {
-      map.removeLayer(trafficFlowLayerRef.current);
-      trafficFlowLayerRef.current = null;
-    }
-
-    setTrafficTilesFailed(false);
-    const tomtomKey = TOMTOM_TRAFFIC_KEY;
-    // Keyless live traffic: Google's traffic street raster replaces the plain
-    // street basemap. Satellite mode keeps the satellite imagery instead.
-    const useStreetTraffic = trafficLive && trafficBasemap === 'streets' && !tomtomKey;
-    const baseConfig = useStreetTraffic ? TRAFFIC_TILE_SERVERS.streetTraffic : TILE_SERVERS[trafficBasemap];
-
-    const baseLayer = L.tileLayer(baseConfig.url, {
-      attribution: baseConfig.attribution,
-      subdomains: baseConfig.subdomains ?? 'abc',
-      maxZoom: 19,
-      maxNativeZoom: baseConfig.maxNativeZoom,
-      className: baseConfig.className,
-    });
-    baseLayer.on('tileerror', () => setTrafficTilesFailed(true));
-    baseLayer.addTo(map);
-    trafficTileLayerRef.current = baseLayer;
-
-    // Official TomTom flow tiles: a transparent overlay that works on top of
-    // either basemap, so satellite keeps its live traffic too.
-    if (trafficLive && tomtomKey) {
-      const flowConfig = TRAFFIC_TILE_SERVERS.tomtomFlow(tomtomKey);
-      const flowLayer = L.tileLayer(flowConfig.url, {
-        attribution: flowConfig.attribution,
-        subdomains: flowConfig.subdomains ?? 'a',
-        maxZoom: 19,
-        maxNativeZoom: flowConfig.maxNativeZoom,
-        opacity: 0.9,
-      });
-      flowLayer.on('tileerror', () => setTrafficTilesFailed(true));
-      flowLayer.addTo(map);
-      trafficFlowLayerRef.current = flowLayer;
-    }
-  }, [showTrafficMap, trafficBasemap, trafficLive]);
-
   React.useEffect(() => {
     if (showTrafficMap) {
       setShowFloodProneBlank(false);
@@ -366,6 +257,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
   React.useEffect(() => {
     floodMapFrameRef.current?.contentWindow?.postMessage({ type: 'hazardsync-locating', isLocating }, '*');
+    trafficMapFrameRef.current?.contentWindow?.postMessage({ type: 'hazardsync-locating', isLocating }, '*');
   }, [isLocating]);
 
   // 1. Initialize Map
@@ -597,9 +489,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   React.useEffect(() => {
     const onEmbeddedMapAction = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
+      const isTrafficFrame = event.source === trafficMapFrameRef.current?.contentWindow;
       const isFloodFrame = event.source === floodMapFrameRef.current?.contentWindow;
       const isWeatherFrame = event.source === weatherMapFrameRef.current?.contentWindow;
-      if (!isFloodFrame && !isWeatherFrame) return;
+      if (!isTrafficFrame && !isFloodFrame && !isWeatherFrame) return;
 
       const message = event.data as { type?: string; layer?: string } | null;
       if (message?.type === 'hazardsync-location-request') {
@@ -691,28 +584,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               '*'
             );
           } else if (showTrafficMap) {
-            // Fly the Traffic Leaflet map to the user and drop the shared
-            // pulsing dot (same marker the GIS map uses).
-            const trafficMap = trafficMapInstanceRef.current;
-            if (trafficMap) {
-              if (mapSettings.lockCameraToBounds) trafficMap.setMaxBounds(null as any);
-              trafficMap.flyTo(coordinates, 16, { duration: 1.6, easeLinearity: 0.25 });
-              const trafficLocationIcon = L.divIcon({
-                className: 'user-location-marker',
-                html: '<span class="user-location-dot"></span>',
-                iconSize: [24, 24],
-                iconAnchor: [12, 12],
-              });
-              if (trafficUserMarkerRef.current) {
-                trafficUserMarkerRef.current.setLatLng(coordinates).setIcon(trafficLocationIcon);
-              } else {
-                trafficUserMarkerRef.current = L.marker(coordinates, {
-                  icon: trafficLocationIcon,
-                  zIndexOffset: 1000,
-                  title: 'Your location',
-                }).addTo(trafficMap);
-              }
-            }
+            trafficMapFrameRef.current?.contentWindow?.postMessage(
+              { type: 'traffic-user-location', lat: position.coords.latitude, lng: position.coords.longitude },
+              '*'
+            );
           } else if (showHelpCenter) {
             // While the Help Center Leaflet map is open, fly it to the user.
             const helpMap = helpCenterMapInstanceRef.current;
@@ -1069,12 +944,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       floodMapFrameRef.current?.contentWindow?.postMessage({ type: 'flood-recenter' }, '*');
       return;
     }
-    // In Traffic mode, recenter its own Leaflet map.
+    // In Traffic mode, recenter inside the traffic map the same way.
     if (showTrafficMap) {
-      trafficMapInstanceRef.current?.flyTo(SAN_JOSE_CENTER, 13, {
-        duration: 0.75,
-        easeLinearity: 0.25,
-      });
+      trafficMapFrameRef.current?.contentWindow?.postMessage({ type: 'traffic-recenter' }, '*');
       return;
     }
     // The weather map lives in its own iframe; recenter that map, not the GIS map underneath.
@@ -1127,168 +999,22 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Realtime Traffic map — an IN-APP Leaflet map (no iframe, no Mapbox
-          GL) built from the same parts as the Help Center view: own map
-          instance, Street/Satellite switch, Find/Directions/legend stack. The
-          live-traffic raster is the layer on top (keyless street raster, or
-          TomTom's flow overlay when VITE_TOMTOM_TRAFFIC_KEY is set). */}
+      {/* Realtime Traffic map overlay (Leaflet 2.0.0-alpha.1 inside). The
+          TomTom key travels as a query parameter so the iframe picks it up
+          without any build-time injection into public/ files. */}
       {showTrafficMap && (
         <div className="absolute inset-0 z-30 bg-white" aria-label="Rizal Realtime Traffic Map">
-          <div
-            id="traffic-map-root"
-            ref={trafficMapRef}
-            className="block h-full w-full cursor-grab active:cursor-grabbing"
+          <iframe
+            title="Rizal Realtime Traffic Map"
+            src={`${import.meta.env.BASE_URL}rizal_traffic_map.html?${[
+              import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN ? `key=${encodeURIComponent(import.meta.env.VITE_MAPBOX_TRAFFIC_TOKEN)}` : '',
+              sharedRoute.sfrom ? `sfrom=${encodeURIComponent(sharedRoute.sfrom)}` : '',
+              sharedRoute.sto ? `sto=${encodeURIComponent(sharedRoute.sto)}` : '',
+              sharedRoute.smode ? `smode=${encodeURIComponent(sharedRoute.smode)}` : '',
+            ].filter(Boolean).join('&')}`}
+            ref={trafficMapFrameRef}
+            className="h-full w-full border-0"
           />
-        </div>
-      )}
-
-      {/* Traffic Street/Satellite switch — same card, order (Street |
-          Satellite) and active styling as the old embedded traffic map. */}
-      {showTrafficMap && (
-        <div
-          role="group"
-          aria-label="Map style"
-          className="absolute right-[12px] top-[10px] z-50 flex gap-1 rounded-lg border border-[#d4d8d4] bg-white/95 p-1 shadow-md"
-        >
-          <button
-            type="button"
-            onClick={() => setTrafficBasemap('streets')}
-            aria-pressed={trafficBasemap === 'streets'}
-            className={`rounded-[5px] border border-transparent px-2.5 py-1 text-[11px] font-bold tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
-              trafficBasemap === 'streets'
-                ? 'bg-[#111827] text-white'
-                : 'bg-transparent text-[#33413a] hover:bg-[#eef1ec]'
-            }`}
-          >
-            Street
-          </button>
-          <button
-            type="button"
-            onClick={() => setTrafficBasemap('satellite')}
-            aria-pressed={trafficBasemap === 'satellite'}
-            className={`rounded-[5px] border border-transparent px-2.5 py-1 text-[11px] font-bold tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
-              trafficBasemap === 'satellite'
-                ? 'bg-[#111827] text-white'
-                : 'bg-transparent text-[#33413a] hover:bg-[#eef1ec]'
-            }`}
-          >
-            Satellite
-          </button>
-        </div>
-      )}
-
-      {/* Traffic notices — same dark-red banner the embedded map used (#notice):
-          shared route links from the old Mapbox build, and live-traffic tiles
-          that could not be loaded. */}
-      {showTrafficMap && (hasSharedRouteLink || (trafficLive && trafficTilesFailed)) && (
-        <div className="absolute left-1/2 top-[10px] z-[55] max-w-[calc(100%-90px)] -translate-x-1/2 rounded-lg bg-[#7a1f1b]/92 px-3.5 py-2 text-center text-[11.5px] leading-snug text-white shadow-md">
-          {hasSharedRouteLink
-            ? 'Ang shared route link ay hindi sinusuportahan ng bagong Leaflet traffic map. Gamitin ang Directions para gumawa ng bagong ruta.'
-            : 'Hindi ma-load ang live traffic tiles. Tingnan ang internet connection o subukan ang Street view.'}
-        </div>
-      )}
-
-      {/* Traffic bottom-right stack — Find / Directions / traffic legend,
-          mirroring the Help Center's stack and the embedded map's #legend. */}
-      {showTrafficMap && (
-        <div className="absolute right-[12px] bottom-6 z-50 flex flex-col items-end gap-2.5 portrait:bottom-14">
-          {/* Placeholder button — plain bold "3D" text, same as Help Center. */}
-          <button
-            type="button"
-            title="3D"
-            aria-label="3D"
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-[14px] border border-gray-400 bg-white p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-gray-500"
-          >
-            <span className="text-[15px] font-extrabold leading-none text-black">3D</span>
-          </button>
-
-          {/* Find location — runs the shared location flow, which flies this
-              Leaflet map to the user and drops the pulsing dot. */}
-          <button
-            type="button"
-            title="Find location"
-            aria-label="Find location"
-            onClick={handleShowUserLocation}
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-[14px] border border-gray-400 bg-white p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-gray-500"
-          >
-            <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-6 w-6">
-              <defs>
-                <mask id="tf-find-location-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-                  <rect width="512" height="512" fill="#fff" />
-                  <circle cx="385" cy="385" r="96" fill="#000" />
-                  <line x1="440" y1="440" x2="488" y2="488" stroke="#000" strokeWidth="64" strokeLinecap="round" />
-                </mask>
-              </defs>
-              <g fill="#000" mask="url(#tf-find-location-cut)">
-                <path d="M18 78 Q18 38 54 42 L158 78 L158 492 L18 442 Z" />
-                <path d="M187 78 L297 20 L297 438 L187 492 Z" />
-                <path d="M327 20 L440 62 Q467 72 467 100 L467 440 L327 492 Z" />
-              </g>
-              <circle cx="385" cy="385" r="62" fill="none" stroke="#000" strokeWidth="26" />
-              <line x1="440" y1="440" x2="488" y2="488" stroke="#000" strokeWidth="26" strokeLinecap="round" />
-            </svg>
-          </button>
-
-          <button
-            type="button"
-            title="Directions"
-            aria-label="Directions"
-            onClick={() => {
-              // Google Maps directions to the Traffic map's current center
-              // (fallback: Barangay San Jose center), like the Help Center.
-              const center = trafficMapInstanceRef.current?.getCenter();
-              const lat = center ? center.lat : SAN_JOSE_CENTER[0];
-              const lng = center ? center.lng : SAN_JOSE_CENTER[1];
-              window.open(
-                `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-                '_blank',
-                'noopener,noreferrer'
-              );
-            }}
-            className="h-12 w-12 cursor-pointer rounded-[14px] border-0 bg-[#0b7a87] p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-white"
-          >
-            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-full w-full">
-              <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff" />
-              <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#0b7a87" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
-            </svg>
-          </button>
-
-          {/* Traffic legend — the same four swatches and wording as the
-              embedded traffic map's #legend. */}
-          <div
-            style={{ minWidth: 150, background: 'rgba(244,246,244,0.95)', border: '1px solid #d4d8d4', color: '#1b2a2f' }}
-            className="rounded-lg px-3 py-2.5 text-[12.5px] shadow-md"
-          >
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#2BC82B' }} />
-              Free flowing
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#F1BF40' }} />
-              Slow traffic
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#CC0704' }} />
-              Heavy congestion
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#7A1F1B' }} />
-              Road closed
-            </div>
-            {/* Keeps the card exactly as wide as the embedded map's legend. */}
-            <div aria-hidden="true" className="flex h-0 items-center gap-1.5 overflow-hidden">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" />
-              Heavy congestion
-            </div>
-            <p className="mt-1.5 border-t border-[#d4d8d4] pt-1.5 text-[10.5px] font-semibold leading-snug text-[#5b6660]">
-              {trafficLive
-                ? trafficBasemap === 'satellite' && !TOMTOM_TRAFFIC_KEY
-                  ? 'Live traffic: street view only'
-                  : 'Live traffic: on'
-                : 'Live traffic: off'}
-            </p>
-          </div>
         </div>
       )}
 
@@ -1476,7 +1202,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showWeather ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showTrafficMap || showWeather ? 'hidden' : ''}`}>
         {/* These controls operate on the embedded Panahon map in Weather mode. */}
         <button
           id="btn-recenter-gis"
@@ -1583,22 +1309,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                       {layer === 'weather' ? 'Weather' : layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : layer}
                     </button>
                   ))}
-
-                  {/* Live-traffic layer switch (Traffic view only). */}
-                  {showTrafficMap && (
-                    <button
-                      type="button"
-                      onClick={() => setTrafficLive((value) => !value)}
-                      aria-pressed={trafficLive}
-                      className={`col-span-2 mt-1.5 rounded-md border px-2 py-1 text-center text-xs font-semibold transition-colors ${
-                        trafficLive
-                          ? 'border-black bg-black text-white'
-                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      Live traffic: {trafficLive ? 'ON' : 'OFF'}
-                    </button>
-                  )}
 
                   {/* Coming Soon — reserved placeholder slot next to Help Center. */}
                   <button

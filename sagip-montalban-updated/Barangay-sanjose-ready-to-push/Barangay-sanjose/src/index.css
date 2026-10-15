@@ -247,13 +247,6 @@ body,
   left: 6px;
 }
 
-/* Traffic map — same treatment: its Leaflet zoom control sits below the
-   app's Recenter/Layers/Locate stack (three buttons, like Help Center). */
-#traffic-map-root .leaflet-top.leaflet-left {
-  top: 132px;
-  left: 6px;
-}
-
 /* ---------------------------------------------------------------------------
    Keyless light / dark basemaps
    ---------------------------------------------------------------------------
