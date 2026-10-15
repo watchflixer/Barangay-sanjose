@@ -649,22 +649,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Live traffic toggle — the Traffic view's own layer, one tap away. */}
-      {stage === 'map' && (
-        <div id="hc-traffic-switch" role="group" aria-label="Live traffic">
-          <button
-            type="button"
-            onClick={toggleTraffic}
-            aria-pressed={trafficOn}
-            title="I-toggle ang live traffic layer"
-            className={trafficOn ? 'active' : undefined}
-          >
-            <span className="hc-state-dot" aria-hidden="true" />
-            Live traffic: {trafficOn ? 'ON' : 'OFF'}
-          </button>
-        </div>
-      )}
-
       {/* Category chips — change the filter without leaving the map. */}
       {stage === 'map' && (
         <div id="hc-chip-row">

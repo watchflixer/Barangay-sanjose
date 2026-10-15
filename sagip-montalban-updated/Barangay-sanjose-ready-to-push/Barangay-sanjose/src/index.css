@@ -357,10 +357,9 @@ body,
   cursor: default;
 }
 
-/* --- Basemap switcher and the live-traffic toggle: Traffic's #base-switch
-       recipe, in the same top-right slot -------------------------------- */
-#hc-base-switch,
-#hc-traffic-switch {
+/* --- Basemap switcher: Traffic's #base-switch recipe, same top-right slot
+       (Street carries the live traffic raster, exactly like Traffic) ----- */
+#hc-base-switch {
   position: absolute;
   right: 12px;
   z-index: 400;
@@ -378,12 +377,7 @@ body,
   top: 10px;
 }
 
-#hc-traffic-switch {
-  top: 48px;
-}
-
-#hc-base-switch button,
-#hc-traffic-switch button {
+#hc-base-switch button {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -400,31 +394,13 @@ body,
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-#hc-base-switch button:hover,
-#hc-traffic-switch button:hover {
+#hc-base-switch button:hover {
   background: #eef1ec;
 }
 
-#hc-base-switch button.active,
-#hc-traffic-switch button.active {
+#hc-base-switch button.active {
   background: #111827;
   color: #ffffff;
-}
-
-/* The live-traffic dot: the legend's "Heavy congestion" red while the layer
-   is on, a hollow ring while it is off. */
-#hc-traffic-switch .hc-state-dot {
-  width: 8px;
-  height: 8px;
-  flex: none;
-  border: 1px solid #94a3b8;
-  border-radius: 50%;
-  background: transparent;
-}
-
-#hc-traffic-switch button.active .hc-state-dot {
-  border-color: #ffffff;
-  background: #cc0704;
 }
 
 /* --- Right-hand stack: Directions button above the legend card ---------- */
@@ -543,13 +519,13 @@ body,
 
 @media (orientation: portrait) and (max-width: 640px) {
   #hc-chip-row {
-    top: 86px;
-    left: 12px;
+    top: 48px;
+    left: 56px;
     right: 12px;
   }
 
   #hc-notice {
-    top: 126px;
+    top: 88px;
   }
 }
 
