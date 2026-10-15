@@ -5,13 +5,13 @@ import {
   ChevronDown,
   ChevronUp,
   Filter,
+  List,
   Loader2,
   LocateFixed,
   Navigation,
   RefreshCw,
   Search,
   X,
-  Zap,
 } from 'lucide-react';
 import { HelpCenterFilterPicker } from './HelpCenterFilterPicker';
 import {
@@ -44,6 +44,10 @@ import { SAN_JOSE_BOUNDS, SAN_JOSE_CENTER } from '../data/geoData';
  *   3. "Live OSM" pulls real OpenStreetMap pins (Overpass API) on top of the
  *      curated community list; if the network is blocked the curated pins
  *      stay and a retry hint appears instead of an empty map.
+ *
+ * The whole view is monochrome by design: white/black interface, grayscale
+ * basemaps (satellite included) and black pins stamped with the category's
+ * cartographic code, so nothing here reads as generated decoration.
  *
  * Session memory (module scope) remembers the last filter selection, the
  * basemap and the Live OSM switch between visits — but the picker still shows
@@ -273,12 +277,14 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       tileLayerRef.current = null;
     }
     const tileConfig = TILE_SERVERS[basemap];
+    // Both basemaps are rendered in grayscale: the Help Center is a
+    // black-and-white view, satellite imagery included.
     tileLayerRef.current = L.tileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
       maxNativeZoom: tileConfig.maxNativeZoom,
-      className: tileConfig.className,
+      className: basemap === 'satellite' ? 'hc-tiles-mono hc-tiles-mono-satellite' : 'hc-tiles-mono',
     }).addTo(map);
   }, [basemap, mapReady]);
 
@@ -288,10 +294,12 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     if (cached) return cached;
     const icon = L.divIcon({
       className: 'hc-pin-wrap',
-      html: `<div class="hc-pin" style="--hc-c:${category.color}"><span>${category.emoji}</span></div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 30],
-      popupAnchor: [0, -26],
+      html: `<div class="hc-pin"><span class="hc-pin-code">${escapeHtml(category.code)}</span></div>`,
+      iconSize: [30, 30],
+      // The pin's tail tip sits at the bottom of the 30x30 box, so the marker
+      // anchor lines up exactly with the place's coordinates.
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -28],
     });
     iconCacheRef.current.set(category.id, icon);
     return icon;
@@ -300,40 +308,27 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const popupHtml = useCallback((place: Place) => {
     const category = CATEGORY_BY_ID[place.category];
     const directions = `https://www.google.com/maps/dir/?api=1&destination=${place.coords[0]},${place.coords[1]}`;
+    const phoneDigits = (place.phone ?? '').replace(/[^\d+]/g, '');
     const rows: string[] = [];
-    rows.push(`<p class="mt-2 text-[11px] font-medium leading-snug text-slate-600">${escapeHtml(place.address)}</p>`);
-    if (place.hours) {
-      rows.push(
-        `<p class="mt-1 text-[11px] font-medium text-slate-600"><span class="font-bold text-slate-500">Oras:</span> ${escapeHtml(place.hours)}</p>`,
-      );
-    }
-    if (place.note) {
-      rows.push(`<p class="mt-1 text-[11px] text-slate-500">${escapeHtml(place.note)}</p>`);
-    }
-    if (place.phone) {
-      rows.push(
-        `<p class="mt-1 text-[11px] font-medium text-slate-600"><span class="font-bold text-slate-500">Telepono:</span> ${escapeHtml(place.phone)}</p>`,
-      );
-    }
-    const badge =
-      place.source === 'osm'
-        ? '<span class="rounded-full bg-emerald-100 px-1.5 py-[1px] text-[9px] font-extrabold uppercase tracking-wide text-emerald-700">OpenStreetMap</span>'
-        : '<span class="rounded-full bg-amber-100 px-1.5 py-[1px] text-[9px] font-extrabold uppercase tracking-wide text-amber-700">Community pin</span>';
+    rows.push(`<p class="mt-2 text-[11px] leading-snug text-neutral-600">${escapeHtml(place.address)}</p>`);
+    if (place.hours) rows.push(`<p class="mt-1 text-[11px] text-neutral-600">Oras: ${escapeHtml(place.hours)}</p>`);
+    if (place.note) rows.push(`<p class="mt-1 text-[11px] text-neutral-500">${escapeHtml(place.note)}</p>`);
+    if (place.phone) rows.push(`<p class="mt-1 text-[11px] text-neutral-600">Telepono: ${escapeHtml(place.phone)}</p>`);
 
     return `
       <div class="p-3">
-        <div class="flex items-start gap-2">
-          <span class="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[16px]" style="background:${category.color}22">${category.emoji}</span>
+        <div class="flex items-start gap-2.5">
+          <span class="hc-pin-ref">${escapeHtml(category.code)}</span>
           <div class="min-w-0">
-            <p class="text-[12.5px] font-bold leading-tight text-slate-900">${escapeHtml(place.name)}</p>
-            <p class="mt-[2px] text-[10px] font-bold uppercase tracking-wide" style="color:${category.color}">${escapeHtml(category.label)}</p>
+            <p class="text-[12.5px] font-semibold leading-tight text-black">${escapeHtml(place.name)}</p>
+            <p class="mt-[3px] text-[9.5px] font-bold uppercase tracking-[0.08em] text-neutral-500">${escapeHtml(category.label)}</p>
           </div>
         </div>
         ${rows.join('')}
+        <div class="hc-popup-meta">${place.source === 'osm' ? 'SOURCE: OPENSTREETMAP' : 'SOURCE: COMMUNITY PIN'}</div>
         <div class="mt-2 flex flex-wrap items-center gap-1.5">
-          ${badge}
-          <a href="${directions}" target="_blank" rel="noopener noreferrer" class="rounded-full bg-[#0b7a87] px-2.5 py-1 text-[10.5px] font-bold text-white no-underline">Directions</a>
-          ${place.phone ? `<a href="tel:${escapeHtml(place.phone.replace(/[^\d+]/g, ''))}" class="rounded-full bg-slate-800 px-2.5 py-1 text-[10.5px] font-bold text-white no-underline">Tawagan</a>` : ''}
+          <a href="${directions}" target="_blank" rel="noopener noreferrer" class="hc-popup-btn hc-popup-btn--primary">Directions</a>
+          ${phoneDigits ? `<a href="tel:${escapeHtml(phoneDigits)}" class="hc-popup-btn">Tawagan</a>` : ''}
         </div>
       </div>`;
   }, []);
@@ -358,7 +353,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         riseOnHover: true,
       });
       marker.bindPopup(popupHtml(place), {
-        className: 'custom-leaflet-popup',
+        className: 'custom-leaflet-popup hc-popup',
         maxWidth: 290,
         minWidth: 240,
         autoPanPadding: [24, 96],
@@ -564,7 +559,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
   // ------------------------------------------------------------------ view
   return (
-    <div className="absolute inset-0 z-30 bg-slate-900" aria-label="Help Center">
+    <div className="absolute inset-0 z-30 bg-neutral-950" aria-label="Help Center">
       {mapReady && (
         <div
           id="help-center-map-root"
@@ -573,54 +568,42 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         />
       )}
 
-      {/* Street / Satellite switch — same order and styling as the Traffic map. */}
+      {/* Basemap switch (grayscale basemaps only — the view is black/white). */}
       {stage === 'map' && (
         <div
           role="group"
           aria-label="Map style"
-          className="absolute right-[12px] top-[10px] z-50 flex gap-1 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-md"
+          className="absolute right-[12px] top-[10px] z-50 flex gap-1 rounded-md border border-neutral-300 bg-white p-1 shadow-sm"
         >
-          <button
-            type="button"
-            onClick={() => {
-              setBasemap('satellite');
-              rememberedBasemap = 'satellite';
-            }}
-            aria-pressed={basemap === 'satellite'}
-            className={`rounded-[5px] border border-transparent px-2.5 py-1 text-[11px] font-bold tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
-              basemap === 'satellite'
-                ? 'bg-[#111827] text-white'
-                : 'bg-transparent text-[#33413a] hover:bg-[#eef1ec]'
-            }`}
-          >
-            Satellite
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setBasemap('streets');
-              rememberedBasemap = 'streets';
-            }}
-            aria-pressed={basemap === 'streets'}
-            className={`rounded-[5px] border border-transparent px-2.5 py-1 text-[11px] font-bold tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
-              basemap === 'streets'
-                ? 'bg-[#111827] text-white'
-                : 'bg-transparent text-[#33413a] hover:bg-[#eef1ec]'
-            }`}
-          >
-            Street
-          </button>
+          {(['satellite', 'streets'] as const).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => {
+                setBasemap(option);
+                rememberedBasemap = option;
+              }}
+              aria-pressed={basemap === option}
+              className={`rounded border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors ${
+                basemap === option
+                  ? 'border-black bg-black text-white'
+                  : 'border-transparent bg-white text-neutral-600 hover:text-black'
+              }`}
+            >
+              {option === 'satellite' ? 'Satellite' : 'Street'}
+            </button>
+          ))}
         </div>
       )}
 
       {/* Category chips — change the filter without leaving the map. */}
       {stage === 'map' && (
         <div className="absolute left-[56px] right-[158px] top-[10px] z-50 sm:right-[172px]">
-          <div className="hc-chip-scroll flex items-center gap-1.5 overflow-x-auto rounded-xl border border-slate-200 bg-white/95 p-1 shadow-md">
+          <div className="hc-chip-scroll flex items-center gap-1.5 overflow-x-auto rounded-md border border-neutral-300 bg-white p-1 shadow-sm">
             <button
               type="button"
               onClick={openPicker}
-              className="flex shrink-0 items-center gap-1.5 rounded-lg bg-[#111827] px-2.5 py-1 text-[11px] font-extrabold text-white transition-colors hover:bg-slate-800"
+              className="flex shrink-0 items-center gap-1.5 rounded bg-black px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-neutral-800"
             >
               <Filter className="h-3.5 w-3.5" /> Filter
             </button>
@@ -633,18 +616,16 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
                   type="button"
                   onClick={() => toggleCategory(id)}
                   title={`Alisin ang ${category.label}`}
-                  className="flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1 text-[11px] font-bold text-slate-700 transition-colors hover:bg-slate-100"
-                  style={{ borderColor: `${category.color}66`, backgroundColor: `${category.color}12` }}
+                  className="flex shrink-0 items-center gap-1.5 rounded border border-neutral-300 bg-neutral-50 px-2 py-1 text-[11px] font-semibold text-neutral-800 transition-colors hover:border-neutral-500"
                 >
-                  <span aria-hidden="true">{category.emoji}</span>
+                  <span className="font-mono text-[10px] font-bold tracking-tight text-neutral-500">
+                    {category.code}
+                  </span>
                   {category.label}
-                  <span
-                    className="rounded-full px-1.5 text-[9.5px] font-extrabold text-white"
-                    style={{ backgroundColor: category.color }}
-                  >
+                  <span className="font-mono text-[10px] font-bold text-neutral-500">
                     {countByCategory[id] ?? 0}
                   </span>
-                  <X className="h-3 w-3 text-slate-400" />
+                  <X className="h-3 w-3 text-neutral-400" />
                 </button>
               );
             })}
@@ -652,7 +633,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSelection(ALL_CATEGORY_IDS)}
-                className="flex shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-2 py-1 text-[11px] font-bold text-slate-500 transition-colors hover:bg-slate-100"
+                className="flex shrink-0 items-center gap-1.5 rounded border border-dashed border-neutral-400 px-2 py-1 text-[11px] font-semibold text-neutral-500 transition-colors hover:border-neutral-600 hover:text-neutral-800"
               >
                 + Iba pa ({unselectedCount})
               </button>
@@ -661,23 +642,23 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Live OSM status / retry pill */}
+      {/* Live OSM status / retry */}
       {stage === 'map' && (
         <div className="absolute right-[12px] top-[52px] z-50 flex flex-col items-end gap-1.5">
           {liveOsm && liveStatus === 'loading' && (
-            <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-2.5 py-1 text-[10.5px] font-bold text-slate-600 shadow-md">
-              <Loader2 className="h-3 w-3 animate-spin text-blue-600" /> Hinahanap ang live OSM pins…
+            <span className="flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[10.5px] font-semibold text-neutral-700 shadow-sm">
+              <Loader2 className="h-3 w-3 animate-spin" /> Hinahanap ang live OSM pins
             </span>
           )}
           {liveOsm && liveStatus === 'ok' && liveCount > 0 && (
-            <span className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white/95 py-1 pl-2.5 pr-1 text-[10.5px] font-bold text-emerald-700 shadow-md">
-              <Zap className="h-3 w-3" /> {liveCount} live na pin
+            <span className="flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white py-1 pl-2.5 pr-1 text-[10.5px] font-semibold text-neutral-700 shadow-sm">
+              <span className="font-mono font-bold text-black">{liveCount}</span> live OSM pin
               <button
                 type="button"
                 title="I-refresh ang live OSM pins"
                 aria-label="I-refresh ang live OSM pins"
                 onClick={refreshLivePins}
-                className="grid h-5 w-5 place-items-center rounded-full border border-emerald-200 bg-white text-emerald-700 transition-colors hover:bg-emerald-50"
+                className="grid h-5 w-5 place-items-center rounded border border-neutral-300 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-black"
               >
                 <RefreshCw className="h-3 w-3" />
               </button>
@@ -687,7 +668,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             <button
               type="button"
               onClick={refreshLivePins}
-              className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-white/95 px-2.5 py-1 text-[10.5px] font-bold text-amber-700 shadow-md hover:bg-amber-50"
+              className="flex items-center gap-1.5 rounded-md border border-neutral-400 bg-white px-2.5 py-1 text-[10.5px] font-semibold text-neutral-800 shadow-sm hover:border-black"
             >
               <AlertTriangle className="h-3 w-3" /> Subukan ulit ang live OSM
             </button>
@@ -697,29 +678,29 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
       {/* Toast */}
       {toast && (
-        <div className="absolute left-1/2 top-[54px] z-[55] w-[min(92vw,420px)] -translate-x-1/2 rounded-xl border border-slate-700 bg-slate-900/95 px-3 py-2 text-center text-[11.5px] font-semibold text-white shadow-xl">
+        <div className="absolute left-1/2 top-[54px] z-[55] w-[min(92vw,420px)] -translate-x-1/2 rounded-md border border-neutral-700 bg-black px-3 py-2 text-center text-[11.5px] font-semibold text-white shadow-lg">
           {toast}
         </div>
       )}
 
-      {/* Results sheet — the "list" side of the directory map. */}
+      {/* Results sheet — the list side of the directory map. */}
       {stage === 'map' && sheetOpen && (
         <div
-          className={`absolute z-50 flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-2xl backdrop-blur ${
+          className={`absolute z-50 flex flex-col overflow-hidden rounded-md border border-neutral-300 bg-white shadow-xl ${
             sheetExpanded
-              ? 'inset-x-0 bottom-0 max-h-[62vh] rounded-b-none sm:inset-x-auto sm:bottom-6 sm:left-3 sm:max-h-[64vh] sm:w-[360px] sm:rounded-2xl'
-              : 'bottom-3 left-3 right-3 max-h-[38vh] sm:bottom-6 sm:left-3 sm:right-auto sm:max-h-[46vh] sm:w-[360px]'
+              ? 'inset-x-0 bottom-0 max-h-[62vh] rounded-b-none sm:inset-x-auto sm:bottom-6 sm:left-3 sm:max-h-[64vh] sm:w-[364px] sm:rounded-md'
+              : 'bottom-3 left-3 right-3 max-h-[38vh] sm:bottom-6 sm:left-3 sm:right-auto sm:max-h-[46vh] sm:w-[364px]'
           }`}
         >
-          <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-slate-900 text-[11px] font-extrabold text-white">
+          <div className="flex items-center gap-2 border-b border-neutral-200 px-3 py-2">
+            <span className="grid h-7 min-w-7 shrink-0 place-items-center rounded bg-black px-1.5 font-mono text-[11px] font-bold text-white">
               {sortedPlaces.length}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[12.5px] font-extrabold text-slate-800">Mga lugar sa filter</p>
-              <p className="truncate text-[10px] font-medium text-slate-500">
-                {originMode === 'me' ? 'Pinakamalapit sa iyo' : 'Pinakamalapit sa gitna ng mapa'}
-                {liveCount > 0 ? ` · ${liveCount} live OSM` : ''}
+              <p className="truncate text-[12.5px] font-semibold text-black">Mga lugar sa filter</p>
+              <p className="truncate font-mono text-[9.5px] font-bold uppercase tracking-wide text-neutral-500">
+                {originMode === 'me' ? 'sort: pinakamalapit sa iyo' : 'sort: gitna ng mapa'}
+                {liveCount > 0 ? ` / ${liveCount} live osm` : ''}
               </p>
             </div>
             <button
@@ -727,10 +708,10 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               onClick={handleNearMe}
               title="I-sort ayon sa layo mula sa akin"
               aria-pressed={originMode === 'me'}
-              className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-colors ${
+              className={`grid h-8 w-8 shrink-0 place-items-center rounded border transition-colors ${
                 originMode === 'me'
-                  ? 'border-blue-500 bg-blue-500 text-white'
-                  : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  ? 'border-black bg-black text-white'
+                  : 'border-neutral-300 bg-white text-neutral-600 hover:border-neutral-500 hover:text-black'
               }`}
             >
               {locatingMe ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
@@ -739,7 +720,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               type="button"
               onClick={() => setSheetExpanded((value) => !value)}
               title={sheetExpanded ? 'Paliitin' : 'Palakihin'}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded border border-neutral-300 bg-white text-neutral-600 transition-colors hover:border-neutral-500 hover:text-black"
             >
               {sheetExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
             </button>
@@ -747,26 +728,26 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               type="button"
               onClick={() => setSheetOpen(false)}
               title="Isara ang listahan"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50"
+              className="grid h-8 w-8 shrink-0 place-items-center rounded border border-neutral-300 bg-white text-neutral-600 transition-colors hover:border-neutral-500 hover:text-black"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
           {(sheetExpanded || places.length > 6) && (
-            <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-1.5">
-              <Search className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+            <div className="flex items-center gap-2 border-b border-neutral-200 px-3 py-1.5">
+              <Search className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
               <input
                 value={listQuery}
                 onChange={(event) => setListQuery(event.target.value)}
-                placeholder="Hanapin sa listahan… (hal. 7-Eleven, water)"
-                className="h-6 w-full bg-transparent text-[11.5px] font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none"
+                placeholder="Hanapin sa listahan (7-Eleven, water)"
+                className="h-6 w-full bg-transparent text-[11.5px] font-medium text-black placeholder:text-neutral-400 focus:outline-none"
               />
               {listQuery && (
                 <button
                   type="button"
                   onClick={() => setListQuery('')}
-                  className="text-[10.5px] font-bold text-slate-400 hover:text-slate-700"
+                  className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-neutral-400 hover:text-black"
                 >
                   Burahin
                 </button>
@@ -777,10 +758,10 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
             {sortedPlaces.length === 0 && (
               <div className="px-3 py-6 text-center">
-                <p className="text-[12px] font-bold text-slate-700">
-                  {liveStatus === 'loading' ? 'Naghahanap pa ng mga pin…' : 'Walang tumugmang lugar'}
+                <p className="text-[12px] font-semibold text-black">
+                  {liveStatus === 'loading' ? 'Naghahanap pa ng mga pin' : 'Walang tumugmang lugar'}
                 </p>
-                <p className="mt-1 text-[10.5px] text-slate-500">
+                <p className="mt-1 text-[10.5px] text-neutral-500">
                   Subukan ang ibang filter o i-tap ang “Filter” sa taas.
                 </p>
               </div>
@@ -790,27 +771,25 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               return (
                 <div
                   key={place.id}
-                  className="flex items-center gap-2 border-b border-slate-50 px-3 py-2 last:border-b-0 hover:bg-slate-50"
+                  className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2 last:border-b-0 hover:bg-neutral-50"
                 >
                   <button
                     type="button"
                     onClick={() => focusPlace(place)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                   >
-                    <span
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[15px]"
-                      style={{ backgroundColor: `${category.color}1f` }}
-                      aria-hidden="true"
-                    >
-                      {category.emoji}
+                    <span className="hc-pin-ref" aria-hidden="true">
+                      {category.code}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12px] font-bold text-slate-800">{place.name}</span>
-                      <span className="block truncate text-[10.5px] font-medium text-slate-500">
-                        {category.label} · {place.address}
+                      <span className="block truncate text-[12px] font-semibold text-black">
+                        {place.name}
+                      </span>
+                      <span className="block truncate text-[10.5px] font-medium text-neutral-500">
+                        {category.label} &middot; {place.address}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[10.5px] font-extrabold text-slate-500">
+                    <span className="shrink-0 font-mono text-[10.5px] font-bold text-neutral-500">
                       {formatDistance(km)}
                     </span>
                   </button>
@@ -819,7 +798,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
                     target="_blank"
                     rel="noopener noreferrer"
                     title={`Direksyon papuntang ${place.name}`}
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white text-[#0b7a87] transition-colors hover:bg-slate-100"
+                    className="grid h-8 w-8 shrink-0 place-items-center rounded border border-neutral-300 text-black transition-colors hover:border-black hover:bg-neutral-100"
                   >
                     <Navigation className="h-3.5 w-3.5" />
                   </a>
@@ -828,16 +807,16 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             })}
           </div>
 
-          <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-1.5">
-            <p className="min-w-0 flex-1 truncate text-[9.5px] font-medium leading-snug text-slate-400">
+          <div className="flex items-center gap-2 border-t border-neutral-200 px-3 py-1.5">
+            <p className="min-w-0 flex-1 truncate text-[9.5px] leading-snug text-neutral-500">
               {liveMessage ||
-                'Community-mapped ang ilang pin — paki-verify bago pumunta. Live pins © OpenStreetMap contributors.'}
+                'Community-mapped ang ilang pin — paki-verify bago pumunta. Live pins: OpenStreetMap.'}
             </p>
             {!sheetExpanded && (
               <button
                 type="button"
                 onClick={() => setSheetExpanded(true)}
-                className="shrink-0 rounded-lg bg-slate-900 px-2 py-1 text-[10.5px] font-bold text-white"
+                className="shrink-0 rounded border border-black bg-black px-2 py-1 text-[10.5px] font-bold text-white hover:bg-neutral-800"
               >
                 Tingnan lahat
               </button>
@@ -851,9 +830,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="absolute bottom-4 left-3 z-50 flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-[11.5px] font-extrabold text-slate-800 shadow-lg backdrop-blur"
+          className="absolute bottom-4 left-3 z-50 flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-[11.5px] font-bold text-black shadow-md"
         >
-          <Filter className="h-3.5 w-3.5" /> Listahan ({sortedPlaces.length})
+          <List className="h-3.5 w-3.5" /> Listahan ({sortedPlaces.length})
         </button>
       )}
 
@@ -868,7 +847,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             type="button"
             title="3D"
             aria-label="3D"
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-[14px] border border-gray-400 bg-white p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-gray-500"
+            className="flex h-12 w-12 items-center justify-center rounded-[14px] border border-neutral-400 bg-white p-0 shadow-md transition-colors hover:border-black active:scale-[.94]"
           >
             <span className="text-[15px] font-extrabold leading-none text-black">3D</span>
           </button>
@@ -878,7 +857,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             title="Find location"
             aria-label="Find location"
             onClick={handleNearMe}
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-[14px] border border-gray-400 bg-white p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-gray-500"
+            className="flex h-12 w-12 items-center justify-center rounded-[14px] border border-neutral-400 bg-white p-0 shadow-md transition-colors hover:border-black active:scale-[.94]"
           >
             <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-6 w-6">
               <defs>
@@ -912,32 +891,28 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
                 'noopener,noreferrer',
               );
             }}
-            className="h-12 w-12 cursor-pointer rounded-[14px] border-0 bg-[#0b7a87] p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-white"
+            className="h-12 w-12 rounded-[14px] border border-black bg-black p-0 shadow-md transition-colors hover:bg-neutral-800 active:scale-[.94]"
           >
             <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-full w-full">
               <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff" />
-              <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#0b7a87" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
+              <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#000000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#000000" transform="translate(-0.5 0)" />
             </svg>
           </button>
 
-          <div className="rounded-lg border border-[#d8d2c2] bg-[#f6f3ea]/95 px-3 py-2.5 text-[12.5px] text-[#1b2a2f] shadow-md">
+          {/* Legend card — placeholder rows, restyled to the view's palette.
+              An invisible sizer keeps the original Traffic-legend width. */}
+          <div className="rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-[12.5px] text-black shadow-md">
             <div aria-hidden="true" className="flex h-0 items-center gap-1.5 overflow-hidden">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              Medium (0.5–1.5m)
+              <span className="inline-block h-[13px] w-[13px] rounded-[2px] bg-black" />
+              Medium (0.5-1.5m)
             </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              3D
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              Directions
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              Find
-            </div>
+            {['3D', 'Directions', 'Find'].map((label) => (
+              <div key={label} className="my-[3px] flex items-center gap-1.5">
+                <span className="inline-block h-[13px] w-[13px] rounded-[2px] bg-black" />
+                {label}
+              </div>
+            ))}
           </div>
         </div>
       )}
