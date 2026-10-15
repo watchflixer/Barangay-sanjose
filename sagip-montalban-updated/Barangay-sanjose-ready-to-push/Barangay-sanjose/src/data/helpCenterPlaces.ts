@@ -1,14 +1,14 @@
 /**
- * HELP CENTER DIRECTORY - categories + places for Barangay San Jose
+ * HELP CENTER DIRECTORY — categories + places for Barangay San Jose
  * ------------------------------------------------------------------
  * The Help Center view works like the Traffic view but instead of live
  * traffic it is a *filterable directory map* (Leaflet): the user first
  * picks the categories they need (7-Eleven, botika, water refilling,
- * ATM, evacuation center, ...) and only then does the map open.
+ * ATM, evacuation center, …) and only then does the map open.
  *
  * Two data sources are merged by the map:
  *   1. Curated community list below (works offline, always available).
- *   2. Optional "Live OSM" mode - real OpenStreetMap POIs pulled from the
+ *   2. Optional "Live OSM" mode — real OpenStreetMap POIs pulled from the
  *      Overpass API using the `osm` tag filters of each category.
  * Curated rows are community-mapped/approximate: every one of them is
  * flagged `approx: true` and the UI shows an "i-verify" hint so nobody
@@ -55,16 +55,13 @@ export type PlaceGroupId = 'emergency' | 'essentials' | 'travel' | 'money' | 'co
 
 export interface PlaceCategory {
   id: PlaceCategoryId;
-  /** Filipino-friendly label shown on the filter buttons. */
+  /** Filipino-friendly label shown on the big filter buttons. */
   label: string;
   /** Short English caption under the label. */
   caption: string;
-  /**
-   * 2-3 letter cartographic code stamped on the map pin ("7E", "RX", "ATM").
-   * The Help Center is a black-and-white view by design, so categories are
-   * told apart by code rather than by colour.
-   */
-  code: string;
+  emoji: string;
+  /** Pin / accent colour. */
+  color: string;
   group: PlaceGroupId;
   /**
    * Overpass QL tag filters used by "Live OSM" mode. Each string is a
@@ -100,119 +97,153 @@ export const PLACE_GROUPS: { id: PlaceGroupId; label: string; caption: string }[
 export const HELP_CENTER_CATEGORIES: PlaceCategory[] = [
   // ---------------------------------------------------------------- emergency
   {
-    id: 'police', label: 'Pulis / Police', caption: 'Presinto at outpost', code: 'PNP', group: 'emergency', osm: ['["amenity"="police"]'],
+    id: 'police', label: 'Pulis / Police', caption: 'Presinto at outpost', emoji: '🚓',
+    color: '#1d4ed8', group: 'emergency', osm: ['["amenity"="police"]'],
   },
   {
-    id: 'fire', label: 'Bumbero / BFP', caption: 'Fire station', code: 'BFP', group: 'emergency', osm: ['["amenity"="fire_station"]'],
+    id: 'fire', label: 'Bumbero / BFP', caption: 'Fire station', emoji: '🚒',
+    color: '#dc2626', group: 'emergency', osm: ['["amenity"="fire_station"]'],
   },
   {
-    id: 'hospital', label: 'Ospital', caption: 'Emergency room', code: 'ER', group: 'emergency', osm: ['["amenity"="hospital"]'],
+    id: 'hospital', label: 'Ospital', caption: 'Emergency room', emoji: '🏥',
+    color: '#e11d48', group: 'emergency', osm: ['["amenity"="hospital"]'],
   },
   {
-    id: 'clinic', label: 'Health Center / Clinic', caption: 'Pagtitingin ng doctor', code: 'HC', group: 'emergency',
+    id: 'clinic', label: 'Health Center / Clinic', caption: 'Pagtitingin ng doctor', emoji: '🩺',
+    color: '#0891b2', group: 'emergency',
     osm: ['["amenity"="clinic"]', '["amenity"="doctors"]', '["healthcare"="centre"]'],
   },
   {
-    id: 'evacuation', label: 'Evacuation Center', caption: 'Silungan kapag may sakuna', code: 'EV', group: 'emergency',
+    id: 'evacuation', label: 'Evacuation Center', caption: 'Silungan kapag may sakuna', emoji: '⛺',
+    color: '#7c3aed', group: 'emergency',
     osm: ['["emergency"="assembly_point"]', '["amenity"="shelter"]', '["amenity"="community_centre"]'],
   },
   {
-    id: 'barangay', label: 'Barangay Hall', caption: 'Munisipyo / gov offices', code: 'BR', group: 'emergency', osm: ['["amenity"="townhall"]', '["office"="government"]'],
+    id: 'barangay', label: 'Barangay Hall', caption: 'Munisipyo / gov offices', emoji: '🏛️',
+    color: '#0f766e', group: 'emergency', osm: ['["amenity"="townhall"]', '["office"="government"]'],
   },
   // -------------------------------------------------------------- essentials
   {
-    id: 'seven_eleven', label: '7-Eleven', caption: '24 oras na tindahan', code: '7E', group: 'essentials',
+    id: 'seven_eleven', label: '7-Eleven', caption: '24 oras na tindahan', emoji: '🏪',
+    color: '#16a34a', group: 'essentials',
     osm: ['["brand"~"7-?Eleven",i]', '["name"~"7-?Eleven",i]'],
   },
   {
-    id: 'convenience', label: 'Convenience Store', caption: 'Mini mart at sari-sari', code: 'CV', group: 'essentials', osm: ['["shop"="convenience"]'],
+    id: 'convenience', label: 'Convenience Store', caption: 'Mini mart at sari-sari', emoji: '🛒',
+    color: '#65a30d', group: 'essentials', osm: ['["shop"="convenience"]'],
   },
   {
-    id: 'supermarket', label: 'Supermarket / Grocery', caption: 'Malaking groceries', code: 'SM', group: 'essentials', osm: ['["shop"="supermarket"]', '["shop"="grocery"]'],
+    id: 'supermarket', label: 'Supermarket / Grocery', caption: 'Malaking groceries', emoji: '🛍️',
+    color: '#ca8a04', group: 'essentials', osm: ['["shop"="supermarket"]', '["shop"="grocery"]'],
   },
   {
-    id: 'market', label: 'Palengke / Talipapa', caption: 'Bilihan ng gulay at isda', code: 'MK', group: 'essentials', osm: ['["amenity"="marketplace"]'],
+    id: 'market', label: 'Palengke / Talipapa', caption: 'Bilihan ng gulay at isda', emoji: '🥬',
+    color: '#15803d', group: 'essentials', osm: ['["amenity"="marketplace"]'],
   },
   {
-    id: 'pharmacy', label: 'Botika / Pharmacy', caption: 'Gamot at first aid', code: 'RX', group: 'essentials', osm: ['["amenity"="pharmacy"]', '["shop"="chemist"]'],
+    id: 'pharmacy', label: 'Botika / Pharmacy', caption: 'Gamot at first aid', emoji: '💊',
+    color: '#db2777', group: 'essentials', osm: ['["amenity"="pharmacy"]', '["shop"="chemist"]'],
   },
   {
-    id: 'bigasan', label: 'Bigasan / Rice Store', caption: 'Sako-sakong bigas', code: 'RG', group: 'essentials', osm: ['["shop"="rice"]', '["name"~"bigas",i]'],
+    id: 'bigasan', label: 'Bigasan / Rice Store', caption: 'Sako-sakong bigas', emoji: '🌾',
+    color: '#a16207', group: 'essentials', osm: ['["shop"="rice"]', '["name"~"bigas",i]'],
   },
   {
-    id: 'water', label: 'Water Refilling', caption: 'Inuming tubig', code: 'H2O', group: 'essentials',
+    id: 'water', label: 'Water Refilling', caption: 'Inuming tubig', emoji: '💧',
+    color: '#0284c7', group: 'essentials',
     osm: ['["amenity"="water_point"]', '["shop"="water"]', '["man_made"="water_tap"]'],
   },
   {
-    id: 'lpg', label: 'LPG / Gasul Dealer', caption: 'Tankeng pangluto', code: 'LPG', group: 'essentials',
+    id: 'lpg', label: 'LPG / Gasul Dealer', caption: 'Tankeng pangluto', emoji: '🔥',
+    color: '#ea580c', group: 'essentials',
     osm: ['["shop"="gas"]', '["name"~"gasul|lpg",i]'],
   },
   {
-    id: 'bakery', label: 'Panaderia / Bakery', caption: 'Pandesal at cake', code: 'PAN', group: 'essentials', osm: ['["shop"="bakery"]'],
+    id: 'bakery', label: 'Panaderia / Bakery', caption: 'Pandesal at cake', emoji: '🥖',
+    color: '#b45309', group: 'essentials', osm: ['["shop"="bakery"]'],
   },
   {
-    id: 'hardware', label: 'Hardware', caption: 'Materyales at kasangkapan', code: 'HW', group: 'essentials',
+    id: 'hardware', label: 'Hardware', caption: 'Materyales at kasangkapan', emoji: '🧰',
+    color: '#4b5563', group: 'essentials',
     osm: ['["shop"="hardware"]', '["shop"="doityourself"]', '["shop"="trade"]'],
   },
   {
-    id: 'laundry', label: 'Laundry / Labada', caption: 'Wash-dry-fold', code: 'LD', group: 'essentials', osm: ['["shop"="laundry"]', '["shop"="dry_cleaning"]'],
+    id: 'laundry', label: 'Laundry / Labada', caption: 'Wash-dry-fold', emoji: '🧺',
+    color: '#0d9488', group: 'essentials', osm: ['["shop"="laundry"]', '["shop"="dry_cleaning"]'],
   },
   // ------------------------------------------------------------------ travel
   {
-    id: 'gas', label: 'Gas Station', caption: 'Gasolina at diesel', code: 'GS', group: 'travel', osm: ['["amenity"="fuel"]'],
+    id: 'gas', label: 'Gas Station', caption: 'Gasolina at diesel', emoji: '⛽',
+    color: '#4d7c0f', group: 'travel', osm: ['["amenity"="fuel"]'],
   },
   {
-    id: 'vulcanizing', label: 'Vulcanizing / Tire Shop', caption: 'Gulong at repair', code: 'VS', group: 'travel', osm: ['["shop"="tyres"]', '["shop"="car_repair"]'],
+    id: 'vulcanizing', label: 'Vulcanizing / Tire Shop', caption: 'Gulong at repair', emoji: '🛞',
+    color: '#525252', group: 'travel', osm: ['["shop"="tyres"]', '["shop"="car_repair"]'],
   },
   {
-    id: 'terminal', label: 'Tricycle / Jeep Terminal', caption: 'Sakayan at babaan', code: 'TR', group: 'travel', osm: ['["highway"="bus_stop"]', '["amenity"="bus_station"]'],
+    id: 'terminal', label: 'Tricycle / Jeep Terminal', caption: 'Sakayan at babaan', emoji: '🛺',
+    color: '#d97706', group: 'travel', osm: ['["highway"="bus_stop"]', '["amenity"="bus_station"]'],
   },
   {
-    id: 'parking', label: 'Parking Area', caption: 'Lugar na paradahan', code: 'PK', group: 'travel', osm: ['["amenity"="parking"]'],
+    id: 'parking', label: 'Parking Area', caption: 'Lugar na paradahan', emoji: '🅿️',
+    color: '#334155', group: 'travel', osm: ['["amenity"="parking"]'],
   },
   // ------------------------------------------------------------------- money
   {
-    id: 'atm', label: 'ATM', caption: 'Kuhanan ng cash', code: 'ATM', group: 'money', osm: ['["amenity"="atm"]'],
+    id: 'atm', label: 'ATM', caption: 'Kuhanan ng cash', emoji: '🏧',
+    color: '#059669', group: 'money', osm: ['["amenity"="atm"]'],
   },
   {
-    id: 'bank', label: 'Bangko / Bank', caption: 'Deposito at account', code: 'BK', group: 'money', osm: ['["amenity"="bank"]'],
+    id: 'bank', label: 'Bangko / Bank', caption: 'Deposito at account', emoji: '🏦',
+    color: '#1e40af', group: 'money', osm: ['["amenity"="bank"]'],
   },
   {
-    id: 'pawnshop', label: 'Pawnshop', caption: 'Sangla at money lender', code: 'PW', group: 'money', osm: ['["shop"="pawnbroker"]'],
+    id: 'pawnshop', label: 'Pawnshop', caption: 'Sangla at money lender', emoji: '💰',
+    color: '#b91c1c', group: 'money', osm: ['["shop"="pawnbroker"]'],
   },
   {
-    id: 'remittance', label: 'Padala / Remittance', caption: 'Perang padala', code: 'RM', group: 'money',
+    id: 'remittance', label: 'Padala / Remittance', caption: 'Perang padala', emoji: '📤',
+    color: '#9a3412', group: 'money',
     osm: ['["amenity"="money_transfer"]', '["shop"="money_transfer"]', '["shop"="money_lender"]'],
   },
   // --------------------------------------------------------------- community
   {
-    id: 'school', label: 'Paaralan / School', caption: 'Elementarya at high school', code: 'SCH', group: 'community', osm: ['["amenity"="school"]', '["amenity"="kindergarten"]'],
+    id: 'school', label: 'Paaralan / School', caption: 'Elementarya at high school', emoji: '🎓',
+    color: '#4338ca', group: 'community', osm: ['["amenity"="school"]', '["amenity"="kindergarten"]'],
   },
   {
-    id: 'church', label: 'Simbahan / Church', caption: 'Misa at worship', code: 'CH', group: 'community', osm: ['["amenity"="place_of_worship"]'],
+    id: 'church', label: 'Simbahan / Church', caption: 'Misa at worship', emoji: '⛪',
+    color: '#9333ea', group: 'community', osm: ['["amenity"="place_of_worship"]'],
   },
   {
-    id: 'court', label: 'Covered Court / Plaza', caption: 'Ligaan at assembly', code: 'CT', group: 'community', osm: ['["leisure"="pitch"]', '["leisure"="sports_centre"]'],
+    id: 'court', label: 'Covered Court / Plaza', caption: 'Ligaan at assembly', emoji: '🏀',
+    color: '#c2410c', group: 'community', osm: ['["leisure"="pitch"]', '["leisure"="sports_centre"]'],
   },
   {
-    id: 'wifi', label: 'Free WiFi / Load', caption: 'Internet at load station', code: 'WF', group: 'community',
+    id: 'wifi', label: 'Free WiFi / Load', caption: 'Internet at load station', emoji: '📶',
+    color: '#0ea5e9', group: 'community',
     osm: ['["internet_access"="wlan"]', '["shop"="mobile_phone"]'],
   },
   {
-    id: 'food', label: 'Kainan / Karinderya', caption: 'Restaurant at fast food', code: 'FD', group: 'community',
+    id: 'food', label: 'Kainan / Karinderya', caption: 'Restaurant at fast food', emoji: '🍜',
+    color: '#f97316', group: 'community',
     osm: ['["amenity"="restaurant"]', '["amenity"="fast_food"]', '["amenity"="cafe"]'],
   },
   {
-    id: 'salon', label: 'Salon / Barber', caption: 'Gupit at beauty care', code: 'SL', group: 'community', osm: ['["shop"="hairdresser"]', '["shop"="beauty"]'],
+    id: 'salon', label: 'Salon / Barber', caption: 'Gupit at beauty care', emoji: '💈',
+    color: '#ec4899', group: 'community', osm: ['["shop"="hairdresser"]', '["shop"="beauty"]'],
   },
   {
-    id: 'dental', label: 'Dental Clinic', caption: 'Ngipin at braces', code: 'DN', group: 'community', osm: ['["amenity"="dentist"]'],
+    id: 'dental', label: 'Dental Clinic', caption: 'Ngipin at braces', emoji: '🦷',
+    color: '#38bdf8', group: 'community', osm: ['["amenity"="dentist"]'],
   },
   {
-    id: 'vet', label: 'Veterinary / Pet', caption: 'Gamot ng alaga', code: 'VET', group: 'community', osm: ['["amenity"="veterinary"]'],
+    id: 'vet', label: 'Veterinary / Pet', caption: 'Gamot ng alaga', emoji: '🐾',
+    color: '#84cc16', group: 'community', osm: ['["amenity"="veterinary"]'],
   },
   {
-    id: 'gym', label: 'Gym / Fitness', caption: 'Workout at boxing', code: 'GYM', group: 'community', osm: ['["leisure"="fitness_centre"]'],
+    id: 'gym', label: 'Gym / Fitness', caption: 'Workout at boxing', emoji: '🏋️',
+    color: '#7c3aed', group: 'community', osm: ['["leisure"="fitness_centre"]'],
   },
 ];
 
@@ -232,58 +263,58 @@ export const CATEGORIES_BY_GROUP: { group: PlaceGroupId; categories: PlaceCatego
   }));
 
 /** Ready-made bundles so a user can answer in one tap. */
-export const CATEGORY_PRESETS: { id: string; label: string; icon: string; categories: PlaceCategoryId[] }[] = [
+export const CATEGORY_PRESETS: { id: string; label: string; emoji: string; categories: PlaceCategoryId[] }[] = [
   {
     id: 'saklolo',
     label: 'Saklolo agad',
-    icon: 'siren',
+    emoji: '🆘',
     categories: ['police', 'fire', 'hospital', 'clinic', 'evacuation', 'barangay'],
   },
   {
     id: 'bilihin',
     label: 'Bili-bili essentials',
-    icon: 'cart',
+    emoji: '🛒',
     categories: ['seven_eleven', 'convenience', 'supermarket', 'market', 'pharmacy', 'bigasan', 'water', 'bakery'],
   },
   {
     id: 'panggabi',
     label: 'Buksan kahit gabi',
-    icon: 'moon',
+    emoji: '🌙',
     categories: ['seven_eleven', 'convenience', 'atm', 'gas', 'pharmacy'],
   },
   {
     id: 'pera',
     label: 'Pera at padala',
-    icon: 'wallet',
+    emoji: '💸',
     categories: ['atm', 'bank', 'pawnshop', 'remittance'],
   },
   {
     id: 'biyahe',
     label: 'Biyahe at sasakyan',
-    icon: 'bus',
+    emoji: '🛺',
     categories: ['terminal', 'gas', 'vulcanizing', 'parking'],
   },
   {
     id: 'pamilya',
     label: 'Pamilya at komunidad',
-    icon: 'users',
+    emoji: '👨‍👩‍👧',
     categories: ['school', 'church', 'court', 'food', 'salon', 'laundry', 'wifi', 'dental', 'vet', 'gym'],
   },
   {
     id: 'lahat',
     label: 'Lahat ng kategorya',
-    icon: 'layers',
+    emoji: '🗂️',
     categories: HELP_CENTER_CATEGORIES.map((category) => category.id),
   },
 ];
 
 /**
  * Community-mapped places around Barangay San Jose (Rodriguez, Rizal).
- * Coordinates are approximate anchors around the known sitios - the
+ * Coordinates are approximate anchors around the known sitios — the
  * "Live OSM" switch pulls the surveyed OpenStreetMap pins on top of these.
  */
 export const HELP_CENTER_PLACES: Place[] = [
-  // ------------------------------------------------------------ 7-Eleven
+  // ------------------------------------------------------------ 7-Eleven 🏪
   {
     id: 'sev-kasiglahan-1k1', category: 'seven_eleven', name: '7-Eleven Kasiglahan Village (1K1)',
     coords: [14.7456, 121.1366], address: 'Kasiglahan Village 1K1, Brgy. San Jose, Rodriguez, Rizal',
@@ -314,16 +345,16 @@ export const HELP_CENTER_PLACES: Place[] = [
     coords: [14.7559, 121.1331], address: 'Tagumpay Main Spine Road, Metro Montana, Brgy. San Jose',
     hours: 'Open 24 hours', approx: true, source: 'curated',
   },
-  // --------------------------------------------------------- convenience
+  // --------------------------------------------------------- convenience 🛒
   {
     id: 'cv-kasiglahan-mini', category: 'convenience', name: 'Kasiglahan 24/7 Mini Mart',
     coords: [14.7449, 121.1358], address: 'Kasiglahan Village 1K1 Main Road, Brgy. San Jose',
-    hours: '5:00 AM - 11:00 PM', approx: true, source: 'curated',
+    hours: '5:00 AM – 11:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'cv-sanjose-sari', category: 'convenience', name: 'San Jose Sari-Sari & Mini Mart',
     coords: [14.7419, 121.1463], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '6:00 AM - 10:00 PM', approx: true, source: 'curated',
+    hours: '6:00 AM – 10:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'cv-tagumpay-hub', category: 'convenience', name: 'Tagumpay Convenience Hub',
@@ -333,54 +364,54 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'cv-amityville', category: 'convenience', name: 'Amityville Community Store',
     coords: [14.7338, 121.1277], address: 'Amityville 4th Avenue, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // --------------------------------------------------------- supermarket
+  // --------------------------------------------------------- supermarket 🛍️
   {
     id: 'sm-puregold', category: 'supermarket', name: 'Puregold Montalban',
     coords: [14.7368, 121.1379], address: 'Rodriguez Highway, Brgy. Rosario (katabi ng San Jose)',
-    hours: '8:00 AM - 9:00 PM', note: 'Full grocery, ATM sa loob', approx: true, source: 'curated',
+    hours: '8:00 AM – 9:00 PM', note: 'Full grocery, ATM sa loob', approx: true, source: 'curated',
   },
   {
     id: 'sm-town-center', category: 'supermarket', name: 'Montalban Town Center Supermarket',
     coords: [14.7403, 121.1486], address: 'Montalban Town Center, Rodriguez Highway, Brgy. San Jose',
-    hours: '9:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '9:00 AM – 8:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'sm-kasiglahan-grocery', category: 'supermarket', name: 'Kasiglahan Village Grocery',
     coords: [14.7452, 121.1362], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // -------------------------------------------------------------- market
+  // -------------------------------------------------------------- market 🥬
   {
     id: 'mk-talipapa', category: 'market', name: 'Kasiglahan Talipapa',
     coords: [14.7446, 121.1360], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '4:30 AM - 7:00 PM', note: 'Isda, gulay, karne tuwing umaga', approx: true, source: 'curated',
+    hours: '4:30 AM – 7:00 PM', note: 'Isda, gulay, karne tuwing umaga', approx: true, source: 'curated',
   },
   {
     id: 'mk-rodriguez-market', category: 'market', name: 'Montalban Public Market',
     coords: [14.7330, 121.1180], address: 'Rodriguez (Montalban) town proper, malapit sa San Jose',
-    hours: '4:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '4:00 AM – 8:00 PM', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------ pharmacy
+  // ------------------------------------------------------------ pharmacy 💊
   {
-    id: 'ph-mercury-kasiglahan', category: 'pharmacy', name: 'Mercury Drug - Kasiglahan Village',
+    id: 'ph-mercury-kasiglahan', category: 'pharmacy', name: 'Mercury Drug – Kasiglahan Village',
     coords: [14.7450, 121.1357], address: 'Kasiglahan Village 1K1 Commercial Row, Brgy. San Jose',
-    hours: '7:00 AM - 10:00 PM', note: 'May free blood pressure check', approx: true, source: 'curated',
+    hours: '7:00 AM – 10:00 PM', note: 'May free blood pressure check', approx: true, source: 'curated',
   },
   {
-    id: 'ph-mercury-town-center', category: 'pharmacy', name: 'Mercury Drug - Montalban Town Center',
+    id: 'ph-mercury-town-center', category: 'pharmacy', name: 'Mercury Drug – Montalban Town Center',
     coords: [14.7401, 121.1487], address: 'Montalban Town Center, Brgy. San Jose',
-    hours: '7:00 AM - 10:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM – 10:00 PM', approx: true, source: 'curated',
   },
   {
-    id: 'ph-generika', category: 'pharmacy', name: 'Generika Drugstore - Litex',
+    id: 'ph-generika', category: 'pharmacy', name: 'Generika Drugstore – Litex',
     coords: [14.7291, 121.1133], address: 'Litex Market Access Road, Brgy. San Jose',
-    hours: '8:00 AM - 9:00 PM', approx: true, source: 'curated',
+    hours: '8:00 AM – 9:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'ph-botika-bayan', category: 'pharmacy', name: 'Botika ng Barangay San Jose',
     coords: [14.7414, 121.1466], address: 'Katabi ng Barangay San Jose Hall, J.P. Rizal Avenue',
-    hours: '8:00 AM - 5:00 PM', note: 'Murang gamot para sa residente', approx: true, source: 'curated',
+    hours: '8:00 AM – 5:00 PM', note: 'Murang gamot para sa residente', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------- bigasan
+  // ------------------------------------------------------------- bigasan 🌾
   {
     id: 'bg-sanjose-rice', category: 'bigasan', name: 'San Jose Bigasan & Rice Retailer',
     coords: [14.7421, 121.1460], address: 'San Jose Proper, Brgy. San Jose', approx: true, source: 'curated',
@@ -389,61 +420,61 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'bg-kasiglahan-rice', category: 'bigasan', name: 'Kasiglahan Rice Supply',
     coords: [14.7447, 121.1356], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // --------------------------------------------------------------- water
+  // --------------------------------------------------------------- water 💧
   {
-    id: 'wt-aquabest-kasiglahan', category: 'water', name: 'Aquabest Water Refilling - Kasiglahan',
+    id: 'wt-aquabest-kasiglahan', category: 'water', name: 'Aquabest Water Refilling – Kasiglahan',
     coords: [14.7454, 121.1364], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '7:00 AM - 8:00 PM', note: 'Delivery sa buong Kasiglahan', phone: '0917-000-0000', approx: true, source: 'curated',
+    hours: '7:00 AM – 8:00 PM', note: 'Delivery sa buong Kasiglahan', phone: '0917-000-0000', approx: true, source: 'curated',
   },
   {
     id: 'wt-sanjose-proper', category: 'water', name: 'Crystal Clear Water Station',
     coords: [14.7417, 121.1468], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '7:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM – 8:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'wt-amityville', category: 'water', name: 'Amityville Water Depot',
     coords: [14.7336, 121.1281], address: 'Amityville Subdivision, Brgy. San Jose',
-    hours: '6:30 AM - 8:30 PM', approx: true, source: 'curated',
+    hours: '6:30 AM – 8:30 PM', approx: true, source: 'curated',
   },
   {
-    id: 'wt-tagumpay', category: 'water', name: 'AquaQuest Water Station - Tagumpay',
+    id: 'wt-tagumpay', category: 'water', name: 'AquaQuest Water Station – Tagumpay',
     coords: [14.7562, 121.1329], address: 'Tagumpay Village, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ----------------------------------------------------------------- lpg
+  // ----------------------------------------------------------------- lpg 🔥
   {
-    id: 'lpg-kasiglahan', category: 'lpg', name: 'Gasul Dealer - Kasiglahan 1K1',
+    id: 'lpg-kasiglahan', category: 'lpg', name: 'Gasul Dealer – Kasiglahan 1K1',
     coords: [14.7448, 121.1363], address: 'Kasiglahan Village 1K1 Main Road, Brgy. San Jose',
-    hours: '7:00 AM - 7:00 PM', note: 'Tank swap at pang-deliver', approx: true, source: 'curated',
+    hours: '7:00 AM – 7:00 PM', note: 'Tank swap at pang-deliver', approx: true, source: 'curated',
   },
   {
-    id: 'lpg-amityville', category: 'lpg', name: 'LPG Republic - Amityville',
+    id: 'lpg-amityville', category: 'lpg', name: 'LPG Republic – Amityville',
     coords: [14.7339, 121.1274], address: 'Amityville Subdivision, Brgy. San Jose',
-    hours: '8:00 AM - 6:00 PM', approx: true, source: 'curated',
+    hours: '8:00 AM – 6:00 PM', approx: true, source: 'curated',
   },
   {
-    id: 'lpg-litex', category: 'lpg', name: 'Petron Gasul - Litex Corridor',
+    id: 'lpg-litex', category: 'lpg', name: 'Petron Gasul – Litex Corridor',
     coords: [14.7287, 121.1126], address: 'Litex / Gravel Pit Corridor, Brgy. San Jose',
-    hours: '7:00 AM - 7:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM – 7:00 PM', approx: true, source: 'curated',
   },
-  // -------------------------------------------------------------- bakery
+  // -------------------------------------------------------------- bakery 🥖
   {
-    id: 'bk-julies-kasiglahan', category: 'bakery', name: "Julie's Bakeshop - Kasiglahan Village",
+    id: 'bk-julies-kasiglahan', category: 'bakery', name: "Julie's Bakeshop – Kasiglahan Village",
     coords: [14.7451, 121.1361], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '5:00 AM - 9:00 PM', note: 'Mainit na pandesal tuwing umaga', approx: true, source: 'curated',
+    hours: '5:00 AM – 9:00 PM', note: 'Mainit na pandesal tuwing umaga', approx: true, source: 'curated',
   },
   {
     id: 'bk-san-jose-bakery', category: 'bakery', name: 'Panaderia de San Jose',
     coords: [14.7416, 121.1459], address: 'San Jose Proper, Brgy. San Jose', approx: true, source: 'curated',
   },
   {
-    id: 'bk-town-center', category: 'bakery', name: 'Montalban Bakeshop - Town Center',
+    id: 'bk-town-center', category: 'bakery', name: 'Montalban Bakeshop – Town Center',
     coords: [14.7400, 121.1484], address: 'Montalban Town Center, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------ hardware
+  // ------------------------------------------------------------ hardware 🧰
   {
     id: 'hw-sanjose-hardware', category: 'hardware', name: 'San Jose Hardware & Construction Supply',
     coords: [14.7424, 121.1455], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '7:30 AM - 6:00 PM', approx: true, source: 'curated',
+    hours: '7:30 AM – 6:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'hw-builders-depot', category: 'hardware', name: 'Montalban Builders Depot',
@@ -453,17 +484,17 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'hw-eastwood', category: 'hardware', name: 'Eastwood Hardware',
     coords: [14.7384, 121.1226], address: 'Eastwood Greenview Phase 2, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------- laundry
+  // ------------------------------------------------------------- laundry 🧺
   {
-    id: 'ld-amityville', category: 'laundry', name: 'Wash & Fold Laundry - Amityville',
+    id: 'ld-amityville', category: 'laundry', name: 'Wash & Fold Laundry – Amityville',
     coords: [14.7337, 121.1279], address: 'Amityville Subdivision, Brgy. San Jose',
-    hours: '7:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM – 8:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'ld-kasiglahan', category: 'laundry', name: 'Kasiglahan Laundry Hub',
     coords: [14.7453, 121.1359], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // -------------------------------------------------------------- police
+  // -------------------------------------------------------------- police 🚓
   {
     id: 'po-sanjose-outpost', category: 'police', name: 'Barangay San Jose Police Outpost / Tanod Station',
     coords: [14.7426, 121.1462], address: 'Katabi ng Barangay Hall, San Jose Proper',
@@ -474,13 +505,13 @@ export const HELP_CENTER_PLACES: Place[] = [
     coords: [14.7306, 121.1196], address: 'Rodriguez (Montalban) town proper, malapit sa San Jose',
     hours: '24 oras', phone: '(02) 8941-1191', approx: true, source: 'curated',
   },
-  // ---------------------------------------------------------------- fire
+  // ---------------------------------------------------------------- fire 🚒
   {
     id: 'fi-bfp-rodriguez', category: 'fire', name: 'BFP Rodriguez Fire Station',
     coords: [14.7309, 121.1201], address: 'Municipal compound, Rodriguez (Montalban), Rizal',
     hours: '24 oras', phone: '(02) 8948-2211', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------ hospital
+  // ------------------------------------------------------------ hospital 🏥
   {
     id: 'hs-rodriguez-municipal', category: 'hospital', name: 'Rodriguez Municipal Hospital (Emergency Room)',
     coords: [14.7325, 121.1215], address: 'Rodriguez (Montalban) town proper, ~2 km mula sa San Jose',
@@ -491,11 +522,11 @@ export const HELP_CENTER_PLACES: Place[] = [
     coords: [14.7360, 121.1341], address: 'Rodriguez Highway, Brgy. Rosario (boundary ng San Jose)',
     hours: '24 oras emergency', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------- clinic
+  // ------------------------------------------------------------- clinic 🩺
   {
     id: 'cl-sanjose-health', category: 'clinic', name: 'Brgy. San Jose Health Center (Main)',
     coords: [14.7422, 121.1464], address: 'Katabi ng Barangay Hall, San Jose Proper',
-    hours: '8:00 AM - 5:00 PM (Lun-Biy)', note: 'Prenatal, immunization, libreng check-up', phone: '(02) 8997-1823', approx: true, source: 'curated',
+    hours: '8:00 AM – 5:00 PM (Lun–Biy)', note: 'Prenatal, immunization, libreng check-up', phone: '(02) 8997-1823', approx: true, source: 'curated',
   },
   {
     id: 'cl-kasiglahan-birthing', category: 'clinic', name: 'Kasiglahan Birthing Home & Clinic',
@@ -505,7 +536,7 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'cl-eastwood-medical', category: 'clinic', name: 'Eastwood Medical Clinic & Laboratory',
     coords: [14.7388, 121.1218], address: 'Eastwood Greenview Phase 1, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // --------------------------------------------------------- evacuation
+  // --------------------------------------------------------- evacuation ⛺
   {
     id: 'ev-kasiglahan-gym', category: 'evacuation', name: 'Kasiglahan Village Elementary School Gym',
     coords: [14.7461, 121.1352], address: 'Kasiglahan Village, Brgy. San Jose',
@@ -524,11 +555,11 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'ev-amityville-hall', category: 'evacuation', name: 'Amityville Subdivision Multi-Purpose Hall',
     coords: [14.7334, 121.1282], address: 'Amityville Subdivision, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ----------------------------------------------------------- barangay
+  // ----------------------------------------------------------- barangay 🏛️
   {
     id: 'br-sanjose-hall', category: 'barangay', name: 'Barangay San Jose Hall & Operations Center',
     coords: [14.7411, 121.1471], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '8:00 AM - 5:00 PM (Lun-Biy)', phone: '(02) 8997-1823', approx: true, source: 'curated',
+    hours: '8:00 AM – 5:00 PM (Lun–Biy)', phone: '(02) 8997-1823', approx: true, source: 'curated',
   },
   {
     id: 'br-bdrrmc', category: 'barangay', name: 'BDRRMC San Jose Emergency Operations Center',
@@ -539,7 +570,7 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'br-satellite-1k2', category: 'barangay', name: 'Barangay San Jose Satellite Office (Kasiglahan 1K2)',
     coords: [14.7455, 121.1368], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------- school
+  // ------------------------------------------------------------- school 🎓
   {
     id: 'sc-sanjose-elem', category: 'school', name: 'San Jose Elementary School',
     coords: [14.7415, 121.1467], address: 'San Jose Proper, Brgy. San Jose', approx: true, source: 'curated',
@@ -561,7 +592,7 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'sc-tagumpay-daycare', category: 'school', name: 'Tagumpay Village Day Care Center',
     coords: [14.7557, 121.1324], address: 'Tagumpay Village, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------- church
+  // ------------------------------------------------------------- church ⛪
   {
     id: 'ch-san-jose-parish', category: 'church', name: 'San Jose Parish Church',
     coords: [14.7418, 121.1476], address: 'San Jose Proper, Brgy. San Jose',
@@ -572,10 +603,10 @@ export const HELP_CENTER_PLACES: Place[] = [
     coords: [14.7458, 121.1357], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
   },
   {
-    id: 'ch-inc-kasiglahan', category: 'church', name: 'Iglesia ni Cristo - Lokal ng Kasiglahan',
+    id: 'ch-inc-kasiglahan', category: 'church', name: 'Iglesia ni Cristo – Lokal ng Kasiglahan',
     coords: [14.7445, 121.1370], address: 'Kasiglahan Village, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // -------------------------------------------------------------- court
+  // -------------------------------------------------------------- court 🏀
   {
     id: 'ct-sanjose-covered', category: 'court', name: 'Brgy. San Jose Covered Court',
     coords: [14.7412, 121.1468], address: 'Barangay Hall compound, San Jose Proper',
@@ -589,94 +620,94 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'ct-tagumpay', category: 'court', name: 'Tagumpay Village Court & Plaza',
     coords: [14.7554, 121.1330], address: 'Tagumpay Village, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // --------------------------------------------------------------- wifi
+  // --------------------------------------------------------------- wifi 📶
   {
-    id: 'wf-barangay-hall', category: 'wifi', name: 'Free WiFi Zone - Barangay San Jose Hall',
+    id: 'wf-barangay-hall', category: 'wifi', name: 'Free WiFi Zone – Barangay San Jose Hall',
     coords: [14.7412, 121.1472], address: 'San Jose Proper, Brgy. San Jose',
-    hours: '8:00 AM - 5:00 PM', note: 'Libreng WiFi (project ng barangay)', approx: true, source: 'curated',
+    hours: '8:00 AM – 5:00 PM', note: 'Libreng WiFi (project ng barangay)', approx: true, source: 'curated',
   },
   {
-    id: 'wf-kasiglahan-plaza', category: 'wifi', name: 'Free WiFi Zone - Kasiglahan Plaza',
+    id: 'wf-kasiglahan-plaza', category: 'wifi', name: 'Free WiFi Zone – Kasiglahan Plaza',
     coords: [14.7450, 121.1365], address: 'Kasiglahan Village 1K1 Plaza, Brgy. San Jose', approx: true, source: 'curated',
   },
   {
-    id: 'wf-load-station', category: 'wifi', name: 'Load & E-Load Station - San Jose Proper',
+    id: 'wf-load-station', category: 'wifi', name: 'Load & E-Load Station – San Jose Proper',
     coords: [14.7420, 121.1458], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // --------------------------------------------------------------- food
+  // --------------------------------------------------------------- food 🍜
   {
     id: 'fd-jollibee-montalban', category: 'food', name: 'Jollibee Montalban',
     coords: [14.7354, 121.1338], address: 'Rodriguez Highway, Brgy. Rosario (katabi ng San Jose)',
-    hours: '6:00 AM - 10:00 PM', note: 'Drive-thru', approx: true, source: 'curated',
+    hours: '6:00 AM – 10:00 PM', note: 'Drive-thru', approx: true, source: 'curated',
   },
   {
     id: 'fd-karinderya', category: 'food', name: "Aling Nena's Karinderya",
     coords: [14.7452, 121.1354], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '6:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '6:00 AM – 8:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'fd-sanjose-eatery', category: 'food', name: 'San Jose Eatery & Grill',
     coords: [14.7423, 121.1457], address: 'San Jose Proper, Brgy. San Jose',
-    hours: '10:00 AM - 10:00 PM', approx: true, source: 'curated',
+    hours: '10:00 AM – 10:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'fd-milk-tea', category: 'food', name: 'Milk Tea Corner Kasiglahan',
     coords: [14.7447, 121.1361], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // -------------------------------------------------------------- salon
+  // -------------------------------------------------------------- salon 💈
   {
     id: 'sa-sanjose-barber', category: 'salon', name: 'San Jose Barbershop',
     coords: [14.7419, 121.1456], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '9:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '9:00 AM – 8:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'sa-kasiglahan-glam', category: 'salon', name: 'Kasiglahan Glam Salon',
     coords: [14.7451, 121.1358], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------- dental
+  // ------------------------------------------------------------- dental 🦷
   {
     id: 'de-sanjose-dental', category: 'dental', name: 'San Jose Dental Clinic',
     coords: [14.7425, 121.1461], address: 'San Jose Proper, Brgy. San Jose',
-    hours: '9:00 AM - 6:00 PM', approx: true, source: 'curated',
+    hours: '9:00 AM – 6:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'de-kasiglahan-smile', category: 'dental', name: 'Kasiglahan Smile Dental Center',
     coords: [14.7449, 121.1364], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ---------------------------------------------------------------- vet
+  // ---------------------------------------------------------------- vet 🐾
   {
     id: 've-sanjose-vet', category: 'vet', name: 'San Jose Veterinary Clinic',
     coords: [14.7417, 121.1450], address: 'J.P. Rizal Avenue, Brgy. San Jose',
-    hours: '9:00 AM - 6:00 PM', approx: true, source: 'curated',
+    hours: '9:00 AM – 6:00 PM', approx: true, source: 'curated',
   },
   {
-    id: 've-paws-claws', category: 'vet', name: 'Paws & Claws Animal Clinic - Amityville',
+    id: 've-paws-claws', category: 'vet', name: 'Paws & Claws Animal Clinic – Amityville',
     coords: [14.7341, 121.1276], address: 'Amityville Subdivision, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ---------------------------------------------------------------- gym
+  // ---------------------------------------------------------------- gym 🏋️
   {
     id: 'gy-sanjose-fitness', category: 'gym', name: 'San Jose Fitness Gym & Boxing',
     coords: [14.7293, 121.1138], address: 'Litex Market Access Road, Brgy. San Jose',
-    hours: '5:00 AM - 10:00 PM', approx: true, source: 'curated',
+    hours: '5:00 AM – 10:00 PM', approx: true, source: 'curated',
   },
-  // ----------------------------------------------------------------- gas
+  // ----------------------------------------------------------------- gas ⛽
   {
-    id: 'ga-petron-highway', category: 'gas', name: 'Petron - Rodriguez Highway (San Jose)',
+    id: 'ga-petron-highway', category: 'gas', name: 'Petron – Rodriguez Highway (San Jose)',
     coords: [14.7362, 121.1345], address: 'Rodriguez Highway, Brgy. San Jose', hours: '24 oras', approx: true, source: 'curated',
   },
   {
-    id: 'ga-shell-litex', category: 'gas', name: 'Shell - Litex / J.P. Rizal',
+    id: 'ga-shell-litex', category: 'gas', name: 'Shell – Litex / J.P. Rizal',
     coords: [14.7286, 121.1128], address: 'Litex corridor, Brgy. San Jose', hours: '24 oras', approx: true, source: 'curated',
   },
   {
-    id: 'ga-phoenix-kasiglahan', category: 'gas', name: 'Phoenix - Kasiglahan Village',
-    coords: [14.7464, 121.1372], address: 'Kasiglahan Village, Brgy. San Jose', hours: '5:00 AM - 10:00 PM', approx: true, source: 'curated',
+    id: 'ga-phoenix-kasiglahan', category: 'gas', name: 'Phoenix – Kasiglahan Village',
+    coords: [14.7464, 121.1372], address: 'Kasiglahan Village, Brgy. San Jose', hours: '5:00 AM – 10:00 PM', approx: true, source: 'curated',
   },
-  // --------------------------------------------------------- vulcanizing
+  // --------------------------------------------------------- vulcanizing 🛞
   {
-    id: 'vu-kuya-boy', category: 'vulcanizing', name: 'Kuya Boy Vulcanizing - Kasiglahan',
+    id: 'vu-kuya-boy', category: 'vulcanizing', name: 'Kuya Boy Vulcanizing – Kasiglahan',
     coords: [14.7446, 121.1366], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '6:00 AM - 9:00 PM', note: 'Tire patch at interior repair', approx: true, source: 'curated',
+    hours: '6:00 AM – 9:00 PM', note: 'Tire patch at interior repair', approx: true, source: 'curated',
   },
   {
     id: 'vu-sanjose-tire', category: 'vulcanizing', name: 'San Jose Tire Supply & Vulcanizing',
@@ -686,21 +717,21 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'vu-amityville-auto', category: 'vulcanizing', name: 'Amityville Auto Repair & Vulcanizing',
     coords: [14.7332, 121.1284], address: 'Amityville Subdivision, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------ terminal
+  // ------------------------------------------------------------ terminal 🛺
   {
-    id: 'te-sanjose-plaza', category: 'terminal', name: 'Tricycle Terminal - Barangay San Jose Plaza',
-    coords: [14.7413, 121.1466], address: 'San Jose Proper, Brgy. San Jose', hours: '4:30 AM - 10:00 PM', approx: true, source: 'curated',
+    id: 'te-sanjose-plaza', category: 'terminal', name: 'Tricycle Terminal – Barangay San Jose Plaza',
+    coords: [14.7413, 121.1466], address: 'San Jose Proper, Brgy. San Jose', hours: '4:30 AM – 10:00 PM', approx: true, source: 'curated',
   },
   {
     id: 'te-kasiglahan-toda', category: 'terminal', name: 'Kasiglahan TODA Terminal (1K1)',
-    coords: [14.7454, 121.1356], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '5:00 AM - 11:00 PM', approx: true, source: 'curated',
+    coords: [14.7454, 121.1356], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '5:00 AM – 11:00 PM', approx: true, source: 'curated',
   },
   {
-    id: 'te-highway-jeep', category: 'terminal', name: 'Jeepney Terminal - Rodriguez Highway',
+    id: 'te-highway-jeep', category: 'terminal', name: 'Jeepney Terminal – Rodriguez Highway',
     coords: [14.7357, 121.1342], address: 'Rodriguez Highway (San Jose / Rosario boundary)',
-    note: 'Biyaheng Rodriguez-Cubao at San Mateo', approx: true, source: 'curated',
+    note: 'Biyaheng Rodriguez–Cubao at San Mateo', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------- parking
+  // ------------------------------------------------------------- parking 🅿️
   {
     id: 'pa-barangay-hall', category: 'parking', name: 'Barangay San Jose Hall Parking',
     coords: [14.7414, 121.1473], address: 'Barangay Hall compound, San Jose Proper', approx: true, source: 'curated',
@@ -709,64 +740,64 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'pa-town-center', category: 'parking', name: 'Montalban Town Center Parking',
     coords: [14.7404, 121.1488], address: 'Montalban Town Center, Rodriguez Highway', approx: true, source: 'curated',
   },
-  // ----------------------------------------------------------------- atm
+  // ----------------------------------------------------------------- atm 🏧
   {
-    id: 'at-bdo-town-center', category: 'atm', name: 'BDO ATM - Montalban Town Center',
+    id: 'at-bdo-town-center', category: 'atm', name: 'BDO ATM – Montalban Town Center',
     coords: [14.7402, 121.1485], address: 'GF, Montalban Town Center, Rodriguez Highway cor. Lardizabal St.',
     hours: '24 oras', approx: true, source: 'curated',
   },
   {
-    id: 'at-bpi-kasiglahan', category: 'atm', name: 'BPI ATM - Kasiglahan Village',
+    id: 'at-bpi-kasiglahan', category: 'atm', name: 'BPI ATM – Kasiglahan Village',
     coords: [14.7450, 121.1360], address: 'Kasiglahan Village 1K1 Commercial Row, Brgy. San Jose',
     hours: '24 oras', approx: true, source: 'curated',
   },
   {
-    id: 'at-landbank-municipal', category: 'atm', name: 'Landbank ATM - Rodriguez Municipal Hall',
+    id: 'at-landbank-municipal', category: 'atm', name: 'Landbank ATM – Rodriguez Municipal Hall',
     coords: [14.7307, 121.1198], address: 'Municipal compound, Rodriguez, Rizal', hours: '24 oras', approx: true, source: 'curated',
   },
   {
-    id: 'at-gcash-kiosk', category: 'atm', name: 'GCash / Cash-in Kiosk - Kasiglahan 1K1',
+    id: 'at-gcash-kiosk', category: 'atm', name: 'GCash / Cash-in Kiosk – Kasiglahan 1K1',
     coords: [14.7448, 121.1354], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '7:00 AM - 9:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM – 9:00 PM', approx: true, source: 'curated',
   },
-  // ---------------------------------------------------------------- bank
+  // ---------------------------------------------------------------- bank 🏦
   {
     id: 'ba-bdo-montalban', category: 'bank', name: 'BDO Montalban Town Center',
     coords: [14.7401, 121.1485], address: 'GF, Montalban Town Center, Rodriguez Highway cor. Lardizabal St., Brgy. San Jose',
-    hours: '9:00 AM - 4:00 PM (Lun-Biy)', phone: '948-2718', approx: true, source: 'curated',
+    hours: '9:00 AM – 4:00 PM (Lun–Biy)', phone: '948-2718', approx: true, source: 'curated',
   },
   {
     id: 'ba-landbank-rodriguez', category: 'bank', name: 'Landbank Rodriguez Branch',
-    coords: [14.7308, 121.1199], address: 'Rodriguez (Montalban) town proper', hours: '9:00 AM - 4:00 PM (Lun-Biy)', approx: true, source: 'curated',
+    coords: [14.7308, 121.1199], address: 'Rodriguez (Montalban) town proper', hours: '9:00 AM – 4:00 PM (Lun–Biy)', approx: true, source: 'curated',
   },
   {
-    id: 'ba-card-kasiglahan', category: 'bank', name: 'CARD Bank - Kasiglahan Village',
+    id: 'ba-card-kasiglahan', category: 'bank', name: 'CARD Bank – Kasiglahan Village',
     coords: [14.7453, 121.1365], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ------------------------------------------------------------ pawnshop
+  // ------------------------------------------------------------ pawnshop 💰
   {
-    id: 'pw-cebuana', category: 'pawnshop', name: 'Cebuana Lhuillier - Kasiglahan',
-    coords: [14.7451, 121.1359], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '8:00 AM - 6:00 PM', approx: true, source: 'curated',
+    id: 'pw-cebuana', category: 'pawnshop', name: 'Cebuana Lhuillier – Kasiglahan',
+    coords: [14.7451, 121.1359], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '8:00 AM – 6:00 PM', approx: true, source: 'curated',
   },
   {
-    id: 'pw-mlhuillier', category: 'pawnshop', name: 'M Lhuillier - Montalban Town Center',
-    coords: [14.7403, 121.1483], address: 'Montalban Town Center, Brgy. San Jose', hours: '8:00 AM - 6:00 PM', approx: true, source: 'curated',
+    id: 'pw-mlhuillier', category: 'pawnshop', name: 'M Lhuillier – Montalban Town Center',
+    coords: [14.7403, 121.1483], address: 'Montalban Town Center, Brgy. San Jose', hours: '8:00 AM – 6:00 PM', approx: true, source: 'curated',
   },
   {
-    id: 'pw-palawan', category: 'pawnshop', name: 'Palawan Pawnshop - San Jose Proper',
+    id: 'pw-palawan', category: 'pawnshop', name: 'Palawan Pawnshop – San Jose Proper',
     coords: [14.7422, 121.1454], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: true, source: 'curated',
   },
-  // ---------------------------------------------------------- remittance
+  // ---------------------------------------------------------- remittance 📤
   {
-    id: 're-palawan-express', category: 'remittance', name: 'Palawan Express Padala - Kasiglahan',
-    coords: [14.7450, 121.1355], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '8:00 AM - 7:00 PM', approx: true, source: 'curated',
+    id: 're-palawan-express', category: 'remittance', name: 'Palawan Express Padala – Kasiglahan',
+    coords: [14.7450, 121.1355], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '8:00 AM – 7:00 PM', approx: true, source: 'curated',
   },
   {
-    id: 're-lbc', category: 'remittance', name: 'LBC Express - San Jose Proper',
+    id: 're-lbc', category: 'remittance', name: 'LBC Express – San Jose Proper',
     coords: [14.7424, 121.1452], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: true, source: 'curated',
   },
   {
-    id: 're-gcash-padala', category: 'remittance', name: 'GCash Padala Partner - Kasiglahan 1K1',
+    id: 're-gcash-padala', category: 'remittance', name: 'GCash Padala Partner – Kasiglahan 1K1',
     coords: [14.7446, 121.1352], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
   },
 ];
@@ -807,7 +838,7 @@ export function formatDistance(km: number): string {
  * barangay bounding box. Only categories that actually have OSM filters are
  * queried, so a selection of curated-only rows costs nothing.
  *
- * `withLimit` adds the `400` output cap (first attempt - keeps the payload
+ * `withLimit` adds the `400` output cap (first attempt — keeps the payload
  * small). The Help Center retries without it if a mirror rejects that form,
  * so live pins still load on stricter endpoints.
  */
