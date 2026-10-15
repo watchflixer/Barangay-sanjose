@@ -262,3 +262,61 @@ body,
 .map-clean-tiles {
   filter: saturate(0.6) brightness(1.06) contrast(0.96);
 }
+
+/* ---------------------------------------------------------------------------
+   Help Center — filterable directory map (HelpCenterView.tsx)
+   Teardrop category pins (emoji inside a colour-coded badge) so a 7-Eleven
+   pin never looks like a botika pin, plus the scrollbar-less chip rows.
+--------------------------------------------------------------------------- */
+.hc-pin-wrap {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.hc-pin {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hc-c, #1d4ed8);
+  border: 2px solid #ffffff;
+  box-shadow: 0 3px 10px rgba(2, 6, 23, 0.45);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hc-pin > span {
+  transform: rotate(45deg);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.hc-pin-wrap:hover .hc-pin {
+  transform: rotate(-45deg) scale(1.14);
+  box-shadow: 0 6px 16px rgba(2, 6, 23, 0.5);
+}
+
+/* Selected / opened pin pops slightly without breaking the anchor point. */
+.leaflet-marker-icon.hc-pin-wrap.leaflet-interactive:focus-visible .hc-pin {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Chip rows scroll horizontally without a visible scrollbar. */
+.hc-chip-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hc-chip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Keep Leaflet's own popup comfortably wide enough for the directory card. */
+.custom-leaflet-popup .leaflet-popup-content {
+  min-width: 238px !important;
+  max-width: 290px !important;
+}
