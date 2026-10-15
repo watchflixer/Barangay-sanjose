@@ -233,14 +233,14 @@ export const GeoJsonModal: React.FC<GeoJsonModalProps> = ({
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
                   <h4 className="font-bold text-slate-900 text-xs">Step 1: Construct the World Outer Ring & Inner Hole</h4>
                   <p className="text-slate-600 text-xs">
-                    Leaflet's <code>L.polygon([outerRing, innerHole])</code> accepts multiple coordinate rings. The first ring covers the entire globe <code>[[90, -180], [90, 180], [-90, 180], [-90, -180]]</code>, and the second ring is the polygon boundary of Barangay San Jose.
+                    Leaflet's <code>new L.Polygon([outerRing, innerHole])</code> accepts multiple coordinate rings. The first ring covers the entire globe <code>[[90, -180], [90, 180], [-90, 180], [-90, -180]]</code>, and the second ring is the polygon boundary of Barangay San Jose.
                   </p>
                   <div className="p-2.5 bg-slate-900 text-emerald-300 rounded font-mono text-[11px] overflow-x-auto">
 {`const worldRing = [[90, -180], [90, 180], [-90, 180], [-90, -180], [90, -180]];
 const sanJoseHole = SAN_JOSE_COORDS; // [lat, lng][]
 
 // Inverted polygon paints world black EXCEPT San Jose!
-L.polygon([worldRing, sanJoseHole], {
+new L.Polygon([worldRing, sanJoseHole], {
   fillColor: '#000000',
   fillOpacity: 0.98,
   stroke: false
@@ -254,9 +254,9 @@ L.polygon([worldRing, sanJoseHole], {
                     Disable dragging beyond the boundary by setting <code>maxBounds</code> and <code>maxBoundsViscosity: 1.0</code>:
                   </p>
                   <div className="p-2.5 bg-slate-900 text-emerald-300 rounded font-mono text-[11px] overflow-x-auto">
-{`const sanJoseBounds = L.latLngBounds([14.7120, 121.0950], [14.7760, 121.1660]);
+{`const sanJoseBounds = new L.LatLngBounds([14.7120, 121.0950], [14.7760, 121.1660]);
 
-const map = L.map('map-id', {
+const map = new L.Map('map-id', {
   center: [14.7425, 121.1310],
   zoom: 14,
   minZoom: 13,
@@ -270,7 +270,7 @@ const map = L.map('map-id', {
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
                   <h4 className="font-bold text-slate-900 text-xs">Step 3: Render Custom Hazard DivIcons</h4>
                   <p className="text-slate-600 text-xs">
-                    Custom Leaflet <code>L.divIcon</code> elements render the Fire (🔥), Flood (🌊), Power (💡), and Water (🚰) pins with animated pulse rings.
+                    Custom Leaflet <code>new L.DivIcon(...)</code> elements render the Fire (🔥), Flood (🌊), Power (💡), and Water (🚰) pins with animated pulse rings.
                   </p>
                 </div>
               </div>

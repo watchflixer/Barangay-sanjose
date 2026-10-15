@@ -102,7 +102,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   return (
     <div className="absolute inset-0 z-[60] flex flex-col bg-[#0b0b0b] text-neutral-100">
       {/* ------------------------------------------------------------- header */}
-      <header className="relative shrink-0 border-b border-neutral-800 pb-3 pl-16 pr-4 pt-4 sm:pl-20 sm:pr-6">
+      <header className="relative shrink-0 pb-3 pl-16 pr-4 pt-4 sm:pl-20 sm:pr-6">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-neutral-400">
@@ -148,7 +148,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
       </header>
 
       {/* ------------------------------------------------- quick pick bundles */}
-      <div className="shrink-0 border-b border-neutral-800 pl-16 pr-4 py-2.5 sm:pl-20 sm:pr-6">
+      <div className="shrink-0 pl-16 pr-4 pb-1 pt-3 sm:pl-20 sm:pr-6">
         <div className="mb-1.5 flex items-baseline justify-between gap-2">
           <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-neutral-500">
             Preset
@@ -216,7 +216,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
 
         {groups.map(({ meta, categories }) => (
           <section key={meta.id} className="mb-4">
-            <div className="mb-2 flex items-baseline gap-2 border-b border-neutral-800 pb-1.5">
+            <div className="mb-2 flex items-baseline gap-2">
               <h3 className="text-[12px] font-bold uppercase tracking-[0.1em] text-neutral-200">
                 {meta.label}
               </h3>
@@ -281,7 +281,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
           </section>
         ))}
 
-        <p className="mt-2 border-l-2 border-neutral-700 py-1 pl-2.5 text-[10.5px] leading-snug text-neutral-500">
+        <p className="mt-2 py-1 text-[10.5px] leading-snug text-neutral-500">
           <strong className="font-bold text-neutral-300">Paalala:</strong> ang listahan ay
           community-mapped na pin (pwedeng ilang metro ang layo). I-on ang{' '}
           <strong className="font-bold text-neutral-200">Live OSM</strong> para makuha ang aktwal
@@ -290,7 +290,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- footer */}
-      <footer className="shrink-0 border-t border-neutral-800 bg-[#0b0b0b] px-4 py-3 sm:px-6">
+      <footer className="shrink-0 bg-[#0b0b0b] px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"

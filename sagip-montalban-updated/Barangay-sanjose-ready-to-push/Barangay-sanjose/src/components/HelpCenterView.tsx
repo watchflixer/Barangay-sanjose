@@ -1,5 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
+/*
+ * NOTE ON LEAFLET: this app runs Leaflet 2 (2.0.0-alpha.1), where the old
+ * lowercase factory helpers were removed. Use the classes instead:
+ *   new L.Map(el, opts)          (not L.map(...))
+ *   new L.TileLayer(url, opts)   (not L.tileLayer(...))
+ *   new L.Marker(latlng, opts) / new L.DivIcon(opts) / new L.LayerGroup()
+ *   new L.Polygon(...) / new L.Polyline(...) / new L.Circle(...)
+ *   new L.LatLng(lat, lng) / new L.LatLngBounds(a, b) / new L.Control.Zoom(opts)
+ * The published @types/leaflet still describes 1.x, so v1-only calls would
+ * type-check yet fail at runtime.
+ */
 import {
   AlertTriangle,
   ChevronDown,
@@ -236,15 +247,15 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const container = containerRef.current;
     if (!container || localMapRef.current) return;
 
-    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+    const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+    const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
 
-    const map = L.map(container, {
+    const map = new L.Map(container, {
       center: SAN_JOSE_CENTER,
       zoom: 13,
       minZoom: 12,
       maxZoom: 18,
-      maxBounds: lockCameraToBounds ? L.latLngBounds(corner1, corner2) : undefined,
+      maxBounds: lockCameraToBounds ? new L.LatLngBounds(corner1, corner2) : undefined,
       maxBoundsViscosity: 1.0,
       zoomControl: false,
       attributionControl: true,
@@ -252,7 +263,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
     // Native Leaflet zoom buttons — index.css pushes them below the app's
     // floating control stack so all map views line up.
-    L.control.zoom({ position: 'topleft' }).addTo(map);
+    new L.Control.Zoom({ position: 'topleft' }).addTo(map);
 
     map.on('moveend', () => {
       const center = map.getCenter();
@@ -288,7 +299,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     }
     const withLiveTraffic = trafficOn && !trafficTilesFailed && basemap === 'streets';
     const tileConfig = withLiveTraffic ? TRAFFIC_TILE_SERVERS.streetTraffic : TILE_SERVERS[basemap];
-    const layer = L.tileLayer(tileConfig.url, {
+    const layer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
@@ -314,7 +325,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const iconFor = useCallback((category: PlaceCategory) => {
     const cached = iconCacheRef.current.get(category.id);
     if (cached) return cached;
-    const icon = L.divIcon({
+    const icon = new L.DivIcon({
       className: 'hc-pin-wrap',
       html: `<div class="hc-pin"><span class="hc-pin-code">${escapeHtml(category.code)}</span></div>`,
       iconSize: [30, 30],
@@ -364,12 +375,12 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       markersLayerRef.current = null;
     }
     markersRef.current.clear();
-    const group = L.layerGroup().addTo(map);
+    const group = new L.LayerGroup().addTo(map);
     markersLayerRef.current = group;
     places.forEach((place) => {
       const category = CATEGORY_BY_ID[place.category];
       if (!category) return;
-      const marker = L.marker(place.coords, {
+      const marker = new L.Marker(place.coords, {
         icon: iconFor(category),
         title: place.name,
         riseOnHover: true,
@@ -503,8 +514,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           if (meMarkerRef.current) {
             meMarkerRef.current.setLatLng(coords);
           } else {
-            meMarkerRef.current = L.marker(coords, {
-              icon: L.divIcon({
+            meMarkerRef.current = new L.Marker(coords, {
+              icon: new L.DivIcon({
                 className: 'user-location-marker',
                 html: '<span class="user-location-dot"></span>',
                 iconSize: [24, 24],
@@ -626,7 +637,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             <button
               type="button"
               onClick={openPicker}
-              className="flex shrink-0 items-center gap-1.5 rounded bg-black px-2.5 py-1 text-[11px] font-bold text-white transition-colors hover:bg-neutral-800"
+              className="flex shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-white px-2.5 py-1 text-[11px] font-bold text-neutral-800 transition-colors hover:border-black hover:text-black"
             >
               <Filter className="h-3.5 w-3.5" /> Filter
             </button>
@@ -673,12 +684,18 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           onClick={toggleTraffic}
           aria-pressed={trafficOn}
           title="I-toggle ang live traffic layer"
-          className={`absolute right-[12px] top-[52px] z-50 rounded-md border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.04em] shadow-sm transition-colors ${
+          className={`absolute right-[12px] top-[52px] z-50 flex items-center gap-1.5 rounded-md border bg-white px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.04em] shadow-sm transition-colors ${
             trafficOn
-              ? 'border-black bg-black text-white'
-              : 'border-neutral-300 bg-white text-neutral-600 hover:text-black'
+              ? 'border-neutral-800 text-neutral-900 hover:border-black'
+              : 'border-neutral-300 text-neutral-500 hover:border-neutral-500'
           }`}
         >
+          <span
+            aria-hidden="true"
+            className={`inline-block h-2 w-2 rounded-full ${
+              trafficOn ? 'bg-[#CC0704]' : 'border border-neutral-400 bg-white'
+            }`}
+          />
           Live traffic: {trafficOn ? 'ON' : 'OFF'}
         </button>
       )}
@@ -857,7 +874,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               <button
                 type="button"
                 onClick={() => setSheetExpanded(true)}
-                className="shrink-0 rounded border border-black bg-black px-2 py-1 text-[10.5px] font-bold text-white hover:bg-neutral-800"
+                className="shrink-0 rounded border border-neutral-400 px-2 py-1 text-[10.5px] font-bold text-neutral-800 hover:border-black hover:text-black"
               >
                 Tingnan lahat
               </button>

@@ -1,5 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
+/*
+ * NOTE ON LEAFLET: this app runs Leaflet 2 (2.0.0-alpha.1), where the old
+ * lowercase factory helpers were removed. Use the classes instead:
+ *   new L.Map(el, opts)          (not L.map(...))
+ *   new L.TileLayer(url, opts)   (not L.tileLayer(...))
+ *   new L.Marker(latlng, opts) / new L.DivIcon(opts) / new L.LayerGroup()
+ *   new L.Polygon(...) / new L.Polyline(...) / new L.Circle(...)
+ *   new L.LatLng(lat, lng) / new L.LatLngBounds(a, b) / new L.Control.Zoom(opts)
+ * The published @types/leaflet still describes 1.x, so v1-only calls would
+ * type-check yet fail at runtime.
+ */
 import { clearRefreshView, readRefreshView } from '../lib/refreshView';
 import { TILE_SERVERS } from '../data/tileServers';
 import { WeatherView } from './WeatherView';
@@ -209,11 +220,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (!mapContainerRef.current) return;
 
     // Define strict bounding box for Barangay San Jose
-    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-    const maxBounds = L.latLngBounds(corner1, corner2);
+    const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+    const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+    const maxBounds = new L.LatLngBounds(corner1, corner2);
 
-    const map = L.map(mapContainerRef.current, {
+    const map = new L.Map(mapContainerRef.current, {
       center: SAN_JOSE_CENTER,
       zoom: 13,
       minZoom: 13,
@@ -226,7 +237,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // Initial Tile Layer
     const tileConfig = TILE_SERVERS[mapSettings.tileLayer];
-    const tileLayer = L.tileLayer(tileConfig.url, {
+    const tileLayer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
@@ -237,7 +248,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // Inverted Mask Layer (Blacks out everything except Barangay San Jose)
     const maskCoords = getInvertedMaskCoordinates(SAN_JOSE_POLYGON_COORDS);
-    const mask = L.polygon(maskCoords as any, {
+    const mask = new L.Polygon(maskCoords as any, {
       fillColor: mapSettings.maskColor,
       fillOpacity: mapSettings.maskOpacity,
       stroke: false,
@@ -247,7 +258,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     maskLayerRef.current = mask;
 
     // Boundary Glow Stroke Layer
-    const boundary = L.polygon(SAN_JOSE_POLYGON_COORDS, {
+    const boundary = new L.Polygon(SAN_JOSE_POLYGON_COORDS, {
       color: mapSettings.boundaryColor,
       weight: 2.5,
       opacity: 0.9,
@@ -258,11 +269,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     boundaryLayerRef.current = boundary;
 
     // Marker Layer Group
-    const markersGroup = L.layerGroup().addTo(map);
+    const markersGroup = new L.LayerGroup().addTo(map);
     markersLayerRef.current = markersGroup;
 
     // Sitios Layer Group
-    const sitiosGroup = L.layerGroup().addTo(map);
+    const sitiosGroup = new L.LayerGroup().addTo(map);
     sitiosLayerRef.current = sitiosGroup;
 
     // Mouse movement tracker
@@ -311,7 +322,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }, 50);
 
     map.removeLayer(tileLayerRef.current);
-    const newLayer = L.tileLayer(tileConfig.url, {
+    const newLayer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
@@ -362,9 +373,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // 4. Update Camera Bounds lock
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-    const maxBounds = L.latLngBounds(corner1, corner2);
+    const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+    const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+    const maxBounds = new L.LatLngBounds(corner1, corner2);
 
     if (mapSettings.lockCameraToBounds) {
       mapInstanceRef.current.setMaxBounds(maxBounds);
@@ -397,14 +408,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (!mapSettings.showSitioLabels) return;
 
     SAN_JOSE_SITIOS.forEach((sitio) => {
-      const sitioIcon = L.divIcon({
+      const sitioIcon = new L.DivIcon({
         className: 'sitio-label-container',
         html: `<div class="sitio-map-label">${sitio.name}</div>`,
         iconSize: [120, 20],
         iconAnchor: [60, 10],
       });
 
-      const marker = L.marker(sitio.coordinates, {
+      const marker = new L.Marker(sitio.coordinates, {
         icon: sitioIcon,
         interactive: false,
       });
@@ -501,7 +512,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             position.coords.latitude,
             position.coords.longitude,
           ];
-          const locationIcon = L.divIcon({
+          const locationIcon = new L.DivIcon({
             className: 'user-location-marker',
             html: '<span class="user-location-dot"></span>',
             iconSize: [24, 24],
@@ -512,7 +523,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             userLocationMarkerRef.current.setLatLng(coordinates);
             userLocationMarkerRef.current.setIcon(locationIcon);
           } else {
-            userLocationMarkerRef.current = L.marker(coordinates, {
+            userLocationMarkerRef.current = new L.Marker(coordinates, {
               icon: locationIcon,
               zIndexOffset: 1000,
               title: 'Your location',
@@ -700,7 +711,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       `;
 
-      const customIcon = L.divIcon({
+      const customIcon = new L.DivIcon({
         className: 'custom-hazard-divicon',
         html: customPinHtml,
         iconSize: [38, 38],
@@ -708,7 +719,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         popupAnchor: [0, -22],
       });
 
-      const marker = L.marker(alert.coordinates, {
+      const marker = new L.Marker(alert.coordinates, {
         icon: customIcon,
         title: `${labelText}: ${alert.streetName}`,
       });
@@ -908,9 +919,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     // Close any active open popups
     mapInstanceRef.current.closePopup();
     if (mapSettings.lockCameraToBounds) {
-      const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-      const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-      mapInstanceRef.current.setMaxBounds(L.latLngBounds(corner1, corner2));
+      const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+      const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+      mapInstanceRef.current.setMaxBounds(new L.LatLngBounds(corner1, corner2));
     }
 
     // Smooth fast recenter back to Barangay San Jose center

@@ -337,9 +337,10 @@ body,
   line-height: 1;
 }
 
-/* Neutral canvas behind the tiles (the app-wide Leaflet default is navy). */
+/* Light canvas behind the tiles: while tiles are still loading (or if one
+   fails) the map reads as blank paper instead of showing black bands. */
 #help-center-map-root.leaflet-container {
-  background-color: #0a0a0a !important;
+  background-color: #ffffff !important;
   background-image: none !important;
 }
 
