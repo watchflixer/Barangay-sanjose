@@ -11,19 +11,7 @@ import L from 'leaflet';
  * The published @types/leaflet still describes 1.x, so v1-only calls would
  * type-check yet fail at runtime.
  */
-import {
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  Filter,
-  List,
-  Loader2,
-  LocateFixed,
-  Navigation,
-  RefreshCw,
-  Search,
-  X,
-} from 'lucide-react';
+import { Filter, List, Loader2, Navigation, RefreshCw, Search, X } from 'lucide-react';
 import { HelpCenterFilterPicker } from './HelpCenterFilterPicker';
 import {
   CATEGORY_BY_ID,
@@ -81,6 +69,14 @@ interface HelpCenterViewProps {
 }
 
 const ALL_CATEGORY_IDS = HELP_CENTER_CATEGORIES.map((category) => category.id);
+
+/** The Traffic view's legend, row for row: same wording, same swatches. */
+const LEGEND_ROWS = [
+  { color: '#2BC82B', label: 'Free flowing' },
+  { color: '#F1BF40', label: 'Slow traffic' },
+  { color: '#CC0704', label: 'Heavy congestion' },
+  { color: '#7A1F1B', label: 'Road closed' },
+] as const;
 
 /**
  * Overpass mirrors, tried in order. A single public endpoint is often "at
@@ -343,18 +339,18 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const directions = `https://www.google.com/maps/dir/?api=1&destination=${place.coords[0]},${place.coords[1]}`;
     const phoneDigits = (place.phone ?? '').replace(/[^\d+]/g, '');
     const rows: string[] = [];
-    rows.push(`<p class="mt-2 text-[11px] leading-snug text-neutral-600">${escapeHtml(place.address)}</p>`);
-    if (place.hours) rows.push(`<p class="mt-1 text-[11px] text-neutral-600">Oras: ${escapeHtml(place.hours)}</p>`);
-    if (place.note) rows.push(`<p class="mt-1 text-[11px] text-neutral-500">${escapeHtml(place.note)}</p>`);
-    if (place.phone) rows.push(`<p class="mt-1 text-[11px] text-neutral-600">Telepono: ${escapeHtml(place.phone)}</p>`);
+    rows.push(`<p class="mt-2 text-[12.5px] leading-snug text-[#5f6368]">${escapeHtml(place.address)}</p>`);
+    if (place.hours) rows.push(`<p class="mt-1 text-[12.5px] text-[#5f6368]">Oras: ${escapeHtml(place.hours)}</p>`);
+    if (place.note) rows.push(`<p class="mt-1 text-[11.5px] text-[#5f6368]">${escapeHtml(place.note)}</p>`);
+    if (place.phone) rows.push(`<p class="mt-1 text-[12.5px] text-[#5f6368]">Telepono: ${escapeHtml(place.phone)}</p>`);
 
     return `
       <div class="p-3">
         <div class="flex items-start gap-2.5">
           <span class="hc-pin-ref">${escapeHtml(category.code)}</span>
           <div class="min-w-0">
-            <p class="text-[12.5px] font-semibold leading-tight text-black">${escapeHtml(place.name)}</p>
-            <p class="mt-[3px] text-[9.5px] font-bold uppercase tracking-[0.08em] text-neutral-500">${escapeHtml(category.label)}</p>
+            <p class="text-[15px] leading-tight text-[#202124]">${escapeHtml(place.name)}</p>
+            <p class="mt-[3px] text-[12.5px] text-[#5f6368]">${escapeHtml(category.label)}</p>
           </div>
         </div>
         ${rows.join('')}
@@ -591,8 +587,38 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const unselectedCount = ALL_CATEGORY_IDS.length - selected.length;
 
   // ------------------------------------------------------------------ view
+  // One notice slot, exactly like the Traffic page: the toast, then the two
+  // conditions the driver can actually act on.
+  const trafficNotice = trafficOn && trafficTilesFailed;
+  const osmNotice = !trafficNotice && liveOsm && liveStatus === 'error';
+  const noticeText = toast
+    ? toast
+    : trafficNotice
+      ? 'Live traffic: hindi ma-load ngayon — subukan ulit.'
+      : osmNotice
+        ? 'Hindi maabot ang OpenStreetMap — subukan ulit.'
+        : '';
+  const noticeAction = toast
+    ? undefined
+    : trafficNotice
+      ? () => setTrafficTilesFailed(false)
+      : osmNotice
+        ? refreshLivePins
+        : undefined;
+
+  const openDirections = useCallback(() => {
+    const center = localMapRef.current?.getCenter();
+    const lat = center ? center.lat : SAN_JOSE_CENTER[0];
+    const lng = center ? center.lng : SAN_JOSE_CENTER[1];
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
+  }, []);
+
   return (
-    <div className="absolute inset-0 z-30 bg-neutral-950" aria-label="Help Center">
+    <div id="help-center-view" className="absolute inset-0 z-30 bg-white" aria-label="Help Center">
       {mapReady && (
         <div
           id="help-center-map-root"
@@ -601,14 +627,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         />
       )}
 
-      {/* Basemap switch — same card, order (Street | Satellite) and active
-          styling as the Traffic view. Street carries the live traffic. */}
+      {/* Basemap switch — the Traffic view's Street | Satellite card, in the
+          same top-right slot, same order, same active styling. Street carries
+          the live traffic raster. */}
       {stage === 'map' && (
-        <div
-          role="group"
-          aria-label="Map style"
-          className="absolute right-[12px] top-[10px] z-50 flex gap-1 rounded-md border border-neutral-300 bg-white p-1 shadow-sm"
-        >
+        <div id="hc-base-switch" role="group" aria-label="Map style">
           {(['streets', 'satellite'] as const).map((option) => (
             <button
               key={option}
@@ -618,11 +641,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
                 rememberedBasemap = option;
               }}
               aria-pressed={basemap === option}
-              className={`rounded border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.04em] transition-colors ${
-                basemap === option
-                  ? 'border-black bg-black text-white'
-                  : 'border-transparent bg-white text-neutral-600 hover:text-black'
-              }`}
+              className={basemap === option ? 'active' : undefined}
             >
               {option === 'streets' ? 'Street' : 'Satellite'}
             </button>
@@ -630,252 +649,190 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
+      {/* Live traffic toggle — the Traffic view's own layer, one tap away. */}
+      {stage === 'map' && (
+        <div id="hc-traffic-switch" role="group" aria-label="Live traffic">
+          <button
+            type="button"
+            onClick={toggleTraffic}
+            aria-pressed={trafficOn}
+            title="I-toggle ang live traffic layer"
+            className={trafficOn ? 'active' : undefined}
+          >
+            <span className="hc-state-dot" aria-hidden="true" />
+            Live traffic: {trafficOn ? 'ON' : 'OFF'}
+          </button>
+        </div>
+      )}
+
       {/* Category chips — change the filter without leaving the map. */}
       {stage === 'map' && (
-        <div className="absolute left-[56px] right-[158px] top-[10px] z-50 sm:right-[172px]">
-          <div className="hc-chip-scroll flex items-center gap-1.5 overflow-x-auto rounded-md border border-neutral-300 bg-white p-1 shadow-sm">
-            <button
-              type="button"
-              onClick={openPicker}
-              className="flex shrink-0 items-center gap-1.5 rounded border border-neutral-800 bg-white px-2.5 py-1 text-[11px] font-bold text-neutral-800 transition-colors hover:border-black hover:text-black"
-            >
-              <Filter className="h-3.5 w-3.5" /> Filter
-            </button>
-            {selected.map((id) => {
-              const category = CATEGORY_BY_ID[id];
-              if (!category) return null;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => toggleCategory(id)}
-                  title={`Alisin ang ${category.label}`}
-                  className="flex shrink-0 items-center gap-1.5 rounded border border-neutral-300 bg-neutral-50 px-2 py-1 text-[11px] font-semibold text-neutral-800 transition-colors hover:border-neutral-500"
-                >
-                  <span className="font-mono text-[10px] font-bold tracking-tight text-neutral-500">
-                    {category.code}
-                  </span>
-                  {category.label}
-                  <span className="font-mono text-[10px] font-bold text-neutral-500">
-                    {countByCategory[id] ?? 0}
-                  </span>
-                  <X className="h-3 w-3 text-neutral-400" />
-                </button>
-              );
-            })}
-            {unselectedCount > 0 && (
+        <div id="hc-chip-row">
+          <button type="button" onClick={openPicker} className="hc-chip">
+            <Filter className="h-3.5 w-3.5" /> Filter
+          </button>
+          {selected.map((id) => {
+            const category = CATEGORY_BY_ID[id];
+            if (!category) return null;
+            return (
               <button
+                key={id}
                 type="button"
-                onClick={() => setSelection(ALL_CATEGORY_IDS)}
-                className="flex shrink-0 items-center gap-1.5 rounded border border-dashed border-neutral-400 px-2 py-1 text-[11px] font-semibold text-neutral-500 transition-colors hover:border-neutral-600 hover:text-neutral-800"
+                onClick={() => toggleCategory(id)}
+                title={`Alisin ang ${category.label}`}
+                className="hc-chip"
               >
-                + Iba pa ({unselectedCount})
+                <span className="hc-chip-code">{category.code}</span>
+                {category.label}
+                <span className="hc-chip-count">{countByCategory[id] ?? 0}</span>
+                <X className="h-3 w-3 opacity-60" />
               </button>
-            )}
-          </div>
+            );
+          })}
+          {unselectedCount > 0 && (
+            <button type="button" onClick={() => setSelection(ALL_CATEGORY_IDS)} className="hc-chip">
+              + Iba pa ({unselectedCount})
+            </button>
+          )}
         </div>
       )}
 
-      {/* Live traffic switch — the same affordance the Traffic view offers
-          through its Layers menu, surfaced here as a one-tap pill. */}
-      {stage === 'map' && (
-        <button
-          type="button"
-          onClick={toggleTraffic}
-          aria-pressed={trafficOn}
-          title="I-toggle ang live traffic layer"
-          className={`absolute right-[12px] top-[52px] z-50 flex items-center gap-1.5 rounded-md border bg-white px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.04em] shadow-sm transition-colors ${
-            trafficOn
-              ? 'border-neutral-800 text-neutral-900 hover:border-black'
-              : 'border-neutral-300 text-neutral-500 hover:border-neutral-500'
-          }`}
-        >
-          <span
-            aria-hidden="true"
-            className={`inline-block h-2 w-2 rounded-full ${
-              trafficOn ? 'bg-[#CC0704]' : 'border border-neutral-400 bg-white'
-            }`}
-          />
-          Live traffic: {trafficOn ? 'ON' : 'OFF'}
-        </button>
-      )}
+      {/* Messages: the Traffic page's red notice, over the map. */}
+      {stage === 'map' &&
+        noticeText &&
+        (noticeAction ? (
+          <button type="button" id="hc-notice" className="is-action" onClick={noticeAction}>
+            {noticeText}
+          </button>
+        ) : (
+          <div id="hc-notice">{noticeText}</div>
+        ))}
 
-      {/* Live OSM status / retry */}
-      {stage === 'map' && (
-        <div className="absolute right-[12px] top-[100px] z-50 flex flex-col items-end gap-1.5">
-          {liveOsm && liveStatus === 'loading' && (
-            <span className="flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-[10.5px] font-semibold text-neutral-700 shadow-sm">
-              <Loader2 className="h-3 w-3 animate-spin" /> Hinahanap ang live OSM pins
-            </span>
-          )}
-          {liveOsm && liveStatus === 'ok' && liveCount > 0 && (
-            <span className="flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white py-1 pl-2.5 pr-1 text-[10.5px] font-semibold text-neutral-700 shadow-sm">
-              <span className="font-mono font-bold text-black">{liveCount}</span> live OSM pin
+      {/* Results sheet — the Traffic route sheet: white card with a grab
+          handle, 24px top corners, tabs and rows. */}
+      {stage === 'map' && sheetOpen && (
+        <div id="hc-sheet" className={sheetExpanded ? 'is-expanded' : undefined}>
+          <button
+            type="button"
+            className="hc-sheet-handle"
+            aria-label={sheetExpanded ? 'Iliitan ang listahan' : 'Palakihin ang listahan'}
+            title={sheetExpanded ? 'Iliitan' : 'Palakihin'}
+            onClick={() => setSheetExpanded((previous) => !previous)}
+          />
+
+          <div className="hc-sheet-head">
+            <p className="hc-sheet-title">Mga lugar na pinili</p>
+            <span className="hc-sheet-count">{sortedPlaces.length}</span>
+            {liveOsm && liveStatus === 'ok' && liveCount > 0 && (
               <button
                 type="button"
+                className="hc-sheet-cb"
+                onClick={refreshLivePins}
                 title="I-refresh ang live OSM pins"
                 aria-label="I-refresh ang live OSM pins"
-                onClick={refreshLivePins}
-                className="grid h-5 w-5 place-items-center rounded border border-neutral-300 text-neutral-600 transition-colors hover:border-neutral-500 hover:text-black"
               >
-                <RefreshCw className="h-3 w-3" />
+                <RefreshCw className="h-4 w-4" />
               </button>
-            </span>
-          )}
-          {liveOsm && liveStatus === 'error' && (
+            )}
             <button
               type="button"
-              onClick={refreshLivePins}
-              className="flex items-center gap-1.5 rounded-md border border-neutral-400 bg-white px-2.5 py-1 text-[10.5px] font-semibold text-neutral-800 shadow-sm hover:border-black"
-            >
-              <AlertTriangle className="h-3 w-3" /> Subukan ulit ang live OSM
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div className="absolute left-1/2 top-[54px] z-[55] w-[min(92vw,420px)] -translate-x-1/2 rounded-md border border-neutral-700 bg-black px-3 py-2 text-center text-[11.5px] font-semibold text-white shadow-lg">
-          {toast}
-        </div>
-      )}
-
-      {/* Results sheet — the list side of the directory map. */}
-      {stage === 'map' && sheetOpen && (
-        <div
-          className={`absolute z-50 flex flex-col overflow-hidden rounded-md border border-neutral-300 bg-white shadow-xl ${
-            sheetExpanded
-              ? 'inset-x-0 bottom-0 max-h-[62vh] rounded-b-none sm:inset-x-auto sm:bottom-6 sm:left-3 sm:max-h-[64vh] sm:w-[364px] sm:rounded-md'
-              : 'bottom-3 left-3 right-3 max-h-[38vh] sm:bottom-6 sm:left-3 sm:right-auto sm:max-h-[46vh] sm:w-[364px]'
-          }`}
-        >
-          <div className="flex items-center gap-2 border-b border-neutral-200 px-3 py-2">
-            <span className="grid h-7 min-w-7 shrink-0 place-items-center rounded bg-black px-1.5 font-mono text-[11px] font-bold text-white">
-              {sortedPlaces.length}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12.5px] font-semibold text-black">Mga lugar sa filter</p>
-              <p className="truncate font-mono text-[9.5px] font-bold uppercase tracking-wide text-neutral-500">
-                {originMode === 'me' ? 'sort: pinakamalapit sa iyo' : 'sort: gitna ng mapa'}
-                {liveCount > 0 ? ` / ${liveCount} live osm` : ''}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleNearMe}
-              title="I-sort ayon sa layo mula sa akin"
-              aria-pressed={originMode === 'me'}
-              className={`grid h-8 w-8 shrink-0 place-items-center rounded border transition-colors ${
-                originMode === 'me'
-                  ? 'border-black bg-black text-white'
-                  : 'border-neutral-300 bg-white text-neutral-600 hover:border-neutral-500 hover:text-black'
-              }`}
-            >
-              {locatingMe ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSheetExpanded((value) => !value)}
-              title={sheetExpanded ? 'Paliitin' : 'Palakihin'}
-              className="grid h-8 w-8 shrink-0 place-items-center rounded border border-neutral-300 bg-white text-neutral-600 transition-colors hover:border-neutral-500 hover:text-black"
-            >
-              {sheetExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
+              className="hc-sheet-cb"
               onClick={() => setSheetOpen(false)}
               title="Isara ang listahan"
-              className="grid h-8 w-8 shrink-0 place-items-center rounded border border-neutral-300 bg-white text-neutral-600 transition-colors hover:border-neutral-500 hover:text-black"
+              aria-label="Isara ang listahan"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {(sheetExpanded || places.length > 6) && (
-            <div className="flex items-center gap-2 border-b border-neutral-200 px-3 py-1.5">
-              <Search className="h-3.5 w-3.5 shrink-0 text-neutral-400" />
+          <div className="hc-sheet-tabs" role="tablist" aria-label="Ayos ng listahan">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={originMode === 'me'}
+              className={`hc-sheet-tab${originMode === 'me' ? ' on' : ''}`}
+              onClick={handleNearMe}
+            >
+              {locatingMe && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Malapit sa akin
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={originMode === 'center'}
+              className={`hc-sheet-tab${originMode === 'center' ? ' on' : ''}`}
+              onClick={() => setOriginMode('center')}
+            >
+              Gitna ng mapa
+            </button>
+          </div>
+
+          {sheetExpanded && (
+            <div className="hc-sheet-search">
+              <Search className="h-4 w-4 shrink-0 text-[#5f6368]" />
               <input
                 value={listQuery}
                 onChange={(event) => setListQuery(event.target.value)}
-                placeholder="Hanapin sa listahan (7-Eleven, water)"
-                className="h-6 w-full bg-transparent text-[11.5px] font-medium text-black placeholder:text-neutral-400 focus:outline-none"
+                placeholder="Hanapin sa listahan"
+                aria-label="Hanapin sa listahan"
               />
               {listQuery && (
-                <button
-                  type="button"
-                  onClick={() => setListQuery('')}
-                  className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-neutral-400 hover:text-black"
-                >
+                <button type="button" className="hc-picker-clear" onClick={() => setListQuery('')}>
                   Burahin
                 </button>
               )}
             </div>
           )}
 
-          <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
+          <div className="hc-sheet-body custom-scrollbar">
             {sortedPlaces.length === 0 && (
-              <div className="px-3 py-6 text-center">
-                <p className="text-[12px] font-semibold text-black">
-                  {liveStatus === 'loading' ? 'Naghahanap pa ng mga pin' : 'Walang tumugmang lugar'}
-                </p>
-                <p className="mt-1 text-[10.5px] text-neutral-500">
-                  Subukan ang ibang filter o i-tap ang “Filter” sa taas.
-                </p>
+              <div className="hc-sheet-empty">
+                {liveStatus === 'loading'
+                  ? 'Naghahanap pa ng mga pin…'
+                  : 'Walang tumugmang lugar. Subukan ang ibang filter o i-tap ang “Filter” sa taas.'}
               </div>
             )}
             {sortedPlaces.map(({ place, km }) => {
               const category = CATEGORY_BY_ID[place.category];
               return (
-                <div
-                  key={place.id}
-                  className="flex items-center gap-2 border-b border-neutral-100 px-3 py-2 last:border-b-0 hover:bg-neutral-50"
-                >
+                <div key={place.id} className="hc-sheet-row">
                   <button
                     type="button"
+                    className="hc-sheet-ic"
                     onClick={() => focusPlace(place)}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+                    aria-label={`Ipakita sa mapa ang ${place.name}`}
                   >
-                    <span className="hc-pin-ref" aria-hidden="true">
-                      {category.code}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[12px] font-semibold text-black">
-                        {place.name}
-                      </span>
-                      <span className="block truncate text-[10.5px] font-medium text-neutral-500">
-                        {category.label} &middot; {place.address}
-                      </span>
-                    </span>
-                    <span className="shrink-0 font-mono text-[10.5px] font-bold text-neutral-500">
-                      {formatDistance(km)}
+                    {category.code}
+                  </button>
+                  <button type="button" className="hc-sheet-tx" onClick={() => focusPlace(place)}>
+                    <span className="hc-sheet-name">{place.name}</span>
+                    <span className="hc-sheet-sub">
+                      {category.label} &middot; {place.address}
                     </span>
                   </button>
+                  <span className="hc-sheet-km">{formatDistance(km)}</span>
                   <a
                     href={`https://www.google.com/maps/dir/?api=1&destination=${place.coords[0]},${place.coords[1]}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     title={`Direksyon papuntang ${place.name}`}
-                    className="grid h-8 w-8 shrink-0 place-items-center rounded border border-neutral-300 text-black transition-colors hover:border-black hover:bg-neutral-100"
+                    aria-label={`Direksyon papuntang ${place.name}`}
+                    className="hc-sheet-go"
                   >
-                    <Navigation className="h-3.5 w-3.5" />
+                    <Navigation className="h-4 w-4" />
                   </a>
                 </div>
               );
             })}
           </div>
 
-          <div className="flex items-center gap-2 border-t border-neutral-200 px-3 py-1.5">
-            <p className="min-w-0 flex-1 truncate text-[9.5px] leading-snug text-neutral-500">
+          <div className="hc-sheet-foot">
+            <p>
               {liveMessage ||
                 'Community-mapped ang ilang pin — paki-verify bago pumunta. Live pins: OpenStreetMap.'}
             </p>
             {!sheetExpanded && (
-              <button
-                type="button"
-                onClick={() => setSheetExpanded(true)}
-                className="shrink-0 rounded border border-neutral-400 px-2 py-1 text-[10.5px] font-bold text-neutral-800 hover:border-black hover:text-black"
-              >
+              <button type="button" className="hc-pill" onClick={() => setSheetExpanded(true)}>
                 Tingnan lahat
               </button>
             )}
@@ -885,118 +842,45 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
       {/* Re-open the list after the user closes it. */}
       {stage === 'map' && !sheetOpen && (
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          className="absolute bottom-4 left-3 z-50 flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-2 text-[11.5px] font-bold text-black shadow-md"
-        >
-          <List className="h-3.5 w-3.5" /> Listahan ({sortedPlaces.length})
-        </button>
+        <div className="absolute bottom-6 left-4 z-[400]">
+          <button type="button" className="hc-pill" onClick={() => setSheetOpen(true)}>
+            <List className="h-4 w-4" /> Listahan ({sortedPlaces.length})
+          </button>
+        </div>
       )}
 
-      {/* Right-hand stack — mirrors the Traffic map's control column. */}
+      {/* Right-hand stack — the Traffic view's Directions button above the
+          four-swatch legend, same sizes and same slot. */}
       {stage === 'map' && (
-        <div
-          className={`absolute right-[12px] bottom-6 z-50 flex flex-col items-end gap-2.5 portrait:bottom-14 ${
-            sheetOpen ? 'portrait:hidden' : ''
-          }`}
-        >
+        <div id="hc-legend-stack" className={sheetOpen ? 'hc-under-sheet' : undefined}>
           <button
             type="button"
-            title="3D"
-            aria-label="3D"
-            className="flex h-12 w-12 items-center justify-center rounded-[14px] border border-neutral-400 bg-white p-0 shadow-md transition-colors hover:border-black active:scale-[.94]"
-          >
-            <span className="text-[15px] font-extrabold leading-none text-black">3D</span>
-          </button>
-
-          <button
-            type="button"
-            title="Find location"
-            aria-label="Find location"
-            onClick={handleNearMe}
-            className="flex h-12 w-12 items-center justify-center rounded-[14px] border border-neutral-400 bg-white p-0 shadow-md transition-colors hover:border-black active:scale-[.94]"
-          >
-            <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-6 w-6">
-              <defs>
-                <mask id="hc-find-location-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-                  <rect width="512" height="512" fill="#fff" />
-                  <circle cx="385" cy="385" r="96" fill="#000" />
-                  <line x1="440" y1="440" x2="488" y2="488" stroke="#000" strokeWidth="64" strokeLinecap="round" />
-                </mask>
-              </defs>
-              <g fill="#000" mask="url(#hc-find-location-cut)">
-                <path d="M18 78 Q18 38 54 42 L158 78 L158 492 L18 442 Z" />
-                <path d="M187 78 L297 20 L297 438 L187 492 Z" />
-                <path d="M327 20 L440 62 Q467 72 467 100 L467 440 L327 492 Z" />
-              </g>
-              <circle cx="385" cy="385" r="62" fill="none" stroke="#000" strokeWidth="26" />
-              <line x1="440" y1="440" x2="488" y2="488" stroke="#000" strokeWidth="26" strokeLinecap="round" />
-            </svg>
-          </button>
-
-          <button
-            type="button"
+            id="hc-directions-btn"
             title="Directions"
             aria-label="Directions"
-            onClick={() => {
-              const center = localMapRef.current?.getCenter();
-              const lat = center ? center.lat : SAN_JOSE_CENTER[0];
-              const lng = center ? center.lng : SAN_JOSE_CENTER[1];
-              window.open(
-                `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-                '_blank',
-                'noopener,noreferrer',
-              );
-            }}
-            className="h-12 w-12 rounded-[14px] border border-black bg-black p-0 shadow-md transition-colors hover:bg-neutral-800 active:scale-[.94]"
+            onClick={openDirections}
           >
-            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-full w-full">
+            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff" />
-              <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#000000" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#000000" transform="translate(-0.5 0)" />
+              <path
+                d="M23.5 34v-6.5a3 3 0 0 1 3-3H31"
+                fill="none"
+                stroke="#0b7a87"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
             </svg>
           </button>
 
-          {/* Legend card — the Traffic view's four swatches and wording, so
-              the Help Center reads like the traffic map. The closing note
-              reports (and can retry) the live-traffic layer state. */}
-          <div className="rounded-md border border-neutral-300 bg-white px-3 py-2.5 text-[12.5px] text-black shadow-md">
-            <div aria-hidden="true" className="flex h-0 items-center gap-1.5 overflow-hidden">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" />
-              Heavy congestion
-            </div>
-            {[
-              { color: '#2BC82B', label: 'Free flowing' },
-              { color: '#F1BF40', label: 'Slow traffic' },
-              { color: '#CC0704', label: 'Heavy congestion' },
-              { color: '#7A1F1B', label: 'Road closed' },
-            ].map((row) => (
-              <div key={row.label} className="my-[3px] flex items-center gap-1.5">
-                <span
-                  className="inline-block h-[13px] w-[13px] rounded-[2px]"
-                  style={{ background: row.color }}
-                />
+          <div id="hc-legend">
+            {LEGEND_ROWS.map((row) => (
+              <div key={row.label} className="row">
+                <span className="sw" style={{ background: row.color }} />
                 {row.label}
               </div>
             ))}
-            {trafficOn && trafficTilesFailed ? (
-              <button
-                type="button"
-                onClick={() => setTrafficTilesFailed(false)}
-                className="mt-1.5 border-t border-neutral-200 pt-1.5 text-left text-[10.5px] font-semibold text-black underline decoration-neutral-400 underline-offset-2"
-              >
-                Live traffic: hindi ma-load — subukan ulit
-              </button>
-            ) : (
-              <p className="mt-1.5 border-t border-neutral-200 pt-1.5 text-[10.5px] font-semibold leading-snug text-neutral-500">
-                {!trafficOn
-                  ? 'Live traffic: off'
-                  : basemap === 'streets'
-                    ? 'Live traffic: on'
-                    : 'Live traffic: street view only'}
-              </p>
-            )}
           </div>
         </div>
       )}
