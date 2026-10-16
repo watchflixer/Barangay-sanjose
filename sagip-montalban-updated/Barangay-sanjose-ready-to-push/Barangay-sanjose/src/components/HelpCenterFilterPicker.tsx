@@ -4,7 +4,6 @@ import {
   CATEGORIES_BY_GROUP,
   CATEGORY_PRESETS,
   CURATED_COUNT_BY_CATEGORY,
-  HELP_CENTER_PLACES,
   PLACE_GROUPS,
   type PlaceCategoryId,
 } from '../data/helpCenterPlaces';
@@ -34,12 +33,6 @@ interface HelpCenterFilterPickerProps {
   onSetSelection: (ids: PlaceCategoryId[]) => void;
   /** Opens the map with the current selection. */
   onOpenMap: () => void;
-  /** "Live OSM" switch state (real OpenStreetMap pins on top of community data). */
-  liveOsm: boolean;
-  onToggleLiveOsm: (next: boolean) => void;
-  /** Traffic-style live-traffic layer (Street mode) switch. */
-  trafficOn: boolean;
-  onToggleTraffic: () => void;
   /** Closes the whole Help Center view. */
   onClose: () => void;
   /** True when a selection from a previous visit is available. */
@@ -53,10 +46,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   onToggleCategory,
   onSetSelection,
   onOpenMap,
-  liveOsm,
-  onToggleLiveOsm,
-  trafficOn,
-  onToggleTraffic,
   onClose,
   hasMemory,
   memoryLabel,
@@ -82,11 +71,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   );
 
   const matchCount = groups.reduce((total, entry) => total + entry.categories.length, 0);
-  const pinCount = useMemo(
-    () => HELP_CENTER_PLACES.filter((place) => selectedSet.has(place.category)).length,
-    [selectedSet],
-  );
-
   const presets = CATEGORY_PRESETS.filter((preset) => preset.id !== 'lahat');
 
   return (
@@ -147,7 +131,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
             >
               <Icon className="h-4 w-4" />
               {preset.label}
-              <span className="hc-switch-state">{preset.categories.length}</span>
+              <span className="hc-pill-count">{preset.categories.length}</span>
             </button>
           );
         })}
@@ -206,44 +190,14 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
         ))}
 
         <p className="hc-picker-note">
-          <strong>Paalala:</strong> ang listahan ay community-mapped na pin (pwedeng ilang metro ang
-          layo). I-on ang Live OSM para makuha ang aktwal na lokasyong naka-map sa OpenStreetMap.
+          <strong>Paalala:</strong> community-mapped ang ilang pin (pwedeng ilang metro ang layo).
+          Idinadagdag din namin ang live na lokasyon mula sa OpenStreetMap kapag may nahanap, at ang
+          Street na mapa ay may live traffic layer gaya ng Traffic view.
         </p>
       </div>
 
       {/* ------------------------------------------------------------- footer */}
       <footer className="hc-picker-foot">
-        <div className="hc-picker-foot-row">
-          <button
-            type="button"
-            onClick={() => onToggleLiveOsm(!liveOsm)}
-            role="switch"
-            aria-checked={liveOsm}
-            className={`hc-switch${liveOsm ? ' on' : ''}`}
-          >
-            <span className="hc-knob" aria-hidden="true" />
-            Live OSM pins
-            <span className="hc-switch-state">{liveOsm ? 'ON' : 'OFF'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleTraffic}
-            role="switch"
-            aria-checked={trafficOn}
-            className={`hc-switch${trafficOn ? ' on' : ''}`}
-          >
-            <span className="hc-knob" aria-hidden="true" />
-            Live traffic
-            <span className="hc-switch-state">{trafficOn ? 'ON' : 'OFF'}</span>
-          </button>
-
-          <span className="hc-picker-foot-count">
-            {selected.length} filter &middot; {pinCount} community pin
-            {liveOsm ? ' + live osm' : ''}
-          </span>
-        </div>
-
         <div className="hc-picker-actions">
           <button type="button" onClick={() => onSetSelection([])} className="hc-pill">
             Burahin

@@ -53,11 +53,10 @@ import { SAN_JOSE_BOUNDS, SAN_JOSE_CENTER } from '../data/geoData';
  * every time the view is opened.
  */
 let rememberedSelection: PlaceCategoryId[] | null = null;
-let rememberedLiveOsm = true;
 // Street is the default (like the Traffic view) so the live-traffic colouring
-// is visible the moment the map opens.
+// is visible the moment the map opens; Street carries the traffic raster
+// unless its tiles fail, and then the view falls back to plain OSM streets.
 let rememberedBasemap: 'streets' | 'satellite' = 'streets';
-let rememberedTraffic = true;
 
 interface HelpCenterViewProps {
   /** Shared with MapViewer so the host's Recenter button can drive this map. */
@@ -144,11 +143,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // map keeps its pan/zoom and pins instead of restarting from scratch.
   const [mapReady, setMapReady] = useState(false);
   const [selected, setSelected] = useState<PlaceCategoryId[]>(() => rememberedSelection ?? []);
-  const [liveOsm, setLiveOsm] = useState(rememberedLiveOsm);
   const [basemap, setBasemap] = useState<'streets' | 'satellite'>(rememberedBasemap);
-  // Traffic-style layer: the live-traffic raster replaces the plain street
-  // basemap in Street mode (same trick as the Traffic view).
-  const [trafficOn, setTrafficOn] = useState(rememberedTraffic);
+  // Live traffic raster instead of plain streets (Traffic's own layer), with a
+  // one-shot fallback if those tiles cannot be fetched.
   const [trafficTilesFailed, setTrafficTilesFailed] = useState(false);
   const [livePlaces, setLivePlaces] = useState<Place[]>([]);
   const [liveStatus, setLiveStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
@@ -200,19 +197,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     rememberedSelection = list;
     setSelected(list);
   }, []);
-
-  const handleToggleLiveOsm = useCallback(
-    (next: boolean) => {
-      setLiveOsm(next);
-      rememberedLiveOsm = next;
-      if (!next) {
-        setLivePlaces([]);
-        setLiveStatus('idle');
-        setLiveMessage('');
-      }
-    },
-    [],
-  );
 
   // ------------------------------------------------------------- map data
   const curatedPlaces = useMemo(
@@ -293,7 +277,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       map.removeLayer(tileLayerRef.current);
       tileLayerRef.current = null;
     }
-    const withLiveTraffic = trafficOn && !trafficTilesFailed && basemap === 'streets';
+    const withLiveTraffic = !trafficTilesFailed && basemap === 'streets';
     const tileConfig = withLiveTraffic ? TRAFFIC_TILE_SERVERS.streetTraffic : TILE_SERVERS[basemap];
     const layer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
@@ -305,17 +289,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     if (withLiveTraffic) layer.on('tileerror', () => setTrafficTilesFailed(true));
     layer.addTo(map);
     tileLayerRef.current = layer;
-  }, [basemap, mapReady, trafficOn, trafficTilesFailed]);
-
-  // Traffic legend swatches — identical wording/colours to the Traffic map.
-  const toggleTraffic = useCallback(() => {
-    setTrafficOn((previous) => {
-      const next = !previous;
-      rememberedTraffic = next;
-      return next;
-    });
-    setTrafficTilesFailed(false);
-  }, []);
+  }, [basemap, mapReady, trafficTilesFailed]);
 
   // ---------------------------------------------------------- pin factory
   const iconFor = useCallback((category: PlaceCategory) => {
@@ -402,7 +376,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   }, [selected]);
 
   useEffect(() => {
-    if (!mapReady || !liveOsm) return;
+    if (!mapReady) return;
     const cache = liveCacheRef.current;
     const missing = selected.filter((id) => !cache.has(id));
     if (missing.length === 0) {
@@ -454,7 +428,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, liveOsm, selectedKey, retryTick]);
+  }, [mapReady, selectedKey, retryTick]);
 
   useEffect(
     () => () => {
@@ -589,8 +563,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // ------------------------------------------------------------------ view
   // One notice slot, exactly like the Traffic page: the toast, then the two
   // conditions the driver can actually act on.
-  const trafficNotice = trafficOn && trafficTilesFailed;
-  const osmNotice = !trafficNotice && liveOsm && liveStatus === 'error';
+  const trafficNotice = basemap === 'streets' && trafficTilesFailed;
+  const osmNotice = !trafficNotice && liveStatus === 'error';
   const noticeText = toast
     ? toast
     : trafficNotice
@@ -639,6 +613,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               onClick={() => {
                 setBasemap(option);
                 rememberedBasemap = option;
+                // Coming back to Street should try the traffic tiles again.
+                setTrafficTilesFailed(false);
               }}
               aria-pressed={basemap === option}
               className={basemap === option ? 'active' : undefined}
@@ -707,7 +683,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <div className="hc-sheet-head">
             <p className="hc-sheet-title">Mga lugar na pinili</p>
             <span className="hc-sheet-count">{sortedPlaces.length}</span>
-            {liveOsm && liveStatus === 'ok' && liveCount > 0 && (
+            {liveStatus === 'ok' && liveCount > 0 && (
               <button
                 type="button"
                 className="hc-sheet-cb"
@@ -876,10 +852,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           onToggleCategory={toggleCategory}
           onSetSelection={setSelection}
           onOpenMap={openMap}
-          liveOsm={liveOsm}
-          onToggleLiveOsm={handleToggleLiveOsm}
-          trafficOn={trafficOn}
-          onToggleTraffic={() => toggleTraffic()}
           onClose={() => onClose?.()}
           hasMemory={selected.length > 0 && memoryLabel.length > 0}
           memoryLabel={memoryLabel}
