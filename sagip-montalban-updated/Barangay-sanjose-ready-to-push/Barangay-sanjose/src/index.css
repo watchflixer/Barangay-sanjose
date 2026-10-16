@@ -933,26 +933,6 @@ body,
   color: #5f6368;
 }
 
-/* Round icon buttons: Traffic's .dir-ib / .rt-cb. */
-.hc-icon-btn {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: #202124;
-  cursor: pointer;
-}
-
-.hc-icon-btn:active {
-  background: #e8eaed;
-}
-
 /* Search field: Traffic's .dir-fields input. */
 #hc-picker .hc-picker-search {
   display: flex;

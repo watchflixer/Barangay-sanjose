@@ -15,6 +15,10 @@ import {
  * #dadce0 hairlines, round icon buttons, .rt-chip pills and the #00697a "go"
  * pill for the primary action — so the Help Center and Traffic stay one
  * product. No emoji anywhere.
+ *
+ * The screen is a one-way step on purpose: there is no X / back button. It
+ * ends by opening the map, and the whole view is left from there through the
+ * host's Layers menu (or the app's own sidebar).
  */
 const PRESET_ICONS: Record<string, LucideIcon> = {
   siren: Siren,
@@ -33,8 +37,6 @@ interface HelpCenterFilterPickerProps {
   onSetSelection: (ids: PlaceCategoryId[]) => void;
   /** Opens the map with the current selection. */
   onOpenMap: () => void;
-  /** Closes the whole Help Center view. */
-  onClose: () => void;
   /** True when a selection from a previous visit is available. */
   hasMemory: boolean;
   /** Few names of the remembered selection, for the resume hint. */
@@ -46,7 +48,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   onToggleCategory,
   onSetSelection,
   onOpenMap,
-  onClose,
   hasMemory,
   memoryLabel,
 }) => {
@@ -84,9 +85,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
             ang mapa pagkatapos pumili — may live traffic layer ito gaya ng Traffic view.
           </p>
         </div>
-        <button type="button" onClick={onClose} aria-label="Isara ang Help Center" className="hc-icon-btn">
-          <X className="h-5 w-5" />
-        </button>
       </div>
 
       {/* Search across the filter buttons — Traffic's .dir-fields input. */}

@@ -63,8 +63,6 @@ interface HelpCenterViewProps {
   mapRef: React.MutableRefObject<L.Map | null>;
   /** Mirrors the app's "lock camera to Barangay San Jose" setting. */
   lockCameraToBounds?: boolean;
-  /** Closes the whole Help Center view (leaves the filter picker). */
-  onClose?: () => void;
   /**
    * Reports which of the view's two screens is on top. The picker covers the
    * whole map, so the host hides its floating buttons while it is up and
@@ -140,7 +138,6 @@ const escapeHtml = (value: string): string =>
 export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   mapRef,
   lockCameraToBounds = false,
-  onClose,
   onStageChange,
 }) => {
   // ------------------------------------------------------------------ state
@@ -850,7 +847,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           onToggleCategory={toggleCategory}
           onSetSelection={setSelection}
           onOpenMap={openMap}
-          onClose={() => onClose?.()}
           hasMemory={selected.length > 0 && memoryLabel.length > 0}
           memoryLabel={memoryLabel}
         />

@@ -992,7 +992,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         <HelpCenterView
           mapRef={helpCenterMapInstanceRef}
           lockCameraToBounds={mapSettings.lockCameraToBounds}
-          onClose={() => setShowHelpCenter(false)}
           onStageChange={handleHelpStageChange}
         />
       )}
