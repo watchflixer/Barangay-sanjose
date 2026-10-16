@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Bus, Check, Layers, Moon, Search, Siren, Store, Users, Wallet, X, type LucideIcon } from 'lucide-react';
+import { Check, Search } from 'lucide-react';
 import {
   CATEGORIES_BY_GROUP,
-  CATEGORY_PRESETS,
   CURATED_COUNT_BY_CATEGORY,
   PLACE_GROUPS,
   type PlaceCategoryId,
@@ -16,20 +15,11 @@ import {
  * pill for the primary action — so the Help Center and Traffic stay one
  * product. No emoji anywhere.
  *
- * The screen is a one-way step on purpose: there is no X / back button. It
- * ends by opening the map, and the whole view is left from there through the
- * host's Layers menu (or the app's own sidebar).
+ * The screen is a one-way step on purpose: there is no X / back button, and
+ * no preset bundles either — the categories are picked one by one. It ends by
+ * opening the map, and the whole view is left from there through the host's
+ * Layers menu (or the app's own sidebar).
  */
-const PRESET_ICONS: Record<string, LucideIcon> = {
-  siren: Siren,
-  cart: Store,
-  moon: Moon,
-  wallet: Wallet,
-  bus: Bus,
-  users: Users,
-  layers: Layers,
-};
-
 interface HelpCenterFilterPickerProps {
   /** Currently ticked categories (pre-filled from the previous visit). */
   selected: PlaceCategoryId[];
@@ -37,10 +27,6 @@ interface HelpCenterFilterPickerProps {
   onSetSelection: (ids: PlaceCategoryId[]) => void;
   /** Opens the map with the current selection. */
   onOpenMap: () => void;
-  /** True when a selection from a previous visit is available. */
-  hasMemory: boolean;
-  /** Few names of the remembered selection, for the resume hint. */
-  memoryLabel: string;
 }
 
 export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
@@ -48,8 +34,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   onToggleCategory,
   onSetSelection,
   onOpenMap,
-  hasMemory,
-  memoryLabel,
 }) => {
   const [query, setQuery] = useState('');
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -72,8 +56,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   );
 
   const matchCount = groups.reduce((total, entry) => total + entry.categories.length, 0);
-  const presets = CATEGORY_PRESETS.filter((preset) => preset.id !== 'lahat');
-
   return (
     <div id="hc-picker">
       {/* ------------------------------------------------------------- header */}
@@ -101,41 +83,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
             Burahin
           </button>
         )}
-      </div>
-
-      {/* ---------------------------------------------------- quick pick bundles */}
-      <div className="hc-picker-sec">
-        <h3>Preset</h3>
-        <span>Isang tap para sa buong grupo</span>
-        {hasMemory && (
-          <button type="button" onClick={onOpenMap} className="hc-picker-resume">
-            Dating pinili: {memoryLabel}
-          </button>
-        )}
-      </div>
-      <div className="hc-picker-chips">
-        {presets.map((preset) => {
-          const Icon = PRESET_ICONS[preset.icon] ?? Layers;
-          const active =
-            preset.categories.length === selected.length &&
-            preset.categories.every((id) => selectedSet.has(id));
-          return (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => onSetSelection(active ? [] : preset.categories)}
-              aria-pressed={active}
-              className={`hc-pill${active ? ' go' : ''}`}
-            >
-              <Icon className="h-4 w-4" />
-              {preset.label}
-              <span className="hc-pill-count">{preset.categories.length}</span>
-            </button>
-          );
-        })}
-        <button type="button" onClick={() => onSetSelection([])} className="hc-pill">
-          <X className="h-4 w-4" /> Burahin lahat
-        </button>
       </div>
 
       {/* --------------------------------------------------------- filter grid */}

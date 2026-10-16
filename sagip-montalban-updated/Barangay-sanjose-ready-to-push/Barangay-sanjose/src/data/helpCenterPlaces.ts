@@ -231,52 +231,6 @@ export const CATEGORIES_BY_GROUP: { group: PlaceGroupId; categories: PlaceCatego
     categories: HELP_CENTER_CATEGORIES.filter((category) => category.group === group.id),
   }));
 
-/** Ready-made bundles so a user can answer in one tap. */
-export const CATEGORY_PRESETS: { id: string; label: string; icon: string; categories: PlaceCategoryId[] }[] = [
-  {
-    id: 'saklolo',
-    label: 'Saklolo agad',
-    icon: 'siren',
-    categories: ['police', 'fire', 'hospital', 'clinic', 'evacuation', 'barangay'],
-  },
-  {
-    id: 'bilihin',
-    label: 'Bili-bili essentials',
-    icon: 'cart',
-    categories: ['seven_eleven', 'convenience', 'supermarket', 'market', 'pharmacy', 'bigasan', 'water', 'bakery'],
-  },
-  {
-    id: 'panggabi',
-    label: 'Buksan kahit gabi',
-    icon: 'moon',
-    categories: ['seven_eleven', 'convenience', 'atm', 'gas', 'pharmacy'],
-  },
-  {
-    id: 'pera',
-    label: 'Pera at padala',
-    icon: 'wallet',
-    categories: ['atm', 'bank', 'pawnshop', 'remittance'],
-  },
-  {
-    id: 'biyahe',
-    label: 'Biyahe at sasakyan',
-    icon: 'bus',
-    categories: ['terminal', 'gas', 'vulcanizing', 'parking'],
-  },
-  {
-    id: 'pamilya',
-    label: 'Pamilya at komunidad',
-    icon: 'users',
-    categories: ['school', 'church', 'court', 'food', 'salon', 'laundry', 'wifi', 'dental', 'vet', 'gym'],
-  },
-  {
-    id: 'lahat',
-    label: 'Lahat ng kategorya',
-    icon: 'layers',
-    categories: HELP_CENTER_CATEGORIES.map((category) => category.id),
-  },
-];
-
 /**
  * Community-mapped places around Barangay San Jose (Rodriguez, Rizal).
  * Coordinates are approximate anchors around the known sitios - the

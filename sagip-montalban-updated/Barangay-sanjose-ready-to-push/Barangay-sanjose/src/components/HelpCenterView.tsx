@@ -554,18 +554,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       .sort((a, b) => a.km - b.km);
   }, [places, listQuery, origin]);
 
-  // The picker opens pre-filled with the previous visit's answer, so the
-  // "tuloy sa dating pinili" shortcut simply reflects the current ticks.
-  const memoryLabel = useMemo(
-    () =>
-      selected
-        .slice(0, 2)
-        .map((id) => CATEGORY_BY_ID[id]?.label ?? id)
-        .join(', ')
-        .concat(selected.length > 2 ? ` +${selected.length - 2}` : ''),
-    [selected],
-  );
-
   // ------------------------------------------------------------------ view
   // One notice slot, exactly like the Traffic page: the toast, then the two
   // conditions the driver can actually act on.
@@ -847,8 +835,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           onToggleCategory={toggleCategory}
           onSetSelection={setSelection}
           onOpenMap={openMap}
-          hasMemory={selected.length > 0 && memoryLabel.length > 0}
-          memoryLabel={memoryLabel}
         />
       )}
     </div>

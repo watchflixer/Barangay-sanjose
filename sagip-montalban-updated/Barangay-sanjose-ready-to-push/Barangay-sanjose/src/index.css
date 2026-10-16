@@ -886,12 +886,6 @@ body,
   cursor: not-allowed;
 }
 
-/* Count on a pill (preset bundles). */
-.hc-pill .hc-pill-count {
-  font-weight: 700;
-  opacity: 0.6;
-}
-
 /* --- Step 1: the picker, in Traffic's panel styling (#dir-panel) --------- */
 #hc-picker {
   position: absolute;
@@ -1001,45 +995,6 @@ body,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Resume link on the preset row: Traffic's .dir-more text button. */
-.hc-picker-resume {
-  margin-left: auto;
-  max-width: 45%;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: #00796b;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: pointer;
-}
-
-@media (orientation: portrait) and (max-width: 640px) {
-  #hc-picker .hc-picker-title {
-    font-size: 19px;
-  }
-
-  /* #rt-locate / #rt-layers2 shrink the same way on phones. */
-  .hc-filter-fab {
-    width: 44px;
-    height: 44px;
-    border-radius: 13px;
-  }
-
-  .hc-filter-fab svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  #hc-sheet .hc-filter-fab {
-    top: -58px;
-  }
 }
 
 .hc-picker-note {
@@ -1162,19 +1117,6 @@ body,
   border-radius: 50%;
   background: #00697a;
   color: #ffffff;
-}
-
-/* Preset rail: Traffic's .rt-chips scroller. */
-.hc-picker-chips {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 0 12px 4px;
-  scrollbar-width: none;
-}
-
-.hc-picker-chips::-webkit-scrollbar {
-  display: none;
 }
 
 /* Footer: Traffic's .rt-chips padding over a hairline, CTA in .rt-chip.go. */
