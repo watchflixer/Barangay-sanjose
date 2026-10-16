@@ -145,8 +145,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   );
   const helpCenterMapInstanceRef = useRef<L.Map | null>(null);
   // The Help Center opens on its filter picker, which covers the whole map.
-  // Its floating buttons (Recenter / Layers / Locate) are pointless — and
-  // overlap the picker — until the map screen shows, so they are hidden then.
+  // The column and the zoom pair stay on screen there — the picker leaves a
+  // gutter for them — and the zoom pair only exists on that screen: once the
+  // map is up, Leaflet's own zoom bar sits in the same slot.
   const [helpFilterOpen, setHelpFilterOpen] = React.useState(false);
   const handleHelpStageChange = React.useCallback((stage: 'picker' | 'map') => {
     setHelpFilterOpen(stage === 'picker');
@@ -644,11 +645,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
   const handleZoomIn = () => {
     if (showWeather) { sendWeatherAction('zoom-in'); return; }
+    if (showHelpCenter) { helpCenterMapInstanceRef.current?.zoomIn(); return; }
     mapInstanceRef.current?.zoomIn();
   };
 
   const handleZoomOut = () => {
     if (showWeather) { sendWeatherAction('zoom-out'); return; }
+    if (showHelpCenter) { helpCenterMapInstanceRef.current?.zoomOut(); return; }
     mapInstanceRef.current?.zoomOut();
   };
 
@@ -1019,7 +1022,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showTrafficMap || showWeather || helpFilterOpen ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showTrafficMap || showWeather ? 'hidden' : ''}`}>
         {/* These controls operate on the embedded Panahon map in Weather mode. */}
         <button
           id="btn-recenter-gis"
@@ -1207,8 +1210,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
           </button>
 
-        {/* Weather's zoom pair shares one white card, as in the GIS controls. */}
-        {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && (
+        {/* Weather's zoom pair shares one white card, as in the GIS controls.
+            In Help Center mode it is shown on the picker screen only — the map
+            screen uses Leaflet's own zoom bar instead. */}
+        {!showFloodProneBlank && !showTrafficMap && (!showHelpCenter || helpFilterOpen) && (
           <div className={showWeather ? 'flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs' : 'contents'}>
             <button
               id="btn-zoom-in"
