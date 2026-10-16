@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { WeatherMode, CityWeather, RainViewerFrame, RainViewerData } from './types/weather';
-import { fetchPhilippineWeather, PHILIPPINE_CITIES, getWeatherConditionInfo } from './services/openMeteoService';
+import { WeatherMode, CityWeather, RainViewerFrame } from './types/weather';
+import { fetchPhilippineWeather, fetchLocationWeather } from './services/openMeteoService';
 import { fetchRainViewerData, formatFrameTime } from './services/rainViewerService';
 import { getStoredOwmKey } from './services/openWeatherService';
 import { WeatherMap } from './components/WeatherMap';
@@ -15,7 +15,9 @@ export default function App() {
   const [cities, setCities] = useState<CityWeather[]>([]);
   const [selectedCity, setSelectedCity] = useState<CityWeather | null>(null);
   const [refreshMinutes, setRefreshMinutes] = useState<number>(10);
-  const [, setRefreshSecondsLeft] = useState<number>(10 * 60);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+  const [radarError, setRadarError] = useState<string | null>(null);
+  const refreshInFlight = useRef(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   // Fill the host Weather panel when embedded; keep the original 420px phone
   // frame only when Panahon is opened as a standalone top-level page.
@@ -38,56 +40,44 @@ export default function App() {
   const [forecastHourStep, setForecastHourStep] = useState<number>(0);
   const playbackIntervalRef = useRef<number | null>(null);
 
-  // Load all weather data
+  // Weather and radar load independently so a failed provider cannot block the other.
   const loadWeatherData = useCallback(async () => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
     setIsRefreshing(true);
     try {
-      // 1. Fetch Open-Meteo Philippine Cities
-      const fetchedCities = await fetchPhilippineWeather();
-      setCities(fetchedCities);
-
-      // 2. Fetch RainViewer Doppler Radar Frames
-      const rvData: RainViewerData | null = await fetchRainViewerData();
-      if (rvData) {
-        setRainViewerHost(rvData.host || 'https://tilecache.rainviewer.com');
-        const pastFrames = rvData.radar?.past || [];
-        const nowcastFrames = rvData.radar?.nowcast || [];
-        const combined = [...pastFrames, ...nowcastFrames];
-        setRainViewerFrames(combined);
-        // Default to the latest 'past' radar frame (live now)
-        if (pastFrames.length > 0) {
-          setCurrentFrameIndex(pastFrames.length - 1);
-        } else if (combined.length > 0) {
-          setCurrentFrameIndex(0);
-        }
-      }
-
-      setRefreshSecondsLeft(refreshMinutes * 60);
-    } catch (err) {
-      console.error('Error refreshing weather data:', err);
+      await Promise.all([
+        fetchPhilippineWeather().then(fetchedCities => {
+          setCities(fetchedCities);
+          setSelectedCity(previous => previous && (fetchedCities.find(city => city.id === previous.id) ?? previous));
+          setWeatherError(null);
+        }).catch(() => {
+          setWeatherError('Hindi ma-load ang weather. Kung may dating data, iyon muna ang ipinapakita.');
+        }),
+        fetchRainViewerData().then(rvData => {
+          const frames = [...(rvData?.radar?.past ?? []), ...(rvData?.radar?.nowcast ?? [])];
+          if (!rvData || frames.length === 0) {
+            setRadarError('Walang radar data sa ngayon. Hindi ibig sabihin nito na walang ulan.');
+            setRainViewerFrames([]);
+            setCurrentFrameIndex(0);
+            return;
+          }
+          setRainViewerHost(rvData.host);
+          setRainViewerFrames(frames);
+          setCurrentFrameIndex(Math.max(0, (rvData.radar.past?.length ?? 1) - 1));
+          setRadarError(null);
+        })
+      ]);
     } finally {
+      refreshInFlight.current = false;
       setIsRefreshing(false);
     }
-  }, [refreshMinutes]);
+  }, []);
 
-  // Initial load
   useEffect(() => {
-    loadWeatherData();
-  }, [loadWeatherData]);
-
-  // Real-time 10-minute Auto-Refresh Countdown & Heartbeat
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setRefreshSecondsLeft((prev) => {
-        if (prev <= 1) {
-          loadWeatherData();
-          return refreshMinutes * 60;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
+    void loadWeatherData();
+    const timer = window.setInterval(() => void loadWeatherData(), refreshMinutes * 60000);
+    return () => window.clearInterval(timer);
   }, [loadWeatherData, refreshMinutes]);
 
   // Playback loop for RainViewer Doppler or Forecast timeline
@@ -123,6 +113,7 @@ export default function App() {
 
   // Toggle Play / Pause
   const handleTogglePlay = () => {
+    if (getMaxIndex() === 0) return;
     setIsPlaying((prev) => !prev);
   };
 
@@ -137,13 +128,16 @@ export default function App() {
 
   // Determine current timeline label
   const getTimelineLabel = () => {
+    if (weatherError) return weatherError;
+    if (currentMode === 'rain' && radarError) return radarError;
     if (currentMode === 'rain') {
-      if (rainViewerFrames.length === 0) return 'Live Doppler Radar';
+      if (rainViewerFrames.length === 0) return 'Radar unavailable';
       const frame = rainViewerFrames[currentFrameIndex];
       if (!frame) return 'Live Radar';
       return `Radar: ${formatFrameTime(frame.time)}`;
     } else {
-      if (forecastHourStep === 0) return 'Current Conditions (Live)';
+      if (!cities.length) return isRefreshing ? 'Loading weather…' : 'Weather unavailable';
+      if (forecastHourStep === 0) return 'Current Conditions';
       return `Forecast: +${forecastHourStep}h Outlook`;
     }
   };
@@ -152,7 +146,7 @@ export default function App() {
     if (currentMode === 'rain') {
       return Math.max(0, rainViewerFrames.length - 1);
     }
-    return 23; // 24 hours (0-23)
+    return cities.length ? 23 : 0;
   };
 
   const getCurrentIndex = () => {
@@ -168,36 +162,9 @@ export default function App() {
     setUserLocationCoords([latitude, longitude]);
     setIsLocating(true);
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=auto`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const current = data.current || {};
-        const code = current.weather_code ?? 1;
-        const cond = getWeatherConditionInfo(code);
-        const userWeather: CityWeather = {
-          id: 'user-location',
-              name: 'Your Location',
-              region: 'GPS Coordinates',
-              islandGroup: 'Luzon',
-              lat: latitude,
-              lng: longitude,
-              temperature: Math.round(current.temperature_2m ?? 27),
-              apparentTemperature: Math.round(current.apparent_temperature ?? current.temperature_2m ?? 27),
-              weatherCode: code,
-              conditionText: cond.text,
-              conditionIcon: cond.icon,
-              humidity: Math.round(current.relative_humidity_2m ?? 75),
-              windSpeed: Math.round(current.wind_speed_10m ?? 12),
-              windDirection: Math.round(current.wind_direction_10m ?? 80),
-              cloudCover: Math.round(current.cloud_cover ?? 40),
-              precipitation: current.precipitation ?? 0,
-              precipitationProbability: 20
-        };
-        setUserLocationCity(userWeather);
-      }
+      setUserLocationCity(await fetchLocationWeather(latitude, longitude));
     } catch (err) {
-      console.warn('Failed to fetch user location weather:', err);
+      setWeatherError('Hindi ma-load ang weather sa iyong lokasyon. Subukan muli ang location button.');
     } finally {
       setIsLocating(false);
     }
@@ -254,6 +221,7 @@ export default function App() {
           onSelectMode={(mode) => {
             setCurrentMode(mode);
             setIsPlaying(false);
+            setForecastHourStep(0);
           }}
         />
 
@@ -284,6 +252,8 @@ export default function App() {
               onTogglePlay={handleTogglePlay}
               currentIndex={getCurrentIndex()}
               maxIndex={getMaxIndex()}
+              liveIndex={Math.max(0, rainViewerFrames.reduce((last, frame, index) =>
+                frame.time * 1000 <= Date.now() ? index : last, 0))}
               onSeek={handleSeek}
               currentLabel={getTimelineLabel()}
             />
@@ -307,7 +277,7 @@ export default function App() {
         refreshMinutes={refreshMinutes}
         onChangeRefreshMinutes={(mins) => {
           setRefreshMinutes(mins);
-          setRefreshSecondsLeft(mins * 60);
+
         }}
         onKeySaved={() => setOwmKey(getStoredOwmKey())}
       />

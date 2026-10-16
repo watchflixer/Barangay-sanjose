@@ -7,6 +7,7 @@ export interface CityWeather {
   islandGroup: 'Luzon' | 'Visayas' | 'Mindanao';
   lat: number;
   lng: number;
+  observedAt?: string;
   temperature: number;
   apparentTemperature: number;
   weatherCode: number;

@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import L from 'leaflet';
+import L from 'leaflet-weather';
 import { Layers, LocateFixed, Minus, Plus, RefreshCw } from 'lucide-react';
 import { CityWeather, WeatherMode, RainViewerFrame } from '../types/weather';
-import { PHILIPPINES_CENTER, getOwmTileUrl } from '../services/openWeatherService';
+import { getOwmTileUrl } from '../services/openWeatherService';
 import { getRainViewerTileUrl } from '../services/rainViewerService';
+import { getWeatherConditionInfo } from '../services/openMeteoService';
 import { WindCloudEngine } from '../services/windCloudEngine';
 
 interface WeatherMapProps {
@@ -78,6 +79,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     if (layer === 'weather') return;
     const target = layer === 'dark' ? 'rizal_traffic_map.html'
       : layer === 'light' ? 'rizal_flood_100yr_map.html'
+      : layer === 'satellite' ? 'index.html?help=1'
       : 'index.html';
     window.location.assign(`${import.meta.env.BASE_URL}${target}`);
   };
@@ -185,8 +187,11 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     });
 
     mapInstanceRef.current = map;
+    const resizeObserver = new ResizeObserver(() => map.invalidateSize());
+    resizeObserver.observe(mapContainerRef.current);
 
     return () => {
+      resizeObserver.disconnect();
       map.off('resize', handleResize);
       if (windEngineRef.current) {
         windEngineRef.current.destroy();
@@ -492,6 +497,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       if (timelineForecastHour > 0 && city.hourly && city.hourly.temperature.length > timelineForecastHour) {
         temp = city.hourly.temperature[timelineForecastHour];
         weatherCode = city.hourly.weatherCode[timelineForecastHour] ?? weatherCode;
+        icon = getWeatherConditionInfo(weatherCode).icon;
       }
 
       let markerHtml = '';
@@ -702,8 +708,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
                       <button
                         key={layer}
                         type="button"
-                        disabled={layer === 'satellite'}
-                        onClick={() => selectAppLayer(layer)}
+                                        onClick={() => selectAppLayer(layer)}
                         className={`relative cursor-pointer rounded-md border px-2 py-1 text-center text-xs font-semibold capitalize transition-colors disabled:pointer-events-none disabled:opacity-40 ${
                           layer === 'weather'
                             ? 'border-black bg-black text-white'

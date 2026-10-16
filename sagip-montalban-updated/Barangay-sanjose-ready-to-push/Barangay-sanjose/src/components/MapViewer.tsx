@@ -983,6 +983,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
+      {/* Mount the weather document when selected; the state alone does not display it. */}
+      {showWeather && <WeatherView frameRef={weatherMapFrameRef} />}
+
       {/* Help Center — the Traffic-style directory map with its own filter
           picker (HelpCenterView.tsx). Picks first ("7-Eleven? botika?…"),
           then mounts its own Leaflet map with the selected category pins.
@@ -993,6 +996,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           mapRef={helpCenterMapInstanceRef}
           lockCameraToBounds={mapSettings.lockCameraToBounds}
           onStageChange={handleHelpStageChange}
+          onClose={() => setShowHelpCenter(false)}
         />
       )}
 

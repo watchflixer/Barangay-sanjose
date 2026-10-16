@@ -1,16 +1,23 @@
 import { RainViewerData, RainViewerFrame } from '../types/weather';
 
 export async function fetchRainViewerData(): Promise<RainViewerData | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-cache' });
+    const res = await fetch('https://api.rainviewer.com/public/weather-maps.json', { cache: 'no-cache', signal: controller.signal });
     if (!res.ok) {
       throw new Error(`RainViewer fetch failed with status ${res.status}`);
     }
     const data: RainViewerData = await res.json();
+    if (!data || typeof data.host !== 'string' || !data.host.startsWith('https://') || !data.radar ||
+        !Array.isArray(data.radar.past) || !data.radar.past.every(frame =>
+          Number.isFinite(frame.time) && typeof frame.path === 'string')) return null;
     return data;
   } catch (error) {
     console.error('Error fetching RainViewer maps:', error);
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

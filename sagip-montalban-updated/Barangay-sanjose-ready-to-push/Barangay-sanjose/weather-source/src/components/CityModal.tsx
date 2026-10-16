@@ -114,7 +114,7 @@ export const CityModal: React.FC<CityModalProps> = ({ city, onClose }) => {
             </div>
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
               {city.hourly.time.map((timeStr, idx) => {
-                const hour = new Date(timeStr).getHours();
+                const hour = new Date(timeStr).toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Manila' });
                 const temp = city.hourly?.temperature[idx] ?? city.temperature;
                 const code = city.hourly?.weatherCode[idx] ?? 1;
                 const icon = getWeatherConditionInfo(code).icon;
@@ -126,7 +126,7 @@ export const CityModal: React.FC<CityModalProps> = ({ city, onClose }) => {
                     className="flex-shrink-0 w-16 p-2 rounded-xl bg-slate-800/40 border border-white/5 flex flex-col items-center text-center"
                   >
                     <span className="text-[10px] text-slate-400 font-mono">
-                      {hour}:00
+                      {hour}
                     </span>
                     <span className="text-lg my-1">{icon}</span>
                     <span className="text-xs font-bold text-white font-mono">{temp}°</span>
@@ -148,7 +148,7 @@ export const CityModal: React.FC<CityModalProps> = ({ city, onClose }) => {
             <div className="space-y-1.5">
               {city.daily.time.map((dateStr, idx) => {
                 const d = new Date(dateStr);
-                const dayName = idx === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short' });
+                const dayName = idx === 0 ? 'Today' : d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'Asia/Manila' });
                 const code = city.daily?.weatherCode[idx] ?? 1;
                 const cond = getWeatherConditionInfo(code);
                 const max = city.daily?.maxTemp[idx] ?? city.temperature;
