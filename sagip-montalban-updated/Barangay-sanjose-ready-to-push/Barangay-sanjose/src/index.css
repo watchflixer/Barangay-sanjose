@@ -419,30 +419,6 @@ body,
   #hc-legend-stack {
     bottom: 56px;
   }
-
-  #hc-picker .hc-picker-title {
-    font-size: 19px;
-  }
-
-  #hc-picker .hc-picker-top {
-    padding-top: 14px;
-  }
-
-  /* #rt-locate / #rt-layers2 shrink the same way on phones. */
-  .hc-filter-fab {
-    width: 44px;
-    height: 44px;
-    border-radius: 13px;
-  }
-
-  .hc-filter-fab svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  #hc-sheet .hc-filter-fab {
-    top: -58px;
-  }
 }
 
 /* While the results sheet is up it covers the bottom of the screen on narrow
@@ -917,29 +893,19 @@ body,
   z-index: 60;
   display: flex;
   flex-direction: column;
-  /* Left rail: the host's floating buttons (Recenter / Layers / Locate, then
-     the zoom pair) stay on screen over the picker exactly as they do over the
-     map — they end at 50px — so the sheet reserves that column and closes it
-     with the same hairline used everywhere else. Every block then starts at
-     68px, which puts the title, search field, section headers, tiles and
-     footer buttons on one vertical line. */
-  padding-left: 56px;
+  /* Left gutter: the host's floating buttons (Recenter / Layers / Locate and
+     the zoom pair) stay on screen over the picker, exactly as they do over
+     the map, so nothing here is laid out underneath them. */
+  padding-left: 52px;
   background: #ffffff;
   color: #202124;
   font-family: 'Google Sans', Roboto, -apple-system, 'Segoe UI', sans-serif;
 }
 
-/* The rail itself: a hairline, nothing filled, so the buttons keep reading as
-   floating controls instead of parked panel furniture. */
-#hc-picker::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 56px;
-  width: 1px;
-  background: #e8eaed;
-  pointer-events: none;
+@media (orientation: portrait) and (max-width: 640px) {
+  #hc-picker {
+    padding-left: 48px;
+  }
 }
 
 #hc-picker .hc-picker-top {
@@ -947,7 +913,7 @@ body,
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 18px 12px 0 12px;
+  padding: 16px 12px 0 8px;
 }
 
 #hc-picker .hc-picker-head {
@@ -957,12 +923,10 @@ body,
 
 #hc-picker .hc-picker-title {
   margin: 0;
-  max-width: 40rem;
   font-size: 23px;
   font-weight: 500;
   line-height: 1.2;
   color: #202124;
-  text-wrap: balance;
 }
 
 #hc-picker .hc-picker-sub {
@@ -1025,7 +989,7 @@ body,
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 20px 12px 8px;
+  padding: 20px 20px 8px;
 }
 
 .hc-picker-sec h3 {
@@ -1045,7 +1009,7 @@ body,
 
 .hc-picker-note {
   margin: 0;
-  padding: 8px 12px 0;
+  padding: 8px 20px 0;
   font-size: 12.5px;
   line-height: 1.4;
   color: #5f6368;
