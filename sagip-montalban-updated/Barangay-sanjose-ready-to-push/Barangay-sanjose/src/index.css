@@ -415,6 +415,8 @@ body,
   gap: 10px;
 }
 
+/* Raise the stack on phone portrait so it clears the app's bottom overlays,
+   the way the Traffic page does. */
 @media (orientation: portrait) and (max-width: 640px) {
   #hc-legend-stack {
     bottom: 56px;
@@ -887,15 +889,51 @@ body,
 }
 
 /* --- Step 1: the picker, in Traffic's panel styling (#dir-panel) --------- */
+/* The backdrop dims whatever is behind it (the map, once this view has been
+   opened before) the way the Traffic page dims its own centred dialogs
+   (#rt-opts uses rgba(0,0,0,.4)); the sheet itself is centred on it. */
 #hc-picker {
   position: absolute;
   inset: 0;
   z-index: 60;
   display: flex;
-  flex-direction: column;
-  background: #ffffff;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.42);
   color: #202124;
   font-family: 'Google Sans', Roboto, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* The panel: a little narrower than the viewport and never taller than 86vh,
+   so it reads as one card instead of a full-page sheet. The radius follows
+   Traffic's centred card (#rt-opts .card: 20px) and the hairline plus the
+   two-layer shadow follow its Layers menu. */
+#hc-picker .hc-picker-card {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 100%);
+  max-height: min(86vh, 840px);
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #dadce0;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28), 0 6px 18px rgba(15, 23, 42, 0.14);
+}
+
+/* Phone sizing. These have to come after the base rules above: the selectors
+   match with the same specificity, so source order decides. */
+@media (orientation: portrait) and (max-width: 640px) {
+  #hc-picker {
+    padding: 10px;
+  }
+
+  #hc-picker .hc-picker-card {
+    width: 100%;
+    max-height: 100%;
+    border-radius: 16px;
+  }
 }
 
 #hc-picker .hc-picker-top {
