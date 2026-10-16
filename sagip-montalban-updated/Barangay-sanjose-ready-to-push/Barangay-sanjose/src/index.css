@@ -893,19 +893,9 @@ body,
   z-index: 60;
   display: flex;
   flex-direction: column;
-  /* Left gutter: the host's floating buttons (Recenter / Layers / Locate and
-     the zoom pair) stay on screen over the picker, exactly as they do over
-     the map, so nothing here is laid out underneath them. */
-  padding-left: 52px;
   background: #ffffff;
   color: #202124;
   font-family: 'Google Sans', Roboto, -apple-system, 'Segoe UI', sans-serif;
-}
-
-@media (orientation: portrait) and (max-width: 640px) {
-  #hc-picker {
-    padding-left: 48px;
-  }
 }
 
 #hc-picker .hc-picker-top {
