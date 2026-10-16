@@ -322,9 +322,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const phoneDigits = (place.phone ?? '').replace(/[^\d+]/g, '');
     const rows: string[] = [];
     rows.push(`<p class="mt-2 text-[12.5px] leading-snug text-[#5f6368]">${escapeHtml(place.address)}</p>`);
-    if (place.hours) rows.push(`<p class="mt-1 text-[12.5px] text-[#5f6368]">Oras: ${escapeHtml(place.hours)}</p>`);
+    if (place.hours) rows.push(`<p class="mt-1 text-[12.5px] text-[#5f6368]">Hours: ${escapeHtml(place.hours)}</p>`);
     if (place.note) rows.push(`<p class="mt-1 text-[11.5px] text-[#5f6368]">${escapeHtml(place.note)}</p>`);
-    if (place.phone) rows.push(`<p class="mt-1 text-[12.5px] text-[#5f6368]">Telepono: ${escapeHtml(place.phone)}</p>`);
+    if (place.phone) rows.push(`<p class="mt-1 text-[12.5px] text-[#5f6368]">Phone: ${escapeHtml(place.phone)}</p>`);
 
     return `
       <div class="p-3">
@@ -339,7 +339,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         <div class="hc-popup-meta">${place.source === 'osm' ? 'SOURCE: OPENSTREETMAP' : 'SOURCE: COMMUNITY PIN'}</div>
         <div class="mt-2 flex flex-wrap items-center gap-1.5">
           <a href="${directions}" target="_blank" rel="noopener noreferrer" class="hc-popup-btn hc-popup-btn--primary">Directions</a>
-          ${phoneDigits ? `<a href="tel:${escapeHtml(phoneDigits)}" class="hc-popup-btn">Tawagan</a>` : ''}
+          ${phoneDigits ? `<a href="tel:${escapeHtml(phoneDigits)}" class="hc-popup-btn">Call</a>` : ''}
         </div>
       </div>`;
   }, []);
@@ -421,13 +421,13 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         setLiveStatus('ok');
         setLiveMessage(
           mapped.length > 0
-            ? `${mapped.length} live na pin mula sa OpenStreetMap`
-            : 'Walang karagdagang live pin na nahanap — community pins lang muna',
+            ? `${mapped.length} live pins from OpenStreetMap`
+            : 'No extra live pins found — community pins only for now',
         );
       } catch (error) {
         if ((error as Error)?.name === 'AbortError') return;
         setLiveStatus('error');
-        setLiveMessage('Hindi maabot ang OpenStreetMap (Overpass) — community pins lang muna ang nasa mapa.');
+        setLiveMessage('Cannot reach OpenStreetMap (Overpass) — showing community pins only.');
       }
     }, 350);
 
@@ -466,16 +466,16 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const handleNearMe = useCallback(() => {
     if (originMode === 'me') {
       setOriginMode('center');
-      showToast('Naka-sort na ayon sa gitna ng mapa.');
+      showToast('Sorted by map center.');
       return;
     }
     if (userCoords) {
       setOriginMode('me');
-      showToast('Naka-sort na ayon sa layo mula sa iyo.');
+      showToast('Sorted by distance from you.');
       return;
     }
     if (!navigator.geolocation) {
-      showToast('Walang location support ang browser na ito.');
+      showToast('This browser has no location support.');
       return;
     }
     setLocatingMe(true);
@@ -504,11 +504,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             }).addTo(map);
           }
         }
-        showToast('Handa na! Naka-sort na ayon sa layo mula sa iyo.');
+        showToast('Ready! Sorted by distance from you.');
       },
       () => {
         setLocatingMe(false);
-        showToast('Hindi makuha ang lokasyon. Paki-allow ang location access at subukan ulit.');
+        showToast('Could not get your location. Please allow location access and try again.');
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
     );
@@ -518,7 +518,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     liveCacheRef.current.clear();
     setLiveStatus('loading');
     setRetryTick((tick) => tick + 1);
-    showToast('Ni-refresh ang live OSM pins…');
+    showToast('Refreshing live OSM pins…');
   }, [showToast]);
 
   const openMap = useCallback(() => {
@@ -562,9 +562,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const noticeText = toast
     ? toast
     : trafficNotice
-      ? 'Live traffic: hindi ma-load ngayon — subukan ulit.'
+      ? 'Live traffic failed to load — try again.'
       : osmNotice
-        ? 'Hindi maabot ang OpenStreetMap — subukan ulit.'
+        ? 'Cannot reach OpenStreetMap — try again.'
         : '';
   const noticeAction = toast
     ? undefined
@@ -657,21 +657,21 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <button
             type="button"
             className="hc-sheet-handle"
-            aria-label={sheetExpanded ? 'Iliitan ang listahan' : 'Palakihin ang listahan'}
-            title={sheetExpanded ? 'Iliitan' : 'Palakihin'}
+            aria-label={sheetExpanded ? 'Collapse the list' : 'Expand the list'}
+            title={sheetExpanded ? 'Collapse' : 'Expand'}
             onClick={() => setSheetExpanded((previous) => !previous)}
           />
 
           <div className="hc-sheet-head">
-            <p className="hc-sheet-title">Mga lugar na pinili</p>
+            <p className="hc-sheet-title">Selected places</p>
             <span className="hc-sheet-count">{sortedPlaces.length}</span>
             {liveStatus === 'ok' && liveCount > 0 && (
               <button
                 type="button"
                 className="hc-sheet-cb"
                 onClick={refreshLivePins}
-                title="I-refresh ang live OSM pins"
-                aria-label="I-refresh ang live OSM pins"
+                title="Refresh live OSM pins"
+                aria-label="Refresh live OSM pins"
               >
                 <RefreshCw className="h-4 w-4" />
               </button>
@@ -680,14 +680,14 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               type="button"
               className="hc-sheet-cb"
               onClick={() => setSheetOpen(false)}
-              title="Isara ang listahan"
-              aria-label="Isara ang listahan"
+              title="Close the list"
+              aria-label="Close the list"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          <div className="hc-sheet-tabs" role="tablist" aria-label="Ayos ng listahan">
+          <div className="hc-sheet-tabs" role="tablist" aria-label="List sorting">
             <button
               type="button"
               role="tab"
@@ -696,7 +696,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               onClick={handleNearMe}
             >
               {locatingMe && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Malapit sa akin
+              Near me
             </button>
             <button
               type="button"
@@ -705,7 +705,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               className={`hc-sheet-tab${originMode === 'center' ? ' on' : ''}`}
               onClick={() => setOriginMode('center')}
             >
-              Gitna ng mapa
+              Map center
             </button>
           </div>
 
@@ -715,12 +715,12 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               <input
                 value={listQuery}
                 onChange={(event) => setListQuery(event.target.value)}
-                placeholder="Hanapin sa listahan"
-                aria-label="Hanapin sa listahan"
+                placeholder="Search the list"
+                aria-label="Search the list"
               />
               {listQuery && (
                 <button type="button" className="hc-picker-clear" onClick={() => setListQuery('')}>
-                  Burahin
+                  Clear
                 </button>
               )}
             </div>
@@ -730,8 +730,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             {sortedPlaces.length === 0 && (
               <div className="hc-sheet-empty">
                 {liveStatus === 'loading'
-                  ? 'Naghahanap pa ng mga pin…'
-                  : 'Walang tumugmang lugar. Subukan ang ibang filter o i-tap ang “Filter” sa taas.'}
+                  ? 'Searching for pins…'
+                  : 'No matching places. Try another filter, or tap “Filter” above.'}
               </div>
             )}
             {sortedPlaces.map(({ place, km }) => {
@@ -742,7 +742,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
                     type="button"
                     className="hc-sheet-ic"
                     onClick={() => focusPlace(place)}
-                    aria-label={`Ipakita sa mapa ang ${place.name}`}
+                    aria-label={`Show ${place.name} on the map`}
                   >
                     {category.code}
                   </button>
@@ -757,8 +757,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
                     href={`https://www.google.com/maps/dir/?api=1&destination=${place.coords[0]},${place.coords[1]}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    title={`Direksyon papuntang ${place.name}`}
-                    aria-label={`Direksyon papuntang ${place.name}`}
+                    title={`Directions to ${place.name}`}
+                    aria-label={`Directions to ${place.name}`}
                     className="hc-sheet-go"
                   >
                     <Navigation className="h-4 w-4" />
@@ -771,11 +771,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <div className="hc-sheet-foot">
             <p>
               {liveMessage ||
-                'Community-mapped ang ilang pin — paki-verify bago pumunta. Live pins: OpenStreetMap.'}
+                'Some pins are community-mapped — please verify before you go. Live pins: OpenStreetMap.'}
             </p>
             {!sheetExpanded && (
               <button type="button" className="hc-pill" onClick={() => setSheetExpanded(true)}>
-                Tingnan lahat
+                View all
               </button>
             )}
           </div>
@@ -786,7 +786,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       {stage === 'map' && !sheetOpen && (
         <div className="absolute bottom-6 left-4 z-[400]">
           <button type="button" className="hc-pill" onClick={() => setSheetOpen(true)}>
-            <List className="h-4 w-4" /> Listahan ({sortedPlaces.length})
+            <List className="h-4 w-4" /> List ({sortedPlaces.length})
           </button>
         </div>
       )}

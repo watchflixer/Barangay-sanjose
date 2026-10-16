@@ -66,10 +66,11 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
         {/* ----------------------------------------------------------- header */}
         <div className="hc-picker-top">
           <div className="hc-picker-head">
-            <h2 className="hc-picker-title">Pumili muna ng gusto mong i-filter</h2>
+            <h2 className="hc-picker-title">Choose what you want to filter</h2>
             <p className="hc-picker-sub">
-              I-tap ang mga kategoryang kailangan (7-Eleven, botika, water, ATM, evacuation). Bubukas
-              ang mapa pagkatapos pumili — may live traffic layer ito gaya ng Traffic view.
+              Tap the categories you need (7-Eleven, pharmacy, water, ATM,
+              evacuation). The map opens once you pick — it carries a live traffic layer, just
+              like the Traffic view.
             </p>
           </div>
         </div>
@@ -80,12 +81,12 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Hanapin ang filter (7-Eleven, botika, tubig, ATM)"
-            aria-label="Hanapin ang filter"
+            placeholder="Search filters (7-Eleven, pharmacy, water, ATM)"
+            aria-label="Search filters"
           />
           {query && (
             <button type="button" className="hc-picker-clear" onClick={() => setQuery('')}>
-              Burahin
+              Clear
             </button>
           )}
         </div>
@@ -94,8 +95,8 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
         <div className="hc-picker-scroll custom-scrollbar">
           {matchCount === 0 && (
             <p className="hc-picker-note">
-              Walang tumugmang filter. Subukan ang “7-Eleven”, “botika”, “water”, “ATM” o
-              “evacuation”.
+              No matching filter. Try “7-Eleven”, “pharmacy”, “water”, “ATM”
+              or “evacuation”.
             </p>
           )}
 
@@ -140,9 +141,9 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
           ))}
 
           <p className="hc-picker-note">
-            <strong>Paalala:</strong> community-mapped ang ilang pin (pwedeng ilang metro ang layo).
-            Idinadagdag din namin ang live na lokasyon mula sa OpenStreetMap kapag may nahanap, at ang
-            Street na mapa ay may live traffic layer gaya ng Traffic view.
+            <strong>Note:</strong> some pins are community-mapped and may be a few metres off. We
+            also add the live location from OpenStreetMap whenever it is available, and the Street
+            map carries a live traffic layer, just like the Traffic view.
           </p>
         </div>
 
@@ -150,12 +151,12 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
         <footer className="hc-picker-foot">
           <div className="hc-picker-actions">
             <button type="button" onClick={() => onSetSelection([])} className="hc-pill">
-              Burahin
+              Clear
             </button>
             <button type="button" disabled={selected.length === 0} onClick={onOpenMap} className="hc-pill go">
               {selected.length === 0
-                ? 'Pumili muna ng kahit isang filter'
-                : `Buksan ang mapa (${selected.length} filter)`}
+                ? 'Pick at least one filter'
+                : `Open the map (${selected.length} ${selected.length === 1 ? 'filter' : 'filters'})`}
             </button>
           </div>
         </footer>
