@@ -211,14 +211,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     return mergePlaces(curatedPlaces, mergePlaces([], live));
   }, [curatedPlaces, livePlaces, selectedSet]);
 
-  const countByCategory = useMemo(() => {
-    const counts: Partial<Record<PlaceCategoryId, number>> = {};
-    places.forEach((place) => {
-      counts[place.category] = (counts[place.category] ?? 0) + 1;
-    });
-    return counts;
-  }, [places]);
-
   const liveCount = useMemo(() => places.filter((place) => place.source === 'osm').length, [places]);
 
   // ------------------------------------------------------------- the map
@@ -558,8 +550,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     [selected],
   );
 
-  const unselectedCount = ALL_CATEGORY_IDS.length - selected.length;
-
   // ------------------------------------------------------------------ view
   // One notice slot, exactly like the Traffic page: the toast, then the two
   // conditions the driver can actually act on.
@@ -625,36 +615,20 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Category chips — change the filter without leaving the map. */}
+      {/* Filter, one icon-only FAB using Traffic's 48px / radius-14
+          geometry, in place of the old chip row with its long category
+          labels. The app's Recenter/Layers/Locate column sits to its
+          left, the basemap switch to its right. */}
       {stage === 'map' && (
-        <div id="hc-chip-row">
-          <button type="button" onClick={openPicker} className="hc-chip">
-            <Filter className="h-3.5 w-3.5" /> Filter
-          </button>
-          {selected.map((id) => {
-            const category = CATEGORY_BY_ID[id];
-            if (!category) return null;
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => toggleCategory(id)}
-                title={`Alisin ang ${category.label}`}
-                className="hc-chip"
-              >
-                <span className="hc-chip-code">{category.code}</span>
-                {category.label}
-                <span className="hc-chip-count">{countByCategory[id] ?? 0}</span>
-                <X className="h-3 w-3 opacity-60" />
-              </button>
-            );
-          })}
-          {unselectedCount > 0 && (
-            <button type="button" onClick={() => setSelection(ALL_CATEGORY_IDS)} className="hc-chip">
-              + Iba pa ({unselectedCount})
-            </button>
-          )}
-        </div>
+        <button
+          type="button"
+          id="hc-filter-btn"
+          onClick={openPicker}
+          title="Filter"
+          aria-label="Filter"
+        >
+          <Filter className="h-5 w-5" />
+        </button>
       )}
 
       {/* Messages: the Traffic page's red notice, over the map. */}

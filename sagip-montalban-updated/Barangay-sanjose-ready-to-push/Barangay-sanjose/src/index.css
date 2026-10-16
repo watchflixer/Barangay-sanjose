@@ -491,10 +491,11 @@ body,
 
 /* --- Messages: Traffic's #notice. Traffic drops it further down whenever
        other chrome is on screen (body.routing #notice{top:132px}); here the
-       chip row sits at the top, so the notice starts just below it. -------- */
+       top bar holds the control column, the Filter FAB and the basemap
+       switch, so the notice starts just below it. --------------------------- */
 #hc-notice {
   position: absolute;
-  top: 52px;
+  top: 72px;
   left: 50%;
   transform: translateX(-50%);
   max-width: calc(100% - 90px);
@@ -517,86 +518,42 @@ body,
   text-underline-offset: 2px;
 }
 
-@media (orientation: portrait) and (max-width: 640px) {
-  #hc-chip-row {
-    top: 48px;
-    left: 56px;
-    right: 12px;
-  }
-
-  #hc-notice {
-    top: 88px;
-  }
-}
-
-/* --- Category chips: the Layers menu's .style-choice recipe in a white
-       card. Traffic has no chips; this is the Help Center's own control, so
-       it reuses Traffic's button recipe instead of inventing a new one. ---- */
-#hc-chip-row {
+/* --- Filter: the only Help Center control on the map screen. Traffic's
+       48px / radius-14 FAB geometry (the #directions-btn recipe), white
+       card with the app's #0b7a87 accent on the glyph. It replaces the
+       old chip row, whose long category labels crowded the top bar. --- */
+#hc-filter-btn {
   position: absolute;
-  top: 10px;
+  top: 16px;
   left: 56px;
-  right: 180px;
   z-index: 400;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid #d4d8d4;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  overflow-x: auto;
-  overflow-y: hidden;
-  font-family: 'Plus Jakarta Sans', sans-serif;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-#hc-chip-row::-webkit-scrollbar {
-  display: none;
-}
-
-.hc-chip {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #f8fafc;
-  color: #334155;
-  font-family: inherit;
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 600;
-  white-space: nowrap;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0b7a87;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   cursor: pointer;
-  transition: color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.hc-chip:hover {
-  background: #f1f5f9;
+#hc-filter-btn:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
 }
 
-.hc-chip.on {
-  border-color: #000000;
-  background: #000000;
-  color: #ffffff;
+#hc-filter-btn:active {
+  transform: scale(0.94);
 }
 
-.hc-chip .hc-chip-code,
-.hc-chip .hc-chip-count {
-  font-weight: 700;
-  opacity: 0.72;
-}
-
-.hc-chip .hc-chip-code {
-  font-size: 10px;
-  letter-spacing: 0.04em;
+#hc-filter-btn:focus-visible {
+  outline: 3px solid #0b7a87;
+  outline-offset: -6px;
 }
 
 /* --- Results sheet: Traffic's route sheet recipe (#rt-sheet + .rt-head +
