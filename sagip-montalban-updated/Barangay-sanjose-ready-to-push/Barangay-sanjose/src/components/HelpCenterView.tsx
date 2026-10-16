@@ -581,6 +581,24 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     );
   }, []);
 
+  // The Filter FAB, positioned the way the Traffic page positions its own
+  // floating map buttons: a child of the results sheet, 64px above its top
+  // edge at the right (#rt-locate / #rt-layers2 in rizal_traffic_map.html).
+  // With the sheet closed it rides the right-hand stack instead, so it is
+  // never out of reach.
+  const filterFab = (
+    <button
+      type="button"
+      id="hc-filter-btn"
+      className="hc-filter-fab"
+      onClick={openPicker}
+      title="Filter"
+      aria-label="Filter"
+    >
+      <Filter />
+    </button>
+  );
+
   return (
     <div id="help-center-view" className="absolute inset-0 z-30 bg-white" aria-label="Help Center">
       {mapReady && (
@@ -615,22 +633,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Filter, one icon-only FAB using Traffic's 48px / radius-14
-          geometry, in place of the old chip row with its long category
-          labels. The app's Recenter/Layers/Locate column sits to its
-          left, the basemap switch to its right. */}
-      {stage === 'map' && (
-        <button
-          type="button"
-          id="hc-filter-btn"
-          onClick={openPicker}
-          title="Filter"
-          aria-label="Filter"
-        >
-          <Filter className="h-5 w-5" />
-        </button>
-      )}
-
       {/* Messages: the Traffic page's red notice, over the map. */}
       {stage === 'map' &&
         noticeText &&
@@ -646,6 +648,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           handle, 24px top corners, tabs and rows. */}
       {stage === 'map' && sheetOpen && (
         <div id="hc-sheet" className={sheetExpanded ? 'is-expanded' : undefined}>
+          {filterFab}
+
           <button
             type="button"
             className="hc-sheet-handle"
@@ -787,6 +791,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           four-swatch legend, same sizes and same slot. */}
       {stage === 'map' && (
         <div id="hc-legend-stack" className={sheetOpen ? 'hc-under-sheet' : undefined}>
+          {!sheetOpen && filterFab}
           <button
             type="button"
             id="hc-directions-btn"
