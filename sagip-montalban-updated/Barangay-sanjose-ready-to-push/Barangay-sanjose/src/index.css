@@ -888,10 +888,11 @@ body,
   cursor: not-allowed;
 }
 
-/* --- Step 1: the picker, in Traffic's panel styling (#dir-panel) --------- */
-/* The backdrop dims whatever is behind it (the map, once this view has been
-   opened before) the way the Traffic page dims its own centred dialogs
-   (#rt-opts uses rgba(0,0,0,.4)); the sheet itself is centred on it. */
+/* --- Step 1: the picker -------------------------------------------------- */
+/* A plain white screen — no card, no dimmed backdrop — whose content lives in
+   one centred column. The column is a little narrower than the viewport so
+   the header, search field, sections and footer keep a comfortable measure
+   and stay on the same vertical line. */
 #hc-picker {
   position: absolute;
   inset: 0;
@@ -900,26 +901,18 @@ body,
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.42);
+  background: #ffffff;
   color: #202124;
   font-family: 'Google Sans', Roboto, -apple-system, 'Segoe UI', sans-serif;
 }
 
-/* The panel: a little narrower than the viewport and never taller than 86vh,
-   so it reads as one card instead of a full-page sheet. The radius follows
-   Traffic's centred card (#rt-opts .card: 20px) and the hairline plus the
-   two-layer shadow follow its Layers menu. */
-#hc-picker .hc-picker-card {
+#hc-picker .hc-picker-body {
   display: flex;
   flex-direction: column;
   width: min(880px, 100%);
-  max-height: min(86vh, 840px);
+  height: 100%;
   min-height: 0;
   overflow: hidden;
-  border: 1px solid #dadce0;
-  border-radius: 20px;
-  background: #ffffff;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28), 0 6px 18px rgba(15, 23, 42, 0.14);
 }
 
 /* Phone sizing. These have to come after the base rules above: the selectors
@@ -930,10 +923,8 @@ body,
   }
 
 
-  #hc-picker .hc-picker-card {
+  #hc-picker .hc-picker-body {
     width: 100%;
-    max-height: 100%;
-    border-radius: 16px;
   }
 }
 

@@ -57,12 +57,12 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
 
   const matchCount = groups.reduce((total, entry) => total + entry.categories.length, 0);
   return (
-    // The screen is a dimmed backdrop with the sheet centred on it: the card
-    // is a little narrower than the viewport and never taller than 86vh, so
-    // it reads as one panel instead of a full-page wall (the same shape the
-    // Traffic page gives its centred dialogs).
+    // A full white screen, with its content in one centred column: the column
+    // is a little narrower than the viewport so the header, search field,
+    // sections and footer keep a comfortable measure and stay aligned with
+    // each other — no card, no border, nothing floating.
     <div id="hc-picker">
-      <div className="hc-picker-card">
+      <div className="hc-picker-body">
         {/* ----------------------------------------------------------- header */}
         <div className="hc-picker-top">
           <div className="hc-picker-head">
