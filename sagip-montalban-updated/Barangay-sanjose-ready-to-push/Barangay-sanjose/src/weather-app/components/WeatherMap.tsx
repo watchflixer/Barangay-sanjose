@@ -1,5 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+/*
+ * NOTE ON LEAFLET: this app runs Leaflet 2 (2.0.0-alpha.1), where the old
+ * lowercase factory helpers were removed. Use the classes instead:
+ *   new L.Map(el, opts)          (not L.map(...))
+ *   new L.TileLayer(url, opts)   (not L.tileLayer(...))
+ *   new L.Marker(latlng, opts) / new L.DivIcon(opts) / new L.LayerGroup()
+ *   new L.Polygon(...) / new L.Polyline(...) / new L.Circle(...)
+ *   new L.LatLng(lat, lng) / new L.LatLngBounds(a, b) / new L.Control.Zoom(opts)
+ * The published @types/leaflet still describes 1.x, so v1-only calls would
+ * type-check yet fail at runtime.
+ */
 import {
   Language,
   LocationCoordinates,
@@ -110,7 +121,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   useEffect(() => {
     if (!mapContainerRef.current || mapInstanceRef.current) return;
 
-    const map = L.map(mapContainerRef.current, {
+    const map = new L.Map(mapContainerRef.current, {
       center: center,
       zoom: zoom,
       zoomControl: false,
@@ -119,17 +130,15 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       maxZoom: 17,
       zoomSnap: 0.5,
       // Include the complete PAR envelope so Storm mode can show the regional view.
-      maxBounds: L.latLngBounds([0, 105], [30, 145]),
+      maxBounds: new L.LatLngBounds([0, 105], [30, 145]),
       maxBoundsViscosity: 0.9,
       worldCopyJump: false,
     });
 
     // Custom Zoom control at bottom right
-    L.control
-      .zoom({
-        position: 'bottomright',
-      })
-      .addTo(map);
+    new L.Control.Zoom({
+      position: 'bottomright',
+    }).addTo(map);
 
     // Map click handler (checks if measuring distance or inspecting weather)
     map.on('click', (e: L.LeafletMouseEvent) => {
@@ -175,7 +184,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     const map = mapInstanceRef.current;
 
     if (!measureMarkersGroupRef.current) {
-      measureMarkersGroupRef.current = L.layerGroup().addTo(map);
+      measureMarkersGroupRef.current = new L.LayerGroup().addTo(map);
     }
 
     const points = measurePointsRef.current;
@@ -183,7 +192,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     // Add marker at point
     const pointIdx = points.length;
-    const markerIcon = L.divIcon({
+    const markerIcon = new L.DivIcon({
       className: 'measure-point-pin',
       html: `
         <div style="width: 14px; height: 14px; border-radius: 9999px; background-color: #f59e0b; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; color: #000;">
@@ -194,7 +203,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       iconAnchor: [7, 7],
     });
 
-    const marker = L.marker(latlng, { icon: markerIcon });
+    const marker = new L.Marker(latlng, { icon: markerIcon });
     measureMarkersGroupRef.current.addLayer(marker);
 
     // Calculate total distance
@@ -207,7 +216,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     if (measureLineRef.current) {
       measureLineRef.current.setLatLngs(points);
     } else {
-      measureLineRef.current = L.polyline(points, {
+      measureLineRef.current = new L.Polyline(points, {
         color: '#f59e0b',
         weight: 3,
         dashArray: '6, 6',
@@ -283,7 +292,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
 
     if (showElevation && baseStyle !== 'satellite') {
-      const hillshade = L.tileLayer(
+      const hillshade = new L.TileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}',
         {
           opacity: 0.35,
@@ -306,7 +315,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
 
     if (showBathymetry && baseStyle !== 'satellite') {
-      const bathy = L.tileLayer(
+      const bathy = new L.TileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
         {
           opacity: 0.22,
@@ -330,7 +339,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     if (activeLayer !== 'storm') return;
 
-    const layer = L.tileLayer(getHimawariInfraredTileUrl(stormImageryTime), {
+    const layer = new L.TileLayer(getHimawariInfraredTileUrl(stormImageryTime), {
       opacity: 1,
       zIndex: 200,
       tileSize: 256,
@@ -395,7 +404,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         smooth: true,
       });
 
-      const layer = L.tileLayer(radarUrl, {
+      const layer = new L.TileLayer(radarUrl, {
         opacity: radarOpacity,
         zIndex: 300,
         tileSize: 256,
@@ -417,7 +426,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       weatherTileLayerRef.current = layer;
     } else if (isSatellite) {
       const satUrl = rainViewer.getSatelliteTileUrl(radarData.host, currentRadarFrame.path);
-      const layer = L.tileLayer(satUrl, {
+      const layer = new L.TileLayer(satUrl, {
         opacity: 0.8,
         zIndex: 300,
         tileSize: 256,
@@ -440,7 +449,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     if (activeLayer !== 'storm') return;
 
-    const group = L.layerGroup();
+    const group = new L.LayerGroup();
     const gridStyle: L.PolylineOptions = {
       color: '#17e6b5',
       weight: 1,
@@ -450,28 +459,28 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     };
 
     for (let lat = 0; lat <= 30; lat += 5) {
-      group.addLayer(L.polyline([[lat, 105], [lat, 145]], gridStyle));
+      group.addLayer(new L.Polyline([[lat, 105], [lat, 145]], gridStyle));
       if (lat >= 5 && lat <= 25) {
-        const label = L.divIcon({
+        const label = new L.DivIcon({
           className: 'storm-graticule-label',
           html: `<span style="display:block;padding:1px 3px;border-radius:3px;background:rgba(2,18,20,.72);color:#b9ffe9;font:700 8px/12px system-ui;white-space:nowrap">${lat}°N</span>`,
           iconSize: [28, 14],
           iconAnchor: [0, 7],
         });
-        group.addLayer(L.marker([lat, 114.15], { icon: label, interactive: false, keyboard: false }));
+        group.addLayer(new L.Marker([lat, 114.15], { icon: label, interactive: false, keyboard: false }));
       }
     }
 
     for (let lon = 110; lon <= 140; lon += 5) {
-      group.addLayer(L.polyline([[0, lon], [30, lon]], gridStyle));
+      group.addLayer(new L.Polyline([[0, lon], [30, lon]], gridStyle));
       if (lon >= 115 && lon <= 135) {
-        const label = L.divIcon({
+        const label = new L.DivIcon({
           className: 'storm-graticule-label',
           html: `<span style="display:block;padding:1px 3px;border-radius:3px;background:rgba(2,18,20,.72);color:#b9ffe9;font:700 8px/12px system-ui;white-space:nowrap">${lon}°E</span>`,
           iconSize: [34, 14],
           iconAnchor: [17, 0],
         });
-        group.addLayer(L.marker([4.1, lon], { icon: label, interactive: false, keyboard: false }));
+        group.addLayer(new L.Marker([4.1, lon], { icon: label, interactive: false, keyboard: false }));
       }
     }
 
@@ -491,7 +500,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     if (showPAR) {
       const parColor = activeLayer === 'storm' ? '#ff3048' : '#10b981';
-      const parPoly = L.polygon(PAR_COORDINATES, {
+      const parPoly = new L.Polygon(PAR_COORDINATES, {
         color: parColor,
         weight: activeLayer === 'storm' ? 2.5 : 2,
         dashArray: activeLayer === 'storm' ? undefined : '6, 6',
@@ -519,7 +528,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
 
     if (showIsolines) {
-      const group = L.layerGroup();
+      const group = new L.LayerGroup();
       
       const isobars = [
         { hpa: 1012, points: [[20.5, 117.0], [19.0, 120.0], [17.5, 123.0], [16.0, 126.5], [14.0, 129.0]] },
@@ -529,7 +538,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       ];
 
       isobars.forEach((line) => {
-        const polyline = L.polyline(line.points as [number, number][], {
+        const polyline = new L.Polyline(line.points as [number, number][], {
           color: '#38bdf8',
           weight: 1.5,
           opacity: 0.55,
@@ -538,13 +547,13 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         
         const midIdx = Math.floor(line.points.length / 2);
         const midPoint = line.points[midIdx];
-        const labelIcon = L.divIcon({
+        const labelIcon = new L.DivIcon({
           className: 'isobar-label',
           html: `<div style="background: rgba(15, 23, 42, 0.85); color: #7dd3fc; border: 1px solid rgba(56, 189, 248, 0.4); padding: 1px 4px; border-radius: 4px; font-size: 9px; font-weight: bold; white-space: nowrap; pointer-events: none;">${line.hpa} hPa</div>`,
           iconSize: [45, 16],
           iconAnchor: [22, 8],
         });
-        const labelMarker = L.marker(midPoint as [number, number], { icon: labelIcon, interactive: false });
+        const labelMarker = new L.Marker(midPoint as [number, number], { icon: labelIcon, interactive: false });
 
         group.addLayer(polyline);
         group.addLayer(labelMarker);
@@ -564,10 +573,10 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       map.removeLayer(stormMarkersGroupRef.current);
     }
 
-    const group = L.layerGroup();
+    const group = new L.LayerGroup();
 
     storms.forEach((storm) => {
-      const stormIcon = L.divIcon({
+      const stormIcon = new L.DivIcon({
         className: 'custom-storm-pin',
         html: `
           <div class="relative flex items-center justify-center cursor-pointer group">
@@ -583,13 +592,13 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         iconAnchor: [18, 18],
       });
 
-      const marker = L.marker([storm.currentLat, storm.currentLon], { icon: stormIcon });
+      const marker = new L.Marker([storm.currentLat, storm.currentLon], { icon: stormIcon });
       marker.on('click', () => onSelectStorm(storm));
       group.addLayer(marker);
 
       if (storm.track && storm.track.length > 1) {
         const trackLatLngs: [number, number][] = storm.track.map((t) => [t.lat, t.lon]);
-        const trackLine = L.polyline(trackLatLngs, {
+        const trackLine = new L.Polyline(trackLatLngs, {
           color: '#fb7185',
           weight: 2.5,
           dashArray: '4, 4',
@@ -614,7 +623,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
 
     if (selectedLocation) {
-      const markerIcon = L.divIcon({
+      const markerIcon = new L.DivIcon({
         className: 'selected-location-beacon',
         html: `
           <div class="relative flex items-center justify-center">
@@ -626,7 +635,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         iconAnchor: [16, 16],
       });
 
-      const marker = L.marker([selectedLocation.lat, selectedLocation.lon], {
+      const marker = new L.Marker([selectedLocation.lat, selectedLocation.lon], {
         icon: markerIcon,
         zIndexOffset: 1000,
       }).addTo(map);
@@ -646,10 +655,10 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
 
     if (showCityLabels) {
-      const group = L.layerGroup();
+      const group = new L.LayerGroup();
 
       POPULAR_LOCATIONS.forEach((city) => {
-        const cityIcon = L.divIcon({
+        const cityIcon = new L.DivIcon({
           className: 'panahon-city-label',
           html: `
             <div style="cursor: pointer; display: flex; flex-direction: column; align-items: center; pointer-events: auto;">
@@ -662,7 +671,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
           iconAnchor: [60, 12],
         });
 
-        const marker = L.marker([city.lat, city.lon], { icon: cityIcon });
+        const marker = new L.Marker([city.lat, city.lon], { icon: cityIcon });
         marker.on('click', () => {
           onMapClick(city.lat, city.lon);
         });
@@ -685,10 +694,10 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
 
     if (showRadarStations) {
-      const group = L.layerGroup();
+      const group = new L.LayerGroup();
 
       PAGASA_RADAR_STATIONS.forEach((station) => {
-        const towerIcon = L.divIcon({
+        const towerIcon = new L.DivIcon({
           className: 'custom-radar-tower',
           html: `
             <div class="flex items-center justify-center cursor-pointer group">
@@ -704,7 +713,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
           iconAnchor: [14, 14],
         });
 
-        const marker = L.marker([station.lat, station.lon], { icon: towerIcon });
+        const marker = new L.Marker([station.lat, station.lon], { icon: towerIcon });
         
         marker.bindTooltip(
           `
@@ -732,7 +741,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
         // Radar coverage sweep range circle
         if (showRadarRings) {
-          const circle = L.circle([station.lat, station.lon], {
+          const circle = new L.Circle([station.lat, station.lon], {
             radius: station.rangeKm * 1000,
             color: '#0284c7',
             weight: 1,

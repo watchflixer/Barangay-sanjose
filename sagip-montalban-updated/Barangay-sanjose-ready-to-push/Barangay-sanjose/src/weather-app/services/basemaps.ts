@@ -118,7 +118,7 @@ export function mountBasemap(
   callbacks: MountBasemapCallbacks = {},
 ): BasemapHandle {
   const chain = getBasemapChain(style);
-  const group = L.layerGroup().addTo(map);
+  const group = new L.LayerGroup().addTo(map);
 
   let sourceIndex = 0;
   let errorCount = 0;
@@ -140,7 +140,7 @@ export function mountBasemap(
     errorCount = 0;
     callbacks.onSourceChange?.(source);
 
-    const base = L.tileLayer(source.url, layerOptions(source, { zIndex: 100 }));
+    const base = new L.TileLayer(source.url, layerOptions(source, { zIndex: 100 }));
 
     base.on('tileerror', () => {
       if (disposed) return;

@@ -248,6 +248,18 @@ body,
 }
 
 /* ---------------------------------------------------------------------------
+   Help Center — the Traffic look, copied value for value
+
+   The Help Center is meant to be indistinguishable from the Traffic view, so
+   every rule below is lifted from the Traffic page
+   (public/rizal_traffic_map.html): the same basemap switch, the same 30px
+   Lucida Console zoom bar, the same four-swatch legend, the same 48px #0b7a87
+   Directions button, the same red notice, and for the picker plus the results
+   sheet the same Google-style panel (white, #dadce0 hairlines, #d3eef5 and
+   #00697a pills). Mirror changes from Traffic here instead of restyling.
+--------------------------------------------------------------------------- */
+
+/* ---------------------------------------------------------------------------
    Keyless light / dark basemaps
    ---------------------------------------------------------------------------
    The `light` and `dark` basemap styles are plain OpenStreetMap raster tiles
@@ -261,4 +273,1054 @@ body,
 
 .map-clean-tiles {
   filter: saturate(0.6) brightness(1.06) contrast(0.96);
+}
+
+/* --- Zoom buttons: the Traffic bar at top:132px / left:6px, under the
+       host's Recenter / Layers / Locate column ---------------------------- */
+#help-center-map-root .leaflet-top.leaflet-left {
+  top: 132px;
+  left: 6px;
+}
+
+#help-center-map-root .leaflet-control.leaflet-bar {
+  border: 2px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background-clip: padding-box;
+  box-shadow: none;
+}
+
+#help-center-map-root .leaflet-bar a {
+  display: block;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  text-decoration: none;
+  background-color: #ffffff;
+  border-bottom: 1px solid #cccccc;
+  color: #000000;
+  font-family: 'Lucida Console', Monaco, monospace;
+  font-size: 22px;
+  font-weight: bold;
+  text-indent: 1px;
+}
+
+#help-center-map-root .leaflet-bar a:first-child {
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
+}
+
+#help-center-map-root .leaflet-bar a:last-child {
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+  border-bottom: none;
+}
+
+#help-center-map-root .leaflet-bar a:hover,
+#help-center-map-root .leaflet-bar a:focus {
+  background-color: #f4f4f4;
+  color: #000000;
+}
+
+/* The host's blue "you are here" dot, plus the Traffic page's pulse ring. */
+#help-center-map-root .user-location-dot {
+  position: relative;
+}
+
+#help-center-map-root .user-location-dot::after {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border: 2px solid rgba(26, 115, 232, 0.55);
+  border-radius: 50%;
+  animation: hc-user-pulse 1.6s ease-out infinite;
+}
+
+@keyframes hc-user-pulse {
+  0% {
+    transform: scale(0.45);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+
+#help-center-map-root .leaflet-bar a.leaflet-disabled {
+  background-color: #f4f4f4;
+  color: #bbbbbb;
+  cursor: default;
+}
+
+/* --- Basemap switcher: Traffic's #base-switch recipe, same top-right slot
+       (Street carries the live traffic raster, exactly like Traffic) ----- */
+#hc-base-switch {
+  position: absolute;
+  right: 12px;
+  z-index: 400;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #d4d8d4;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#hc-base-switch {
+  top: 10px;
+}
+
+#hc-base-switch button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #33413a;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+#hc-base-switch button:hover {
+  background: #eef1ec;
+}
+
+#hc-base-switch button.active {
+  background: #111827;
+  color: #ffffff;
+}
+
+/* --- Right-hand stack: Directions button above the legend card ---------- */
+#hc-legend-stack {
+  position: absolute;
+  right: 12px;
+  bottom: 24px;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+/* Raise the stack on phone portrait so it clears the app's bottom overlays,
+   the way the Traffic page does. */
+@media (orientation: portrait) and (max-width: 640px) {
+  #hc-legend-stack {
+    bottom: 56px;
+  }
+}
+
+/* While the results sheet is up it covers the bottom of the screen on narrow
+   views — Traffic hides its legend the same way while a route is on screen
+   (body.routing #legend-stack{display:none}). */
+@media (max-width: 900px) {
+  #hc-legend-stack.hc-under-sheet {
+    display: none;
+  }
+}
+
+#hc-directions-btn {
+  display: block;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: #0b7a87;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#hc-directions-btn svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#hc-directions-btn:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+#hc-directions-btn:active {
+  transform: scale(0.94);
+}
+
+#hc-directions-btn:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: -6px;
+}
+
+#hc-legend {
+  min-width: 150px;
+  padding: 10px 12px;
+  border: 1px solid #d4d8d4;
+  border-radius: 8px;
+  background: rgba(244, 246, 244, 0.95);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.78rem;
+  color: #1b2a2f;
+}
+
+#hc-legend .row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0;
+}
+
+#hc-legend .sw {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+}
+
+/* --- Messages: Traffic's #notice. Traffic drops it further down whenever
+       other chrome is on screen (body.routing #notice{top:132px}); here the
+       top bar holds the control column, the Filter FAB and the basemap
+       switch, so the notice starts just below it. --------------------------- */
+#hc-notice {
+  position: absolute;
+  top: 52px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 90px);
+  z-index: 500;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(122, 31, 27, 0.92);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+#hc-notice.is-action {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* --- Filter: Traffic's floating map button. The Traffic page keeps these as
+       children of its bottom sheet (#rt-locate at top:-64px, #rt-layers2 at
+       top:-124px, right:12px, 48px, radius 14, 0 2px 8px rgba(0,0,0,.3),
+       22px glyph in #3c4043) so they hover over the map right above the sheet;
+       the Help Center does the same with its sheet. With the sheet closed the
+       same button rides the top of the right-hand stack instead. ---------- */
+.hc-filter-fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #3c4043;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hc-filter-fab svg {
+  width: 22px;
+  height: 22px;
+}
+
+.hc-filter-fab:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+}
+
+.hc-filter-fab:active {
+  transform: scale(0.94);
+}
+
+.hc-filter-fab:focus-visible {
+  outline: 3px solid #0b7a87;
+  outline-offset: -6px;
+}
+
+#hc-sheet .hc-filter-fab {
+  position: absolute;
+  right: 12px;
+  top: -64px;
+}
+
+/* --- Results sheet: Traffic's route sheet recipe (#rt-sheet + .rt-head +
+       .rt-cb + .rt-tabs), anchored to the bottom edge. ---------------------- */
+#hc-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 500;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding-top: 16px;
+  max-height: 46vh;
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.25);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  color: #1e293b;
+}
+
+#hc-sheet.is-expanded {
+  max-height: 66vh;
+}
+
+#hc-sheet .hc-sheet-handle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: #c4c7c5;
+  cursor: pointer;
+}
+
+#hc-sheet .hc-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px 8px 20px;
+}
+
+#hc-sheet .hc-sheet-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 19px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+#hc-sheet .hc-sheet-count {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Head buttons: Traffic's .rt-cb circles. */
+#hc-sheet .hc-sheet-cb {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #e9eef0;
+  color: #202124;
+  cursor: pointer;
+}
+
+#hc-sheet .hc-sheet-cb:active {
+  background: #d5dde0;
+}
+
+#hc-sheet .hc-sheet-cb.on {
+  background: #d3eef5;
+  color: #00697a;
+}
+
+/* Sort tabs: Traffic's .rt-tabs / .rt-tab with the #0e6e80 indicator. */
+#hc-sheet .hc-sheet-tabs {
+  display: flex;
+  border-bottom: 1px solid #dadce0;
+}
+
+#hc-sheet .hc-sheet-tab {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 0 10px;
+  border: 0;
+  background: transparent;
+  color: #202124;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#hc-sheet .hc-sheet-tab.on {
+  color: #0e6e80;
+}
+
+#hc-sheet .hc-sheet-tab.on::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  width: 40px;
+  height: 3px;
+  margin-left: -20px;
+  border-radius: 3px 3px 0 0;
+  background: #0e6e80;
+}
+
+#hc-sheet .hc-sheet-body {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Rows: Traffic's .dir-row recipe (44px circle, 17px title, 14px sub). */
+#hc-sheet .hc-sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 16px;
+  border: 0;
+  border-bottom: 1px solid #f1f3f4;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+#hc-sheet .hc-sheet-body > :last-child {
+  border-bottom: 0;
+}
+
+#hc-sheet .hc-sheet-row:active {
+  background: #f1f3f4;
+}
+
+#hc-sheet .hc-sheet-ic {
+  flex: none;
+  padding: 0;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e8eaed;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+#hc-sheet .hc-sheet-tx {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* In-sheet search: Traffic's .dir-fields input, only while the sheet is
+   expanded. */
+#hc-sheet .hc-sheet-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  margin: 10px 12px 4px;
+  padding: 0 12px;
+  border: 1px solid #c4c7c5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #202124;
+}
+
+#hc-sheet .hc-sheet-search:focus-within {
+  border: 2px solid #1a73e8;
+  padding: 0 11px;
+}
+
+#hc-sheet .hc-sheet-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: #202124;
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+#hc-sheet .hc-sheet-search input::placeholder {
+  color: #757575;
+}
+
+#hc-sheet .hc-sheet-name {
+  font-size: 15px;
+  color: #202124;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#hc-sheet .hc-sheet-sub {
+  font-size: 12.5px;
+  color: #5f6368;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#hc-sheet .hc-sheet-km {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: #188038;
+}
+
+#hc-sheet .hc-sheet-go {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #d3eef5;
+  color: #00697a;
+  text-decoration: none;
+}
+
+#hc-sheet .hc-sheet-go:active {
+  filter: brightness(0.93);
+}
+
+#hc-sheet .hc-sheet-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #dadce0;
+}
+
+#hc-sheet .hc-sheet-foot p {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #5f6368;
+}
+
+#hc-sheet .hc-sheet-empty {
+  padding: 16px 20px;
+  font-size: 13px;
+  color: #5f6368;
+}
+
+/* Pills: Traffic's .rt-chip (teal tint) and .rt-chip.go (solid teal). */
+.hc-pill {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 14px 0 11px;
+  border: 0;
+  border-radius: 20px;
+  background: #d3eef5;
+  color: #202124;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hc-pill.go {
+  background: #00697a;
+  color: #ffffff;
+}
+
+.hc-pill:active {
+  filter: brightness(0.93);
+}
+
+.hc-pill:disabled {
+  background: #e8eaed;
+  color: #9aa0a6;
+  cursor: not-allowed;
+}
+
+/* --- Step 1: the picker -------------------------------------------------- */
+/* A plain white screen — no card, no dimmed backdrop — whose content lives in
+   one centred column. The column is a little narrower than the viewport so
+   the header, search field, sections and footer keep a comfortable measure
+   and stay on the same vertical line. */
+#hc-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #ffffff;
+  color: #202124;
+  font-family: 'Google Sans', Roboto, -apple-system, 'Segoe UI', sans-serif;
+}
+
+#hc-picker .hc-picker-body {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 100%);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Phone sizing. These have to come after the base rules above: the selectors
+   match with the same specificity, so source order decides. */
+@media (orientation: portrait) and (max-width: 640px) {
+  #hc-picker {
+    padding: 10px;
+  }
+
+
+  #hc-picker .hc-picker-body {
+    width: 100%;
+  }
+}
+
+#hc-picker .hc-picker-top {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 12px 0 8px;
+}
+
+#hc-picker .hc-picker-head {
+  flex: 1;
+  min-width: 0;
+}
+
+#hc-picker .hc-picker-title {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: #202124;
+}
+
+/* Phone: one more step down, so the heading keeps its proportion inside the
+   nearly full-bleed card. Declared here, after the rule it overrides. */
+@media (orientation: portrait) and (max-width: 640px) {
+  #hc-picker .hc-picker-title {
+    font-size: 17px;
+  }
+}
+
+#hc-picker .hc-picker-sub {
+  margin: 6px 0 0;
+  max-width: 34rem;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: #5f6368;
+}
+
+/* Search field: Traffic's .dir-fields input. */
+#hc-picker .hc-picker-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  margin: 12px 12px 0;
+  padding: 0 12px;
+  border: 1px solid #c4c7c5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #202124;
+}
+
+#hc-picker .hc-picker-search:focus-within {
+  border: 2px solid #1a73e8;
+  padding: 0 11px;
+}
+
+#hc-picker .hc-picker-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: #202124;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  outline: none;
+}
+
+#hc-picker .hc-picker-search input::placeholder {
+  color: #757575;
+}
+
+#hc-picker .hc-picker-clear {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: #00796b;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Section headers: Traffic's .dir-sec (15px/500) with the caption in gray. */
+.hc-picker-sec {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 20px 20px 8px;
+}
+
+.hc-picker-sec h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.hc-picker-sec span {
+  font-size: 12.5px;
+  color: #5f6368;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hc-picker-note {
+  margin: 0;
+  padding: 8px 20px 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #5f6368;
+}
+
+.hc-picker-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+
+.hc-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 6px;
+  padding: 0 12px;
+}
+
+@media (min-width: 640px) {
+  .hc-picker-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 0 16px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hc-picker-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* Category tile: white card, circle stamp, selected in the .rt-chip teal. */
+.hc-cat {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dadce0;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #202124;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.hc-cat:hover {
+  background: #f8f9fa;
+}
+
+.hc-cat.on {
+  border-color: #00697a;
+  background: #d3eef5;
+}
+
+.hc-cat-ic {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #e8eaed;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hc-cat.on .hc-cat-ic {
+  background: #ffffff;
+  color: #00697a;
+}
+
+.hc-cat-tx {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.hc-cat-title {
+  font-size: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hc-cat-sub {
+  font-size: 12.5px;
+  color: #5f6368;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hc-cat-meta {
+  font-size: 11.5px;
+  color: #5f6368;
+  margin-top: 2px;
+}
+
+.hc-cat-check {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #00697a;
+  color: #ffffff;
+}
+
+/* Footer: Traffic's .rt-chips padding over a hairline, CTA in .rt-chip.go. */
+#hc-picker .hc-picker-foot {
+  flex: none;
+  border-top: 1px solid #dadce0;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
+#hc-picker .hc-picker-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#hc-picker .hc-picker-actions .hc-pill.go {
+  flex: 1;
+  height: 44px;
+  border-radius: 22px;
+  justify-content: center;
+  font-size: 16px;
+}
+
+/* --- Pins, popups and the canvas --------------------------------------- */
+
+/* Pins stay the Help Center's own monochrome marker, but they follow
+   Traffic's card radius (8px) and hairline weight. */
+.hc-pin-wrap {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.hc-pin {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 23px;
+  margin: 0 auto;
+  border: 1.5px solid #ffffff;
+  border-radius: 3px;
+  background: #0a0a0a;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+  transition: transform 0.12s ease;
+}
+
+.hc-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #0a0a0a;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+}
+
+.hc-pin-code {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.hc-pin-wrap:hover .hc-pin,
+.hc-pin-wrap:focus-visible .hc-pin {
+  transform: scale(1.14);
+}
+
+/* Same code stamp, reused inside popups and the results list. */
+.hc-pin-ref {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 34px;
+  height: 23px;
+  padding: 0 5px;
+  border: 1px solid #0a0a0a;
+  border-radius: 3px;
+  background: #0a0a0a;
+  color: #ffffff;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+/* Light canvas behind the tiles: while tiles are still loading (or if one
+   fails) the map reads as blank paper instead of showing black bands. */
+#help-center-map-root.leaflet-container {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+/* Popups: the Layers menu card recipe (1px #e2e8f0, radius 8, that shadow). */
+.hc-popup .leaflet-popup-content-wrapper {
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  color: #1e293b;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+.hc-popup .leaflet-popup-tip {
+  background: #ffffff !important;
+  box-shadow: none !important;
+}
+
+.hc-popup .leaflet-popup-close-button {
+  background: transparent !important;
+  border: 0 !important;
+  color: #94a3b8 !important;
+  font-family: inherit !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  font-weight: 700 !important;
+}
+
+.hc-popup .leaflet-popup-close-button:hover {
+  color: #475569 !important;
+}
+
+.hc-popup .leaflet-popup-content {
+  min-width: 236px !important;
+  max-width: 288px !important;
+}
+
+.hc-popup-meta {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.hc-popup-btn {
+  display: inline-block;
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #334155;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.hc-popup-btn:hover {
+  background: #f1f5f9;
+}
+
+.hc-popup-btn--primary {
+  border-color: #000000;
+  background: #000000;
+  color: #ffffff;
 }

@@ -29,16 +29,16 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   useEffect(() => {
     if (!isOpen || !mapElementRef.current || mapRef.current) return;
 
-    const map = L.map(mapElementRef.current, {
+    const map = new L.Map(mapElementRef.current, {
       center: coordinates,
       zoom: 14,
       zoomControl: true,
     });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    new L.TileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
 
-    const marker = L.marker(coordinates).addTo(map);
+    const marker = new L.Marker(coordinates).addTo(map);
     map.on('click', (event) => {
       const nextCoordinates: [number, number] = [
         Number(event.latlng.lat.toFixed(5)),
@@ -76,7 +76,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
           Number(position.coords.latitude.toFixed(5)),
           Number(position.coords.longitude.toFixed(5)),
         ];
-        const locationIcon = L.divIcon({
+        const locationIcon = new L.DivIcon({
           className: 'user-location-marker',
           html: '<span class="user-location-dot"></span>',
           iconSize: [24, 24],
@@ -86,7 +86,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
         if (userLocationMarkerRef.current) {
           userLocationMarkerRef.current.setLatLng(userCoordinates);
         } else {
-          userLocationMarkerRef.current = L.marker(userCoordinates, {
+          userLocationMarkerRef.current = new L.Marker(userCoordinates, {
             icon: locationIcon,
             zIndexOffset: 1000,
             title: 'Your location',

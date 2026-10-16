@@ -1,8 +1,20 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
+/*
+ * NOTE ON LEAFLET: this app runs Leaflet 2 (2.0.0-alpha.1), where the old
+ * lowercase factory helpers were removed. Use the classes instead:
+ *   new L.Map(el, opts)          (not L.map(...))
+ *   new L.TileLayer(url, opts)   (not L.tileLayer(...))
+ *   new L.Marker(latlng, opts) / new L.DivIcon(opts) / new L.LayerGroup()
+ *   new L.Polygon(...) / new L.Polyline(...) / new L.Circle(...)
+ *   new L.LatLng(lat, lng) / new L.LatLngBounds(a, b) / new L.Control.Zoom(opts)
+ * The published @types/leaflet still describes 1.x, so v1-only calls would
+ * type-check yet fail at runtime.
+ */
 import { clearRefreshView, readRefreshView } from '../lib/refreshView';
 import { TILE_SERVERS } from '../data/tileServers';
 import { WeatherView } from './WeatherView';
+import { HelpCenterView } from './HelpCenterView';
 import { HazardAlert, MapSettings } from '../types';
 import {
   SAN_JOSE_POLYGON_COORDS,
@@ -111,6 +123,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     const q = new URLSearchParams(window.location.search);
     return {
       open: q.get('traffic') === '1',
+      // ?help=1 opens the Help Center straight away — it shows its filter
+      // picker first, exactly like the in-app Layers menu route.
+      help: q.get('help') === '1',
       sfrom: q.get('sfrom') || '',
       sto: q.get('sto') || '',
       smode: q.get('smode') || '',
@@ -120,16 +135,25 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     refreshView === null ? sharedRoute.open : refreshView === 'traffic',
   );
   const trafficMapFrameRef = useRef<HTMLIFrameElement | null>(null);
-  // Help Center — an INDEPENDENT view with its OWN Leaflet map (plain OSM
-  // tiles, no iframe), fully separate from the Traffic feature, so changing
-  // Help Center never affects Traffic (and vice versa).
-  const [showHelpCenter, setShowHelpCenter] = React.useState(refreshView === 'helpcenter');
-  const helpCenterMapRef = useRef<HTMLDivElement | null>(null);
+  // Help Center — its own view (HelpCenterView.tsx): an INDEPENDENT Leaflet
+  // directory map with a filter picker up front (pick "7-Eleven", "botika",
+  // …) and its OWN basemap/state, fully separate from the Traffic feature, so
+  // changing Help Center never affects Traffic (and vice versa). Only the map
+  // instance is shared here so the host's Recenter/Locate buttons can drive it.
+  const [showHelpCenter, setShowHelpCenter] = React.useState(
+    refreshView !== null ? refreshView === 'helpcenter' : sharedRoute.help,
+  );
   const helpCenterMapInstanceRef = useRef<L.Map | null>(null);
-  // Help Center's OWN Streets/Satellite basemap switcher (same idea as the
-  // Traffic map's Street/Satellite switch) — affects only the Help Center map.
-  const [helpCenterBasemap, setHelpCenterBasemap] = React.useState<'streets' | 'satellite'>('satellite');
-  const helpCenterTileLayerRef = useRef<L.TileLayer | null>(null);
+  // The Help Center opens on its filter picker, which covers the whole map.
+  // Its floating buttons (Recenter / Layers / Locate) are pointless — and
+  // overlap the picker — until the map screen shows, so they are hidden then.
+  const [helpFilterOpen, setHelpFilterOpen] = React.useState(false);
+  const handleHelpStageChange = React.useCallback((stage: 'picker' | 'map') => {
+    setHelpFilterOpen(stage === 'picker');
+  }, []);
+  React.useEffect(() => {
+    if (!showHelpCenter) setHelpFilterOpen(false);
+  }, [showHelpCenter]);
   // Weather — the Panahon weather & radar app (WeatherView.tsx), shown in its
   // own document. Mutually exclusive with the other map views. The GIS-style
   // floating controls send actions into the embedded weather map.
@@ -164,65 +188,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   React.useLayoutEffect(() => {
     onWeatherChange?.(showWeather);
   }, [showWeather, onWeatherChange]);
-  // Create the Help Center Leaflet map when the view opens; destroy it on
-  // close so every visit starts fresh and Leaflet re-measures the container.
-  React.useEffect(() => {
-    if (!showHelpCenter) return;
-    const container = helpCenterMapRef.current;
-    if (!container || helpCenterMapInstanceRef.current) return;
-
-    // Same strict Barangay San Jose bounding box as the main GIS map.
-    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-    const maxBounds = L.latLngBounds(corner1, corner2);
-
-    const map = L.map(container, {
-      center: SAN_JOSE_CENTER,
-      zoom: 13,
-      minZoom: 13,
-      maxZoom: 18,
-      maxBounds: mapSettings.lockCameraToBounds ? maxBounds : undefined,
-      maxBoundsViscosity: 1.0, // Hard lock - rubberband bouncing back
-      zoomControl: false, // Added explicitly below, like the Flood Prone map
-      attributionControl: true, // Leaflet copyright/attribution at the bottom, like the Flood Prone map
-    });
-
-    // Native Leaflet zoom control — same as the Flood Prone map
-    // (L.control.zoom({ position: 'topleft' })). index.css pushes it below
-    // the app's floating control stack.
-    L.control.zoom({ position: 'topleft' }).addTo(map);
-
-    helpCenterMapInstanceRef.current = map;
-    // The container mounts fresh each time the view opens — make sure
-    // Leaflet measures it instead of caching a zero size.
-    const sizeTimer = setTimeout(() => map.invalidateSize(), 0);
-    return () => {
-      clearTimeout(sizeTimer);
-      map.remove();
-      helpCenterMapInstanceRef.current = null;
-      helpCenterTileLayerRef.current = null;
-    };
-  }, [showHelpCenter, mapSettings.lockCameraToBounds]);
-  // The Help Center tile layer is owned here: (re)created whenever the view
-  // opens or the Streets/Satellite switcher changes. Declared after the init
-  // effect above, so the map instance already exists when this fires.
-  React.useEffect(() => {
-    const map = helpCenterMapInstanceRef.current;
-    if (!showHelpCenter || !map) return;
-    if (helpCenterTileLayerRef.current) {
-      map.removeLayer(helpCenterTileLayerRef.current);
-      helpCenterTileLayerRef.current = null;
-    }
-    const tileConfig = TILE_SERVERS[helpCenterBasemap];
-    const tileLayer = L.tileLayer(tileConfig.url, {
-      attribution: tileConfig.attribution,
-      subdomains: tileConfig.subdomains ?? 'abc',
-      maxZoom: 19,
-      maxNativeZoom: tileConfig.maxNativeZoom,
-      className: tileConfig.className,
-    }).addTo(map);
-    helpCenterTileLayerRef.current = tileLayer;
-  }, [helpCenterBasemap, showHelpCenter]);
   React.useEffect(() => {
     if (showTrafficMap) {
       setShowFloodProneBlank(false);
@@ -265,11 +230,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (!mapContainerRef.current) return;
 
     // Define strict bounding box for Barangay San Jose
-    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-    const maxBounds = L.latLngBounds(corner1, corner2);
+    const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+    const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+    const maxBounds = new L.LatLngBounds(corner1, corner2);
 
-    const map = L.map(mapContainerRef.current, {
+    const map = new L.Map(mapContainerRef.current, {
       center: SAN_JOSE_CENTER,
       zoom: 13,
       minZoom: 13,
@@ -282,7 +247,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // Initial Tile Layer
     const tileConfig = TILE_SERVERS[mapSettings.tileLayer];
-    const tileLayer = L.tileLayer(tileConfig.url, {
+    const tileLayer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
@@ -293,7 +258,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // Inverted Mask Layer (Blacks out everything except Barangay San Jose)
     const maskCoords = getInvertedMaskCoordinates(SAN_JOSE_POLYGON_COORDS);
-    const mask = L.polygon(maskCoords as any, {
+    const mask = new L.Polygon(maskCoords as any, {
       fillColor: mapSettings.maskColor,
       fillOpacity: mapSettings.maskOpacity,
       stroke: false,
@@ -303,7 +268,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     maskLayerRef.current = mask;
 
     // Boundary Glow Stroke Layer
-    const boundary = L.polygon(SAN_JOSE_POLYGON_COORDS, {
+    const boundary = new L.Polygon(SAN_JOSE_POLYGON_COORDS, {
       color: mapSettings.boundaryColor,
       weight: 2.5,
       opacity: 0.9,
@@ -314,11 +279,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     boundaryLayerRef.current = boundary;
 
     // Marker Layer Group
-    const markersGroup = L.layerGroup().addTo(map);
+    const markersGroup = new L.LayerGroup().addTo(map);
     markersLayerRef.current = markersGroup;
 
     // Sitios Layer Group
-    const sitiosGroup = L.layerGroup().addTo(map);
+    const sitiosGroup = new L.LayerGroup().addTo(map);
     sitiosLayerRef.current = sitiosGroup;
 
     // Mouse movement tracker
@@ -367,7 +332,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }, 50);
 
     map.removeLayer(tileLayerRef.current);
-    const newLayer = L.tileLayer(tileConfig.url, {
+    const newLayer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
       maxZoom: 19,
@@ -418,9 +383,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // 4. Update Camera Bounds lock
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-    const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-    const maxBounds = L.latLngBounds(corner1, corner2);
+    const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+    const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+    const maxBounds = new L.LatLngBounds(corner1, corner2);
 
     if (mapSettings.lockCameraToBounds) {
       mapInstanceRef.current.setMaxBounds(maxBounds);
@@ -453,14 +418,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (!mapSettings.showSitioLabels) return;
 
     SAN_JOSE_SITIOS.forEach((sitio) => {
-      const sitioIcon = L.divIcon({
+      const sitioIcon = new L.DivIcon({
         className: 'sitio-label-container',
         html: `<div class="sitio-map-label">${sitio.name}</div>`,
         iconSize: [120, 20],
         iconAnchor: [60, 10],
       });
 
-      const marker = L.marker(sitio.coordinates, {
+      const marker = new L.Marker(sitio.coordinates, {
         icon: sitioIcon,
         interactive: false,
       });
@@ -557,7 +522,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             position.coords.latitude,
             position.coords.longitude,
           ];
-          const locationIcon = L.divIcon({
+          const locationIcon = new L.DivIcon({
             className: 'user-location-marker',
             html: '<span class="user-location-dot"></span>',
             iconSize: [24, 24],
@@ -568,7 +533,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             userLocationMarkerRef.current.setLatLng(coordinates);
             userLocationMarkerRef.current.setIcon(locationIcon);
           } else {
-            userLocationMarkerRef.current = L.marker(coordinates, {
+            userLocationMarkerRef.current = new L.Marker(coordinates, {
               icon: locationIcon,
               zIndexOffset: 1000,
               title: 'Your location',
@@ -756,7 +721,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       `;
 
-      const customIcon = L.divIcon({
+      const customIcon = new L.DivIcon({
         className: 'custom-hazard-divicon',
         html: customPinHtml,
         iconSize: [38, 38],
@@ -764,7 +729,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         popupAnchor: [0, -22],
       });
 
-      const marker = L.marker(alert.coordinates, {
+      const marker = new L.Marker(alert.coordinates, {
         icon: customIcon,
         title: `${labelText}: ${alert.streetName}`,
       });
@@ -964,9 +929,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     // Close any active open popups
     mapInstanceRef.current.closePopup();
     if (mapSettings.lockCameraToBounds) {
-      const corner1 = L.latLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-      const corner2 = L.latLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-      mapInstanceRef.current.setMaxBounds(L.latLngBounds(corner1, corner2));
+      const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
+      const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
+      mapInstanceRef.current.setMaxBounds(new L.LatLngBounds(corner1, corner2));
     }
 
     // Smooth fast recenter back to Barangay San Jose center
@@ -1018,165 +983,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Help Center overlay — an INDEPENDENT view with its OWN Leaflet map
-          (plain tiles, no iframe), fully separate from the Traffic feature,
-          so editing it never touches Traffic. */}
+      {/* Help Center — the Traffic-style directory map with its own filter
+          picker (HelpCenterView.tsx). Picks first ("7-Eleven? botika?…"),
+          then mounts its own Leaflet map with the selected category pins.
+          The map instance is shared via helpCenterMapInstanceRef so the
+          host's Recenter/Locate buttons keep working. */}
       {showHelpCenter && (
-        <div className="absolute inset-0 z-30 bg-white" aria-label="Help Center">
-          <div
-            id="help-center-map-root"
-            ref={helpCenterMapRef}
-            className="block w-full h-full cursor-grab active:cursor-grabbing"
-          />
-        </div>
-      )}
-
-      {/* Weather overlay — the Panahon weather & radar app, embedded in its
-          own document (see WeatherView.tsx). It mounts only while open, so
-          closing it unloads the embedded app. */}
-      {showWeather && <WeatherView frameRef={weatherMapFrameRef} />}
-
-      {/* Help Center Street/Satellite switcher — mimics the Flood Prone map's
-          #base-switch: same order (Satellite | Street), same default
-          (satellite active), and same card/button styling. Sits above the
-          overlay (z-50) and only changes the Help Center map's basemap. */}
-      {showHelpCenter && (
-        <div
-          role="group"
-          aria-label="Map style"
-          className="absolute right-[12px] top-[10px] z-50 flex gap-1 rounded-lg border border-slate-200 bg-white/95 p-1 shadow-md"
-        >
-          <button
-            type="button"
-            onClick={() => setHelpCenterBasemap('satellite')}
-            aria-pressed={helpCenterBasemap === 'satellite'}
-            className={`rounded-[5px] border border-transparent px-2.5 py-1 text-[11px] font-bold tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
-              helpCenterBasemap === 'satellite'
-                ? 'bg-[#111827] text-white'
-                : 'bg-transparent text-[#33413a] hover:bg-[#eef1ec]'
-            }`}
-          >
-            Satellite
-          </button>
-          <button
-            type="button"
-            onClick={() => setHelpCenterBasemap('streets')}
-            aria-pressed={helpCenterBasemap === 'streets'}
-            className={`rounded-[5px] border border-transparent px-2.5 py-1 text-[11px] font-bold tracking-[0.02em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
-              helpCenterBasemap === 'streets'
-                ? 'bg-[#111827] text-white'
-                : 'bg-transparent text-[#33413a] hover:bg-[#eef1ec]'
-            }`}
-          >
-            Street
-          </button>
-        </div>
-      )}
-
-      {/* Help Center bottom-right stack — mimics the Traffic map's
-          #legend-stack: two placeholder buttons (bold "3D" text and
-          find-location icon — white with a 1px gray border, same size as the
-          Directions button, no action on click) sit above the Directions
-          button (Traffic's #directions-btn), which sits directly above
-          the flood legend (Flood Prone's #legend). */}
-      {showHelpCenter && (
-        <div className="absolute right-[12px] bottom-6 z-50 flex flex-col items-end gap-2.5 portrait:bottom-14">
-          {/* Placeholder button — plain bold "3D" text (no 3D effect).
-              White with a 1px solid gray border, same size as the
-              Directions button. No action on click (placeholder only). */}
-          <button
-            type="button"
-            title="3D"
-            aria-label="3D"
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-[14px] border border-gray-400 bg-white p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-gray-500"
-          >
-            <span className="text-[15px] font-extrabold leading-none text-black">3D</span>
-          </button>
-
-          {/* Placeholder button — find-location icon (folded map with a
-              magnifying glass). White with a 1px solid gray border, same
-              size as the Directions button. No action on click (placeholder
-              only). */}
-          <button
-            type="button"
-            title="Find location"
-            aria-label="Find location"
-            className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-[14px] border border-gray-400 bg-white p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-gray-500"
-          >
-            <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-6 w-6">
-              <defs>
-                {/* Cuts a gap around the magnifier so it stays transparent on any background */}
-                <mask id="hc-find-location-cut" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-                  <rect width="512" height="512" fill="#fff" />
-                  <circle cx="385" cy="385" r="96" fill="#000" />
-                  <line x1="440" y1="440" x2="488" y2="488" stroke="#000" strokeWidth="64" strokeLinecap="round" />
-                </mask>
-              </defs>
-              {/* Folded map panels (exact reference icon) */}
-              <g fill="#000" mask="url(#hc-find-location-cut)">
-                <path d="M18 78 Q18 38 54 42 L158 78 L158 492 L18 442 Z" />
-                <path d="M187 78 L297 20 L297 438 L187 492 Z" />
-                <path d="M327 20 L440 62 Q467 72 467 100 L467 440 L327 492 Z" />
-              </g>
-              {/* Magnifying glass */}
-              <circle cx="385" cy="385" r="62" fill="none" stroke="#000" strokeWidth="26" />
-              <line x1="440" y1="440" x2="488" y2="488" stroke="#000" strokeWidth="26" strokeLinecap="round" />
-            </svg>
-          </button>
-
-          <button
-            type="button"
-            title="Directions"
-            aria-label="Directions"
-            onClick={() => {
-              // Open Google Maps directions to the Help Center map's current
-              // center (fallback: Barangay San Jose center).
-              const center = helpCenterMapInstanceRef.current?.getCenter();
-              const lat = center ? center.lat : SAN_JOSE_CENTER[0];
-              const lng = center ? center.lng : SAN_JOSE_CENTER[1];
-              window.open(
-                `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-                '_blank',
-                'noopener,noreferrer'
-              );
-            }}
-            className="h-12 w-12 cursor-pointer rounded-[14px] border-0 bg-[#0b7a87] p-0 shadow-md transition-transform hover:shadow-lg active:scale-[.94] focus-visible:outline-2 focus-visible:outline-white"
-          >
-            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="block h-full w-full">
-              <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff" />
-              <path d="M23.5 34v-6.5a3 3 0 0 1 3-3H31" fill="none" stroke="#0b7a87" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
-            </svg>
-          </button>
-
-          {/* Legend card — same rows and styling as the Flood Prone map's
-              #legend (all three swatches are black), with custom labels:
-              3D / Directions / Find. An invisible sizer row keeps the card
-              exactly as wide as the original legend. Info card only; the
-              Help Center map itself stays a plain Leaflet basemap. */}
-          <div className="rounded-lg border border-[#d8d2c2] bg-[#f6f3ea]/95 px-3 py-2.5 text-[12.5px] text-[#1b2a2f] shadow-md">
-            {/* Invisible sizer — a replica of the original widest row, so
-                the card keeps exactly its original width even though the
-                custom labels (3D / Directions / Find) are shorter. Zero
-                height, clipped, and hidden from assistive tech. */}
-            <div aria-hidden="true" className="flex h-0 items-center gap-1.5 overflow-hidden">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              Medium (0.5–1.5m)
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              3D
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              Directions
-            </div>
-            <div className="my-[3px] flex items-center gap-1.5">
-              <span className="inline-block h-[13px] w-[13px] rounded-[2px]" style={{ background: '#000000' }} />
-              Find
-            </div>
-          </div>
-        </div>
+        <HelpCenterView
+          mapRef={helpCenterMapInstanceRef}
+          lockCameraToBounds={mapSettings.lockCameraToBounds}
+          onStageChange={handleHelpStageChange}
+        />
       )}
 
       {/* Adding Pin Active Overlay Banner */}
@@ -1202,7 +1019,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showTrafficMap || showWeather ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showTrafficMap || showWeather || helpFilterOpen ? 'hidden' : ''}`}>
         {/* These controls operate on the embedded Panahon map in Weather mode. */}
         <button
           id="btn-recenter-gis"
@@ -1249,11 +1066,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     BASEMAP STYLE:
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
-                      {/* Help Center (the 'satellite' slot) is temporarily disabled so it can't be pressed. */}
+                      {/* Help Center (the 'satellite' slot) opens the filterable directory map. */}
                     {(['streets', 'dark', 'weather', 'light', 'satellite'] as const).map((layer) => (
                       <button
                         key={layer}
-                        disabled={layer === 'satellite'}
                         onClick={() => {
                           if (layer === 'weather') {
                             setShowTrafficMap(false);
@@ -1282,7 +1098,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             return;
                           }
                           if (layer === 'satellite') {
-                            // "Help Center" — independent duplicate of the Traffic view: same traffic map, own state/overlay.
+                            // "Help Center" — its own filterable Leaflet directory map (pick a filter first).
                             setShowTrafficMap(false);
                             setShowFloodProneBlank(false);
                             setShowHelpCenter(true);

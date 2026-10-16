@@ -14,7 +14,7 @@ const OSM_ATTRIBUTION =
 export interface TileServerConfig {
   url: string;
   attribution: string;
-  subdomains?: string;
+  subdomains?: string | string[];
   /** Native max zoom of the provider; Leaflet upscales beyond it. */
   maxNativeZoom?: number;
   /** CSS class added to the tile container (used for the light/dark tint). */
@@ -44,4 +44,20 @@ export const TILE_SERVERS: Record<'streets' | 'light' | 'dark' | 'satellite', Ti
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
     subdomains: 'a',
   }
+};
+
+/**
+ * Live-traffic raster tiles for the Help Center's Traffic-style layer.
+ * Google's street raster with the live traffic colouring baked in
+ * (`lyrs=m,traffic`) — keyless, so the layer works without any API account.
+ * Street-mode only: in Satellite mode the view keeps the Esri imagery and the
+ * live traffic tint is not available.
+ */
+export const TRAFFIC_TILE_SERVERS = {
+  streetTraffic: {
+    url: 'https://{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}',
+    attribution: 'Live traffic &copy; Google',
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    maxNativeZoom: 20,
+  } as TileServerConfig,
 };
