@@ -72,3 +72,63 @@ galing sa totoong Mapbox route (km at minuto) ng piniling ruta, hindi manual na 
 Kada row may breakdown (`Base ₱55.00 + 8.0 km × ₱15.00 + 20 min × ₱2.00`) at awtomatikong
 nagre-recompute kapag nagpalit ng ruta o ng bilang ng pasahero. Kapag bagong rates, isang
 lugar lang ang babaguhin: `FARE_RATES`.
+
+### Weather troubleshooting and regression checks
+
+The host must render `<WeatherView>` when `showWeather` is selected. The weather
+project uses Leaflet 1.x factories, while the main GIS app uses Leaflet 2 alpha
+classes. Keep `leaflet-weather` (an npm alias pinned to 1.9.4) and its CSS/types
+isolated from the main app's `leaflet` dependency. A successful TypeScript/build
+check alone cannot detect the old factory calls failing at runtime.
+
+Current, 24-hour and seven-day forecast values are requested from Open-Meteo.
+Failed/incomplete responses are not replaced with sample temperatures. Refresh
+keeps existing data; provider errors appear in the existing bottom timeline, not a separate status bar. Initial failure shows no city values.
+Radar loads independently with a timeout and an explicit unavailable notice.
+The temperature/wind background visualizations remain illustrative, not official
+PAGASA warnings or a measured gridded weather field.
+
+From this app directory:
+
+```sh
+npm ci
+npm run lint
+npm run build
+npm run test:weather
+# Start npm run dev (or npm run preview after building) in another terminal.
+# Use an installed Chromium executable:
+BROWSER_PATH=/path/to/chromium npm run test:weather:browser
+# For a production preview instead of dev:
+TEST_BASE_URL=http://localhost:4173 BROWSER_PATH=/path/to/chromium npm run test:weather:browser
+```
+
+Browser tests mock external APIs/tiles and cover desktop/mobile rendering, all
+four modes, zoom, city forecasts, provider failures/recovery, absence of the removed status bar, and opening/closing
+Weather from the main app. Live API connectivity must also be checked in the
+deployed browser; it cannot be verified in a network-restricted test sandbox.
+
+### Help Center fixes and checks
+
+Help Center is enabled in the main, Weather, Traffic and Flood layer menus.
+Standalone embedded pages route to `index.html?help=1`; hosted pages use the
+existing origin-checked layer-selection messages. The filter picker can be
+closed without first selecting a category.
+
+Live places use a bounded POST query, avoiding URL-length failures with many
+categories. Up to three Overpass mirrors are tried (10 seconds each, with an
+8-second server-side query budget). Failed/malformed/partial replies are not
+cached as empty successes, and leaving the map cancels pending work. Community
+pins remain available on failure. Their locations and hours are approximate,
+not independently verified; check with the establishment before travelling.
+A failed optional traffic layer no longer hides the live-places Retry action.
+
+```sh
+npm run test:help-center
+# Start npm run preview first; use your installed Chromium executable:
+BROWSER_PATH=/path/to/chromium npm run test:help-center:browser
+```
+
+The browser suite checks desktop/mobile Weather → Help Center navigation,
+picker exit, filtering, list search, map pins/popups, directions URLs, mocked
+geolocation, and provider failure/recovery. Like the weather tests, external
+services are mocked because this sandbox blocks live Overpass/tile requests.

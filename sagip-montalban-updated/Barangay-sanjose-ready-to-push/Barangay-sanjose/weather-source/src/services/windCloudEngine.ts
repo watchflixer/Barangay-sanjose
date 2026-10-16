@@ -1,4 +1,4 @@
-import L from 'leaflet';
+import L from 'leaflet-weather';
 import { CityWeather } from '../types/weather';
 
 export interface WindParticle {

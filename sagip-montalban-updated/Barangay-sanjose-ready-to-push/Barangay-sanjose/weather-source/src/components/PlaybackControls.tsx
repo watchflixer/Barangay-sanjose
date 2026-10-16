@@ -10,6 +10,7 @@ interface PlaybackControlsProps {
   maxIndex: number;
   onSeek: (index: number) => void;
   currentLabel: string;
+  liveIndex?: number;
 }
 
 export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
@@ -19,7 +20,8 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
   currentIndex,
   maxIndex,
   onSeek,
-  currentLabel
+  currentLabel,
+  liveIndex = 0
 }) => {
   return (
     <div className="bg-white rounded-2xl p-2.5 shadow-2xl flex items-center gap-3 select-none">
@@ -62,7 +64,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
 
       {/* Reset to live now */}
       <button
-        onClick={() => onSeek(maxIndex > 0 ? (mode === 'rain' ? Math.floor(maxIndex * 0.75) : 0) : 0)}
+        onClick={() => onSeek(mode === 'rain' ? liveIndex : 0)}
         className="p-2 rounded-xl text-black hover:bg-black hover:text-white transition-colors shrink-0"
         title="Reset to current time"
         aria-label="Reset timeline"

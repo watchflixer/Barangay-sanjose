@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Search } from 'lucide-react';
+import { Check, Search, X } from 'lucide-react';
 import {
   CATEGORIES_BY_GROUP,
   CURATED_COUNT_BY_CATEGORY,
@@ -15,10 +15,8 @@ import {
  * pill for the primary action — so the Help Center and Traffic stay one
  * product. No emoji anywhere.
  *
- * The screen is a one-way step on purpose: there is no X / back button, and
- * no preset bundles either — the categories are picked one by one. It ends by
- * opening the map, and the whole view is left from there through the host's
- * Layers menu (or the app's own sidebar).
+ * Categories are picked one by one. Closing the picker returns to the
+ * existing directory map, or exits Help Center before a map has been opened.
  */
 interface HelpCenterFilterPickerProps {
   /** Currently ticked categories (pre-filled from the previous visit). */
@@ -27,6 +25,7 @@ interface HelpCenterFilterPickerProps {
   onSetSelection: (ids: PlaceCategoryId[]) => void;
   /** Opens the map with the current selection. */
   onOpenMap: () => void;
+  onClose?: () => void;
 }
 
 export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
@@ -34,6 +33,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   onToggleCategory,
   onSetSelection,
   onOpenMap,
+  onClose,
 }) => {
   const [query, setQuery] = useState('');
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -65,6 +65,8 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
       <div className="hc-picker-body">
         {/* ----------------------------------------------------------- header */}
         <div className="hc-picker-top">
+          {onClose && <button type="button" onClick={onClose} aria-label="Close Help Center filters"
+            className="hc-pill shrink-0"><X className="h-4 w-4" /></button>}
           <div className="hc-picker-head">
             <h2 className="hc-picker-title">Choose what you want to filter</h2>
             <p className="hc-picker-sub">

@@ -151,7 +151,7 @@
         <button type="button" class="style-choice" data-app-layer="dark">Traffic</button>
         <button type="button" class="style-choice" data-app-layer="weather">Weather</button>
         <button type="button" class="style-choice active" data-app-layer="light">Flood Prone</button>
-        <button type="button" class="style-choice" data-app-layer="satellite" disabled>Help Center</button>
+        <button type="button" class="style-choice" data-app-layer="satellite">Help Center</button>
         <button type="button" class="style-choice coming" disabled title="Coming soon" aria-label="Coming soon">Coming Soon</button>
       </div>
     </div>
@@ -357,6 +357,7 @@ hostLayerMenu.addEventListener('click', function(event) {
   if (layer === 'light') return;
   const target = layer === 'dark' ? 'rizal_traffic_map.html'
     : layer === 'weather' ? 'weather.html'
+    : layer === 'satellite' ? 'index.html?help=1'
     : 'index.html';
   location.assign(new URL(target, location.href).href);
 });

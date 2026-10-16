@@ -12,6 +12,7 @@ import L from 'leaflet';
  * type-check yet fail at runtime.
  */
 import { Filter, List, Loader2, Navigation, RefreshCw, Search, X } from 'lucide-react';
+import { fetchOverpassElements } from '../services/helpCenterService';
 import { HelpCenterFilterPicker } from './HelpCenterFilterPicker';
 import {
   CATEGORY_BY_ID,
@@ -69,6 +70,7 @@ interface HelpCenterViewProps {
    * shows them again on the map screen, where they drive this map.
    */
   onStageChange?: (stage: 'picker' | 'map') => void;
+  onClose?: () => void;
 }
 
 const ALL_CATEGORY_IDS = HELP_CENTER_CATEGORIES.map((category) => category.id);
@@ -104,44 +106,6 @@ const clampCentreToBarangay = (centre: L.LatLng): L.LatLng | null => {
   return moved ? new L.LatLng(lat, lng) : null;
 };
 
-/**
- * Overpass mirrors, tried in order. A single public endpoint is often "at
- * capacity" (HTTP 502) — the loader walks the list so live pins still arrive.
- */
-const OVERPASS_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.private.coffee/api/interpreter',
-];
-
-/** Runs one Overpass query against the mirrors, with a per-attempt timeout. */
-async function fetchOverpassElements(queryText: string, outerSignal: AbortSignal): Promise<never[]> {
-  let lastError: unknown = new Error('Overpass unavailable');
-  for (const endpoint of OVERPASS_ENDPOINTS) {
-    if (outerSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-    const attempt = new AbortController();
-    const onOuterAbort = () => attempt.abort();
-    outerSignal.addEventListener('abort', onOuterAbort);
-    const timeout = window.setTimeout(() => attempt.abort(), 15000);
-    try {
-      const response = await fetch(`${endpoint}?data=${encodeURIComponent(queryText)}`, {
-        signal: attempt.signal,
-        headers: { Accept: 'application/json' },
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = (await response.json()) as { elements?: unknown[] };
-      return Array.isArray(payload?.elements) ? (payload.elements as never[]) : [];
-    } catch (error) {
-      if (outerSignal.aborted) throw new DOMException('Aborted', 'AbortError');
-      lastError = error;
-    } finally {
-      window.clearTimeout(timeout);
-      outerSignal.removeEventListener('abort', onOuterAbort);
-    }
-  }
-  throw lastError;
-}
-
 const escapeHtml = (value: string): string =>
   value.replace(/[&<>"']/g, (character) => {
     switch (character) {
@@ -162,8 +126,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   mapRef,
   lockCameraToBounds = false,
   onStageChange,
+  onClose,
 }) => {
   // ------------------------------------------------------------------ state
+  const cameraLockRef = useRef(lockCameraToBounds);
+  cameraLockRef.current = lockCameraToBounds;
   const [stage, setStage] = useState<'picker' | 'map'>('picker');
   // The Leaflet canvas is only created once the user has answered the picker,
   // and it stays mounted afterwards (re-opening the picker overlays it) so the
@@ -199,6 +166,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const iconCacheRef = useRef<Map<PlaceCategoryId, L.DivIcon>>(new Map());
   const liveCacheRef = useRef<Map<PlaceCategoryId, Place[]>>(new Map());
   const meMarkerRef = useRef<L.Marker | null>(null);
+  const focusTimerRef = useRef<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
   // "Centre on the filtered pins" bookkeeping: which selection was last
   // fitted, the pin box + sheet-height signature of the last fit (so a repeat
@@ -262,8 +230,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     return mergePlaces(curatedPlaces, mergePlaces([], live));
   }, [curatedPlaces, livePlaces, selectedSet]);
 
-  const liveCount = useMemo(() => places.filter((place) => place.source === 'osm').length, [places]);
-
   // ------------------------------------------------------------- the map
   useEffect(() => {
     if (!mapReady) return;
@@ -310,7 +276,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       // "Lock camera to Barangay San Jose": the user can drag past the edge,
       // but the camera comes back over the barangay. Our own fits are exempt,
       // so a fit that has to clear the bottom sheet is never fought.
-      if (lockCameraToBounds && !programmaticMoveRef.current) {
+      if (cameraLockRef.current && !programmaticMoveRef.current) {
         const clamped = clampCentreToBarangay(center);
         if (clamped) {
           programmaticMoveRef.current = true;
@@ -324,12 +290,15 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       }
     });
     const sizeTimer = window.setTimeout(() => map.invalidateSize(), 0);
+    const resizeObserver = new ResizeObserver(() => map.invalidateSize());
+    resizeObserver.observe(container);
 
     localMapRef.current = map;
     mapRef.current = map;
 
     return () => {
       window.clearTimeout(sizeTimer);
+      resizeObserver.disconnect();
       markersRef.current.clear();
       markersLayerRef.current = null;
       meMarkerRef.current = null;
@@ -338,7 +307,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       map.remove();
       localMapRef.current = null;
     };
-  }, [mapReady, lockCameraToBounds, mapRef]);
+  }, [mapReady, mapRef]);
 
   // Basemap (Street / Satellite) + the live-traffic layer, mirroring the
   // Traffic view: in Street mode the traffic raster is the basemap; Satellite
@@ -521,13 +490,14 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   }, [selected]);
 
   useEffect(() => {
-    if (!mapReady) return;
+    if (!mapReady || stage !== 'map') return;
     const cache = liveCacheRef.current;
     const missing = selected.filter((id) => !cache.has(id));
     if (missing.length === 0) {
       syncLiveFromCache();
       const cachedCount = selected.reduce((total, id) => total + (cache.get(id)?.length ?? 0), 0);
-      setLiveStatus(cachedCount > 0 ? 'ok' : 'idle');
+      setLiveStatus('ok');
+      setLiveMessage(cachedCount ? `${cachedCount} live pins from OpenStreetMap` : 'No extra live pins found — community pins only for now');
       return;
     }
     const query = buildOverpassQuery(missing);
@@ -538,21 +508,14 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
     const controller = new AbortController();
     setLiveStatus('loading');
+    setLiveMessage('Loading live places from OpenStreetMap…');
+    syncLiveFromCache();
 
     const timer = window.setTimeout(async () => {
       try {
-        // Mirrors sometimes reject the capped query shape, so try the plain
-        // one before giving up on live data.
-        let elements: never[];
-        try {
-          elements = await fetchOverpassElements(query, controller.signal);
-        } catch (firstError) {
-          if ((firstError as Error)?.name === 'AbortError') throw firstError;
-          const fallback = buildOverpassQuery(missing, false);
-          if (!fallback) throw firstError;
-          elements = await fetchOverpassElements(fallback, controller.signal);
-        }
-        const mapped = osmElementsToPlaces(elements, selected);
+        const elements = await fetchOverpassElements(query, controller.signal);
+        if (controller.signal.aborted) return;
+        const mapped = osmElementsToPlaces(elements, missing);
         missing.forEach((id) => cache.set(id, mapped.filter((place) => place.category === id)));
         syncLiveFromCache();
         setLiveStatus('ok');
@@ -562,7 +525,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             : 'No extra live pins found — community pins only for now',
         );
       } catch (error) {
-        if ((error as Error)?.name === 'AbortError') return;
+        if (controller.signal.aborted) return;
         setLiveStatus('error');
         setLiveMessage('Cannot reach OpenStreetMap (Overpass) — showing community pins only.');
       }
@@ -573,11 +536,12 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       window.clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, selectedKey, retryTick]);
+  }, [mapReady, stage, selectedKey, retryTick]);
 
   useEffect(
     () => () => {
       if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+      if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current);
     },
     [],
   );
@@ -589,7 +553,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       if (!map) return;
       map.flyTo(place.coords, Math.max(map.getZoom(), 17), { duration: 0.8, easeLinearity: 0.25 });
       const marker = markersRef.current.get(place.id);
-      window.setTimeout(() => marker?.openPopup(), 680);
+      if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = window.setTimeout(() => marker?.openPopup(), 850);
       // On phones the sheet would cover the pin we just flew to — tuck it away
       // (guarded, because some in-app webviews ship no matchMedia at all).
       const isSmallScreen =
@@ -659,12 +624,15 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   }, [showToast]);
 
   const openMap = useCallback(() => {
+    if (selected.length === 0) return;
     rememberedSelection = selected;
     setMapReady(true);
     setStage('map');
   }, [selected]);
 
   const openPicker = useCallback(() => {
+    setListQuery('');
+    setSheetOpen(true);
     setSheetExpanded(false);
     setStage('picker');
   }, []);
@@ -695,21 +663,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // One notice slot, exactly like the Traffic page: the toast, then the two
   // conditions the driver can actually act on.
   const trafficNotice = basemap === 'streets' && trafficTilesFailed;
-  const osmNotice = !trafficNotice && liveStatus === 'error';
-  const noticeText = toast
-    ? toast
-    : trafficNotice
-      ? 'Live traffic failed to load — try again.'
-      : osmNotice
-        ? 'Cannot reach OpenStreetMap — try again.'
-        : '';
-  const noticeAction = toast
-    ? undefined
-    : trafficNotice
-      ? () => setTrafficTilesFailed(false)
-      : osmNotice
-        ? refreshLivePins
-        : undefined;
+  const osmNotice = liveStatus === 'error';
+  const noticeText = toast || (osmNotice ? 'Cannot reach OpenStreetMap — try again.' : '');
+  const noticeAction = !toast && osmNotice ? refreshLivePins : undefined;
 
   const openDirections = useCallback(() => {
     const center = localMapRef.current?.getCenter();
@@ -802,13 +758,14 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <div className="hc-sheet-head">
             <p className="hc-sheet-title">Selected places</p>
             <span className="hc-sheet-count">{sortedPlaces.length}</span>
-            {liveStatus === 'ok' && liveCount > 0 && (
+            {(
               <button
                 type="button"
                 className="hc-sheet-cb"
                 onClick={refreshLivePins}
                 title="Refresh live OSM pins"
                 aria-label="Refresh live OSM pins"
+                disabled={liveStatus === 'loading'}
               >
                 <RefreshCw className="h-4 w-4" />
               </button>
@@ -907,8 +864,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
           <div className="hc-sheet-foot">
             <p>
-              {liveMessage ||
-                'Some pins are community-mapped — please verify before you go. Live pins: OpenStreetMap.'}
+              {liveMessage || 'Community pins are approximate — please verify before you go.'}
+              {trafficNotice && ' Traffic unavailable; showing the street map.'}
+              {' Community locations/hours are unverified; confirm before travelling.'}
             </p>
             {!sheetExpanded && (
               <button type="button" className="hc-pill" onClick={() => setSheetExpanded(true)}>
@@ -954,14 +912,14 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             </svg>
           </button>
 
-          <div id="hc-legend">
+          {basemap === 'streets' && !trafficTilesFailed && <div id="hc-legend">
             {LEGEND_ROWS.map((row) => (
               <div key={row.label} className="row">
                 <span className="sw" style={{ background: row.color }} />
                 {row.label}
               </div>
             ))}
-          </div>
+          </div>}
         </div>
       )}
 
@@ -972,6 +930,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           onToggleCategory={toggleCategory}
           onSetSelection={setSelection}
           onOpenMap={openMap}
+          onClose={mapReady ? () => setStage('map') : onClose}
         />
       )}
     </div>

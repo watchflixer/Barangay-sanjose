@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "leaflet/dist/leaflet.css";
+@import "leaflet-weather/dist/leaflet.css";
 
 @keyframes fast-spin {
   0% { transform: rotate(0deg); }

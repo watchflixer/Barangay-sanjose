@@ -119,114 +119,91 @@ export function getWeatherConditionInfo(code: number): { text: string; icon: str
   }
 }
 
-/**
- * Fetches real Open-Meteo forecast data for Philippine cities.
- * Fetches priority hubs concurrently, with fast intelligent caching and resilient fallbacks.
- */
-export async function fetchPhilippineWeather(): Promise<CityWeather[]> {
-  try {
-    // Open-Meteo allows comma-separated latitude and longitude lists!
-    // We can query all cities in 1-2 batch HTTP calls!
-    const lats = PHILIPPINE_CITIES.map(c => c.lat.toFixed(4)).join(',');
-    const lngs = PHILIPPINE_CITIES.map(c => c.lng.toFixed(4)).join(',');
+// Both current conditions and forecasts come from the provider. Never substitute
+// sample temperatures when the network fails: callers retain their last good data.
+interface ForecastResponse {
+  current: Record<string, number>;
+  hourly: Record<string, number[]>;
+  daily: Record<string, number[]>;
+}
 
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lngs}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=Asia%2FManila`;
-
-    const res = await fetch(url, { cache: 'no-cache' });
-    if (res.ok) {
-      const data = await res.json();
-      const results: any[] = Array.isArray(data) ? data : [data];
-
-      return PHILIPPINE_CITIES.map((city, idx) => {
-        const item = results[idx] || {};
-        const current = item.current || {};
-        const code = current.weather_code ?? city.defaultWeatherCode;
-        const condition = getWeatherConditionInfo(code);
-
-        return {
-          id: city.id,
-          name: city.name,
-          region: city.region,
-          islandGroup: city.islandGroup,
-          lat: city.lat,
-          lng: city.lng,
-          minZoom: city.minZoom,
-          temperature: Math.round(current.temperature_2m ?? city.defaultTemp),
-          apparentTemperature: Math.round(current.apparent_temperature ?? current.temperature_2m ?? city.defaultTemp),
-          weatherCode: code,
-          conditionText: condition.text,
-          conditionIcon: condition.icon,
-          humidity: Math.round(current.relative_humidity_2m ?? 75),
-          windSpeed: Math.round(current.wind_speed_10m ?? 12),
-          windDirection: Math.round(current.wind_direction_10m ?? 80),
-          cloudCover: Math.round(current.cloud_cover ?? (code === 0 ? 10 : code === 3 ? 90 : 50)),
-          precipitation: current.precipitation ?? 0,
-          precipitationProbability: 25,
-          hourly: {
-            time: ['Now', '+1h', '+2h', '+3h', '+4h', '+5h', '+6h', '+12h', '+24h'],
-            temperature: [
-              Math.round(current.temperature_2m ?? city.defaultTemp),
-              Math.round((current.temperature_2m ?? city.defaultTemp) + 1),
-              Math.round((current.temperature_2m ?? city.defaultTemp) + 2),
-              Math.round((current.temperature_2m ?? city.defaultTemp) + 1),
-              Math.round(current.temperature_2m ?? city.defaultTemp),
-              Math.round((current.temperature_2m ?? city.defaultTemp) - 1),
-              Math.round((current.temperature_2m ?? city.defaultTemp) - 2),
-              Math.round((current.temperature_2m ?? city.defaultTemp) - 3),
-              Math.round(current.temperature_2m ?? city.defaultTemp)
-            ],
-            precipitationProbability: [20, 20, 30, 40, 30, 20, 10, 15, 20],
-            weatherCode: [code, code, code, code, code, code, code, code, code],
-            cloudCover: [50, 50, 60, 60, 50, 40, 30, 40, 50]
-          },
-          daily: {
-            time: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
-            weatherCode: [code, code, code, 1, 2, code, 1],
-            maxTemp: [city.defaultTemp + 3, city.defaultTemp + 4, city.defaultTemp + 3, city.defaultTemp + 2, city.defaultTemp + 3, city.defaultTemp + 4, city.defaultTemp + 3],
-            minTemp: [city.defaultTemp - 3, city.defaultTemp - 3, city.defaultTemp - 4, city.defaultTemp - 3, city.defaultTemp - 3, city.defaultTemp - 4, city.defaultTemp - 3]
-          }
-        };
-      });
-    }
-  } catch (err) {
-    console.warn('Batch Open-Meteo call had issue, using default baseline data:', err);
+function parseForecast(city: PhilippineCityDef, item: ForecastResponse): CityWeather {
+  const currentFields = ['time', 'temperature_2m', 'apparent_temperature', 'weather_code',
+    'relative_humidity_2m', 'wind_speed_10m', 'wind_direction_10m', 'cloud_cover', 'precipitation'];
+  const hourlyFields = ['time', 'temperature_2m', 'precipitation_probability', 'weather_code', 'cloud_cover'];
+  const dailyFields = ['time', 'weather_code', 'temperature_2m_max', 'temperature_2m_min'];
+  if (!item?.current || currentFields.some(key => !Number.isFinite(item.current[key])) ||
+      !item.hourly || hourlyFields.some(key => !Array.isArray(item.hourly[key]) ||
+        item.hourly[key].length < 24 || !item.hourly[key].every(Number.isFinite)) ||
+      !item.daily || dailyFields.some(key => !Array.isArray(item.daily[key]) ||
+        item.daily[key].length < 7 || !item.daily[key].every(Number.isFinite))) {
+    throw new Error(`Incomplete weather response for ${city.name}`);
   }
+  const { current, hourly, daily } = item;
+  const condition = getWeatherConditionInfo(current.weather_code);
+  return {
+    id: city.id, name: city.name, region: city.region, islandGroup: city.islandGroup,
+    lat: city.lat, lng: city.lng, minZoom: city.minZoom,
+    temperature: Math.round(current.temperature_2m),
+    apparentTemperature: Math.round(current.apparent_temperature),
+    weatherCode: current.weather_code,
+    conditionText: condition.text, conditionIcon: condition.icon,
+    humidity: Math.round(current.relative_humidity_2m),
+    windSpeed: Math.round(current.wind_speed_10m),
+    windDirection: Math.round(current.wind_direction_10m),
+    cloudCover: Math.round(current.cloud_cover),
+    precipitation: current.precipitation,
+    precipitationProbability: hourly.precipitation_probability[0],
+    observedAt: new Date(current.time * 1000).toISOString(),
+    hourly: {
+      time: hourly.time.slice(0, 24).map(time => new Date(time * 1000).toISOString()),
+      temperature: hourly.temperature_2m.slice(0, 24).map(Math.round),
+      precipitationProbability: hourly.precipitation_probability.slice(0, 24),
+      weatherCode: hourly.weather_code.slice(0, 24),
+      cloudCover: hourly.cloud_cover.slice(0, 24)
+    },
+    daily: {
+      time: daily.time.slice(0, 7).map(time => new Date(time * 1000).toISOString()),
+      weatherCode: daily.weather_code.slice(0, 7),
+      maxTemp: daily.temperature_2m_max.slice(0, 7).map(Math.round),
+      minTemp: daily.temperature_2m_min.slice(0, 7).map(Math.round)
+    }
+  };
+}
 
-  // Resilient fallback baseline
-  return PHILIPPINE_CITIES.map((c) => {
-    const cond = getWeatherConditionInfo(c.defaultWeatherCode);
-    return {
-      id: c.id,
-      name: c.name,
-      region: c.region,
-      islandGroup: c.islandGroup,
-      lat: c.lat,
-      lng: c.lng,
-      minZoom: c.minZoom,
-      temperature: c.defaultTemp,
-      apparentTemperature: c.defaultTemp + 2,
-      weatherCode: c.defaultWeatherCode,
-      conditionText: cond.text,
-      conditionIcon: cond.icon,
-      humidity: 78,
-      windSpeed: 14,
-      windDirection: 80,
-      cloudCover: c.defaultWeatherCode === 3 ? 80 : 35,
-      precipitation: c.defaultWeatherCode === 61 ? 2.8 : 0,
-      precipitationProbability: 30,
-      hourly: {
-        time: ['Now', '+1h', '+2h', '+3h', '+4h', '+5h', '+6h', '+12h', '+24h'],
-        temperature: [c.defaultTemp, c.defaultTemp + 1, c.defaultTemp + 2, c.defaultTemp + 1, c.defaultTemp, c.defaultTemp - 1, c.defaultTemp - 2, c.defaultTemp - 3, c.defaultTemp],
-        precipitationProbability: [20, 20, 30, 40, 30, 20, 10, 15, 20],
-        weatherCode: [c.defaultWeatherCode, c.defaultWeatherCode, c.defaultWeatherCode, c.defaultWeatherCode, c.defaultWeatherCode, c.defaultWeatherCode, c.defaultWeatherCode, c.defaultWeatherCode, c.defaultWeatherCode],
-        cloudCover: [50, 50, 60, 60, 50, 40, 30, 40, 50]
-      },
-      daily: {
-        time: ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'],
-        weatherCode: [c.defaultWeatherCode, c.defaultWeatherCode, c.defaultWeatherCode, 1, 2, c.defaultWeatherCode, 1],
-        maxTemp: [c.defaultTemp + 3, c.defaultTemp + 4, c.defaultTemp + 3, c.defaultTemp + 2, c.defaultTemp + 3, c.defaultTemp + 4, c.defaultTemp + 3],
-        minTemp: [c.defaultTemp - 3, c.defaultTemp - 3, c.defaultTemp - 4, c.defaultTemp - 3, c.defaultTemp - 3, c.defaultTemp - 4, c.defaultTemp - 3]
-      }
-    };
+async function fetchForecasts(cities: PhilippineCityDef[]): Promise<CityWeather[]> {
+  const params = new URLSearchParams({
+    latitude: cities.map(city => city.lat.toFixed(4)).join(','),
+    longitude: cities.map(city => city.lng.toFixed(4)).join(','),
+    current: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m',
+    hourly: 'temperature_2m,precipitation_probability,weather_code,cloud_cover',
+    daily: 'weather_code,temperature_2m_max,temperature_2m_min',
+    forecast_hours: '24', forecast_days: '7', timezone: 'Asia/Manila', timeformat: 'unixtime'
   });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, {
+      cache: 'no-cache', signal: controller.signal
+    });
+    if (!res.ok) throw new Error(`Weather service returned HTTP ${res.status}`);
+    const data = await res.json();
+    const results: ForecastResponse[] = Array.isArray(data) ? data : [data];
+    if (results.length !== cities.length) throw new Error('Missing city weather data');
+    return cities.map((city, index) => parseForecast(city, results[index]));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export function fetchPhilippineWeather(): Promise<CityWeather[]> {
+  return fetchForecasts(PHILIPPINE_CITIES);
+}
+
+export async function fetchLocationWeather(lat: number, lng: number): Promise<CityWeather> {
+  const [weather] = await fetchForecasts([{
+    id: 'user-location', name: 'Your Location', region: 'GPS Coordinates',
+    islandGroup: 'Luzon', lat, lng, defaultTemp: 0, defaultWeatherCode: 0, minZoom: 5
+  }]);
+  return weather;
 }

@@ -761,9 +761,8 @@ export function formatDistance(km: number): string {
  * barangay bounding box. Only categories that actually have OSM filters are
  * queried, so a selection of curated-only rows costs nothing.
  *
- * `withLimit` adds the `400` output cap (first attempt - keeps the payload
- * small). The Help Center retries without it if a mirror rejects that form,
- * so live pins still load on stricter endpoints.
+ * `withLimit` adds a 400-element output cap to bound the response size.
+ * The query timeout is shorter than the client's per-mirror timeout.
  */
 export function buildOverpassQuery(categories: PlaceCategoryId[], withLimit = true): string | null {
   const filters = categories
@@ -778,10 +777,10 @@ export function buildOverpassQuery(categories: PlaceCategoryId[], withLimit = tr
     parts.push(`node${filter}(${bbox});`);
     parts.push(`way${filter}(${bbox});`);
   });
-  return `[out:json][timeout:25];(${parts.join('')});out body center${withLimit ? ' 400' : ''};`;
+  return `[out:json][timeout:8];(${parts.join('')});out body center${withLimit ? ' 400' : ''};`;
 }
 
-interface OverpassElement {
+export interface OverpassElement {
   type: 'node' | 'way' | 'relation';
   id: number;
   lat?: number;
@@ -905,9 +904,10 @@ export function osmElementsToPlaces(
 ): Place[] {
   const places: Place[] = [];
   elements.forEach((element) => {
+    if (!element || !['node', 'way', 'relation'].includes(element.type) || !Number.isFinite(element.id)) return;
     const lat = element.lat ?? element.center?.lat;
     const lng = element.lon ?? element.center?.lon;
-    if (typeof lat !== 'number' || typeof lng !== 'number') return;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat!) > 90 || Math.abs(lng!) > 180) return;
     const category = categoryForElement(element, candidates);
     if (!category) return;
     const tags = element.tags ?? {};
@@ -947,8 +947,10 @@ export function mergePlaces(curated: Place[], live: Place[]): Place[] {
     const key = normalizeName(candidate.name);
     const duplicate = merged.some((existing) => {
       const existingKey = normalizeName(existing.name);
-      if (key && existingKey && key === existingKey) return true;
-      return distanceKm(existing.coords, candidate.coords) < 0.12 && (!key || !existingKey || key.startsWith(existingKey) || existingKey.startsWith(key));
+      if (existing.id === candidate.id) return true;
+      if (existing.category !== candidate.category) return false;
+      return distanceKm(existing.coords, candidate.coords) < 0.12 &&
+        !!key && !!existingKey && (key === existingKey || key.startsWith(existingKey) || existingKey.startsWith(key));
     });
     if (!duplicate) merged.push(candidate);
   });
