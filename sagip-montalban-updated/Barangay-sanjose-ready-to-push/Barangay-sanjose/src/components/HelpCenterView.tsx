@@ -65,6 +65,12 @@ interface HelpCenterViewProps {
   lockCameraToBounds?: boolean;
   /** Closes the whole Help Center view (leaves the filter picker). */
   onClose?: () => void;
+  /**
+   * Reports which of the view's two screens is on top. The picker covers the
+   * whole map, so the host hides its floating buttons while it is up and
+   * shows them again on the map screen, where they drive this map.
+   */
+  onStageChange?: (stage: 'picker' | 'map') => void;
 }
 
 const ALL_CATEGORY_IDS = HELP_CENTER_CATEGORIES.map((category) => category.id);
@@ -135,6 +141,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   mapRef,
   lockCameraToBounds = false,
   onClose,
+  onStageChange,
 }) => {
   // ------------------------------------------------------------------ state
   const [stage, setStage] = useState<'picker' | 'map'>('picker');
@@ -173,6 +180,18 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const selectedKey = useMemo(() => [...selected].sort().join('|'), [selected]);
+
+  // Tell the host which screen is on top (the picker hides its map buttons).
+  useEffect(() => {
+    onStageChange?.(stage);
+  }, [stage, onStageChange]);
+
+  useEffect(
+    () => () => {
+      onStageChange?.('map');
+    },
+    [onStageChange],
+  );
 
   const showToast = useCallback((message: string) => {
     setToast(message);

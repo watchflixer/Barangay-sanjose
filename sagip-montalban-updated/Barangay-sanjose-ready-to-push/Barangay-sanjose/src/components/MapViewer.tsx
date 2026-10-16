@@ -144,6 +144,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     refreshView !== null ? refreshView === 'helpcenter' : sharedRoute.help,
   );
   const helpCenterMapInstanceRef = useRef<L.Map | null>(null);
+  // The Help Center opens on its filter picker, which covers the whole map.
+  // Its floating buttons (Recenter / Layers / Locate) are pointless — and
+  // overlap the picker — until the map screen shows, so they are hidden then.
+  const [helpFilterOpen, setHelpFilterOpen] = React.useState(false);
+  const handleHelpStageChange = React.useCallback((stage: 'picker' | 'map') => {
+    setHelpFilterOpen(stage === 'picker');
+  }, []);
+  React.useEffect(() => {
+    if (!showHelpCenter) setHelpFilterOpen(false);
+  }, [showHelpCenter]);
   // Weather — the Panahon weather & radar app (WeatherView.tsx), shown in its
   // own document. Mutually exclusive with the other map views. The GIS-style
   // floating controls send actions into the embedded weather map.
@@ -983,6 +993,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           mapRef={helpCenterMapInstanceRef}
           lockCameraToBounds={mapSettings.lockCameraToBounds}
           onClose={() => setShowHelpCenter(false)}
+          onStageChange={handleHelpStageChange}
         />
       )}
 
@@ -1009,7 +1020,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS Map Controls (Top Left) - hidden in mobile portrait when incident feed is open */}
-      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showTrafficMap || showWeather ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${isMobileMenuOpen ? 'portrait:hidden' : ''} ${showFloodProneBlank || showTrafficMap || showWeather || helpFilterOpen ? 'hidden' : ''}`}>
         {/* These controls operate on the embedded Panahon map in Weather mode. */}
         <button
           id="btn-recenter-gis"
