@@ -82,6 +82,29 @@ const LEGEND_ROWS = [
 ] as const;
 
 /**
+ * The "lock camera to Barangay San Jose" box, 0.015° larger than the barangay
+ * on every side — the same box the host map used to hard-clamp against.
+ */
+const BARANGAY_LOCK_BOX = {
+  south: SAN_JOSE_BOUNDS[0][0] - 0.015,
+  west: SAN_JOSE_BOUNDS[0][1] - 0.015,
+  north: SAN_JOSE_BOUNDS[1][0] + 0.015,
+  east: SAN_JOSE_BOUNDS[1][1] + 0.015,
+};
+
+/**
+ * Returns the centre pulled back inside the barangay box, or null when it is
+ * already there (a no-op move would only fight the map). Used by the moveend
+ * guard so user drags stay over the barangay while our fits stay free.
+ */
+const clampCentreToBarangay = (centre: L.LatLng): L.LatLng | null => {
+  const lat = Math.min(Math.max(centre.lat, BARANGAY_LOCK_BOX.south), BARANGAY_LOCK_BOX.north);
+  const lng = Math.min(Math.max(centre.lng, BARANGAY_LOCK_BOX.west), BARANGAY_LOCK_BOX.east);
+  const moved = Math.abs(lat - centre.lat) > 1e-6 || Math.abs(lng - centre.lng) > 1e-6;
+  return moved ? new L.LatLng(lat, lng) : null;
+};
+
+/**
  * Overpass mirrors, tried in order. A single public endpoint is often "at
  * capacity" (HTTP 502) — the loader walks the list so live pins still arrive.
  */
@@ -163,6 +186,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const [sheetExpanded, setSheetExpanded] = useState(false);
   const [listQuery, setListQuery] = useState('');
   const [toast, setToast] = useState('');
+  // Live height of the bottom sheet — the map's centring has to clear it, and
+  // it only settles once the rows are laid out.
+  const [sheetHeight, setSheetHeight] = useState(0);
 
   // ------------------------------------------------------------------ refs
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -174,6 +200,15 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const liveCacheRef = useRef<Map<PlaceCategoryId, Place[]>>(new Map());
   const meMarkerRef = useRef<L.Marker | null>(null);
   const toastTimerRef = useRef<number | null>(null);
+  // "Centre on the filtered pins" bookkeeping: which selection was last
+  // fitted, the pin box + sheet-height signature of the last fit (so a repeat
+  // fit is skipped), and whether the camera is the user's now.
+  const fittedSelectionRef = useRef<string | null>(null);
+  const fittedBoxRef = useRef<string | null>(null);
+  const lastFitKeyRef = useRef<string | null>(null);
+  const userMovedRef = useRef(false);
+  const programmaticMoveRef = useRef(false);
+  const programmaticViewRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
   const selectedKey = useMemo(() => [...selected].sort().join('|'), [selected]);
@@ -235,16 +270,17 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const container = containerRef.current;
     if (!container || localMapRef.current) return;
 
-    const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-
     const map = new L.Map(container, {
       center: SAN_JOSE_CENTER,
       zoom: 13,
       minZoom: 12,
       maxZoom: 18,
-      maxBounds: lockCameraToBounds ? new L.LatLngBounds(corner1, corner2) : undefined,
-      maxBoundsViscosity: 1.0,
+      // No maxBounds here on purpose. Leaflet 2 clamps the WHOLE viewport to
+      // maxBounds, so the camera cannot move far enough south to centre the
+      // filtered pins above the bottom sheet — with the lock on, pins ended up
+      // sitting under the sheet. The "lock camera" setting is honoured by the
+      // moveend guard below instead: user moves are pulled back over the
+      // barangay, our own fits are not clamped.
       zoomControl: false,
       attributionControl: true,
     });
@@ -256,6 +292,36 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     map.on('moveend', () => {
       const center = map.getCenter();
       setMapCenter([center.lat, center.lng]);
+      // Any camera move that lands somewhere other than the view we set
+      // ourselves counts as the user taking over (drag, wheel, pinch, the
+      // host's Recenter/Locate, popup auto-pan) — so the automatic centring
+      // must not snatch the view back. A no-op move such as the mount-time
+      // invalidateSize keeps our view and is not user input, and nothing
+      // counts until the first fit has happened.
+      if (programmaticMoveRef.current || lastFitKeyRef.current === null) return;
+      const settled = programmaticViewRef.current;
+      const ours =
+        settled !== null &&
+        Math.abs(settled.lat - center.lat) < 1e-9 &&
+        Math.abs(settled.lng - center.lng) < 1e-9 &&
+        settled.zoom === map.getZoom();
+      if (!ours) userMovedRef.current = true;
+
+      // "Lock camera to Barangay San Jose": the user can drag past the edge,
+      // but the camera comes back over the barangay. Our own fits are exempt,
+      // so a fit that has to clear the bottom sheet is never fought.
+      if (lockCameraToBounds && !programmaticMoveRef.current) {
+        const clamped = clampCentreToBarangay(center);
+        if (clamped) {
+          programmaticMoveRef.current = true;
+          map.once('moveend', () => {
+            programmaticMoveRef.current = false;
+            const settled = map.getCenter();
+            programmaticViewRef.current = { lat: settled.lat, lng: settled.lng, zoom: map.getZoom() };
+          });
+          map.setView(clamped, map.getZoom(), { animate: true });
+        }
+      }
     });
     const sizeTimer = window.setTimeout(() => map.invalidateSize(), 0);
 
@@ -373,6 +439,77 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       markersRef.current.set(place.id, marker);
     });
   }, [mapReady, places, iconFor, popupHtml]);
+
+  // Centre the camera on the filtered pins — the same move Traffic makes when
+  // it fits its route. The fit runs when the map screen is actually up (the
+  // sheet has to be measured, and it only exists then), and again whenever the
+  // pin box or the sheet height really changes — but never after the user has
+  // taken the camera, unless they picked a new filter set themselves.
+  useEffect(() => {
+    const map = localMapRef.current;
+    if (!mapReady || stage !== 'map' || !map || places.length === 0) return;
+
+    const bounds = new L.LatLngBounds(places.map((place) => place.coords));
+    if (!bounds.isValid()) return;
+
+    // The sheet rides over the lower half of the map, so the box has to clear
+    // it; the top-left leaves room for the host's control column and the
+    // Street | Satellite switch.
+    const boxKey = [bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast()]
+      .map((value) => value.toFixed(5))
+      .join(',');
+    // The sheet height is part of the signature: the fit done while the picker
+    // still covers the map had no sheet to measure, so the real one replaces
+    // it as soon as the map screen opens.
+    const fitKey = `${boxKey}|${sheetHeight}`;
+    if (fitKey === lastFitKeyRef.current) return;
+
+    const selectionChanged = fittedSelectionRef.current !== selectedKey;
+    // A wider box from the live OSM batch must not snatch the camera back.
+    if (!selectionChanged && userMovedRef.current) return;
+
+    const hadFit = fittedBoxRef.current !== null;
+    fittedSelectionRef.current = selectedKey;
+    lastFitKeyRef.current = fitKey;
+    fittedBoxRef.current = boxKey;
+    // A fresh selection re-frames the camera, so the map is ours again until
+    // the user moves it.
+    userMovedRef.current = false;
+
+    programmaticMoveRef.current = true;
+    // Cleared on the moveend of OUR fit — an animated fit ends later, and the
+    // window has to stay closed until then.
+    map.once('moveend', () => {
+      programmaticMoveRef.current = false;
+      const settled = map.getCenter();
+      programmaticViewRef.current = { lat: settled.lat, lng: settled.lng, zoom: map.getZoom() };
+    });
+    map.fitBounds(bounds, {
+      paddingTopLeft: [44, 96],
+      paddingBottomRight: [44, sheetHeight + 32],
+      maxZoom: 16,
+      animate: hadFit,
+      duration: 0.7,
+    });
+  }, [mapReady, stage, places, selectedKey, sheetHeight]);
+
+  // Keep the sheet's real height in state: at the moment the map screen opens
+  // the rows have not been laid out yet, so a one-off measurement is far too
+  // small and the pins end up hiding behind the sheet.
+  useEffect(() => {
+    if (stage !== 'map' || !sheetOpen) {
+      setSheetHeight(0);
+      return;
+    }
+    const element = document.getElementById('hc-sheet');
+    if (!element) return;
+    const measure = () => setSheetHeight(Math.round(element.getBoundingClientRect().height));
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [stage, sheetOpen, places.length]);
 
   // ---------------------------------------------------------- live OSM data
   const syncLiveFromCache = useCallback(() => {
