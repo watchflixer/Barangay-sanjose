@@ -11,11 +11,13 @@
 <!-- Mapbox GL JS — real live traffic via the traffic-day-v2 style -->
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet" />
-<!-- Leaflet 1.9.4 stylesheet: the Traffic layer reuses Leaflet's real
-     .leaflet-bar zoom markup so the control renders pixel-identical to the
-     Flood Prone map. Only the .leaflet-* rules apply here; the Mapbox canvas
-     is unaffected. -->
+<!-- Leaflet 1.9.4 — the real engine behind pan/zoom on this page, the same
+     engine the Help Center and Flood Prone maps use. Leaflet owns every
+     gesture (drag, wheel, pinch) and the .leaflet-bar zoom markup, while
+     Mapbox GL draws the live-traffic style underneath. No OpenStreetMap
+     raster is involved: Mapbox renders every tile. -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
   :root{
     --line:#d4d8d4;
@@ -893,14 +895,99 @@
   const STYLE_SATELLITE = 'mapbox://styles/mapbox/satellite-streets-v12';
   let currentBase = 'traffic';
 
+  // The GL canvas gets its own child of #map so Leaflet can own #map too.
+  const glContainer = document.createElement('div');
+  glContainer.id = 'map-gl';
+  glContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;background:#fff;';
+  document.getElementById('map').appendChild(glContainer);
+
   const map = new mapboxgl.Map({
-    container: 'map',
+    container: glContainer,
     style: STYLE_TRAFFIC, // live traffic colors built in
     center: RIZAL_CENTER,
     zoom: 12,
     minZoom: 4.5, // zoom out far enough to see the whole Philippines
-    maxZoom: 19
+    maxZoom: 19,
+    // Leaflet owns every gesture (drag, wheel, pinch) — same as the Help
+    // Center map — so this GL map is a pure renderer and never handles input.
+    interactive: false,
+    // No "© Mapbox © OpenStreetMap" credit strip: same clean, credit-free
+    // look as the Help Center. Mapbox still draws every tile here.
+    attributionControl: false,
   });
+
+  // ---------------------------------------------------------------
+  // MAPBOX + LEAFLET, one view.
+  // Leaflet (the Help Center / Flood Prone engine) drives pan/zoom; Mapbox
+  // GL renders the live-traffic style, routing layers and markers on top.
+  // The cameras stay locked with strict one-way rules:
+  //   - Mapbox camera calls (nav, recenter, flyTo, fitBounds) are mirrored
+  //     SILENTLY into Leaflet behind a quiet window, so GL's native
+  //     animation — with its bearing/pitch/padding — stays in charge;
+  //   - Leaflet gestures stream back with jumpTo({center, zoom}), which
+  //     by Mapbox semantics leaves bearing/pitch untouched, so the nav
+  //     camera keeps its tilt.
+  // ---------------------------------------------------------------
+  const lf = L.map('map', {
+    center: [RIZAL_CENTER[1], RIZAL_CENTER[0]], // Leaflet wants [lat, lng]
+    zoom: 12,
+    minZoom: 4.5,
+    maxZoom: 19,
+    zoomSnap: 0, // fractional zooms, same freedom as Mapbox GL
+    zoomControl: false, // the page's own .leaflet-bar buttons call stepZoom
+    attributionControl: false, // no Leaflet/OSM credit — like Help Center
+    fadeAnimation: false,
+  });
+
+  const _jumpTo = map.jumpTo.bind(map);
+  const _easeTo = map.easeTo.bind(map);
+  const _flyTo = map.flyTo.bind(map);
+  const _fitBounds = map.fitBounds.bind(map);
+  const _setMaxBounds = map.setMaxBounds.bind(map);
+  let bridgeQuietUntil = 0;
+
+  const toLatLng = (c) => (Array.isArray(c) ? [c[1], c[0]] : [c.lat, c.lng]);
+  const boundsToLatLngs = (b) => [toLatLng(b[0]), toLatLng(b[1])];
+  const paddingToLeaflet = (o) => {
+    const p = o && o.padding;
+    if (p == null) return {};
+    if (typeof p === 'number') return { paddingTopLeft: [p, p], paddingBottomRight: [p, p] };
+    return {
+      paddingTopLeft: [p.left || 0, p.top || 0],
+      paddingBottomRight: [p.right || 0, p.bottom || 0],
+    };
+  };
+  const mirrorToLeaflet = (center, zoom, duration) => {
+    bridgeQuietUntil = performance.now() + 90 + (duration || 0);
+    const target = zoom == null ? lf.getZoom() : zoom;
+    if (duration > 0) lf.setView(toLatLng(center), target, { animate: true, duration: duration / 1000, easeLinearity: 0.25 });
+    else lf.setView(toLatLng(center), target, { animate: false });
+  };
+  const centerNow = () => { const c = map.getCenter(); return [c.lng, c.lat]; };
+
+  map.jumpTo = (o) => { o = o || {}; mirrorToLeaflet(o.center || centerNow(), o.zoom, 0); _jumpTo(o); };
+  map.easeTo = (o) => { o = o || {}; mirrorToLeaflet(o.center || centerNow(), o.zoom, o.duration || 0); _easeTo(o); };
+  map.flyTo = (o) => { o = o || {}; mirrorToLeaflet(o.center || centerNow(), o.zoom, o.duration || 0); _flyTo(o); };
+  map.fitBounds = (b, o) => {
+    o = o || {};
+    _fitBounds(b, o); // GL computes/applies its own fit first…
+    // …and Leaflet runs the same fit in parallel inside the quiet window,
+    // so GL's native animation stays in charge and Leaflet simply tracks.
+    bridgeQuietUntil = performance.now() + 90 + (o.duration || 0);
+    lf.fitBounds(boundsToLatLngs(b), { ...paddingToLeaflet(o), duration: (o.duration || 0) / 1000 });
+  };
+  map.setMaxBounds = (b) => { if (b) lf.setMaxBounds(boundsToLatLngs(b)); else lf.setMaxBounds(null); _setMaxBounds(b); };
+
+  // Leaflet -> Mapbox: follow every user gesture (and any Leaflet-side
+  // motion outside the quiet window) frame by frame.
+  const followLeaflet = () => {
+    if (performance.now() < bridgeQuietUntil) return;
+    const c = lf.getCenter();
+    _jumpTo({ center: [c.lng, c.lat], zoom: lf.getZoom() });
+  };
+  lf.on('move', followLeaflet);
+  lf.on('moveend', followLeaflet);
+
   map.setMaxBounds(MAX_BOUNDS);
   map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 0 });
 
@@ -1973,7 +2060,18 @@
     L('alt-casing', alt, '#ffffff', 9); L('alt-line', alt, '#8ea2f7', 5); L('alt-hit', alt, '#000000', 24, 0.01);
     L('route-casing', sel, '#0a0a6e', 11);
     map.addLayer({ id: 'route-line', type: 'line', source: 'route', filter: sel, layout: lay, paint: { 'line-gradient': gradient(curRoute()), 'line-width': 7 } });
-    if (!clickBound) { clickBound = true; map.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) select(f.properties.i); }); }
+    if (!clickBound) {
+      clickBound = true;
+      map.on('click', 'alt-hit', (e) => { const f = e.features && e.features[0]; if (f) select(f.properties.i); });
+      // Leaflet owns the gestures now (GL runs with interactive:false), so
+      // re-run the same hit-test when Leaflet reports the click.
+      lf.on('click', (e) => {
+        if (!map.getLayer || !map.getLayer('alt-hit')) return;
+        const p = map.project([e.latlng.lng, e.latlng.lat]);
+        const f = map.queryRenderedFeatures({ point: [p.x, p.y] }, { layers: ['alt-hit'] })[0];
+        if (f) select(f.properties.i);
+      });
+    }
   }
   map.on('style.load', () => setTimeout(() => { ensureLayers(); if (nav && nav.overlay) addNavTrafficOverlay(); }, 0)); // basemap switch wipes custom layers
 
@@ -2117,7 +2215,7 @@
     if (nav) { recenterFollow(); return; }
     getUserLoc().then((l) => map.flyTo({ center: [l.lng, l.lat], zoom: 15, duration: 1200 })).catch(() => flash('Could not get your location.'));
   });
-  map.on('dragstart', () => { if (nav) nav.follow = false; }); // manual pan pauses follow mode
+  lf.on('dragstart', () => { if (nav) nav.follow = false; }); // manual pan (Leaflet owns gestures) pauses follow mode
   // ===== On-site Navigation (Start button) — real GPS, like Google Maps =====
   // The marker ONLY moves when you physically move: it tracks the device's
   // real GPS via watchPosition, snaps your position onto the route, shows a
