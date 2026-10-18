@@ -246,7 +246,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       // moveend guard below instead: user moves are pulled back over the
       // barangay, our own fits are not clamped.
       zoomControl: false,
-      attributionControl: true,
+      // No Leaflet attribution bar — same as the host map (MapViewer), so no
+      // "Leaflet | © OpenStreetMap / © Esri" copyright text sits on the map.
+      attributionControl: false,
     });
 
     // Native Leaflet zoom buttons — index.css pushes them below the app's
