@@ -75,10 +75,18 @@ try {
     await page.getByRole('button', { name: 'Refresh live OSM pins' }).click();
     await page.locator('.hc-sheet-foot').filter({ hasText: 'Cannot reach OpenStreetMap' }).waitFor();
     assert.ok(await page.locator('.hc-sheet-row').count() > 0, 'community pins survive API failure');
-    await page.getByRole('button', { name: 'Cannot reach OpenStreetMap — try again.' }).waitFor();
+    // Let the "Refreshing…" toast expire: the red OSM banner used to take the
+    // notice slot after 4.2 seconds — it must never come back.
+    await page.waitForTimeout(4500);
+    assert.equal(
+      await page.getByText('Cannot reach OpenStreetMap — try again.').count(),
+      0,
+      'OSM error banner removed from the notice slot',
+    );
     failLive = false;
-    // Toast clears after 4.2 seconds, exposing the OSM retry (even if traffic failed).
-    await page.getByRole('button', { name: 'Cannot reach OpenStreetMap — try again.' }).click();
+    // Retry through the sheet header's refresh button (what the banner did).
+    await page.getByRole('button', { name: 'Refresh live OSM pins' }).click();
+    await page.locator('.hc-sheet-foot').filter({ hasText: 'Cannot reach OpenStreetMap' }).waitFor({ state: 'detached' });
     await page.getByText('Browser Test Pharmacy', { exact: true }).waitFor();
     assert.ok(calls >= 5);
     assert.deepEqual(errors, []);

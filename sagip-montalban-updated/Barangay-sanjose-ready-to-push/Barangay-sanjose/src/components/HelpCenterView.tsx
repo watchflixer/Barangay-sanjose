@@ -702,12 +702,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   }, [places, listQuery, origin]);
 
   // ------------------------------------------------------------------ view
-  // One notice slot, exactly like the Traffic page: the toast, then the two
-  // conditions the driver can actually act on.
+  // One notice slot, exactly like the Traffic page — toasts only. The OSM
+  // fetch failure no longer claims the red banner; the sheet footer still
+  // reports it and the sheet's refresh button still retries.
   const trafficNotice = basemap === 'streets' && trafficTilesFailed;
-  const osmNotice = liveStatus === 'error';
-  const noticeText = toast || (osmNotice ? 'Cannot reach OpenStreetMap — try again.' : '');
-  const noticeAction = !toast && osmNotice ? refreshLivePins : undefined;
+  const noticeText = toast;
 
   const openDirections = useCallback(() => {
     const center = localMapRef.current?.getCenter();
@@ -772,16 +771,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Messages: the Traffic page's red notice, over the map. */}
-      {stage === 'map' &&
-        noticeText &&
-        (noticeAction ? (
-          <button type="button" id="hc-notice" className="is-action" onClick={noticeAction}>
-            {noticeText}
-          </button>
-        ) : (
-          <div id="hc-notice">{noticeText}</div>
-        ))}
+      {/* Messages: the Traffic page's red notice, over the map — toasts only,
+          never the OSM fetch error. */}
+      {stage === 'map' && noticeText && <div id="hc-notice">{noticeText}</div>}
 
       {/* Results sheet — the Traffic route sheet: white card with a grab
           handle, 24px top corners, tabs and rows. */}
