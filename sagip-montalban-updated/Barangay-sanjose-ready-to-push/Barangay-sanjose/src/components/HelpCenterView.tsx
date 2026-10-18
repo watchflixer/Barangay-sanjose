@@ -415,9 +415,31 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // sheet has to be measured, and it only exists then), and again whenever the
   // pin box or the sheet height really changes — but never after the user has
   // taken the camera, unless they picked a new filter set themselves.
+  // When the filter is cleared (places.length === 0) and the user returns via
+  // the picker X/back, recenter to the default Barangay San Jose view.
   useEffect(() => {
     const map = localMapRef.current;
-    if (!mapReady || stage !== 'map' || !map || places.length === 0) return;
+    if (!mapReady || stage !== 'map' || !map) return;
+    if (places.length === 0) {
+      const fitKey = `empty|${sheetHeight}`;
+      if (fitKey === lastFitKeyRef.current) return;
+      const selectionChanged = fittedSelectionRef.current !== selectedKey;
+      // If the user panned an already-empty map and re-opened/closed the
+      // picker without changing the filter, keep their pan — don't fight it.
+      if (!selectionChanged && userMovedRef.current) return;
+      fittedSelectionRef.current = selectedKey;
+      lastFitKeyRef.current = fitKey;
+      fittedBoxRef.current = 'empty';
+      userMovedRef.current = false;
+      programmaticMoveRef.current = true;
+      map.once('moveend', () => {
+        programmaticMoveRef.current = false;
+        const settled = map.getCenter();
+        programmaticViewRef.current = { lat: settled.lat, lng: settled.lng, zoom: map.getZoom() };
+      });
+      map.flyTo(SAN_JOSE_CENTER, 13, { duration: 0.7, easeLinearity: 0.25 });
+      return;
+    }
 
     const bounds = new L.LatLngBounds(places.map((place) => place.coords));
     if (!bounds.isValid()) return;
