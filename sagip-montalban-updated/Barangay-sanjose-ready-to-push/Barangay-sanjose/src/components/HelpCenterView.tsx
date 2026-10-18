@@ -954,14 +954,19 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             </svg>
           </button>
 
-          {basemap === 'streets' && !trafficTilesFailed && <div id="hc-legend">
-            {LEGEND_ROWS.map((row) => (
-              <div key={row.label} className="row">
-                <span className="sw" style={{ background: row.color }} />
-                {row.label}
-              </div>
-            ))}
-          </div>}
+          {/* Same four-swatch legend in Street mode while the live-traffic
+              raster is up, and now also in Satellite mode so the imagery view
+              carries the same key as the rest of the app. */}
+          {(basemap === 'satellite' || (basemap === 'streets' && !trafficTilesFailed)) && (
+            <div id="hc-legend">
+              {LEGEND_ROWS.map((row) => (
+                <div key={row.label} className="row">
+                  <span className="sw" style={{ background: row.color }} />
+                  {row.label}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
