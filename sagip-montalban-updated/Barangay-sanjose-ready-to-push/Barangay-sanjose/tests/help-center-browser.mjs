@@ -33,11 +33,17 @@ try {
     await weather.getByRole('button', { name: 'Layers', exact: true }).click();
     await weather.getByRole('button', { name: 'Help Center', exact: true }).click();
     await page.getByRole('heading', { name: 'Choose what you want to filter' }).waitFor();
-    // Escape the initial picker without being forced to select a category.
+    // The picker's X is a back button: without any category picked it opens
+    // the Help Center map instead of leaving Help Center.
     await page.getByRole('button', { name: 'Close Help Center filters' }).click();
-    await page.locator('#help-center-view').waitFor({ state: 'detached' });
-    await page.getByTitle('Layers', { exact: true }).click();
-    await page.getByRole('button', { name: 'Help Center', exact: true }).click();
+    await page.locator('#help-center-map-root').waitFor();
+    // Dismissing lands on a clean map: no "Selected places" sheet, only the
+    // List pill that can bring it back.
+    assert.equal(await page.locator('#hc-sheet').count(), 0);
+    await page.getByRole('button', { name: /^List \(/ }).waitFor();
+    // A plain reload while Help Center is open asks the filter question again.
+    await page.reload();
+    await page.getByRole('heading', { name: 'Choose what you want to filter' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Pick at least one filter' }).isDisabled(), true);
     await page.getByRole('textbox', { name: 'Search filters' }).fill('pharmacy');
     await page.locator('.hc-cat').click();

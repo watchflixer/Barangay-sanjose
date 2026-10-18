@@ -928,12 +928,14 @@ body,
   }
 }
 
+/* Close (X) pill rides the right end of the header row; the title starts at
+   the same 12px left inset as the search field below it. */
 #hc-picker .hc-picker-top {
   flex: none;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 16px 12px 0 8px;
+  padding: 16px 8px 0 12px;
 }
 
 #hc-picker .hc-picker-head {

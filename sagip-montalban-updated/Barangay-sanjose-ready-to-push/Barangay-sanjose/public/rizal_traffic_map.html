@@ -299,6 +299,7 @@
   .rt-chip{flex:none;height:44px;padding:0 18px 0 14px;border:0;border-radius:22px;background:#d3eef5;font-size:17px;display:flex;align-items:center;gap:10px;cursor:pointer;}
   .rt-chip.go{background:#00697a;color:#fff!important;}
   .rt-chip:active{filter:brightness(.93);}
+  .rt-chip:disabled{background:#e8eaed;color:#9aa0a6!important;cursor:not-allowed;}
   .rt-lbl{background:#fff;color:#202124;border-radius:10px;padding:6px 10px;font:500 15px "Google Sans",Roboto,sans-serif;box-shadow:0 1px 5px rgba(0,0,0,.35);cursor:pointer;white-space:nowrap;}
   .rt-lbl.sel{background:#1c1fb8;color:#fff;}
   .rt-stop{width:16px;height:16px;border-radius:50%;background:#fff;border:4px solid #6b7280;box-sizing:border-box;box-shadow:0 1px 4px rgba(0,0,0,.4);}
@@ -1068,6 +1069,7 @@
     [from, to] = [to, from];
     const put = (inp, v) => { inp.value = v ? (v.user ? 'Your location' : v.label) : ''; inp.classList.toggle('is-user', !!(v && v.user)); };
     put(fromIn, from); put(toIn, to);
+    syncStartDisabled(); // "Your location" may have just moved to the bottom
     dirty.from = dirty.to = false; results = []; renderBody();
     if (from && to) go();
   });
@@ -2023,6 +2025,18 @@
     (routes[curMode] || []).forEach((r) => r.geometry.coordinates.forEach((c) => bb.extend(c)));
     map.fitBounds(bb, { padding: { top: 150, bottom: $('rt-sheet').offsetHeight + 40, left: 40, right: 40 }, duration: 900 });
   }
+  // Start (on-site navigation) follows the user's GPS from the ORIGIN, so it
+  // only makes sense while "Your location" is the top field. Once it is
+  // swapped into the destination slot (nasa baba), Start is disabled until
+  // it is swapped back up.
+  function syncStartDisabled() {
+    const b = $('rt-start');
+    const yourLocationIsDestination = !!(to && to.user);
+    b.disabled = yourLocationIsDestination;
+    b.title = yourLocationIsDestination
+      ? 'Start is unavailable while Your location is the destination — swap it back to the top'
+      : '';
+  }
   function renderTop() {
     const f = $('rt-from'); f.textContent = from.user ? 'Your location' : from.label; f.style.color = from.user ? '#1a73e8' : '#202124';
     // Blank (no-blue) origin circle whenever the origin is a searched place,
@@ -2030,6 +2044,7 @@
     $('rt-edit').classList.toggle('from-not-user', !from.user);
     const t = $('rt-to'); t.textContent = to.user ? 'Your location' : to.label;
     if (stops.length) t.appendChild(h('small', '', '+' + stops.length + (stops.length > 1 ? ' stops' : ' stop')));
+    syncStartDisabled();
   }
   function renderSheet() {
     $('rt-title').textContent = TITLES[curMode];
@@ -2061,12 +2076,23 @@
     requestAnimationFrame(fitRoute);
   }
   function clearRoute() {
+    // The sheet's X while navigating also ends navigation: stop the GPS
+    // watch and take down the top navigation UI (turn-by-turn steps card +
+    // teal ETA banner), instead of leaving it floating over a route-less
+    // map. stopNav() without showRoute just levels the camera back out.
+    if (nav) stopNav();
     routeActive = false; document.body.classList.remove('routing');
     ['route-line', 'route-casing', 'alt-hit', 'alt-line', 'alt-casing'].forEach((id) => map.getLayer(id) && map.removeLayer(id));
     if (map.getSource('route')) map.removeSource('route');
     [destMarker, originMarker].concat(stopMarkers, labelMarkers).forEach((m) => m && m.remove());
     destMarker = originMarker = null; stopMarkers = []; labelMarkers = []; stops = []; routes = {};
     to = null; toIn.value = ''; $('rt-menu').hidden = true; $('rt-opts').hidden = true;
+    // The X is the back button out of route mode, so the camera also goes
+    // back to the normal recentered overview (the same bounds the Recenter
+    // button restores), level and north-up — not left zoomed-in and tilted
+    // where the route/navigation was.
+    map.setMaxBounds(MAX_BOUNDS);
+    map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 750, pitch: 0, bearing: 0 });
   }
 
   // ----- Route view controls -----
@@ -2548,6 +2574,8 @@
     }
   }
   function startNav() {
+    // Belt-and-braces with the disabled Start chip (see syncStartDisabled).
+    if (to && to.user) { flash('Hindi available ang Start kapag ang Your location ang destination — i-swap muna pabalik sa taas.'); return; }
     const r = curRoute();
     if (!r || !r.geometry || !r.geometry.coordinates.length) { flash('Piliin muna ang ruta bago mag-Start.'); return; }
     const q = new URLSearchParams(location.search);

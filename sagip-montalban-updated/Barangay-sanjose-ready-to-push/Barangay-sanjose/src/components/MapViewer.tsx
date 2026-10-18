@@ -11,7 +11,7 @@ import L from 'leaflet';
  * The published @types/leaflet still describes 1.x, so v1-only calls would
  * type-check yet fail at runtime.
  */
-import { clearRefreshView, readRefreshView } from '../lib/refreshView';
+import { clearRefreshView, readHelpCenterOpen, readRefreshView, rememberHelpCenterOpen } from '../lib/refreshView';
 import { TILE_SERVERS } from '../data/tileServers';
 import { WeatherView } from './WeatherView';
 import { HelpCenterView } from './HelpCenterView';
@@ -140,9 +140,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // …) and its OWN basemap/state, fully separate from the Traffic feature, so
   // changing Help Center never affects Traffic (and vice versa). Only the map
   // instance is shared here so the host's Recenter/Locate buttons can drive it.
-  const [showHelpCenter, setShowHelpCenter] = React.useState(
-    refreshView !== null ? refreshView === 'helpcenter' : sharedRoute.help,
-  );
+  // Reloading while Help Center is open returns to Help Center — and because
+  // a fresh mount always starts on the picker, the filter question is asked
+  // again. Precedence: the brand Refresh snapshot first, then explicit share
+  // links (?traffic=1 must not be overridden by a remembered session), then
+  // the session flag / ?help=1.
+  const [helpCenterWasOpen] = React.useState(readHelpCenterOpen);
+  const [showHelpCenter, setShowHelpCenter] = React.useState(() => {
+    if (refreshView !== null) return refreshView === 'helpcenter';
+    if (sharedRoute.open) return false;
+    return sharedRoute.help || helpCenterWasOpen;
+  });
   const helpCenterMapInstanceRef = useRef<L.Map | null>(null);
   // The Help Center opens on its filter picker, which covers the whole map.
   // Its floating buttons (Recenter / Layers / Locate) are pointless — and
@@ -175,6 +183,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Notify the parent app before paint so the sidebar never flashes over a layer.
   React.useLayoutEffect(() => {
     onHelpCenterChange?.(showHelpCenter);
+    // Keep the session flag in step so a reload while Help Center is open
+    // re-opens it on its filter picker (see readHelpCenterOpen above).
+    rememberHelpCenterOpen(showHelpCenter);
   }, [showHelpCenter, onHelpCenterChange]);
   // Opening Weather closes the Flood Prone, Traffic and Help Center maps.
   React.useEffect(() => {
@@ -996,7 +1007,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           mapRef={helpCenterMapInstanceRef}
           lockCameraToBounds={mapSettings.lockCameraToBounds}
           onStageChange={handleHelpStageChange}
-          onClose={() => setShowHelpCenter(false)}
         />
       )}
 

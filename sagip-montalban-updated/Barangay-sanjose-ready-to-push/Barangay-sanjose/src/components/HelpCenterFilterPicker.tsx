@@ -25,6 +25,7 @@ interface HelpCenterFilterPickerProps {
   onSetSelection: (ids: PlaceCategoryId[]) => void;
   /** Opens the map with the current selection. */
   onOpenMap: () => void;
+  /** The X/back button — dismisses the picker onto the Help Center map. */
   onClose?: () => void;
 }
 
@@ -65,8 +66,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
       <div className="hc-picker-body">
         {/* ----------------------------------------------------------- header */}
         <div className="hc-picker-top">
-          {onClose && <button type="button" onClick={onClose} aria-label="Close Help Center filters"
-            className="hc-pill shrink-0"><X className="h-4 w-4" /></button>}
           <div className="hc-picker-head">
             <h2 className="hc-picker-title">Choose what you want to filter</h2>
             <p className="hc-picker-sub">
@@ -75,6 +74,8 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
               like the Traffic view.
             </p>
           </div>
+          {onClose && <button type="button" onClick={onClose} aria-label="Close Help Center filters"
+            className="hc-pill shrink-0"><X className="h-4 w-4" /></button>}
         </div>
 
         {/* Search across the filter buttons — Traffic's .dir-fields input. */}
