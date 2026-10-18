@@ -70,7 +70,6 @@ interface HelpCenterViewProps {
    * shows them again on the map screen, where they drive this map.
    */
   onStageChange?: (stage: 'picker' | 'map') => void;
-  onClose?: () => void;
 }
 
 const ALL_CATEGORY_IDS = HELP_CENTER_CATEGORIES.map((category) => category.id);
@@ -126,7 +125,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   mapRef,
   lockCameraToBounds = false,
   onStageChange,
-  onClose,
 }) => {
   // ------------------------------------------------------------------ state
   const cameraLockRef = useRef(lockCameraToBounds);
@@ -364,6 +362,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     return `
       <div class="p-3">
         <div class="flex items-start gap-2.5">
+          <span class="hc-pin-ref">${escapeHtml(category.code)}</span>
+          <div class="min-w-0">
+            <p class="text-[15px]>
           <span class="hc-pin-ref">${escapeHtml(category.code)}</span>
           <div class="min-w-0">
             <p class="text-[15px] leading-tight text-[#202124]">${escapeHtml(place.name)}</p>
@@ -626,6 +627,23 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const openMap = useCallback(() => {
     if (selected.length === 0) return;
     rememberedSelection = selected;
+    setMapReady(true);
+    setStage('map');
+  }, [selected]);
+
+  // The picker's X is a "back to the map" button, never an exit from Help
+  // Center: even on the very first visit — the Leaflet canvas is not mounted
+  // yet and nothing may be ticked — it opens the Help Center map with
+  // whatever is currently selected, and with the list sheet closed. Leaving
+  // Help Center altogether happens through the host's Layers menu, like the
+  // other map views.
+  const closePickerToMap = useCallback(() => {
+    rememberedSelection = selected;
+    // Land on a clean map: the "Selected places" sheet stays closed (only
+    // the List pill shows, ready to reopen it). Opening the map on purpose
+    // via "Open the map" keeps the sheet up — dismissing should not.
+    setSheetOpen(false);
+    setSheetExpanded(false);
     setMapReady(true);
     setStage('map');
   }, [selected]);
@@ -923,14 +941,15 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Step 1 — the picker. The map only mounts after this is answered. */}
+      {/* Step 1 — the picker. The map mounts once it is answered, or when
+          the X dismisses it straight onto the map (closePickerToMap). */}
       {stage === 'picker' && (
         <HelpCenterFilterPicker
           selected={selected}
           onToggleCategory={toggleCategory}
           onSetSelection={setSelection}
           onOpenMap={openMap}
-          onClose={mapReady ? () => setStage('map') : onClose}
+          onClose={closePickerToMap}
         />
       )}
     </div>
