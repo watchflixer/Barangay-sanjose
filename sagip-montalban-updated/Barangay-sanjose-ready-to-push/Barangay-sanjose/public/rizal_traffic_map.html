@@ -153,6 +153,10 @@
   }
   #legend .row{display:flex;align-items:center;gap:6px;margin:3px 0;}
   #legend .sw{width:13px;height:13px;border-radius:2px;display:inline-block;}
+  /* The GL canvas (z450) runs with pointer-events:none so every control
+     below it — base-switch, legend, directions, zoom — stays clickable.
+     Mapbox markers re-enable pointer events so route pins remain tappable. */
+  #map-gl .mapboxgl-marker{pointer-events:auto;}
   /* Bottom-right credit strip — the Mapbox attribution bar's exact look,
      but "Leaflet" sits where "OpenStreetMap" used to be:
      "© Mapbox © Leaflet". */
@@ -951,7 +955,10 @@
   glContainer.id = 'map-gl';
   // 450 sits above Leaflet's tile pane (200) so route lines and markers
   // draw over the basemap; no other Leaflet panes hold content here.
-  glContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;z-index:450;background:transparent;';
+  // pointer-events:none is essential: the canvas must never swallow clicks
+  // aimed at the controls underneath (base-switch, legend, zoom — z ≤ 400);
+  // only the Mapbox markers re-enable pointer events (see index styles).
+  glContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;z-index:450;background:transparent;pointer-events:none;';
   document.getElementById('map').appendChild(glContainer);
 
   const map = new mapboxgl.Map({
