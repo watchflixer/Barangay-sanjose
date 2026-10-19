@@ -576,16 +576,25 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     (place: Place) => {
       const map = localMapRef.current;
       if (!map) return;
-      map.flyTo(place.coords, Math.max(map.getZoom(), 17), { duration: 0.8, easeLinearity: 0.25 });
+      // Zoom sagad to 19 (max 20) so each tapped row lands pin-centered and readable — user requested "mag zo-zoom in sila"
+      programmaticMoveRef.current = true;
+      programmaticViewRef.current = { lat: place.coords[0], lng: place.coords[1], zoom: 19 };
+      map.flyTo(place.coords, 19, { duration: 0.9, easeLinearity: 0.2 });
+      map.once('moveend', () => {
+        programmaticMoveRef.current = false;
+        const settled = map.getCenter();
+        programmaticViewRef.current = { lat: settled.lat, lng: settled.lng, zoom: map.getZoom() };
+      });
       const marker = markersRef.current.get(place.id);
       if (focusTimerRef.current) window.clearTimeout(focusTimerRef.current);
-      focusTimerRef.current = window.setTimeout(() => marker?.openPopup(), 850);
+      focusTimerRef.current = window.setTimeout(() => marker?.openPopup(), 900);
       // On phones the sheet would cover the pin we just flew to — tuck it away
       // (guarded, because some in-app webviews ship no matchMedia at all).
       const isSmallScreen =
         typeof window.matchMedia === 'function' &&
         window.matchMedia('(max-width: 640px), (orientation: portrait)').matches;
       if (isSmallScreen) setSheetOpen(false);
+      else setSheetExpanded(false);
     },
     [],
   );
