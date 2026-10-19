@@ -544,8 +544,32 @@ export const HELP_CENTER_PLACES: Place[] = [
     coords: [14.7525, 121.1488], address: 'Southville 8B, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 4:00 PM (Mon-Fri)', note: 'Kinder • Public Day Care', approx: true, source: 'curated',
   },
   {
-    id: 'sc-college-colegio-montalban', category: 'school', name: 'Colegio de Montalban - Kasiglahan Campus',
-    coords: [14.7452, 121.1398], address: 'Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'College • Semi-public • TESDA & CHED courses', approx: true, source: 'curated',
+    id: 'sc-college-colegio-montalban', category: 'school', name: 'Colegio de Montalban (Pamantasan ng Montalban)',
+    coords: [14.7504, 121.1417], address: 'Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'College • Semi-public • TESDA & CHED courses', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-urs-rodriguez', category: 'school', name: 'University of Rizal System - Rodriguez Campus',
+    coords: [14.7348, 121.1432], address: 'Rodriguez (Montalban), Rizal • Brgy. San Jose vicinity', hours: '8:00 AM - 5:00 PM (Mon-Fri)', note: 'State University • CHED • Public college', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-feu-rodriguez', category: 'school', name: 'FEU Roosevelt - Rodriguez Campus',
+    coords: [14.7322, 121.1245], address: 'Lardizabal St., Brgy. Manggahan, Rodriguez, Rizal', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College & Senior High • FEU Group', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-aics-montalban', category: 'school', name: 'Asian Institute of Computer Studies - Montalban Campus',
+    coords: [14.7368, 121.1365], address: 'Rodriguez Highway, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'Private College • IT & Business', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-casp-montalban', category: 'school', name: 'College of Arts and Sciences of Asia and the Pacific',
+    coords: [14.7402, 121.1422], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'Private College', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-frobelian', category: 'school', name: 'Frobelian College of Science & Technology',
+    coords: [14.7385, 121.1355], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College • Science & Tech', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-st-joseph-college', category: 'school', name: 'St. Joseph College - Rodriguez',
+    coords: [14.7412, 121.1438], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College & Basic Ed', approx: true, source: 'curated',
   },
   {
     id: 'sc-san-jose-nhs', category: 'school', name: 'San Jose National High School',
