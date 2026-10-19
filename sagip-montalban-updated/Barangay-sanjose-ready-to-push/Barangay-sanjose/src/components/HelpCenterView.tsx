@@ -238,7 +238,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       center: SAN_JOSE_CENTER,
       zoom: 13,
       minZoom: 12,
-      maxZoom: 22,
+      maxZoom: 20,
       // No maxBounds here on purpose. Leaflet 2 clamps the WHOLE viewport to
       // maxBounds, so the camera cannot move far enough south to centre the
       // filtered pins above the bottom sheet — with the lock on, pins ended up
@@ -325,7 +325,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const layer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
-      maxZoom: 22,
+      maxZoom: 20,
       maxNativeZoom: tileConfig.maxNativeZoom ?? 19,
       className: tileConfig.className,
     });

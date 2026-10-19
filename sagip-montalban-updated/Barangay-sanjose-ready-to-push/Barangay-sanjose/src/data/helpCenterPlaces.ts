@@ -515,6 +515,14 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'sc-tagumpay-daycare', category: 'school', name: 'Tagumpay Village Day Care Center',
     coords: [14.7557, 121.1324], address: 'Tagumpay Village, Brgy. San Jose', approx: true, source: 'curated',
   },
+  {
+    id: 'sc-westbridge-amityville', category: 'school', name: 'Westbridge Institute of Technology, Inc. - Amityville Campus',
+    coords: [14.7342, 121.1292], address: 'Amityville Subdivision, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-westbridge-balite', category: 'school', name: 'Westbridge Institute of Technology, Inc. - Balite Campus',
+    coords: [14.7608, 121.1448], address: 'Sitio Balite, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: true, source: 'curated',
+  },
   // ------------------------------------------------------------- church
   {
     id: 'ch-san-jose-parish', category: 'church', name: 'San Jose Parish Church',
