@@ -238,7 +238,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       center: SAN_JOSE_CENTER,
       zoom: 13,
       minZoom: 12,
-      maxZoom: 18,
+      maxZoom: 22,
       // No maxBounds here on purpose. Leaflet 2 clamps the WHOLE viewport to
       // maxBounds, so the camera cannot move far enough south to centre the
       // filtered pins above the bottom sheet — with the lock on, pins ended up
@@ -325,8 +325,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const layer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
-      maxZoom: 19,
-      maxNativeZoom: tileConfig.maxNativeZoom,
+      maxZoom: 22,
+      maxNativeZoom: tileConfig.maxNativeZoom ?? 19,
       className: tileConfig.className,
     });
     if (withLiveTraffic) layer.on('tileerror', () => setTrafficTilesFailed(true));
@@ -481,7 +481,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     map.fitBounds(bounds, {
       paddingTopLeft: [44, 96],
       paddingBottomRight: [44, sheetHeight + 32],
-      maxZoom: 16,
+      maxZoom: 20,
       animate: hadFit,
       duration: 0.7,
     });
