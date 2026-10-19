@@ -975,9 +975,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         </div>
       )}
 
-      {/* Realtime Traffic map overlay (Leaflet 2.0.0-alpha.1 inside). The
-          TomTom key travels as a query parameter so the iframe picks it up
-          without any build-time injection into public/ files. */}
+      {/* Realtime Traffic map overlay — Mapbox GL (live traffic, routing)
+          rendered inside a Leaflet-driven shell, the same Leaflet engine the
+          Help Center uses. The Mapbox key travels as a query parameter so the
+          iframe picks it up without any build-time injection into public/
+          files. */}
       {showTrafficMap && (
         <div className="absolute inset-0 z-30 bg-white" aria-label="Rizal Realtime Traffic Map">
           <iframe

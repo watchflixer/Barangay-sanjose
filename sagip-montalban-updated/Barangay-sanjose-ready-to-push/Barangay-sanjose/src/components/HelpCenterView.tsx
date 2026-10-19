@@ -246,7 +246,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       // moveend guard below instead: user moves are pulled back over the
       // barangay, our own fits are not clamped.
       zoomControl: false,
-      attributionControl: true,
+      // No Leaflet attribution bar — same as the host map (MapViewer), so no
+      // "Leaflet | © OpenStreetMap / © Esri" copyright text sits on the map.
+      attributionControl: false,
     });
 
     // Native Leaflet zoom buttons — index.css pushes them below the app's
@@ -415,9 +417,31 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // sheet has to be measured, and it only exists then), and again whenever the
   // pin box or the sheet height really changes — but never after the user has
   // taken the camera, unless they picked a new filter set themselves.
+  // When the filter is cleared (places.length === 0) and the user returns via
+  // the picker X/back, recenter to the default Barangay San Jose view.
   useEffect(() => {
     const map = localMapRef.current;
-    if (!mapReady || stage !== 'map' || !map || places.length === 0) return;
+    if (!mapReady || stage !== 'map' || !map) return;
+    if (places.length === 0) {
+      const fitKey = `empty|${sheetHeight}`;
+      if (fitKey === lastFitKeyRef.current) return;
+      const selectionChanged = fittedSelectionRef.current !== selectedKey;
+      // If the user panned an already-empty map and re-opened/closed the
+      // picker without changing the filter, keep their pan — don't fight it.
+      if (!selectionChanged && userMovedRef.current) return;
+      fittedSelectionRef.current = selectedKey;
+      lastFitKeyRef.current = fitKey;
+      fittedBoxRef.current = 'empty';
+      userMovedRef.current = false;
+      programmaticMoveRef.current = true;
+      map.once('moveend', () => {
+        programmaticMoveRef.current = false;
+        const settled = map.getCenter();
+        programmaticViewRef.current = { lat: settled.lat, lng: settled.lng, zoom: map.getZoom() };
+      });
+      map.flyTo(SAN_JOSE_CENTER, 13, { duration: 0.7, easeLinearity: 0.25 });
+      return;
+    }
 
     const bounds = new L.LatLngBounds(places.map((place) => place.coords));
     if (!bounds.isValid()) return;
@@ -678,12 +702,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   }, [places, listQuery, origin]);
 
   // ------------------------------------------------------------------ view
-  // One notice slot, exactly like the Traffic page: the toast, then the two
-  // conditions the driver can actually act on.
+  // One notice slot, exactly like the Traffic page — toasts only. The OSM
+  // fetch failure no longer claims the red banner; the sheet footer still
+  // reports it and the sheet's refresh button still retries.
   const trafficNotice = basemap === 'streets' && trafficTilesFailed;
-  const osmNotice = liveStatus === 'error';
-  const noticeText = toast || (osmNotice ? 'Cannot reach OpenStreetMap — try again.' : '');
-  const noticeAction = !toast && osmNotice ? refreshLivePins : undefined;
+  const noticeText = toast;
 
   const openDirections = useCallback(() => {
     const center = localMapRef.current?.getCenter();
@@ -748,16 +771,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Messages: the Traffic page's red notice, over the map. */}
-      {stage === 'map' &&
-        noticeText &&
-        (noticeAction ? (
-          <button type="button" id="hc-notice" className="is-action" onClick={noticeAction}>
-            {noticeText}
-          </button>
-        ) : (
-          <div id="hc-notice">{noticeText}</div>
-        ))}
+      {/* Messages: the Traffic page's red notice, over the map — toasts only,
+          never the OSM fetch error. */}
+      {stage === 'map' && noticeText && <div id="hc-notice">{noticeText}</div>}
 
       {/* Results sheet — the Traffic route sheet: white card with a grab
           handle, 24px top corners, tabs and rows. */}
@@ -930,14 +946,19 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             </svg>
           </button>
 
-          {basemap === 'streets' && !trafficTilesFailed && <div id="hc-legend">
-            {LEGEND_ROWS.map((row) => (
-              <div key={row.label} className="row">
-                <span className="sw" style={{ background: row.color }} />
-                {row.label}
-              </div>
-            ))}
-          </div>}
+          {/* Same four-swatch legend in Street mode while the live-traffic
+              raster is up, and now also in Satellite mode so the imagery view
+              carries the same key as the rest of the app. */}
+          {(basemap === 'satellite' || (basemap === 'streets' && !trafficTilesFailed)) && (
+            <div id="hc-legend">
+              {LEGEND_ROWS.map((row) => (
+                <div key={row.label} className="row">
+                  <span className="sw" style={{ background: row.color }} />
+                  {row.label}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
