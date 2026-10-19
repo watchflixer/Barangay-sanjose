@@ -523,6 +523,30 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'sc-westbridge-balite', category: 'school', name: 'Westbridge Institute of Technology, Inc. - Balite Campus',
     coords: [14.7608, 121.1448], address: 'Sitio Balite, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: true, source: 'curated',
   },
+  {
+    id: 'sc-sanjose-litex-shs', category: 'school', name: 'San Jose Litex Senior High School',
+    coords: [14.7295, 121.1128], address: 'Litex Road, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public Senior High • Grades 11-12 • DepEd', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-southville8b-nhs', category: 'school', name: 'Southville 8B National High School',
+    coords: [14.7478, 121.1382], address: 'Southville 8B, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public High School • Junior & Senior High', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-stand-alone-shs5', category: 'school', name: 'Stand-Alone Senior High School No. 5 (San Jose)',
+    coords: [14.7438, 121.1415], address: 'Rodriguez Highway, Brgy. San Jose (near Sub-Urban)', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Senior High • DepEd', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-rodriguez-private-academy', category: 'school', name: 'Rodriguez Private Academy',
+    coords: [14.7426, 121.1442], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose', hours: '7:00 AM - 4:00 PM (Mon-Fri)', note: 'Private Elementary & Junior High', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-kinder-san-jose', category: 'school', name: 'San Jose Kinder & Day Care Center (Annex)',
+    coords: [14.7308, 121.1148], address: 'Litex / Kasiglahan Access Road, Brgy. San Jose', hours: '8:00 AM - 4:00 PM (Mon-Fri)', note: 'Kinder • Public Day Care', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-college-san-jose', category: 'school', name: 'San Jose Community College (TESDA / CHED Programs)',
+    coords: [14.7398, 121.1368], address: 'Rodriguez Highway, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'College • Semi-public • TESDA & CHED courses', approx: true, source: 'curated',
+  },
   // ------------------------------------------------------------- church
   {
     id: 'ch-san-jose-parish', category: 'church', name: 'San Jose Parish Church',
