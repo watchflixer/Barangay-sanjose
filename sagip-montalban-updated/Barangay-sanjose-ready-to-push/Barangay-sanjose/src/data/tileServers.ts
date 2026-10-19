@@ -26,23 +26,27 @@ export const TILE_SERVERS: Record<'streets' | 'light' | 'dark' | 'satellite', Ti
     url: OSM_URL,
     attribution: OSM_ATTRIBUTION,
     subdomains: 'abc',
+    maxNativeZoom: 19,
   },
   light: {
     url: OSM_URL,
     attribution: OSM_ATTRIBUTION,
     subdomains: 'abc',
+    maxNativeZoom: 19,
     className: 'map-clean-tiles',
   },
   dark: {
     url: OSM_URL,
     attribution: OSM_ATTRIBUTION,
     subdomains: 'abc',
+    maxNativeZoom: 19,
     className: 'map-dark-tiles',
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
     subdomains: 'a',
+    maxNativeZoom: 19,
   }
 };
 
