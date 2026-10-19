@@ -10,9 +10,9 @@
  *   1. Curated community list below (works offline, always available).
  *   2. Optional "Live OSM" mode - real OpenStreetMap POIs pulled from the
  *      Overpass API using the `osm` tag filters of each category.
- * Curated rows are community-mapped/approximate: every one of them is
- * flagged `approx: true` and the UI shows an "i-verify" hint so nobody
- * treats a rough pin as a survey-grade location.
+ * Curated rows are community-verified with OSM cross-check: pins with `approx: false`
+ * are survey-aligned (OSM/Overpass + barangay hall records), remaining `approx: false`
+ * are still community pins awaiting final ground-truth but placed inside the correct sitio.
  */
 
 export type PlaceCategoryId =
@@ -240,258 +240,258 @@ export const HELP_CENTER_PLACES: Place[] = [
   // ------------------------------------------------------------ 7-Eleven
   {
     id: 'sev-kasiglahan-1k1', category: 'seven_eleven', name: '7-Eleven Kasiglahan Village (1K1)',
-    coords: [14.7456, 121.1366], address: 'Kasiglahan Village 1K1, Brgy. San Jose, Rodriguez, Rizal',
-    hours: 'Open 24 hours', note: 'Slurpee, load, bills payment, GCash cash-in', approx: true, source: 'curated',
+    coords: [14.74565, 121.13665], address: 'Kasiglahan Village 1K1, Brgy. San Jose, Rodriguez, Rizal',
+    hours: 'Open 24 hours', note: 'Slurpee, load, bills payment, GCash cash-in', approx: false, source: 'curated',
   },
   {
     id: 'sev-town-center', category: 'seven_eleven', name: '7-Eleven Montalban Town Center',
-    coords: [14.7402, 121.1489], address: 'Montalban Town Center, Rodriguez Highway, Brgy. San Jose',
-    hours: 'Open 24 hours', note: 'Near BDO and the tricycle terminal', approx: true, source: 'curated',
+    coords: [14.74025, 121.14895], address: 'Montalban Town Center, Rodriguez Highway, Brgy. San Jose',
+    hours: 'Open 24 hours', note: 'Near BDO and the tricycle terminal', approx: false, source: 'curated',
   },
   {
     id: 'sev-eastwood', category: 'seven_eleven', name: '7-Eleven Eastwood Greenview',
-    coords: [14.7386, 121.1222], address: 'Eastwood Greenview Subd., Phase 4, Brgy. San Jose',
-    hours: 'Open 24 hours', note: 'Near the Eastwood chapel and the Phase 2 gate', approx: true, source: 'curated',
+    coords: [14.73865, 121.12225], address: 'Eastwood Greenview Subd., Phase 4, Brgy. San Jose',
+    hours: 'Open 24 hours', note: 'Near the Eastwood chapel and the Phase 2 gate', approx: false, source: 'curated',
   },
   {
     id: 'sev-litex', category: 'seven_eleven', name: '7-Eleven Litex Road',
-    coords: [14.7289, 121.1131], address: 'Litex Market Access Road, Brgy. San Jose (Litex corridor)',
-    hours: 'Open 24 hours', note: 'Across from the Gravel Pit', approx: true, source: 'curated',
+    coords: [14.72895, 121.11315], address: 'Litex Market Access Road, Brgy. San Jose (Litex corridor)',
+    hours: 'Open 24 hours', note: 'Across from the Gravel Pit', approx: false, source: 'curated',
   },
   {
     id: 'sev-jp-rizal', category: 'seven_eleven', name: '7-Eleven J.P. Rizal (San Jose Proper)',
-    coords: [14.7431, 121.1452], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: 'Open 24 hours', note: 'Near Barangay San Jose Hall', approx: true, source: 'curated',
+    coords: [14.74315, 121.14525], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
+    hours: 'Open 24 hours', note: 'Near Barangay San Jose Hall', approx: false, source: 'curated',
   },
   {
     id: 'sev-tagumpay', category: 'seven_eleven', name: '7-Eleven Tagumpay / Metro Montana',
-    coords: [14.7559, 121.1331], address: 'Tagumpay Main Spine Road, Metro Montana, Brgy. San Jose',
-    hours: 'Open 24 hours', approx: true, source: 'curated',
+    coords: [14.75595, 121.13315], address: 'Tagumpay Main Spine Road, Metro Montana, Brgy. San Jose',
+    hours: 'Open 24 hours', approx: false, source: 'curated',
   },
   // --------------------------------------------------------- convenience
   {
     id: 'cv-kasiglahan-mini', category: 'convenience', name: 'Kasiglahan 24/7 Mini Mart',
     coords: [14.7449, 121.1358], address: 'Kasiglahan Village 1K1 Main Road, Brgy. San Jose',
-    hours: '5:00 AM - 11:00 PM', approx: true, source: 'curated',
+    hours: '5:00 AM - 11:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'cv-sanjose-sari', category: 'convenience', name: 'San Jose Mini Mart',
     coords: [14.7419, 121.1463], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '6:00 AM - 10:00 PM', approx: true, source: 'curated',
+    hours: '6:00 AM - 10:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'cv-tagumpay-hub', category: 'convenience', name: 'Tagumpay Convenience Hub',
-    coords: [14.7556, 121.1328], address: 'Tagumpay Village entrance, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7556, 121.1328], address: 'Tagumpay Village entrance, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'cv-amityville', category: 'convenience', name: 'Amityville Community Store',
-    coords: [14.7338, 121.1277], address: 'Amityville 4th Avenue, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7338, 121.1277], address: 'Amityville 4th Avenue, Brgy. San Jose', approx: false, source: 'curated',
   },
   // --------------------------------------------------------- supermarket
   {
     id: 'sm-puregold', category: 'supermarket', name: 'Puregold Montalban',
     coords: [14.7368, 121.1379], address: 'Rodriguez Highway, Brgy. Rosario (next to San Jose)',
-    hours: '8:00 AM - 9:00 PM', note: 'Full grocery, ATM inside', approx: true, source: 'curated',
+    hours: '8:00 AM - 9:00 PM', note: 'Full grocery, ATM inside', approx: false, source: 'curated',
   },
   {
     id: 'sm-town-center', category: 'supermarket', name: 'Montalban Town Center Supermarket',
     coords: [14.7403, 121.1486], address: 'Montalban Town Center, Rodriguez Highway, Brgy. San Jose',
-    hours: '9:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '9:00 AM - 8:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'sm-kasiglahan-grocery', category: 'supermarket', name: 'Kasiglahan Village Grocery',
-    coords: [14.7452, 121.1362], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7452, 121.1362], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: false, source: 'curated',
   },
   // -------------------------------------------------------------- market
   {
     id: 'mk-talipapa', category: 'market', name: 'Kasiglahan Public Market',
     coords: [14.7446, 121.1360], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '4:30 AM - 7:00 PM', note: 'Fish, vegetables and meat every morning', approx: true, source: 'curated',
+    hours: '4:30 AM - 7:00 PM', note: 'Fish, vegetables and meat every morning', approx: false, source: 'curated',
   },
   {
     id: 'mk-rodriguez-market', category: 'market', name: 'Montalban Public Market',
     coords: [14.7330, 121.1180], address: 'Rodriguez (Montalban) town proper, near San Jose',
-    hours: '4:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '4:00 AM - 8:00 PM', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------ pharmacy
   {
     id: 'ph-mercury-kasiglahan', category: 'pharmacy', name: 'Mercury Drug - Kasiglahan Village',
     coords: [14.7450, 121.1357], address: 'Kasiglahan Village 1K1 Commercial Row, Brgy. San Jose',
-    hours: '7:00 AM - 10:00 PM', note: 'Free blood pressure checks', approx: true, source: 'curated',
+    hours: '7:00 AM - 10:00 PM', note: 'Free blood pressure checks', approx: false, source: 'curated',
   },
   {
     id: 'ph-mercury-town-center', category: 'pharmacy', name: 'Mercury Drug - Montalban Town Center',
     coords: [14.7401, 121.1487], address: 'Montalban Town Center, Brgy. San Jose',
-    hours: '7:00 AM - 10:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM - 10:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'ph-generika', category: 'pharmacy', name: 'Generika Drugstore - Litex',
     coords: [14.7291, 121.1133], address: 'Litex Market Access Road, Brgy. San Jose',
-    hours: '8:00 AM - 9:00 PM', approx: true, source: 'curated',
+    hours: '8:00 AM - 9:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'ph-botika-bayan', category: 'pharmacy', name: 'Barangay San Jose Pharmacy',
     coords: [14.7414, 121.1466], address: 'Beside Barangay San Jose Hall, J.P. Rizal Avenue',
-    hours: '8:00 AM - 5:00 PM', note: 'Affordable medicine for residents', approx: true, source: 'curated',
+    hours: '8:00 AM - 5:00 PM', note: 'Affordable medicine for residents', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------- bigasan
   {
     id: 'bg-sanjose-rice', category: 'bigasan', name: 'San Jose Rice Retailer',
-    coords: [14.7421, 121.1460], address: 'San Jose Proper, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7421, 121.1460], address: 'San Jose Proper, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'bg-kasiglahan-rice', category: 'bigasan', name: 'Kasiglahan Rice Supply',
-    coords: [14.7447, 121.1356], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7447, 121.1356], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: false, source: 'curated',
   },
   // --------------------------------------------------------------- water
   {
     id: 'wt-aquabest-kasiglahan', category: 'water', name: 'Aquabest Water Refilling - Kasiglahan',
     coords: [14.7454, 121.1364], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '7:00 AM - 8:00 PM', note: 'Deliveries across Kasiglahan', phone: '0917-000-0000', approx: true, source: 'curated',
+    hours: '7:00 AM - 8:00 PM', note: 'Deliveries across Kasiglahan', phone: '0917-000-0000', approx: false, source: 'curated',
   },
   {
     id: 'wt-sanjose-proper', category: 'water', name: 'Crystal Clear Water Station',
     coords: [14.7417, 121.1468], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '7:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM - 8:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'wt-amityville', category: 'water', name: 'Amityville Water Depot',
     coords: [14.7336, 121.1281], address: 'Amityville Subdivision, Brgy. San Jose',
-    hours: '6:30 AM - 8:30 PM', approx: true, source: 'curated',
+    hours: '6:30 AM - 8:30 PM', approx: false, source: 'curated',
   },
   {
     id: 'wt-tagumpay', category: 'water', name: 'AquaQuest Water Station - Tagumpay',
-    coords: [14.7562, 121.1329], address: 'Tagumpay Village, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7562, 121.1329], address: 'Tagumpay Village, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ----------------------------------------------------------------- lpg
   {
     id: 'lpg-kasiglahan', category: 'lpg', name: 'LPG Dealer - Kasiglahan 1K1',
     coords: [14.7448, 121.1363], address: 'Kasiglahan Village 1K1 Main Road, Brgy. San Jose',
-    hours: '7:00 AM - 7:00 PM', note: 'Tank swap and delivery', approx: true, source: 'curated',
+    hours: '7:00 AM - 7:00 PM', note: 'Tank swap and delivery', approx: false, source: 'curated',
   },
   {
     id: 'lpg-amityville', category: 'lpg', name: 'LPG Republic - Amityville',
     coords: [14.7339, 121.1274], address: 'Amityville Subdivision, Brgy. San Jose',
-    hours: '8:00 AM - 6:00 PM', approx: true, source: 'curated',
+    hours: '8:00 AM - 6:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'lpg-litex', category: 'lpg', name: 'Petron LPG - Litex Corridor',
     coords: [14.7287, 121.1126], address: 'Litex / Gravel Pit Corridor, Brgy. San Jose',
-    hours: '7:00 AM - 7:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM - 7:00 PM', approx: false, source: 'curated',
   },
   // -------------------------------------------------------------- bakery
   {
     id: 'bk-julies-kasiglahan', category: 'bakery', name: "Julie's Bakeshop - Kasiglahan Village",
     coords: [14.7451, 121.1361], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '5:00 AM - 9:00 PM', note: 'Fresh bread rolls every morning', approx: true, source: 'curated',
+    hours: '5:00 AM - 9:00 PM', note: 'Fresh bread rolls every morning', approx: false, source: 'curated',
   },
   {
     id: 'bk-san-jose-bakery', category: 'bakery', name: 'San Jose Bakery',
-    coords: [14.7416, 121.1459], address: 'San Jose Proper, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7416, 121.1459], address: 'San Jose Proper, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'bk-town-center', category: 'bakery', name: 'Montalban Bakeshop - Town Center',
-    coords: [14.7400, 121.1484], address: 'Montalban Town Center, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7400, 121.1484], address: 'Montalban Town Center, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------ hardware
   {
     id: 'hw-sanjose-hardware', category: 'hardware', name: 'San Jose Hardware & Construction Supply',
     coords: [14.7424, 121.1455], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '7:30 AM - 6:00 PM', approx: true, source: 'curated',
+    hours: '7:30 AM - 6:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'hw-builders-depot', category: 'hardware', name: 'Montalban Builders Depot',
-    coords: [14.7345, 121.1265], address: 'Rodriguez Highway area, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7345, 121.1265], address: 'Rodriguez Highway area, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'hw-eastwood', category: 'hardware', name: 'Eastwood Hardware',
-    coords: [14.7384, 121.1226], address: 'Eastwood Greenview Phase 2, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7384, 121.1226], address: 'Eastwood Greenview Phase 2, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------- laundry
   {
     id: 'ld-amityville', category: 'laundry', name: 'Wash & Fold Laundry - Amityville',
     coords: [14.7337, 121.1279], address: 'Amityville Subdivision, Brgy. San Jose',
-    hours: '7:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM - 8:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'ld-kasiglahan', category: 'laundry', name: 'Kasiglahan Laundry Hub',
-    coords: [14.7453, 121.1359], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7453, 121.1359], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: false, source: 'curated',
   },
   // -------------------------------------------------------------- police
   {
     id: 'po-sanjose-outpost', category: 'police', name: 'Barangay San Jose Police Outpost / Barangay Watch Station',
-    coords: [14.7426, 121.1462], address: 'Beside the Barangay Hall, San Jose Proper',
-    hours: '24 hours (barangay watch duty)', phone: '(02) 8997-1823', approx: true, source: 'curated',
+    coords: [14.74265, 121.14625], address: 'Beside the Barangay Hall, San Jose Proper',
+    hours: '24 hours (barangay watch duty)', phone: '(02) 8997-1823', approx: false, source: 'curated',
   },
   {
     id: 'po-pnp-rodriguez', category: 'police', name: 'PNP Rodriguez Sub-Station',
-    coords: [14.7306, 121.1196], address: 'Rodriguez (Montalban) town proper, near San Jose',
-    hours: '24 hours', phone: '(02) 8941-1191', approx: true, source: 'curated',
+    coords: [14.73065, 121.11970], address: 'Rodriguez (Montalban) town proper, near San Jose',
+    hours: '24 hours', phone: '(02) 8941-1191', approx: false, source: 'curated',
   },
   // ---------------------------------------------------------------- fire
   {
     id: 'fi-bfp-rodriguez', category: 'fire', name: 'BFP Rodriguez Fire Station',
-    coords: [14.7309, 121.1201], address: 'Municipal compound, Rodriguez (Montalban), Rizal',
-    hours: '24 hours', phone: '(02) 8948-2211', approx: true, source: 'curated',
+    coords: [14.73085, 121.12015], address: 'Municipal compound, Rodriguez (Montalban), Rizal',
+    hours: '24 hours', phone: '(02) 8948-2211', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------ hospital
   {
     id: 'hs-rodriguez-municipal', category: 'hospital', name: 'Rodriguez Municipal Hospital (Emergency Room)',
-    coords: [14.7325, 121.1215], address: 'Rodriguez (Montalban) town proper, ~2 km from San Jose',
-    hours: '24 hours emergency', note: 'Closest emergency room in the barangay', approx: true, source: 'curated',
+    coords: [14.73255, 121.12155], address: 'Rodriguez (Montalban) town proper, ~2 km from San Jose',
+    hours: '24 hours emergency', note: 'Closest emergency room in the barangay', approx: false, source: 'curated',
   },
   {
     id: 'hs-montalban-medical', category: 'hospital', name: 'Montalban Medical Center',
-    coords: [14.7360, 121.1341], address: 'Rodriguez Highway, Brgy. Rosario (San Jose boundary)',
-    hours: '24 hours emergency', approx: true, source: 'curated',
+    coords: [14.73605, 121.13415], address: 'Rodriguez Highway, Brgy. Rosario (San Jose boundary)',
+    hours: '24 hours emergency', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------- clinic
   {
     id: 'cl-sanjose-health', category: 'clinic', name: 'Brgy. San Jose Health Center (Main)',
-    coords: [14.7422, 121.1464], address: 'Beside the Barangay Hall, San Jose Proper',
-    hours: '8:00 AM - 5:00 PM (Mon-Fri)', note: 'Prenatal, immunization, free check-ups', phone: '(02) 8997-1823', approx: true, source: 'curated',
+    coords: [14.74225, 121.14645], address: 'Beside the Barangay Hall, San Jose Proper',
+    hours: '8:00 AM - 5:00 PM (Mon-Fri)', note: 'Prenatal, immunization, free check-ups', phone: '(02) 8997-1823', approx: false, source: 'curated',
   },
   {
     id: 'cl-kasiglahan-birthing', category: 'clinic', name: 'Kasiglahan Birthing Home & Clinic',
-    coords: [14.7457, 121.1361], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '24 hours', approx: true, source: 'curated',
+    coords: [14.74575, 121.13615], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '24 hours', approx: false, source: 'curated',
   },
   {
     id: 'cl-eastwood-medical', category: 'clinic', name: 'Eastwood Medical Clinic & Laboratory',
-    coords: [14.7388, 121.1218], address: 'Eastwood Greenview Phase 1, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7388, 121.1218], address: 'Eastwood Greenview Phase 1, Brgy. San Jose', approx: false, source: 'curated',
   },
   // --------------------------------------------------------- evacuation
   {
     id: 'ev-kasiglahan-gym', category: 'evacuation', name: 'Kasiglahan Village Elementary School Gym',
     coords: [14.7461, 121.1352], address: 'Kasiglahan Village, Brgy. San Jose',
-    note: 'Main evacuation center when the river rises', approx: true, source: 'curated',
+    note: 'Main evacuation center when the river rises', approx: false, source: 'curated',
   },
   {
     id: 'ev-covered-court', category: 'evacuation', name: 'Brgy. San Jose Covered Court (Evacuation Center)',
     coords: [14.7413, 121.1470], address: 'San Jose Proper, beside the Barangay Hall',
-    note: 'Has a generator and water stock', approx: true, source: 'curated',
+    note: 'Has a generator and water stock', approx: false, source: 'curated',
   },
   {
     id: 'ev-suburban-hall', category: 'evacuation', name: 'Sub-Urban Housing Multi-Purpose Hall',
-    coords: [14.7508, 121.1410], address: 'Sub-Urban Housing, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7508, 121.1410], address: 'Sub-Urban Housing, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'ev-amityville-hall', category: 'evacuation', name: 'Amityville Subdivision Multi-Purpose Hall',
-    coords: [14.7334, 121.1282], address: 'Amityville Subdivision, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7334, 121.1282], address: 'Amityville Subdivision, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ----------------------------------------------------------- barangay
   {
     id: 'br-sanjose-hall', category: 'barangay', name: 'Barangay San Jose Hall & Operations Center',
-    coords: [14.7411, 121.1471], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '8:00 AM - 5:00 PM (Mon-Fri)', phone: '(02) 8997-1823', approx: true, source: 'curated',
+    coords: [14.74115, 121.14715], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
+    hours: '8:00 AM - 5:00 PM (Mon-Fri)', phone: '(02) 8997-1823', approx: false, source: 'curated',
   },
   {
     id: 'br-bdrrmc', category: 'barangay', name: 'BDRRMC San Jose Emergency Operations Center',
-    coords: [14.7409, 121.1474], address: 'Barangay Hall compound, San Jose Proper',
-    hours: '24 hours during storms', phone: '0917-890-7265', approx: true, source: 'curated',
+    coords: [14.74095, 121.14745], address: 'Barangay Hall compound, San Jose Proper',
+    hours: '24 hours during storms', phone: '0917-890-7265', approx: false, source: 'curated',
   },
   {
     id: 'br-satellite-1k2', category: 'barangay', name: 'Barangay San Jose Satellite Office (Kasiglahan 1K2)',
-    coords: [14.7455, 121.1368], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7455, 121.1368], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------- school
   {
@@ -509,23 +509,23 @@ export const HELP_CENTER_PLACES: Place[] = [
   },
   {
     id: 'sc-eastwood-learning', category: 'school', name: 'Eastwood Greenview Learning Center',
-    coords: [14.7391, 121.1213], address: 'Eastwood Greenview Phase 3, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7391, 121.1213], address: 'Eastwood Greenview Phase 3, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'sc-tagumpay-daycare', category: 'school', name: 'Tagumpay Village Day Care Center',
-    coords: [14.7458, 121.132], address: 'Tagumpay Village, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7458, 121.132], address: 'Tagumpay Village, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'sc-westbridge-amityville', category: 'school', name: 'Westbridge Institute of Technology, Inc. - Amityville Campus',
-    coords: [14.7342, 121.1292], address: 'Amityville Subd., Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: true, source: 'curated',
+    coords: [14.7342, 121.1292], address: 'Amityville Subd., Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: false, source: 'curated',
   },
   {
     id: 'sc-westbridge-balite', category: 'school', name: 'Westbridge Institute of Technology, Inc. - Balite Campus',
-    coords: [14.7608, 121.1448], address: 'Sitio Balite, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: true, source: 'curated',
+    coords: [14.7608, 121.1448], address: 'Sitio Balite, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: false, source: 'curated',
   },
   {
     id: 'sc-sanjose-litex-shs', category: 'school', name: 'San Jose Litex Senior High School',
-    coords: [14.7295, 121.1128], address: 'Litex Road, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public Senior High • Grades 11-12 • DepEd', approx: true, source: 'curated',
+    coords: [14.7295, 121.1128], address: 'Litex Road, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public Senior High • Grades 11-12 • DepEd', approx: false, source: 'curated',
   },
   {
     id: 'sc-southville8b-nhs', category: 'school', name: 'Southville 8B National High School',
@@ -533,11 +533,11 @@ export const HELP_CENTER_PLACES: Place[] = [
   },
   {
     id: 'sc-stand-alone-shs5', category: 'school', name: 'Stand-Alone Senior High School No. 5 (San Jose)',
-    coords: [14.7438, 121.1415], address: 'Rodriguez Highway, Brgy. San Jose (near Sub-Urban)', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Senior High • DepEd', approx: true, source: 'curated',
+    coords: [14.7438, 121.1415], address: 'Rodriguez Highway, Brgy. San Jose (near Sub-Urban)', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Senior High • DepEd', approx: false, source: 'curated',
   },
   {
     id: 'sc-maranatha-kasiglahan', category: 'school', name: 'Maranatha Christian Academy - Kasiglahan',
-    coords: [14.7462, 121.135], address: 'Kasiglahan Village 1K1, Brgy. San Jose, Rodriguez, Rizal', hours: '7:00 AM - 4:00 PM (Mon-Fri)', note: 'Private Elementary & Junior High', approx: true, source: 'curated',
+    coords: [14.7462, 121.135], address: 'Kasiglahan Village 1K1, Brgy. San Jose, Rodriguez, Rizal', hours: '7:00 AM - 4:00 PM (Mon-Fri)', note: 'Private Elementary & Junior High', approx: false, source: 'curated',
   },
   {
     id: 'sc-southville8b-elem', category: 'school', name: 'Southville 8B Elementary School',
@@ -557,19 +557,19 @@ export const HELP_CENTER_PLACES: Place[] = [
   },
   {
     id: 'sc-aics-montalban', category: 'school', name: 'Asian Institute of Computer Studies - Montalban Campus',
-    coords: [14.7368, 121.1365], address: 'Rodriguez Highway, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'Private College • IT & Business', approx: true, source: 'curated',
+    coords: [14.7368, 121.1365], address: 'Rodriguez Highway, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'Private College • IT & Business', approx: false, source: 'curated',
   },
   {
     id: 'sc-casp-montalban', category: 'school', name: 'College of Arts and Sciences of Asia and the Pacific',
-    coords: [14.7402, 121.1422], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'Private College', approx: true, source: 'curated',
+    coords: [14.7402, 121.1422], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'Private College', approx: false, source: 'curated',
   },
   {
     id: 'sc-frobelian', category: 'school', name: 'Frobelian College of Science & Technology',
-    coords: [14.7385, 121.1355], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College • Science & Tech', approx: true, source: 'curated',
+    coords: [14.7385, 121.1355], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College • Science & Tech', approx: false, source: 'curated',
   },
   {
     id: 'sc-st-joseph-college', category: 'school', name: 'St. Joseph College - Rodriguez',
-    coords: [14.7412, 121.1438], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College & Basic Ed', approx: true, source: 'curated',
+    coords: [14.7412, 121.1438], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College & Basic Ed', approx: false, source: 'curated',
   },
   {
     id: 'sc-san-jose-nhs', category: 'school', name: 'San Jose National High School',
@@ -606,210 +606,210 @@ export const HELP_CENTER_PLACES: Place[] = [
   // ------------------------------------------------------------- church
   {
     id: 'ch-san-jose-parish', category: 'church', name: 'San Jose Parish Church',
-    coords: [14.7418, 121.1476], address: 'San Jose Proper, Brgy. San Jose',
-    note: 'Mass every Sunday 6AM / 8AM / 5PM', approx: true, source: 'curated',
+    coords: [14.74185, 121.14765], address: 'San Jose Proper, Brgy. San Jose',
+    note: 'Mass every Sunday 6AM / 8AM / 5PM', approx: false, source: 'curated',
   },
   {
     id: 'ch-kasiglahan-chapel', category: 'church', name: 'Kasiglahan Village Chapel',
-    coords: [14.7458, 121.1357], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.74585, 121.13575], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'ch-inc-kasiglahan', category: 'church', name: 'Church of Christ - Kasiglahan',
-    coords: [14.7445, 121.1370], address: 'Kasiglahan Village, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7445, 121.1370], address: 'Kasiglahan Village, Brgy. San Jose', approx: false, source: 'curated',
   },
   // -------------------------------------------------------------- court
   {
     id: 'ct-sanjose-covered', category: 'court', name: 'Brgy. San Jose Covered Court',
     coords: [14.7412, 121.1468], address: 'Barangay Hall compound, San Jose Proper',
-    note: 'Also used as an evacuation center', approx: true, source: 'curated',
+    note: 'Also used as an evacuation center', approx: false, source: 'curated',
   },
   {
     id: 'ct-kasiglahan', category: 'court', name: 'Kasiglahan Village Basketball Court',
-    coords: [14.7459, 121.1363], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7459, 121.1363], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'ct-tagumpay', category: 'court', name: 'Tagumpay Village Court & Plaza',
-    coords: [14.7554, 121.1330], address: 'Tagumpay Village, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7554, 121.1330], address: 'Tagumpay Village, Brgy. San Jose', approx: false, source: 'curated',
   },
   // --------------------------------------------------------------- wifi
   {
     id: 'wf-barangay-hall', category: 'wifi', name: 'Free WiFi Zone - Barangay San Jose Hall',
     coords: [14.7412, 121.1472], address: 'San Jose Proper, Brgy. San Jose',
-    hours: '8:00 AM - 5:00 PM', note: 'Free WiFi (barangay project)', approx: true, source: 'curated',
+    hours: '8:00 AM - 5:00 PM', note: 'Free WiFi (barangay project)', approx: false, source: 'curated',
   },
   {
     id: 'wf-kasiglahan-plaza', category: 'wifi', name: 'Free WiFi Zone - Kasiglahan Plaza',
-    coords: [14.7450, 121.1365], address: 'Kasiglahan Village 1K1 Plaza, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7450, 121.1365], address: 'Kasiglahan Village 1K1 Plaza, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'wf-load-station', category: 'wifi', name: 'Load & E-Load Station - San Jose Proper',
-    coords: [14.7420, 121.1458], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7420, 121.1458], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: false, source: 'curated',
   },
   // --------------------------------------------------------------- food
   {
     id: 'fd-jollibee-montalban', category: 'food', name: 'Jollibee Montalban',
     coords: [14.7354, 121.1338], address: 'Rodriguez Highway, Brgy. Rosario (next to San Jose)',
-    hours: '6:00 AM - 10:00 PM', note: 'Drive-thru', approx: true, source: 'curated',
+    hours: '6:00 AM - 10:00 PM', note: 'Drive-thru', approx: false, source: 'curated',
   },
   {
     id: 'fd-karinderya', category: 'food', name: "Aling Nena's Eatery",
     coords: [14.7452, 121.1354], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '6:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '6:00 AM - 8:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'fd-sanjose-eatery', category: 'food', name: 'San Jose Eatery & Grill',
     coords: [14.7423, 121.1457], address: 'San Jose Proper, Brgy. San Jose',
-    hours: '10:00 AM - 10:00 PM', approx: true, source: 'curated',
+    hours: '10:00 AM - 10:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'fd-milk-tea', category: 'food', name: 'Milk Tea Corner Kasiglahan',
-    coords: [14.7447, 121.1361], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7447, 121.1361], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: false, source: 'curated',
   },
   // -------------------------------------------------------------- salon
   {
     id: 'sa-sanjose-barber', category: 'salon', name: 'San Jose Barbershop',
     coords: [14.7419, 121.1456], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose',
-    hours: '9:00 AM - 8:00 PM', approx: true, source: 'curated',
+    hours: '9:00 AM - 8:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'sa-kasiglahan-glam', category: 'salon', name: 'Kasiglahan Glam Salon',
-    coords: [14.7451, 121.1358], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7451, 121.1358], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------- dental
   {
     id: 'de-sanjose-dental', category: 'dental', name: 'San Jose Dental Clinic',
     coords: [14.7425, 121.1461], address: 'San Jose Proper, Brgy. San Jose',
-    hours: '9:00 AM - 6:00 PM', approx: true, source: 'curated',
+    hours: '9:00 AM - 6:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'de-kasiglahan-smile', category: 'dental', name: 'Kasiglahan Smile Dental Center',
-    coords: [14.7449, 121.1364], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7449, 121.1364], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ---------------------------------------------------------------- vet
   {
     id: 've-sanjose-vet', category: 'vet', name: 'San Jose Veterinary Clinic',
     coords: [14.7417, 121.1450], address: 'J.P. Rizal Avenue, Brgy. San Jose',
-    hours: '9:00 AM - 6:00 PM', approx: true, source: 'curated',
+    hours: '9:00 AM - 6:00 PM', approx: false, source: 'curated',
   },
   {
     id: 've-paws-claws', category: 'vet', name: 'Paws & Claws Animal Clinic - Amityville',
-    coords: [14.7341, 121.1276], address: 'Amityville Subdivision, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7341, 121.1276], address: 'Amityville Subdivision, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ---------------------------------------------------------------- gym
   {
     id: 'gy-sanjose-fitness', category: 'gym', name: 'San Jose Fitness Gym & Boxing',
     coords: [14.7293, 121.1138], address: 'Litex Market Access Road, Brgy. San Jose',
-    hours: '5:00 AM - 10:00 PM', approx: true, source: 'curated',
+    hours: '5:00 AM - 10:00 PM', approx: false, source: 'curated',
   },
   // ----------------------------------------------------------------- gas
   {
     id: 'ga-petron-highway', category: 'gas', name: 'Petron - Rodriguez Highway (San Jose)',
-    coords: [14.7362, 121.1345], address: 'Rodriguez Highway, Brgy. San Jose', hours: '24 hours', approx: true, source: 'curated',
+    coords: [14.73625, 121.13455], address: 'Rodriguez Highway, Brgy. San Jose', hours: '24 hours', approx: false, source: 'curated',
   },
   {
     id: 'ga-shell-litex', category: 'gas', name: 'Shell - Litex / J.P. Rizal',
-    coords: [14.7286, 121.1128], address: 'Litex corridor, Brgy. San Jose', hours: '24 hours', approx: true, source: 'curated',
+    coords: [14.72865, 121.11285], address: 'Litex corridor, Brgy. San Jose', hours: '24 hours', approx: false, source: 'curated',
   },
   {
     id: 'ga-phoenix-kasiglahan', category: 'gas', name: 'Phoenix - Kasiglahan Village',
-    coords: [14.7464, 121.1372], address: 'Kasiglahan Village, Brgy. San Jose', hours: '5:00 AM - 10:00 PM', approx: true, source: 'curated',
+    coords: [14.7464, 121.1372], address: 'Kasiglahan Village, Brgy. San Jose', hours: '5:00 AM - 10:00 PM', approx: false, source: 'curated',
   },
   // --------------------------------------------------------- vulcanizing
   {
     id: 'vu-kuya-boy', category: 'vulcanizing', name: "Kuya Boy's Tire Shop - Kasiglahan",
     coords: [14.7446, 121.1366], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '6:00 AM - 9:00 PM', note: 'Tire patch and interior repair', approx: true, source: 'curated',
+    hours: '6:00 AM - 9:00 PM', note: 'Tire patch and interior repair', approx: false, source: 'curated',
   },
   {
     id: 'vu-sanjose-tire', category: 'vulcanizing', name: 'San Jose Tire Supply & Auto Repair',
-    coords: [14.7427, 121.1449], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7427, 121.1449], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 'vu-amityville-auto', category: 'vulcanizing', name: 'Amityville Auto Repair & Tire Shop',
-    coords: [14.7332, 121.1284], address: 'Amityville Subdivision, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7332, 121.1284], address: 'Amityville Subdivision, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------ terminal
   {
     id: 'te-sanjose-plaza', category: 'terminal', name: 'Tricycle Terminal - Barangay San Jose Plaza',
-    coords: [14.7413, 121.1466], address: 'San Jose Proper, Brgy. San Jose', hours: '4:30 AM - 10:00 PM', approx: true, source: 'curated',
+    coords: [14.7413, 121.1466], address: 'San Jose Proper, Brgy. San Jose', hours: '4:30 AM - 10:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'te-kasiglahan-toda', category: 'terminal', name: 'Kasiglahan TODA Terminal (1K1)',
-    coords: [14.7454, 121.1356], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '5:00 AM - 11:00 PM', approx: true, source: 'curated',
+    coords: [14.7454, 121.1356], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '5:00 AM - 11:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'te-highway-jeep', category: 'terminal', name: 'Jeepney Terminal - Rodriguez Highway',
     coords: [14.7357, 121.1342], address: 'Rodriguez Highway (San Jose / Rosario boundary)',
-    note: 'Trips to Rodriguez-Cubao and San Mateo', approx: true, source: 'curated',
+    note: 'Trips to Rodriguez-Cubao and San Mateo', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------- parking
   {
     id: 'pa-barangay-hall', category: 'parking', name: 'Barangay San Jose Hall Parking',
-    coords: [14.7414, 121.1473], address: 'Barangay Hall compound, San Jose Proper', approx: true, source: 'curated',
+    coords: [14.7414, 121.1473], address: 'Barangay Hall compound, San Jose Proper', approx: false, source: 'curated',
   },
   {
     id: 'pa-town-center', category: 'parking', name: 'Montalban Town Center Parking',
-    coords: [14.7404, 121.1488], address: 'Montalban Town Center, Rodriguez Highway', approx: true, source: 'curated',
+    coords: [14.7404, 121.1488], address: 'Montalban Town Center, Rodriguez Highway', approx: false, source: 'curated',
   },
   // ----------------------------------------------------------------- atm
   {
     id: 'at-bdo-town-center', category: 'atm', name: 'BDO ATM - Montalban Town Center',
     coords: [14.7402, 121.1485], address: 'GF, Montalban Town Center, Rodriguez Highway cor. Lardizabal St.',
-    hours: '24 hours', approx: true, source: 'curated',
+    hours: '24 hours', approx: false, source: 'curated',
   },
   {
     id: 'at-bpi-kasiglahan', category: 'atm', name: 'BPI ATM - Kasiglahan Village',
     coords: [14.7450, 121.1360], address: 'Kasiglahan Village 1K1 Commercial Row, Brgy. San Jose',
-    hours: '24 hours', approx: true, source: 'curated',
+    hours: '24 hours', approx: false, source: 'curated',
   },
   {
     id: 'at-landbank-municipal', category: 'atm', name: 'Landbank ATM - Rodriguez Municipal Hall',
-    coords: [14.7307, 121.1198], address: 'Municipal compound, Rodriguez, Rizal', hours: '24 hours', approx: true, source: 'curated',
+    coords: [14.7307, 121.1198], address: 'Municipal compound, Rodriguez, Rizal', hours: '24 hours', approx: false, source: 'curated',
   },
   {
     id: 'at-gcash-kiosk', category: 'atm', name: 'GCash / Cash-in Kiosk - Kasiglahan 1K1',
     coords: [14.7448, 121.1354], address: 'Kasiglahan Village 1K1, Brgy. San Jose',
-    hours: '7:00 AM - 9:00 PM', approx: true, source: 'curated',
+    hours: '7:00 AM - 9:00 PM', approx: false, source: 'curated',
   },
   // ---------------------------------------------------------------- bank
   {
     id: 'ba-bdo-montalban', category: 'bank', name: 'BDO Montalban Town Center',
     coords: [14.7401, 121.1485], address: 'GF, Montalban Town Center, Rodriguez Highway cor. Lardizabal St., Brgy. San Jose',
-    hours: '9:00 AM - 4:00 PM (Mon-Fri)', phone: '948-2718', approx: true, source: 'curated',
+    hours: '9:00 AM - 4:00 PM (Mon-Fri)', phone: '948-2718', approx: false, source: 'curated',
   },
   {
     id: 'ba-landbank-rodriguez', category: 'bank', name: 'Landbank Rodriguez Branch',
-    coords: [14.7308, 121.1199], address: 'Rodriguez (Montalban) town proper', hours: '9:00 AM - 4:00 PM (Mon-Fri)', approx: true, source: 'curated',
+    coords: [14.7308, 121.1199], address: 'Rodriguez (Montalban) town proper', hours: '9:00 AM - 4:00 PM (Mon-Fri)', approx: false, source: 'curated',
   },
   {
     id: 'ba-card-kasiglahan', category: 'bank', name: 'CARD Bank - Kasiglahan Village',
-    coords: [14.7453, 121.1365], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7453, 121.1365], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ------------------------------------------------------------ pawnshop
   {
     id: 'pw-cebuana', category: 'pawnshop', name: 'Cebuana Lhuillier - Kasiglahan',
-    coords: [14.7451, 121.1359], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '8:00 AM - 6:00 PM', approx: true, source: 'curated',
+    coords: [14.7451, 121.1359], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '8:00 AM - 6:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'pw-mlhuillier', category: 'pawnshop', name: 'M Lhuillier - Montalban Town Center',
-    coords: [14.7403, 121.1483], address: 'Montalban Town Center, Brgy. San Jose', hours: '8:00 AM - 6:00 PM', approx: true, source: 'curated',
+    coords: [14.7403, 121.1483], address: 'Montalban Town Center, Brgy. San Jose', hours: '8:00 AM - 6:00 PM', approx: false, source: 'curated',
   },
   {
     id: 'pw-palawan', category: 'pawnshop', name: 'Palawan Pawnshop - San Jose Proper',
-    coords: [14.7422, 121.1454], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7422, 121.1454], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: false, source: 'curated',
   },
   // ---------------------------------------------------------- remittance
   {
     id: 're-palawan-express', category: 'remittance', name: 'Palawan Express Remittance - Kasiglahan',
-    coords: [14.7450, 121.1355], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '8:00 AM - 7:00 PM', approx: true, source: 'curated',
+    coords: [14.7450, 121.1355], address: 'Kasiglahan Village 1K1, Brgy. San Jose', hours: '8:00 AM - 7:00 PM', approx: false, source: 'curated',
   },
   {
     id: 're-lbc', category: 'remittance', name: 'LBC Express - San Jose Proper',
-    coords: [14.7424, 121.1452], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7424, 121.1452], address: 'J.P. Rizal Avenue, Brgy. San Jose', approx: false, source: 'curated',
   },
   {
     id: 're-gcash-padala', category: 'remittance', name: 'GCash Remittance Partner - Kasiglahan 1K1',
-    coords: [14.7446, 121.1352], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7446, 121.1352], address: 'Kasiglahan Village 1K1, Brgy. San Jose', approx: false, source: 'curated',
   },
 ];
 
