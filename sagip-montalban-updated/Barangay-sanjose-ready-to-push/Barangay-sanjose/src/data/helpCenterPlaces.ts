@@ -505,7 +505,7 @@ export const HELP_CENTER_PLACES: Place[] = [
   },
   {
     id: 'sc-kasiglahan-nhs', category: 'school', name: 'Kasiglahan Village National High School',
-    coords: [14.7443, 121.1374], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: true, source: 'curated',
+    coords: [14.7495, 121.1416], address: 'Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal', approx: true, source: 'curated',
   },
   {
     id: 'sc-eastwood-learning', category: 'school', name: 'Eastwood Greenview Learning Center',
@@ -529,23 +529,55 @@ export const HELP_CENTER_PLACES: Place[] = [
   },
   {
     id: 'sc-southville8b-nhs', category: 'school', name: 'Southville 8B National High School',
-    coords: [14.7478, 121.1382], address: 'Southville 8B, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public High School • Junior & Senior High', approx: true, source: 'curated',
+    coords: [14.7520, 121.1491], address: 'Southville 8B, Brgy. San Isidro (San Jose boundary), Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public High School • Junior & Senior High', approx: true, source: 'curated',
   },
   {
     id: 'sc-stand-alone-shs5', category: 'school', name: 'Stand-Alone Senior High School No. 5 (San Jose)',
     coords: [14.7438, 121.1415], address: 'Rodriguez Highway, Brgy. San Jose (near Sub-Urban)', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Senior High • DepEd', approx: true, source: 'curated',
   },
   {
-    id: 'sc-rodriguez-private-academy', category: 'school', name: 'Rodriguez Private Academy',
-    coords: [14.7426, 121.1442], address: 'J.P. Rizal Avenue, San Jose Proper, Brgy. San Jose', hours: '7:00 AM - 4:00 PM (Mon-Fri)', note: 'Private Elementary & Junior High', approx: true, source: 'curated',
+    id: 'sc-maranatha-kasiglahan', category: 'school', name: 'Maranatha Christian Academy - Kasiglahan',
+    coords: [14.7462, 121.1350], address: 'Kasiglahan Village 1K1, Brgy. San Jose, Rodriguez, Rizal', hours: '7:00 AM - 4:00 PM (Mon-Fri)', note: 'Private Elementary & Junior High', approx: true, source: 'curated',
   },
   {
-    id: 'sc-kinder-san-jose', category: 'school', name: 'San Jose Kinder & Day Care Center (Annex)',
-    coords: [14.7308, 121.1148], address: 'Litex / Kasiglahan Access Road, Brgy. San Jose', hours: '8:00 AM - 4:00 PM (Mon-Fri)', note: 'Kinder • Public Day Care', approx: true, source: 'curated',
+    id: 'sc-southville8b-elem', category: 'school', name: 'Southville 8B Elementary School',
+    coords: [14.7525, 121.1488], address: 'Southville 8B, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 4:00 PM (Mon-Fri)', note: 'Kinder • Public Day Care', approx: true, source: 'curated',
   },
   {
-    id: 'sc-college-san-jose', category: 'school', name: 'San Jose Community College (TESDA / CHED Programs)',
-    coords: [14.7398, 121.1368], address: 'Rodriguez Highway, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'College • Semi-public • TESDA & CHED courses', approx: true, source: 'curated',
+    id: 'sc-college-colegio-montalban', category: 'school', name: 'Colegio de Montalban - Kasiglahan Campus',
+    coords: [14.7452, 121.1398], address: 'Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'College • Semi-public • TESDA & CHED courses', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-san-jose-nhs', category: 'school', name: 'San Jose National High School',
+    coords: [14.7430, 121.1458], address: 'Ipil Street, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public • Junior & Senior High', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-kasiglahan-shs', category: 'school', name: 'Kasiglahan Village Senior High School',
+    coords: [14.7445, 121.1385], address: 'Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public Senior High • Kasiglahan Annex', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-southville8c-nhs', category: 'school', name: 'Southville 8C National High School',
+    coords: [14.7532, 121.1475], address: 'Southville 8C, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public High School', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-tagumpay-nhs', category: 'school', name: 'Tagumpay National High School',
+    coords: [14.7565, 121.1345], address: 'Tagumpay, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public High School • 308114', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-tagumpay-elem', category: 'school', name: 'Tagumpay Elementary School',
+    coords: [14.7560, 121.1338], address: 'Tagumpay, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Elementary', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-southville8c-elem', category: 'school', name: 'Southville 8C Elementary School',
+    coords: [14.7535, 121.1472], address: 'Southville 8C, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Elementary', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-wawa-nhs', category: 'school', name: 'Wawa National High School',
+    coords: [14.7292, 121.1475], address: 'Wawa, Rodriguez, Rizal (San Jose vicinity)', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public High School', approx: true, source: 'curated',
+  },
+  {
+    id: 'sc-san-jose-elem-unit1', category: 'school', name: 'Kasiglahan Village Elementary School Unit I',
+    coords: [14.7458, 121.1342], address: 'Block 40 Phase 1A, Kasiglahan Village, Brgy. San Jose', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Elementary • Unit I', approx: true, source: 'curated',
   },
   // ------------------------------------------------------------- church
   {
