@@ -186,7 +186,7 @@ export const HELP_CENTER_CATEGORIES: PlaceCategory[] = [
   },
   // --------------------------------------------------------------- community
   {
-    id: 'school', label: 'School', caption: 'All schools — elementary to college', code: 'SCH', group: 'community', osm: ['["amenity"~"school|college|university|kindergarten|language_school|music_school|driving_school"]', '["building"~"school|college|university|kindergarten"]', '["office"="educational_institution"]', '["landuse"="education"]'],
+    id: 'school', label: 'School', caption: 'All schools — elementary to college', code: 'SCH', group: 'community', osm: ['["amenity"~"school|college|university|kindergarten|language_school|music_school|driving_school"]', '["office"="educational_institution"]'],
   },
   {
     id: 'church', label: 'Church', caption: 'Mass and worship', code: 'CH', group: 'community', osm: ['["amenity"="place_of_worship"]'],
@@ -937,7 +937,7 @@ function categoryForElement(element: OverpassElement, candidates: PlaceCategoryI
       case 'barangay':
         return tags.amenity === 'townhall' || tags.office === 'government';
       case 'school':
-        return tags.amenity === 'school' || tags.amenity === 'college' || tags.amenity === 'university' || tags.amenity === 'kindergarten' || tags.amenity === 'language_school' || tags.amenity === 'music_school' || tags.amenity === 'driving_school' || tags.building === 'school' || tags.building === 'college' || tags.building === 'university' || tags.building === 'kindergarten' || tags.office === 'educational_institution' || tags.landuse === 'education';
+        return tags.amenity === 'school' || tags.amenity === 'college' || tags.amenity === 'university' || tags.amenity === 'kindergarten' || tags.amenity === 'language_school' || tags.amenity === 'music_school' || tags.amenity === 'driving_school' || tags.office === 'educational_institution';
       case 'church':
         return tags.amenity === 'place_of_worship';
       case 'court':
@@ -999,6 +999,8 @@ export function osmElementsToPlaces(
     const category = categoryForElement(element, candidates);
     if (!category) return;
     const tags = element.tags ?? {};
+    // For schools: skip generic nameless OSM objects (building outlines / landuse polygons) that would show as generic "School"
+    if (category === 'school' && !tags.name && !tags['name:en'] && !tags.brand && !tags.operator && !tags['operator:en']) return;
     const name =
       tags.name ||
       tags['name:en'] ||
@@ -1006,6 +1008,8 @@ export function osmElementsToPlaces(
       tags.operator ||
       CATEGORY_BY_ID[category]?.label ||
       'Unnamed place';
+    // Extra guard: skip OSM school entries that collapsed to generic fallback (would appear as "School" • Rodriguez, Rizal)
+    if (category === 'school' && (name === CATEGORY_BY_ID[category]?.label || name === 'Unnamed place')) return;
     const street = [tags['addr:housenumber'], tags['addr:street']].filter(Boolean).join(' ');
     const address =
       tags['addr:full'] ||
