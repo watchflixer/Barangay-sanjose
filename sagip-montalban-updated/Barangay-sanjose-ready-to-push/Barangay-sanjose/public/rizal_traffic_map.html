@@ -951,11 +951,10 @@
     // Leaflet owns every gesture (drag, wheel, pinch) — same as the Help
     // Center map — so this GL map is a pure renderer and never handles input.
     interactive: false,
-    // Credits as requested: the Mapbox wordmark logo (bottom-left) shows,
-    // but the GL attribution strip stays OFF so "© OpenStreetMap" never
-    // comes back.
+    // Completely credit-free like the Help Center: no "© Mapbox ©
+    // OpenStreetMap" strip and no Mapbox logo either.
     attributionControl: false,
-    logoControl: true,
+    logoControl: false,
   });
 
   // ---------------------------------------------------------------
@@ -978,7 +977,7 @@
     maxZoom: 19,
     zoomSnap: 0, // fractional zooms, same freedom as Mapbox GL
     zoomControl: false, // the page's own .leaflet-bar buttons call stepZoom
-    attributionControl: true, // renders the "© Leaflet" credit (tiles carry none)
+    attributionControl: false, // no Leaflet/OSM credit — like Help Center
     fadeAnimation: false,
   });
 
