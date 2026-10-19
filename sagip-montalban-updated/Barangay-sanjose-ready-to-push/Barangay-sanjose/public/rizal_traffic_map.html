@@ -153,6 +153,16 @@
   }
   #legend .row{display:flex;align-items:center;gap:6px;margin:3px 0;}
   #legend .sw{width:13px;height:13px;border-radius:2px;display:inline-block;}
+  /* Bottom-right credit strip — the Mapbox attribution bar's exact look,
+     but "Leaflet" sits where "OpenStreetMap" used to be:
+     "© Mapbox © Leaflet". */
+  #credit-strip{
+    position:absolute;right:0;bottom:0;z-index:900;
+    padding:0 5px;background:rgba(255,255,255,0.7);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:11px;line-height:1.6;color:#404040;
+    pointer-events:auto;
+  }
   /* Raise the stack on mobile portrait so it clears the parent app's bottom overlays */
   @media (orientation: portrait) and (max-width: 640px){
     #legend-stack{ bottom: 56px; }
@@ -597,6 +607,9 @@
     <div class="row"><span class="sw" style="background:#7A1F1B;"></span>Road closed</div>
   </div>
 </div>
+<!-- Mapbox-style credit strip: same format as the Mapbox attribution bar,
+     with Leaflet where OpenStreetMap used to be. -->
+<div id="credit-strip">© Mapbox © Leaflet</div>
 <div id="dir-panel" hidden>
   <div class="dir-top">
     <button type="button" class="dir-ib" id="dir-back" aria-label="Back" data-i="back"></button>
