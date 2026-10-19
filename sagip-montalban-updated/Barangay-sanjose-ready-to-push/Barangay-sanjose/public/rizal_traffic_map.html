@@ -8,9 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-<!-- Mapbox GL JS — overlay renderer (route lines, markers, traffic vectors)
-     riding on top of the Leaflet basemap below. No Mapbox styles are used:
-     the tiles themselves come from Leaflet, same as the Help Center. -->
+<!-- Mapbox GL JS — real live traffic via the traffic-day-v2 style -->
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet" />
 <!-- Leaflet 1.9.4 — the real engine behind pan/zoom on this page, the same
@@ -153,9 +151,9 @@
   }
   #legend .row{display:flex;align-items:center;gap:6px;margin:3px 0;}
   #legend .sw{width:13px;height:13px;border-radius:2px;display:inline-block;}
-  /* The GL canvas (z450) runs with pointer-events:none so every control
-     below it — base-switch, legend, directions, zoom — stays clickable.
-     Mapbox markers re-enable pointer events so route pins remain tappable. */
+  /* The GL canvas must never swallow clicks aimed at the controls stacked
+     above it; Mapbox markers re-enable pointer events so route pins stay
+     tappable. */
   #map-gl .mapboxgl-marker{pointer-events:auto;}
   /* Bottom-right credit strip — the Mapbox attribution bar's exact look,
      but "Leaflet" sits where "OpenStreetMap" used to be:
@@ -902,68 +900,29 @@
 
   // Rodriguez (Montalban), Rizal — starting view around Barangay San Jose.
   // Users can zoom/pan out to the WHOLE Philippines; live traffic still
-  // renders at any zoom because Google's raster carries the live colours
-  // itself — exactly like the Help Center's Street mode.
+  // renders at any zoom because both base styles draw Mapbox traffic data.
   const RIZAL_BOUNDS = [[121.05, 14.66], [121.22, 14.80]];
   const MAX_BOUNDS = [[112.0, 2.5], [131.0, 22.5]]; // PH region + padding
   const RIZAL_CENTER = [121.131, 14.7425];
 
-  // ---------------------------------------------------------------
-  // BASEMAP = Leaflet, pixel-for-pixel the Help Center's tiles:
-  //   Street   -> Google live-traffic raster (lyrs=m,traffic)
-  //   Satellite-> Esri World Imagery
-  // Mapbox GL runs an EMPTY, fully transparent style and draws only the
-  // overlays (route lines, markers, traffic vectors) — so the page genuinely
-  // runs Mapbox AND Leaflet, and the view IS the Help Center's look.
-  // ---------------------------------------------------------------
-  const GL_TRANSPARENT_STYLE = { version: 8, sources: {}, layers: [] };
+  // Base styles: traffic-day-v2 already renders LIVE traffic on streets.
+  // The satellite style does not, so the live traffic vector overlay
+  // (mapbox-traffic-v1) is added on top of it after the style loads.
+  const STYLE_TRAFFIC = 'mapbox://styles/mapbox/traffic-day-v2';
+  const STYLE_SATELLITE = 'mapbox://styles/mapbox/satellite-streets-v12';
   let currentBase = 'traffic';
-  let basemapLayer = null;
-  let streetTilesFailed = false;
-  const makeStreetTiles = () =>
-    L.tileLayer('https://{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
-      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-      maxZoom: 19,
-      maxNativeZoom: 20,
-    });
-  const makeSatelliteTiles = () =>
-    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-      maxZoom: 19,
-    });
-  const makePlainStreetTiles = () =>
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { subdomains: 'abc', maxZoom: 19 });
-  function setBasemap(base) {
-    if (basemapLayer) { lf.removeLayer(basemapLayer); basemapLayer = null; }
-    if (base === 'satellite') { basemapLayer = makeSatelliteTiles().addTo(lf); return; }
-    if (streetTilesFailed) { basemapLayer = makePlainStreetTiles().addTo(lf); return; }
-    const tiles = makeStreetTiles();
-    tiles.on('tileerror', () => {
-      if (streetTilesFailed) return;
-      streetTilesFailed = true;
-      // Same fallback as the Help Center when the traffic raster dies:
-      // plain street tiles, legend retired, one short notice.
-      if (basemapLayer === tiles) { lf.removeLayer(tiles); basemapLayer = makePlainStreetTiles().addTo(lf); }
-      const legend = document.getElementById('legend');
-      if (legend) legend.style.display = 'none';
-      flash('Live traffic unavailable — showing the plain street map.', 4000);
-    });
-    basemapLayer = tiles.addTo(lf);
-  }
 
   // The GL canvas gets its own child of #map so Leaflet can own #map too.
+  // pointer-events:none keeps every control stacked above the canvas
+  // clickable; Mapbox markers re-enable it (see the #map-gl styles).
   const glContainer = document.createElement('div');
   glContainer.id = 'map-gl';
-  // 450 sits above Leaflet's tile pane (200) so route lines and markers
-  // draw over the basemap; no other Leaflet panes hold content here.
-  // pointer-events:none is essential: the canvas must never swallow clicks
-  // aimed at the controls underneath (base-switch, legend, zoom — z ≤ 400);
-  // only the Mapbox markers re-enable pointer events (see index styles).
-  glContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;z-index:450;background:transparent;pointer-events:none;';
+  glContainer.style.cssText = 'position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;background:#fff;pointer-events:none;';
   document.getElementById('map').appendChild(glContainer);
 
   const map = new mapboxgl.Map({
     container: glContainer,
-    style: GL_TRANSPARENT_STYLE, // empty style — Leaflet draws the basemap
+    style: STYLE_TRAFFIC, // live traffic colors built in
     center: RIZAL_CENTER,
     zoom: 12,
     minZoom: 4.5, // zoom out far enough to see the whole Philippines
@@ -971,24 +930,24 @@
     // Leaflet owns every gesture (drag, wheel, pinch) — same as the Help
     // Center map — so this GL map is a pure renderer and never handles input.
     interactive: false,
-    // Completely credit-free like the Help Center: no "© Mapbox ©
-    // OpenStreetMap" strip and no Mapbox logo either.
+    // No "© Mapbox © OpenStreetMap" credit strip: same clean, credit-free
+    // chrome as before (the visible credit is the custom "© Mapbox ©
+    // Leaflet" strip). Mapbox draws every tile of the basemap here.
     attributionControl: false,
     logoControl: false,
   });
 
   // ---------------------------------------------------------------
   // MAPBOX + LEAFLET, one view.
-  // Leaflet (the Help Center / Flood Prone engine) owns gestures AND the
-  // basemap tiles; Mapbox GL renders only the overlays (routes, markers,
-  // traffic vectors) on top. The cameras stay locked with strict one-way
-  // rules:
+  // Leaflet (the Help Center / Flood Prone engine) drives pan/zoom; Mapbox
+  // GL renders the live-traffic style, routing layers and markers on top.
+  // The cameras stay locked with strict one-way rules:
   //   - Mapbox camera calls (nav, recenter, flyTo, fitBounds) are mirrored
   //     SILENTLY into Leaflet behind a quiet window, so GL's native
-  //     animation (center/zoom/padding) stays in charge;
+  //     animation — with its bearing/pitch/padding — stays in charge;
   //   - Leaflet gestures stream back with jumpTo({center, zoom}), which
-  //     by Mapbox semantics leaves any bearing/pitch untouched — though
-  //     the nav camera now runs north-up, Help Center style.
+  //     by Mapbox semantics leaves bearing/pitch untouched, so the nav
+  //     camera keeps its tilt.
   // ---------------------------------------------------------------
   const lf = L.map('map', {
     center: [RIZAL_CENTER[1], RIZAL_CENTER[0]], // Leaflet wants [lat, lng]
@@ -1049,9 +1008,6 @@
   };
   lf.on('move', followLeaflet);
   lf.on('moveend', followLeaflet);
-
-  // Start on Street mode — the Help Center's live-traffic raster.
-  setBasemap('traffic');
 
   map.setMaxBounds(MAX_BOUNDS);
   map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 0 });
@@ -2533,10 +2489,7 @@
   function recenterFollow() {
     if (!nav || nav.sim) return;
     nav.follow = true;
-    // North-up like the Help Center: no heading rotation and no pitch — the
-    // Leaflet basemap cannot tilt or rotate, and the GL overlays must stay
-    // registered with it.
-    map.easeTo({ center: nav.cPos || map.getCenter(), zoom: map.getZoom(), padding: { top: map.getContainer().clientHeight * NAV.CAM_PAD_TOP }, duration: 800 });
+    map.easeTo({ center: nav.cPos || map.getCenter(), zoom: map.getZoom(), bearing: nav.brg == null ? map.getBearing() : nav.brg, pitch: NAV.PITCH, padding: { top: map.getContainer().clientHeight * NAV.CAM_PAD_TOP }, duration: 800 });
     setTimeout(() => { if (nav) nav.follow = true; }, 850);
   }
   // One rAF loop: glides the marker toward the last fix (~1 s, ease-out) and
@@ -2562,7 +2515,7 @@
       nav.brg = (nav.brg + navNorm180(nav.brgTarget - nav.brg) * NAV.BRG_SMOOTH + 360) % 360;
       if (nav.padC == null) nav.padC = map.getCenter();
       nav.padC = { lat: nav.padC.lat + (nav.cPos[1] - nav.padC.lat) * NAV.PAD_SMOOTH, lng: nav.padC.lng + (nav.cPos[0] - nav.padC.lng) * NAV.PAD_SMOOTH };
-      map.jumpTo({ center: [nav.padC.lng, nav.padC.lat], zoom: nav.z, padding: pad });
+      map.jumpTo({ center: [nav.padC.lng, nav.padC.lat], zoom: nav.z, bearing: nav.brg, pitch: NAV.PITCH, padding: pad });
     }
     nav.raf = requestAnimationFrame(navTick);
   }
@@ -2777,7 +2730,7 @@
     const sc = t.coords[0], sn = t.coords[1] || t.coords[0];
     nav.brgTarget = navBearing(sc, sn);
     nav.z = NAV.ZOOM_SLOW;
-    map.easeTo({ center: sc, zoom: NAV.ZOOM_TURN, padding: { top: map.getContainer().clientHeight * NAV.CAM_PAD_TOP }, duration: 900 });
+    map.easeTo({ center: sc, zoom: NAV.ZOOM_TURN, bearing: nav.brgTarget, pitch: NAV.PITCH, padding: { top: map.getContainer().clientHeight * NAV.CAM_PAD_TOP }, duration: 900 });
     nav.raf = requestAnimationFrame(navTick);
     if (sim) {
       nav.follow = true;
@@ -3416,7 +3369,7 @@
     if (base === currentBase) return;
     switchBox.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
     currentBase = base;
-    setBasemap(base); // Leaflet swaps to the Help Center's tiles for this mode
+    map.setStyle(base === 'satellite' ? STYLE_SATELLITE : STYLE_TRAFFIC);
   });
 
   // ===== Shared route auto-load (?sfrom=lat,lng&sto=lat,lng&smode=car) =====
