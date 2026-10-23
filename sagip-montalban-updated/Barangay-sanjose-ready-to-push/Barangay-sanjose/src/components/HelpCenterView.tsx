@@ -23,15 +23,16 @@ import {
   type PlaceCategory,
   type PlaceCategoryId,
 } from '../data/helpCenterPlaces';
-import { TILE_SERVERS, TRAFFIC_TILE_SERVERS } from '../data/tileServers';
+import { TILE_SERVERS } from '../data/tileServers';
 import { SAN_JOSE_BOUNDS, SAN_JOSE_CENTER } from '../data/geoData';
 
 /**
  * HELP CENTER — the "Traffic-style" directory map
  * ------------------------------------------------
  * Same shell as the Traffic view (full-map Leaflet layer, Street/Satellite
- * switch, floating right-hand controls), but instead of live traffic it is a
- * filterable directory of the barangay:
+ * switch, floating right-hand controls), but the basemap is plain Leaflet:
+ * OpenStreetMap tiles on Street, Esri imagery on Satellite — no live traffic
+ * raster. Instead of traffic it is a filterable directory of the barangay:
  *
  *   1. The view opens with a PICKER — the user answers first ("7-Eleven?
  *      botika? water? ATM?") and nothing else happens until they do.
@@ -51,9 +52,8 @@ import { SAN_JOSE_BOUNDS, SAN_JOSE_CENTER } from '../data/geoData';
  * opened.
  */
 let rememberedSelection: PlaceCategoryId[] | null = null;
-// Street is the default (like the Traffic view) so the live-traffic colouring
-// is visible the moment the map opens; Street carries the traffic raster
-// unless its tiles fail, and then the view falls back to plain OSM streets.
+// Street is the default, like the Traffic view: the plain OpenStreetMap
+// Leaflet tile layer. Satellite switches to the Esri imagery layer.
 let rememberedBasemap: 'streets' | 'satellite' = 'streets';
 
 interface HelpCenterViewProps {
@@ -125,9 +125,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const [mapReady, setMapReady] = useState(false);
   const [selected, setSelected] = useState<PlaceCategoryId[]>(() => rememberedSelection ?? []);
   const [basemap, setBasemap] = useState<'streets' | 'satellite'>(rememberedBasemap);
-  // Live traffic raster instead of plain streets (Traffic's own layer), with a
-  // one-shot fallback if those tiles cannot be fetched.
-  const [trafficTilesFailed, setTrafficTilesFailed] = useState(false);
   // Every pin on this map comes from Supabase: one table per filter
   // (`<group>_<category>`, see supabase/help_places.sql). There is no
   // built-in fallback list and no live OSM layer any more.
@@ -295,10 +292,10 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     };
   }, [mapReady, mapRef]);
 
-  // Basemap (Street / Satellite) + the live-traffic layer, mirroring the
-  // Traffic view: in Street mode the traffic raster is the basemap; Satellite
-  // keeps the imagery. If the traffic tiles cannot be fetched the view falls
-  // back to the plain street basemap and says so in the notice.
+  // Basemap. Both styles are plain Leaflet raster layers: Street is the
+  // OpenStreetMap tile layer (TILE_SERVERS.streets) and Satellite is the Esri
+  // imagery. The Help Center no longer borrows the Traffic view's Google
+  // traffic raster — this map is a Leaflet/OSM directory, not a traffic map.
   useEffect(() => {
     const map = localMapRef.current;
     if (!mapReady || !map) return;
@@ -306,8 +303,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       map.removeLayer(tileLayerRef.current);
       tileLayerRef.current = null;
     }
-    const withLiveTraffic = !trafficTilesFailed && basemap === 'streets';
-    const tileConfig = withLiveTraffic ? TRAFFIC_TILE_SERVERS.streetTraffic : TILE_SERVERS[basemap];
+    const tileConfig = TILE_SERVERS[basemap];
     const layer = new L.TileLayer(tileConfig.url, {
       attribution: tileConfig.attribution,
       subdomains: tileConfig.subdomains ?? 'abc',
@@ -315,10 +311,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       maxNativeZoom: tileConfig.maxNativeZoom ?? 19,
       className: tileConfig.className,
     });
-    if (withLiveTraffic) layer.on('tileerror', () => setTrafficTilesFailed(true));
     layer.addTo(map);
     tileLayerRef.current = layer;
-  }, [basemap, mapReady, trafficTilesFailed]);
+  }, [basemap, mapReady]);
 
   // ---------------------------------------------------------- pin factory
   const iconFor = useCallback((category: PlaceCategory) => {
@@ -674,7 +669,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // One notice slot, exactly like the Traffic page — toasts only. A Supabase
   // fetch failure does not claim the red banner; the sheet footer reports it
   // and the sheet's refresh button refetches.
-  const trafficNotice = basemap === 'streets' && trafficTilesFailed;
   const noticeText = toast;
 
   return (
@@ -694,8 +688,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       )}
 
       {/* Basemap switch — the Traffic view's Street | Satellite card, in the
-          same top-right slot, same order, same active styling. Street carries
-          the live traffic raster. */}
+          same top-right slot, same order, same active styling. Street is the
+          Leaflet OpenStreetMap layer; Satellite is the Esri imagery. */}
       {stage === 'map' && (
         <div id="hc-base-switch" role="group" aria-label="Map style">
           {(['streets', 'satellite'] as const).map((option) => (
@@ -705,8 +699,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               onClick={() => {
                 setBasemap(option);
                 rememberedBasemap = option;
-                // Coming back to Street should try the traffic tiles again.
-                setTrafficTilesFailed(false);
               }}
               aria-pressed={basemap === option}
               className={basemap === option ? 'active' : undefined}
@@ -859,7 +851,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               {dbError
                 ? 'Some Supabase tables could not be reached — showing only the rows that loaded.'
                 : 'Locations come from the barangay Supabase directory.'}
-              {trafficNotice && ' Traffic unavailable; showing the street map.'}
               {' Please confirm the location and hours before travelling.'}
             </p>
             {!sheetExpanded && (
