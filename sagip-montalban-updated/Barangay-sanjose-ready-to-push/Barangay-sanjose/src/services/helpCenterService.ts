@@ -44,9 +44,81 @@ export async function fetchOverpassElements(query: string, signal: AbortSignal):
 }
 
 // Public browser credentials only. Never use a service_role key here.
-const SUPABASE_URL = (import.meta.env?.VITE_SUPABASE_URL as string | undefined)?.trim().replace(/\/+$/, '');
-const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY as string | undefined;
-export const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+//
+// Resolution order: build-time env (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY,
+// which is how the Pages deploy ships them) and then a runtime override that
+// the Help Center can save in localStorage. The anon key is a public client
+// key by design, so storing it in the browser is safe; writes stay in the
+// Supabase dashboard.
+export interface SupabaseConfig {
+  url: string;
+  key: string;
+}
+
+export const SUPABASE_RUNTIME_KEY = 'hazardsync:supabase-config';
+
+const ENV_URL = (import.meta.env?.VITE_SUPABASE_URL as string | undefined)?.trim()
+  .replace(/\/+$/, '');
+const ENV_KEY = (import.meta.env?.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+
+const normalise = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+function readRuntimeConfig(): SupabaseConfig | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(SUPABASE_RUNTIME_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SupabaseConfig> | null;
+    const url = normalise(parsed?.url).replace(/\/+$/, '');
+    const key = normalise(parsed?.key);
+    if (!/^https?:\/\//.test(url) || !key) return null;
+    return { url, key };
+  } catch {
+    return null;
+  }
+}
+
+let runtimeConfig: SupabaseConfig | null = readRuntimeConfig();
+
+/** The credentials in use right now, or null when Supabase is not set up. */
+export function getSupabaseConfig(): SupabaseConfig | null {
+  if (ENV_URL && ENV_KEY) return { url: ENV_URL, key: ENV_KEY };
+  return runtimeConfig;
+}
+
+export function isSupabaseEnabled(): boolean {
+  return getSupabaseConfig() !== null;
+}
+
+/** Saves a runtime override (browser only) and forgets the cached layout. */
+export function setSupabaseConfig(config: SupabaseConfig): SupabaseConfig | null {
+  const url = normalise(config.url).replace(/\/+$/, '');
+  const key = normalise(config.key);
+  if (!/^https?:\/\//.test(url) || !key) return null;
+  runtimeConfig = { url, key };
+  detectedSchema = null;
+  try {
+    window.localStorage.setItem(SUPABASE_RUNTIME_KEY, JSON.stringify(runtimeConfig));
+  } catch {
+    /* private mode: the override still lives for this page */
+  }
+  return runtimeConfig;
+}
+
+export function clearSupabaseConfig() {
+  runtimeConfig = null;
+  detectedSchema = null;
+  try {
+    window.localStorage.removeItem(SUPABASE_RUNTIME_KEY);
+  } catch {
+    /* nothing to clear */
+  }
+}
+
+/** True when the credentials come from the build (env), not the browser. */
+export function supabaseConfigFromEnv(): boolean {
+  return Boolean(ENV_URL && ENV_KEY);
+}
 
 export interface HelpPlaceRow {
   id: string;
@@ -130,9 +202,10 @@ export function supabaseRowsToPlaces(category: PlaceCategoryId, rows: HelpPlaceR
 }
 
 function supabaseHeaders(): HeadersInit {
+  const key = getSupabaseConfig()?.key ?? '';
   return {
-    apikey: SUPABASE_ANON_KEY!,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    apikey: key,
+    Authorization: `Bearer ${key}`,
     Accept: 'application/json',
   };
 }
@@ -143,9 +216,10 @@ function supabaseHeaders(): HeadersInit {
  * Other HTTP errors bubble up so the caller can show its retry state.
  */
 export async function detectHelpPlacesSchema(signal: AbortSignal): Promise<HelpPlacesSchema> {
-  if (!SUPABASE_ENABLED) return 'per-filter';
+  const config = getSupabaseConfig();
+  if (!config) return 'per-filter';
   if (detectedSchema) return detectedSchema;
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${HELP_PLACES_TABLE}?select=id&limit=1`, {
+  const response = await fetch(`${config.url}/rest/v1/${HELP_PLACES_TABLE}?select=id&limit=1`, {
     signal,
     headers: supabaseHeaders(),
   });
@@ -164,12 +238,13 @@ export async function fetchSupabasePlaces(
   signal: AbortSignal,
   schema: HelpPlacesSchema = detectedSchema ?? 'per-filter',
 ): Promise<Place[]> {
-  if (!SUPABASE_ENABLED) return [];
+  const config = getSupabaseConfig();
+  if (!config) return [];
   const table = supabaseTableForSchema(category, schema);
   const places: Place[] = [];
   for (let offset = 0; ; offset += 1000) {
     signal.throwIfAborted();
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${supabaseQueryFor(category, schema, offset)}`, {
+    const response = await fetch(`${config.url}/rest/v1/${table}?${supabaseQueryFor(category, schema, offset)}`, {
       signal,
       headers: supabaseHeaders(),
     });

@@ -85,6 +85,18 @@ test('School filter always has curated pins; OSM school spam stays out', () => {
   assert.equal(osmElementsToPlaces([element], ['pharmacy']).length, 1);
 });
 
+test('Supabase credentials resolve from env or a validated runtime override', async () => {
+  const svc = await import('../src/services/helpCenterService');
+  // No env in tests, no stored config in Node: not connected, nothing fetched.
+  assert.equal(svc.isSupabaseEnabled(), false);
+  assert.equal(svc.getSupabaseConfig(), null);
+  assert.deepEqual(await svc.fetchSupabasePlaces('school', new AbortController().signal), []);
+  // Bad input is rejected instead of being stored.
+  assert.equal(svc.setSupabaseConfig({ url: 'not-a-url', key: 'x' }), null);
+  assert.equal(svc.setSupabaseConfig({ url: 'https://demo.supabase.co', key: '' }), null);
+  assert.equal(svc.isSupabaseEnabled(), false);
+});
+
 test('both Supabase layouts resolve to the right table and query', async () => {
   const { HELP_PLACES_TABLE, supabaseQueryFor, supabaseTableForSchema } = await import('../src/services/helpCenterService');
   // Per-filter layout: one table per filter, no category filter needed.

@@ -15,8 +15,10 @@ import { Filter, List, Loader2, Navigation, RefreshCw, Search, X } from 'lucide-
 import {
   detectHelpPlacesSchema,
   fetchSupabasePlaces,
+  isSupabaseEnabled,
   resetHelpPlacesSchema,
-  SUPABASE_ENABLED,
+  setSupabaseConfig,
+  supabaseConfigFromEnv,
   type HelpPlacesSchema,
 } from '../services/helpCenterService';
 import { HelpCenterFilterPicker } from './HelpCenterFilterPicker';
@@ -138,6 +140,12 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const [dbPlaces, setDbPlaces] = useState<Place[]>([]);
   const [dbError, setDbError] = useState(false);
   const [dbStatus, setDbStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  // Credentials: the build ships them (Pages secrets), or the user pastes the
+  // public URL + anon key here once — it is kept in localStorage.
+  const [supabaseReady, setSupabaseReady] = useState(isSupabaseEnabled);
+  const [setupUrl, setSetupUrl] = useState('');
+  const [setupKey, setSetupKey] = useState('');
+  const [setupError, setSetupError] = useState('');
   const [retryTick, setRetryTick] = useState(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>(SAN_JOSE_CENTER);
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
@@ -496,7 +504,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     if (stage !== 'map') return;
     setDbPlaces([]);
     setDbError(false);
-    if (!SUPABASE_ENABLED) {
+    if (!isSupabaseEnabled()) {
       setDbStatus('error');
       return;
     }
@@ -622,6 +630,20 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     );
   }, [originMode, userCoords, lockCameraToBounds, showToast]);
 
+  // Save the public Supabase URL + anon key (kept in localStorage) and load.
+  const handleSaveSupabase = useCallback(() => {
+    const saved = setSupabaseConfig({ url: setupUrl, key: setupKey });
+    if (!saved) {
+      setSetupError('Paste the project URL (https://xxxx.supabase.co) and the anon public key.');
+      return;
+    }
+    setSetupError('');
+    setSetupKey('');
+    setSupabaseReady(true);
+    setRetryTick((tick) => tick + 1);
+    showToast('Supabase connected — loading pins…');
+  }, [setupUrl, setupKey, showToast]);
+
   const refreshPins = useCallback(() => {
     setRetryTick((tick) => tick + 1);
     showToast('Refreshing pins from Supabase…');
@@ -700,6 +722,45 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           ref={containerRef}
           className="block h-full w-full cursor-grab active:cursor-grabbing"
         />
+      )}
+
+      {/* No credentials yet: without them Supabase returns nothing, so the map
+          would be empty. Paste the public URL + anon key once (kept in this
+          browser) or set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. */}
+      {stage === 'map' && !supabaseReady && !supabaseConfigFromEnv() && (
+        <form
+          id="hc-supabase-setup"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSaveSupabase();
+          }}
+        >
+          <p className="hc-setup-title">Connect your Supabase</p>
+          <p className="hc-setup-sub">
+            Pins come from your Supabase tables. Paste the project URL and the
+            public anon key — they stay in this browser only.
+          </p>
+          <input
+            type="url"
+            value={setupUrl}
+            onChange={(event) => setSetupUrl(event.target.value)}
+            placeholder="https://your-project.supabase.co"
+            aria-label="Supabase project URL"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <input
+            type="password"
+            value={setupKey}
+            onChange={(event) => setSetupKey(event.target.value)}
+            placeholder="anon public key"
+            aria-label="Supabase anon key"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          {setupError && <p className="hc-setup-error">{setupError}</p>}
+          <button type="submit" className="hc-pill go">Connect</button>
+        </form>
       )}
 
       {/* Basemap switch — the Traffic view's Street | Satellite card, in the
@@ -822,9 +883,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               <div className="hc-sheet-empty">
                 {dbStatus === 'loading'
                   ? 'Loading pins from Supabase…'
-                  : SUPABASE_ENABLED
+                  : supabaseReady
                     ? 'No pins in Supabase for these filters yet. Add rows to the matching tables, or tap “Filter” above.'
-                    : 'Supabase is not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY), so no pins can be loaded.'}
+                    : 'Connect your Supabase project below to load pins.'}
               </div>
             )}
             {sortedPlaces.map(({ place, km }) => {
