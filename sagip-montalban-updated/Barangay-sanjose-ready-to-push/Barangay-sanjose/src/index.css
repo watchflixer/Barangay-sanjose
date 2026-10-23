@@ -1005,11 +1005,11 @@ body,
 .hc-cat {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 13px;
   width: 100%;
-  padding: 10px 12px;
+  padding: 9.5px 12px;
   border: 1px solid #dadce0;
-  border-radius: 10px;
+  border-radius: 9.5px;
   background: #ffffff;
   color: #202124;
   font-family: inherit;
@@ -1032,12 +1032,12 @@ body,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: #e8eaed;
   color: #202124;
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -1048,8 +1048,8 @@ body,
 }
 
 .hc-cat-ic svg {
-  width: 21px;
-  height: 21px;
+  width: 20px;
+  height: 20px;
   stroke-width: 2;
 }
 
@@ -1058,11 +1058,7 @@ body,
   flex-direction: column;
   min-width: 0;
   flex: 1;
-  /* Half of the removed “N PIN / LIVE OSM” line's 19.25px slot sits above
-     and below the two remaining lines: the title + caption are now optically
-     centred against the icon circle, and the card keeps exactly the height
-     it had while that line was there. */
-  padding: 9.625px 0;
+  padding: 9px 0;
 }
 
 .hc-cat-title {
@@ -1074,7 +1070,7 @@ body,
 }
 
 .hc-cat-sub {
-  font-size: 12.5px;
+  font-size: 13px;
   color: #5f6368;
   white-space: nowrap;
   overflow: hidden;
