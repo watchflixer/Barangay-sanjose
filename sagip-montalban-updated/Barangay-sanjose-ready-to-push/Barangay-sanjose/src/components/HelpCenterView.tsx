@@ -809,6 +809,20 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <div className="hc-sheet-head">
             <p className="hc-sheet-title">Selected places</p>
             <span className="hc-sheet-count">{sortedPlaces.length}</span>
+            {/* Filter button — the old dark count chip now goes back to the
+                picker ("Choose what you want to filter"). aria-label stays
+                "Change filter" so it never collides with the floating
+                Filter FAB's accessible name. */}
+            <button
+              type="button"
+              className="hc-sheet-filter"
+              onClick={openPicker}
+              title="Filter"
+              aria-label="Change filter"
+            >
+              <Filter aria-hidden="true" />
+              <span>Filter</span>
+            </button>
             {(
               <button
                 type="button"

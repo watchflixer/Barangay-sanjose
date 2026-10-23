@@ -553,14 +553,63 @@ body,
   color: #0f172a;
 }
 
+/* Count of the listed places — a quiet grey chip now that the solid dark
+   slot belongs to the Filter button below. */
 #hc-sheet .hc-sheet-count {
   flex: none;
-  padding: 4px 10px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: #e9eef0;
+  color: #202124;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Filter button in the sheet header: the dark chip look the count used to
+   have, now a real button that reopens the picker ("Choose what you want to
+   filter"). Icon-only on the narrowest phones so the header never wraps. */
+#hc-sheet .hc-sheet-filter {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
   border-radius: 6px;
   background: #111827;
   color: #ffffff;
+  font-family: inherit;
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+#hc-sheet .hc-sheet-filter svg {
+  width: 14px;
+  height: 14px;
+}
+
+#hc-sheet .hc-sheet-filter:active {
+  filter: brightness(1.3);
+}
+
+#hc-sheet .hc-sheet-filter:focus-visible {
+  outline: 3px solid #d3eef5;
+  outline-offset: 2px;
+}
+
+@media (max-width: 400px) {
+  #hc-sheet .hc-sheet-filter {
+    width: 32px;
+    padding: 0;
+  }
+
+  #hc-sheet .hc-sheet-filter span {
+    display: none;
+  }
 }
 
 /* Head buttons: Traffic's .rt-cb circles. */
