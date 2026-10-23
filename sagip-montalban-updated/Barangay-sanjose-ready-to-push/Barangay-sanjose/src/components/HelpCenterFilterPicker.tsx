@@ -144,8 +144,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
             <h2 className="hc-picker-title">Choose what you want to filter</h2>
             <p className="hc-picker-sub">
               Tap the categories you need (7-Eleven, pharmacy, water, ATM,
-              evacuation). The map opens once you pick — it carries a live traffic layer, just
-              like the Traffic view.
+              evacuation).
             </p>
           </div>
           {onClose && <button type="button" onClick={onClose} aria-label="Close Help Center filters"
