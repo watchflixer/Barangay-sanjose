@@ -217,7 +217,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
                 type="button"
                 aria-label="Close"
                 onClick={() => setOpen(false)}
-                className="flex h-[11px] w-[36px] shrink-0 cursor-pointer items-center justify-center bg-transparent text-[11px] leading-none font-bold text-[#111] transition-colors hover:text-[#555]"
+                className="flex h-[11px] w-[40px] shrink-0 cursor-pointer items-center justify-center bg-transparent text-[11px] leading-none font-bold text-[#111] transition-colors hover:text-[#555]"
               >
                 X
               </button>
