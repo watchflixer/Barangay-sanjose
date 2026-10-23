@@ -1,10 +1,85 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Search, X } from 'lucide-react';
+import {
+  Banknote,
+  Building2,
+  Bus,
+  Check,
+  Church,
+  Croissant,
+  Droplets,
+  Dumbbell,
+  Flame,
+  Fuel,
+  HandCoins,
+  Hammer,
+  Hospital,
+  Landmark,
+  PawPrint,
+  ParkingCircle,
+  Pill,
+  Scissors,
+  School,
+  Send,
+  Shield,
+  ShoppingBag,
+  ShoppingBasket,
+  ShoppingCart,
+  Smile,
+  Stethoscope,
+  Store,
+  TentTree,
+  Trophy,
+  Utensils,
+  WashingMachine,
+  Wheat,
+  Wifi,
+  Wrench,
+  type LucideIcon,
+  Search,
+  X,
+} from 'lucide-react';
 import {
   CATEGORIES_BY_GROUP,
   PLACE_GROUPS,
   type PlaceCategoryId,
 } from '../data/helpCenterPlaces';
+
+const CATEGORY_ICONS: Record<PlaceCategoryId, LucideIcon> = {
+  seven_eleven: Store,
+  convenience: ShoppingBag,
+  supermarket: ShoppingCart,
+  market: ShoppingBasket,
+  pharmacy: Pill,
+  bigasan: Wheat,
+  water: Droplets,
+  lpg: Flame,
+  bakery: Croissant,
+  hardware: Hammer,
+  laundry: WashingMachine,
+  police: Shield,
+  fire: Flame,
+  hospital: Hospital,
+  clinic: Stethoscope,
+  evacuation: TentTree,
+  barangay: Landmark,
+  school: School,
+  church: Church,
+  court: Trophy,
+  wifi: Wifi,
+  food: Utensils,
+  salon: Scissors,
+  dental: Smile,
+  vet: PawPrint,
+  gym: Dumbbell,
+  gas: Fuel,
+  vulcanizing: Wrench,
+  terminal: Bus,
+  parking: ParkingCircle,
+  atm: Banknote,
+  bank: Building2,
+  pawnshop: HandCoins,
+  remittance: Send,
+};
 
 /**
  * Step 1 of the Help Center: the user answers the filter question before the
@@ -111,6 +186,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
               <div className="hc-picker-grid">
                 {categories.map((category) => {
                   const isOn = selectedSet.has(category.id);
+                  const CategoryIcon = CATEGORY_ICONS[category.id];
                   return (
                     <button
                       key={category.id}
@@ -120,7 +196,7 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
                       className={`hc-cat${isOn ? ' on' : ''}`}
                     >
                       <span className="hc-cat-ic" aria-hidden="true">
-                        {category.code}
+                        <CategoryIcon />
                       </span>
                       <span className="hc-cat-tx">
                         <span className="hc-cat-title">{category.label}</span>

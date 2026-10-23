@@ -1047,6 +1047,12 @@ body,
   color: #00697a;
 }
 
+.hc-cat-ic svg {
+  width: 21px;
+  height: 21px;
+  stroke-width: 2;
+}
+
 .hc-cat-tx {
   display: flex;
   flex-direction: column;
