@@ -1020,11 +1020,6 @@ body,
 .hc-cat-tx {
   display: flex;
   flex-direction: column;
-  /* Title and caption sit centred in their column (between the category
-     circle and the tick). Only the alignment changed — the card's size,
-     padding and type scale are untouched. */
-  align-items: center;
-  text-align: center;
   min-width: 0;
   flex: 1;
 }
