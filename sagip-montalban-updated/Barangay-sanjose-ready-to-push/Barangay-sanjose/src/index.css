@@ -403,30 +403,6 @@ body,
   color: #ffffff;
 }
 
-/* --- Right-hand stack: the floating Filter FAB when the sheet is closed -- */
-#hc-control-stack {
-  position: absolute;
-  right: 12px;
-  bottom: 24px;
-  z-index: 400;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-}
-
-/* Raise the stack on phone portrait so it clears the app's bottom overlays,
-   the way the Traffic page does. */
-@media (orientation: portrait) and (max-width: 640px) {
-  #hc-control-stack {
-    bottom: 56px;
-  }
-}
-
-/* --- Messages: Traffic's #notice. Traffic drops it further down whenever
-       other chrome is on screen (body.routing #notice{top:132px}); here the
-       top bar holds the control column, the Filter FAB and the basemap
-       switch, so the notice starts just below it. --------------------------- */
 #hc-notice {
   position: absolute;
   top: 52px;
@@ -450,53 +426,6 @@ body,
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-/* --- Filter: Traffic's floating map button. The Traffic page keeps these as
-       children of its bottom sheet (#rt-locate at top:-64px, #rt-layers2 at
-       top:-124px, right:12px, 48px, radius 14, 0 2px 8px rgba(0,0,0,.3),
-       22px glyph in #3c4043) so they hover over the map right above the sheet;
-       the Help Center does the same with its sheet. With the sheet closed the
-       same button rides the top of the right-hand stack instead. ---------- */
-.hc-filter-fab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  border: 0;
-  border-radius: 14px;
-  background: #ffffff;
-  color: #3c4043;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.hc-filter-fab svg {
-  width: 22px;
-  height: 22px;
-}
-
-.hc-filter-fab:hover {
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
-}
-
-.hc-filter-fab:active {
-  transform: scale(0.94);
-}
-
-.hc-filter-fab:focus-visible {
-  outline: 3px solid #0b7a87;
-  outline-offset: -6px;
-}
-
-#hc-sheet .hc-filter-fab {
-  position: absolute;
-  right: 12px;
-  top: -64px;
 }
 
 /* --- Results sheet: Traffic's route sheet recipe (#rt-sheet + .rt-head +

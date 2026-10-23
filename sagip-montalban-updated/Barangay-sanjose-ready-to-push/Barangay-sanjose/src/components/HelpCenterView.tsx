@@ -730,24 +730,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const trafficNotice = basemap === 'streets' && trafficTilesFailed;
   const noticeText = toast;
 
-  // The Filter FAB, positioned the way the Traffic page positions its own
-  // floating map buttons: a child of the results sheet, 64px above its top
-  // edge at the right (#rt-locate / #rt-layers2 in rizal_traffic_map.html).
-  // With the sheet closed it rides the right-hand stack instead, so it is
-  // never out of reach.
-  const filterFab = (
-    <button
-      type="button"
-      id="hc-filter-btn"
-      className="hc-filter-fab"
-      onClick={openPicker}
-      title="Filter"
-      aria-label="Filter"
-    >
-      <Filter />
-    </button>
-  );
-
   return (
     <div id="help-center-view" className="absolute inset-0 z-30 bg-white" aria-label="Help Center">
       {dbError && stage === 'map' && (
@@ -796,8 +778,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           handle, 24px top corners, tabs and rows. */}
       {stage === 'map' && sheetOpen && (
         <div id="hc-sheet" className={sheetExpanded ? 'is-expanded' : undefined}>
-          {filterFab}
-
           <button
             type="button"
             className="hc-sheet-handle"
@@ -808,16 +788,15 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
           <div className="hc-sheet-head">
             <p className="hc-sheet-title">Selected places</p>
-            {/* Filter button — the old dark count chip now goes back to the
-                picker ("Choose what you want to filter"). aria-label stays
-                "Change filter" so it never collides with the floating
-                Filter FAB's accessible name. */}
+            {/* Filter button — the sheet header is now the ONLY way back to
+                the picker ("Choose what you want to filter"); the floating
+                Filter FAB is gone. */}
             <button
               type="button"
               className="hc-sheet-filter"
               onClick={openPicker}
               title="Filter"
-              aria-label="Change filter"
+              aria-label="Filter"
             >
               <Filter aria-hidden="true" />
               <span>Filter</span>
@@ -947,14 +926,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <button type="button" className="hc-pill" onClick={() => setSheetOpen(true)}>
             <List className="h-4 w-4" /> List ({sortedPlaces.length})
           </button>
-        </div>
-      )}
-
-      {/* Right-hand stack — the Filter FAB only. The Help Center map carries
-          no traffic legend and no Directions button. */}
-      {stage === 'map' && !sheetOpen && (
-        <div id="hc-control-stack">
-          {filterFab}
         </div>
       )}
 
