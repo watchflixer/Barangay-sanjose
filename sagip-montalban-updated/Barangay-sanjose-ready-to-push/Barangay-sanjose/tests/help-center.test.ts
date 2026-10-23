@@ -58,11 +58,83 @@ test('community fallback has valid pins even with no external connection', () =>
   assert.ok(HELP_CENTER_PLACES.every(place => place.source === 'curated' && place.coords.every(Number.isFinite)));
 });
 
-test('School pins come from Supabase, not built-in or OSM data', () => {
+test('basemap tiles follow the OSM usage policy and keep a backup', async () => {
+  const { TILE_SERVERS, tileLayerOptions, OSM_REFERRER_POLICY } = await import('../src/data/tileServers');
+  // Canonical host only: the a/b/c subdomains may be withdrawn.
+  assert.equal(TILE_SERVERS.streets.url, 'https://tile.openstreetmap.org/{z}/{x}/{y}.png');
+  assert.ok(!TILE_SERVERS.streets.url.includes('{s}'));
+  // OSM rejects tile requests without a Referer ("403r Access blocked").
+  assert.equal(tileLayerOptions(TILE_SERVERS.streets).referrerPolicy, OSM_REFERRER_POLICY);
+  assert.equal(OSM_REFERRER_POLICY, 'strict-origin-when-cross-origin');
+  // A blocked OSM still leaves a working street map (keyless Esri backup).
+  const fallback = TILE_SERVERS.streets.fallback;
+  assert.ok(fallback);
+  assert.ok(fallback!.url.includes('arcgisonline.com'));
+  assert.equal(fallback!.referrerPolicy, undefined);
+});
+
+test('School filter always has curated pins; OSM school spam stays out', () => {
   const schools = HELP_CENTER_PLACES.filter(place => place.category === 'school');
-  assert.equal(schools.length, 0);
+  // The School filter must never open an empty map, even with no Supabase
+  // credentials and no network — the curated list is the offline fallback.
+  assert.ok(schools.length >= 20, `expected the curated school list, got ${schools.length}`);
+  assert.ok(schools.every(place => place.source === 'curated' && place.coords.every(Number.isFinite)));
+  assert.ok(schools.some(place => place.id === 'sc-kasiglahan-nhs'));
+  // Live OSM school results are still skipped (they duplicate the curated pins).
   assert.deepEqual(osmElementsToPlaces([{ ...element, tags: { amenity: 'school', name: 'Named school' } }], ['school']), []);
   assert.equal(osmElementsToPlaces([element], ['pharmacy']).length, 1);
+});
+
+test('an empty Supabase filter reports which table it read', async () => {
+  const svc = await import('../src/services/helpCenterService');
+  const signal = new AbortController().signal;
+  // Without credentials nothing is fetched, but the report still says so.
+  const disabled = await svc.fetchSupabaseCategory('school', signal, 'per-filter');
+  assert.equal(disabled.table, 'community_school');
+  assert.equal(disabled.status, 'disabled');
+  assert.deepEqual(disabled.places, []);
+  // A missing table is reported as missing, not as a silent empty map.
+  globalThis.fetch = async () => new Response('', { status: 404 });
+  assert.equal(svc.setSupabaseConfig({ url: 'https://demo.supabase.co', key: 'anon-key' }) !== null, true);
+  const missing = await svc.fetchSupabaseCategory('school', signal, 'per-filter');
+  assert.equal(missing.status, 'missing');
+  assert.equal(missing.detail, 'table not found');
+  // An existing but empty table is reported as empty.
+  globalThis.fetch = async () => Response.json([]);
+  const empty = await svc.fetchSupabaseCategory('school', signal, 'single');
+  assert.equal(empty.table, 'help_places');
+  assert.equal(empty.status, 'empty');
+  assert.equal(empty.detail, 'table is empty');
+  svc.clearSupabaseConfig();
+});
+
+test('Supabase credentials resolve from env or a validated runtime override', async () => {
+  const svc = await import('../src/services/helpCenterService');
+  // No env in tests, no stored config in Node: not connected, nothing fetched.
+  assert.equal(svc.isSupabaseEnabled(), false);
+  assert.equal(svc.getSupabaseConfig(), null);
+  assert.deepEqual(await svc.fetchSupabasePlaces('school', new AbortController().signal), []);
+  // Bad input is rejected instead of being stored.
+  assert.equal(svc.setSupabaseConfig({ url: 'not-a-url', key: 'x' }), null);
+  assert.equal(svc.setSupabaseConfig({ url: 'https://demo.supabase.co', key: '' }), null);
+  assert.equal(svc.isSupabaseEnabled(), false);
+});
+
+test('both Supabase layouts resolve to the right table and query', async () => {
+  const { HELP_PLACES_TABLE, supabaseQueryFor, supabaseTableForSchema } = await import('../src/services/helpCenterService');
+  // Per-filter layout: one table per filter, no category filter needed.
+  assert.equal(supabaseTableForSchema('school', 'per-filter'), 'community_school');
+  const perFilter = new URLSearchParams(supabaseQueryFor('school', 'per-filter', 0));
+  assert.equal(perFilter.get('category'), null);
+  assert.equal(perFilter.get('is_active'), 'eq.true');
+  assert.equal(perFilter.get('select'), 'id,name,latitude,longitude,address,hours,phone,note,approx,replaces_id');
+  // Single-table layout: one table, rows narrowed by the category column.
+  assert.equal(HELP_PLACES_TABLE, 'help_places');
+  assert.equal(supabaseTableForSchema('school', 'single'), 'help_places');
+  const single = new URLSearchParams(supabaseQueryFor('school', 'single', 1000));
+  assert.equal(single.get('category'), 'eq.school');
+  assert.equal(single.get('offset'), '1000');
+  assert.equal(single.get('limit'), '1000');
 });
 
 test('Supabase tables match all filters and rows validate before becoming pins', async () => {

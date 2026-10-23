@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
 import {
   CATEGORIES_BY_GROUP,
-  CURATED_COUNT_BY_CATEGORY,
   PLACE_GROUPS,
   type PlaceCategoryId,
 } from '../data/helpCenterPlaces';
@@ -112,7 +111,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
               <div className="hc-picker-grid">
                 {categories.map((category) => {
                   const isOn = selectedSet.has(category.id);
-                  const count = CURATED_COUNT_BY_CATEGORY[category.id] ?? 0;
                   return (
                     <button
                       key={category.id}
@@ -127,9 +125,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
                       <span className="hc-cat-tx">
                         <span className="hc-cat-title">{category.label}</span>
                         <span className="hc-cat-sub">{category.caption}</span>
-                        <span className="hc-cat-meta">
-                          {count} PIN{category.osm?.length ? ' / LIVE OSM' : ''}
-                        </span>
                       </span>
                       {isOn && (
                         <span className="hc-cat-check" aria-hidden="true">
@@ -144,9 +139,9 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
           ))}
 
           <p className="hc-picker-note">
-            <strong>Note:</strong> some pins are community-mapped and may be a few metres off. We
-            also add the live location from OpenStreetMap whenever it is available, and the Street
-            map carries a live traffic layer, just like the Traffic view.
+            <strong>Note:</strong> every pin on this map comes from the barangay's Supabase
+            directory — one table per filter. The Street map also carries a live traffic layer,
+            just like the Traffic view.
           </p>
         </div>
 

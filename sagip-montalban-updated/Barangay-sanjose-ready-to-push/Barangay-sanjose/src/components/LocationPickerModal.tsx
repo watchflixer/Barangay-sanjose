@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import { Check, LocateFixed, MapPin, X } from 'lucide-react';
 import { SAN_JOSE_CENTER } from '../data/geoData';
+import { TILE_SERVERS } from '../data/tileServers';
+import { mountTileLayer } from '../lib/tileLayer';
 
 interface LocationPickerModalProps {
   isOpen: boolean;
@@ -34,9 +36,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
       zoom: 14,
       zoomControl: true,
     });
-    new L.TileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
+    mountTileLayer(map, TILE_SERVERS.streets);
 
     const marker = new L.Marker(coordinates).addTo(map);
     map.on('click', (event) => {

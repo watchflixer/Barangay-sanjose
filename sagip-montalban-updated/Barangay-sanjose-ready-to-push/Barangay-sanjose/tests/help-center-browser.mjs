@@ -70,9 +70,9 @@ try {
     await page.getByRole('button', { name: /Open the map/ }).click();
     // The old list search must not hide a newly selected category's results.
     await page.locator('.hc-sheet-row').filter({ hasText: 'Water Refilling' }).first().waitFor();
-    await page.getByRole('button', { name: 'Refresh live OSM pins' }).waitFor();
+    await page.getByRole('button', { name: 'Refresh pins' }).waitFor();
     failLive = true;
-    await page.getByRole('button', { name: 'Refresh live OSM pins' }).click();
+    await page.getByRole('button', { name: 'Refresh pins' }).click();
     await page.locator('.hc-sheet-foot').filter({ hasText: 'Cannot reach OpenStreetMap' }).waitFor();
     assert.ok(await page.locator('.hc-sheet-row').count() > 0, 'community pins survive API failure');
     // Let the "Refreshing…" toast expire: the red OSM banner used to take the
@@ -85,7 +85,7 @@ try {
     );
     failLive = false;
     // Retry through the sheet header's refresh button (what the banner did).
-    await page.getByRole('button', { name: 'Refresh live OSM pins' }).click();
+    await page.getByRole('button', { name: 'Refresh pins' }).click();
     await page.locator('.hc-sheet-foot').filter({ hasText: 'Cannot reach OpenStreetMap' }).waitFor({ state: 'detached' });
     await page.getByText('Browser Test Pharmacy', { exact: true }).waitFor();
     assert.ok(calls >= 5);

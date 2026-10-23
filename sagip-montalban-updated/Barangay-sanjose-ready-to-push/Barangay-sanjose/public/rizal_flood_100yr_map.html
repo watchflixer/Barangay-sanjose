@@ -174,9 +174,11 @@
 const map = L.map('map', { zoomControl: false, maxZoom: 19 });
 L.control.zoom({ position: 'topleft' }).addTo(map);
 
-const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+const streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxNativeZoom: 19,
   maxZoom: 19,
+  // OSM blocks tile requests without a Referer ("403r Access blocked").
+  referrerPolicy: 'strict-origin-when-cross-origin',
   attribution: '&copy; OpenStreetMap contributors'
 });
 

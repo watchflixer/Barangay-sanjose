@@ -30,7 +30,12 @@ const OSM_ATTRIBUTION = '© OpenStreetMap contributors';
 const ESRI_ATTRIBUTION =
   'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
 
-const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+// Canonical host per OSM's tile usage policy; the a/b/c subdomains may be
+// withdrawn. OSM also requires a Referer, so every layer below sets
+// referrerPolicy on the tile <img> (a restrictive document policy, a proxy or
+// a privacy extension would otherwise get "403r Access blocked" tiles).
+const OSM_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_REFERRER_POLICY = 'strict-origin-when-cross-origin' as const;
 const ESRI_IMAGERY =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 const ESRI_IMAGERY_ALT =
@@ -129,6 +134,7 @@ export function mountBasemap(
     maxZoom: source.maxZoom ?? 19,
     maxNativeZoom: source.maxNativeZoom,
     attribution: source.attribution,
+    referrerPolicy: OSM_REFERRER_POLICY,
     ...extra,
   });
 

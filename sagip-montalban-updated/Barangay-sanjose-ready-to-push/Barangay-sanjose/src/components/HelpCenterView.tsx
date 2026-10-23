@@ -12,51 +12,56 @@ import L from 'leaflet';
  * type-check yet fail at runtime.
  */
 import { Filter, List, Loader2, Navigation, RefreshCw, Search, X } from 'lucide-react';
-import { fetchOverpassElements, fetchSupabasePlaces, SUPABASE_ENABLED } from '../services/helpCenterService';
+import {
+  detectHelpPlacesSchema,
+  fetchSupabaseCategory,
+  isSupabaseEnabled,
+  resetHelpPlacesSchema,
+  type CategoryFetchResult,
+  type HelpPlacesSchema,
+} from '../services/helpCenterService';
 import { HelpCenterFilterPicker } from './HelpCenterFilterPicker';
 import {
   CATEGORY_BY_ID,
   HELP_CENTER_CATEGORIES,
-  HELP_CENTER_PLACES,
-  buildOverpassQuery,
   distanceKm,
   formatDistance,
-  mergePlaces,
-  osmElementsToPlaces,
   type Place,
   type PlaceCategory,
   type PlaceCategoryId,
 } from '../data/helpCenterPlaces';
-import { TILE_SERVERS, TRAFFIC_TILE_SERVERS } from '../data/tileServers';
+import { TILE_SERVERS } from '../data/tileServers';
+import { mountTileLayer, type TileMount } from '../lib/tileLayer';
 import { SAN_JOSE_BOUNDS, SAN_JOSE_CENTER } from '../data/geoData';
 
 /**
  * HELP CENTER — the "Traffic-style" directory map
  * ------------------------------------------------
  * Same shell as the Traffic view (full-map Leaflet layer, Street/Satellite
- * switch, floating right-hand controls), but instead of live traffic it is a
- * filterable directory of the barangay:
+ * switch, floating right-hand controls), but the basemap is plain Leaflet:
+ * OpenStreetMap tiles on Street, Esri imagery on Satellite — no live traffic
+ * raster. Instead of traffic it is a filterable directory of the barangay:
  *
  *   1. The view opens with a PICKER — the user answers first ("7-Eleven?
  *      botika? water? ATM?") and nothing else happens until they do.
  *   2. Only then does the Leaflet map mount with pins for exactly the chosen
  *      categories, plus chips up top to change the filter without leaving.
- *   3. "Live OSM" pulls real OpenStreetMap pins (Overpass API) on top of the
- *      curated community list; if the network is blocked the curated pins
- *      stay and a retry hint appears instead of an empty map.
+ *   3. Every pin comes from Supabase — one table per filter
+ *      (`<group>_<category>`, see supabase/help_places.sql). There is no
+ *      built-in fallback list and no live OSM layer: if a table cannot be
+ *      reached the sheet footer says so and the retry button refetches.
  *
  * The whole view is monochrome by design: white/black interface, grayscale
  * basemaps (satellite included) and black pins stamped with the category's
  * cartographic code, so nothing here reads as generated decoration.
  *
- * Session memory (module scope) remembers the last filter selection, the
- * basemap and the Live OSM switch between visits — but the picker still shows
- * every time the view is opened.
+ * Session memory (module scope) remembers the last filter selection and the
+ * basemap between visits — but the picker still shows every time the view is
+ * opened.
  */
 let rememberedSelection: PlaceCategoryId[] | null = null;
-// Street is the default (like the Traffic view) so the live-traffic colouring
-// is visible the moment the map opens; Street carries the traffic raster
-// unless its tiles fail, and then the view falls back to plain OSM streets.
+// Street is the default, like the Traffic view: the plain OpenStreetMap
+// Leaflet tile layer. Satellite switches to the Esri imagery layer.
 let rememberedBasemap: 'streets' | 'satellite' = 'streets';
 
 interface HelpCenterViewProps {
@@ -73,14 +78,6 @@ interface HelpCenterViewProps {
 }
 
 const ALL_CATEGORY_IDS = HELP_CENTER_CATEGORIES.map((category) => category.id);
-
-/** The Traffic view's legend, row for row: same wording, same swatches. */
-const LEGEND_ROWS = [
-  { color: '#2BC82B', label: 'Free flowing' },
-  { color: '#F1BF40', label: 'Slow traffic' },
-  { color: '#CC0704', label: 'Heavy congestion' },
-  { color: '#7A1F1B', label: 'Road closed' },
-] as const;
 
 /**
  * The "lock camera to Barangay San Jose" box, 0.015° larger than the barangay
@@ -136,14 +133,18 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const [mapReady, setMapReady] = useState(false);
   const [selected, setSelected] = useState<PlaceCategoryId[]>(() => rememberedSelection ?? []);
   const [basemap, setBasemap] = useState<'streets' | 'satellite'>(rememberedBasemap);
-  // Live traffic raster instead of plain streets (Traffic's own layer), with a
-  // one-shot fallback if those tiles cannot be fetched.
-  const [trafficTilesFailed, setTrafficTilesFailed] = useState(false);
+  // Every pin on this map comes from Supabase: one table per filter
+  // (`<group>_<category>`, see supabase/help_places.sql). There is no
+  // built-in fallback list and no live OSM layer any more.
   const [dbPlaces, setDbPlaces] = useState<Place[]>([]);
   const [dbError, setDbError] = useState(false);
-  const [livePlaces, setLivePlaces] = useState<Place[]>([]);
-  const [liveStatus, setLiveStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
-  const [liveMessage, setLiveMessage] = useState('');
+  const [dbStatus, setDbStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  // One entry per selected filter: which Supabase table was read and what it
+  // answered. Surfaced under "Why no pins?" so an empty filter is explainable.
+  const [dbReport, setDbReport] = useState<CategoryFetchResult[]>([]);
+  // Credentials: the build ships them (Pages secrets), or the user pastes the
+  // public URL + anon key here once — it is kept in localStorage.
+  const [supabaseReady, setSupabaseReady] = useState(isSupabaseEnabled);
   const [retryTick, setRetryTick] = useState(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>(SAN_JOSE_CENTER);
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
@@ -160,11 +161,10 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // ------------------------------------------------------------------ refs
   const containerRef = useRef<HTMLDivElement | null>(null);
   const localMapRef = useRef<L.Map | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const tileMountRef = useRef<TileMount | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const iconCacheRef = useRef<Map<PlaceCategoryId, L.DivIcon>>(new Map());
-  const liveCacheRef = useRef<Map<PlaceCategoryId, Place[]>>(new Map());
   const meMarkerRef = useRef<L.Marker | null>(null);
   const focusTimerRef = useRef<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -218,19 +218,12 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   }, []);
 
   // ------------------------------------------------------------- map data
-  const curatedPlaces = useMemo(
-    () => HELP_CENTER_PLACES.filter((place) => selectedSet.has(place.category)),
-    [selectedSet],
+  // Supabase is the single source of truth: the rows loaded for the ticked
+  // filters are the pins, nothing else is merged in.
+  const places = useMemo(
+    () => dbPlaces.filter((place) => selectedSet.has(place.category)),
+    [dbPlaces, selectedSet],
   );
-
-  const places = useMemo(() => {
-    const live = livePlaces.filter((place) => selectedSet.has(place.category));
-    // mergePlaces([], live) first collapses OSM duplicates (node + way),
-    // then merges the curated community rows on top.
-    const db = dbPlaces.filter(place => selectedSet.has(place.category));
-    const replaced = new Set(db.map(place => place.replaces).filter(Boolean));
-    return mergePlaces(mergePlaces(db, curatedPlaces.filter(place => !replaced.has(place.id))), mergePlaces([], live));
-  }, [curatedPlaces, dbPlaces, livePlaces, selectedSet]);
 
   // ------------------------------------------------------------- the map
   useEffect(() => {
@@ -306,37 +299,31 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       markersRef.current.clear();
       markersLayerRef.current = null;
       meMarkerRef.current = null;
-      tileLayerRef.current = null;
+      tileMountRef.current = null;
       if (mapRef.current === map) mapRef.current = null;
       map.remove();
       localMapRef.current = null;
     };
   }, [mapReady, mapRef]);
 
-  // Basemap (Street / Satellite) + the live-traffic layer, mirroring the
-  // Traffic view: in Street mode the traffic raster is the basemap; Satellite
-  // keeps the imagery. If the traffic tiles cannot be fetched the view falls
-  // back to the plain street basemap and says so in the legend.
+  // Basemap. Both styles are plain Leaflet raster layers: Street is the
+  // OpenStreetMap tile layer (TILE_SERVERS.streets) and Satellite is the Esri
+  // imagery. mountTileLayer stamps the referrer policy OSM's usage policy
+  // requires on every tile, and quietly swaps to the keyless Esri backup when
+  // the tiles keep failing ("403r. Access blocked").
   useEffect(() => {
     const map = localMapRef.current;
     if (!mapReady || !map) return;
-    if (tileLayerRef.current) {
-      map.removeLayer(tileLayerRef.current);
-      tileLayerRef.current = null;
-    }
-    const withLiveTraffic = !trafficTilesFailed && basemap === 'streets';
-    const tileConfig = withLiveTraffic ? TRAFFIC_TILE_SERVERS.streetTraffic : TILE_SERVERS[basemap];
-    const layer = new L.TileLayer(tileConfig.url, {
-      attribution: tileConfig.attribution,
-      subdomains: tileConfig.subdomains ?? 'abc',
-      maxZoom: 20,
-      maxNativeZoom: tileConfig.maxNativeZoom ?? 19,
-      className: tileConfig.className,
+    tileMountRef.current?.dispose();
+    tileMountRef.current = mountTileLayer(map, TILE_SERVERS[basemap], {
+      onFallback: () =>
+        showToast('OpenStreetMap tiles were blocked — switched to the backup street map.'),
     });
-    if (withLiveTraffic) layer.on('tileerror', () => setTrafficTilesFailed(true));
-    layer.addTo(map);
-    tileLayerRef.current = layer;
-  }, [basemap, mapReady, trafficTilesFailed]);
+    return () => {
+      tileMountRef.current?.dispose();
+      tileMountRef.current = null;
+    };
+  }, [basemap, mapReady, showToast]);
 
   // ---------------------------------------------------------- pin factory
   const iconFor = useCallback((category: PlaceCategory) => {
@@ -463,7 +450,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     if (fitKey === lastFitKeyRef.current) return;
 
     const selectionChanged = fittedSelectionRef.current !== selectedKey;
-    // A wider box from the live OSM batch must not snatch the camera back.
+    // A wider box from a late Supabase batch must not snatch the camera back.
     if (!selectionChanged && userMovedRef.current) return;
 
     const hadFit = fittedBoxRef.current !== null;
@@ -509,80 +496,56 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     return () => observer.disconnect();
   }, [stage, sheetOpen, places.length]);
 
-  // Re-fetch on filter changes/retry; abort stale requests. Failed categories
-  // keep their built-in fallback and do not prevent other tables loading.
+  // Re-fetch on filter changes/retry; abort stale requests. Supabase is the
+  // only pin source, so a failed table simply contributes no rows (the sheet
+  // footer reports it) and never blocks the other tables.
   useEffect(() => {
-    if (!SUPABASE_ENABLED || stage !== 'map') return;
-    const controller = new AbortController();
+    if (stage !== 'map') return;
     setDbPlaces([]);
     setDbError(false);
-    selected.forEach(id => {
-      fetchSupabasePlaces(id, controller.signal).then(rows => {
-        if (!controller.signal.aborted) setDbPlaces(current => [...current, ...rows]);
-      }).catch(() => {
-        if (!controller.signal.aborted) setDbError(true);
+    if (!isSupabaseEnabled()) {
+      setDbStatus('error');
+      return;
+    }
+    const controller = new AbortController();
+    setDbStatus('loading');
+    setDbReport([]);
+    let pending = selected.length;
+    if (pending === 0) {
+      setDbStatus('ok');
+      return () => controller.abort();
+    }
+    if (retryTick > 0) resetHelpPlacesSchema();
+    // Use whichever Supabase layout the project has: one `help_places` table
+    // with a `category` column, or the per-filter `<group>_<category>` tables.
+    detectHelpPlacesSchema(controller.signal)
+      .then((schema: HelpPlacesSchema) => {
+        if (controller.signal.aborted) return;
+        selected.forEach(id => {
+          fetchSupabaseCategory(id, controller.signal, schema).then(result => {
+            if (controller.signal.aborted) return;
+            setDbReport(current => [...current, result]);
+            if (result.places.length) setDbPlaces(current => [...current, ...result.places]);
+            if (result.status === 'missing' || result.status === 'error' || result.status === 'disabled') {
+              setDbError(true);
+            }
+            pending -= 1;
+            if (pending === 0) setDbStatus('ok');
+          }).catch(() => {
+            if (controller.signal.aborted) return;
+            setDbError(true);
+            pending -= 1;
+            if (pending === 0) setDbStatus(prev => (prev === 'loading' ? 'error' : prev));
+          });
+        });
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        setDbError(true);
+        setDbStatus('error');
       });
-    });
     return () => controller.abort();
   }, [stage, selectedKey, retryTick]);
-
-  // ---------------------------------------------------------- live OSM data
-  const syncLiveFromCache = useCallback(() => {
-    const cached = liveCacheRef.current;
-    const list = selected
-      .filter((id) => cached.has(id))
-      .flatMap((id) => cached.get(id) ?? []);
-    setLivePlaces(list);
-  }, [selected]);
-
-  useEffect(() => {
-    if (!mapReady || stage !== 'map') return;
-    const cache = liveCacheRef.current;
-    const missing = selected.filter((id) => !cache.has(id));
-    if (missing.length === 0) {
-      syncLiveFromCache();
-      const cachedCount = selected.reduce((total, id) => total + (cache.get(id)?.length ?? 0), 0);
-      setLiveStatus('ok');
-      setLiveMessage(cachedCount ? `${cachedCount} live pins from OpenStreetMap` : 'No extra live pins found — community pins only for now');
-      return;
-    }
-    const query = buildOverpassQuery(missing);
-    if (!query) {
-      syncLiveFromCache();
-      return;
-    }
-
-    const controller = new AbortController();
-    setLiveStatus('loading');
-    setLiveMessage('Loading live places from OpenStreetMap…');
-    syncLiveFromCache();
-
-    const timer = window.setTimeout(async () => {
-      try {
-        const elements = await fetchOverpassElements(query, controller.signal);
-        if (controller.signal.aborted) return;
-        const mapped = osmElementsToPlaces(elements, missing);
-        missing.forEach((id) => cache.set(id, mapped.filter((place) => place.category === id)));
-        syncLiveFromCache();
-        setLiveStatus('ok');
-        setLiveMessage(
-          mapped.length > 0
-            ? `${mapped.length} live pins from OpenStreetMap`
-            : 'No extra live pins found — community pins only for now',
-        );
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        setLiveStatus('error');
-        setLiveMessage('Cannot reach OpenStreetMap (Overpass) — showing community pins only.');
-      }
-    }, 350);
-
-    return () => {
-      controller.abort();
-      window.clearTimeout(timer);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapReady, stage, selectedKey, retryTick]);
 
   useEffect(
     () => () => {
@@ -671,11 +634,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     );
   }, [originMode, userCoords, lockCameraToBounds, showToast]);
 
-  const refreshLivePins = useCallback(() => {
-    liveCacheRef.current.clear();
-    setLiveStatus('loading');
+  const refreshPins = useCallback(() => {
     setRetryTick((tick) => tick + 1);
-    showToast('Refreshing live OSM pins…');
+    showToast('Refreshing pins from Supabase…');
   }, [showToast]);
 
   const openMap = useCallback(() => {
@@ -732,46 +693,16 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   }, [places, listQuery, origin]);
 
   // ------------------------------------------------------------------ view
-  // One notice slot, exactly like the Traffic page — toasts only. The OSM
-  // fetch failure no longer claims the red banner; the sheet footer still
-  // reports it and the sheet's refresh button still retries.
-  const trafficNotice = basemap === 'streets' && trafficTilesFailed;
+  // One notice slot, exactly like the Traffic page — toasts only. A Supabase
+  // fetch failure does not claim the red banner; the sheet footer reports it
+  // and the sheet's refresh button refetches.
   const noticeText = toast;
-
-  const openDirections = useCallback(() => {
-    const center = localMapRef.current?.getCenter();
-    const lat = center ? center.lat : SAN_JOSE_CENTER[0];
-    const lng = center ? center.lng : SAN_JOSE_CENTER[1];
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-      '_blank',
-      'noopener,noreferrer',
-    );
-  }, []);
-
-  // The Filter FAB, positioned the way the Traffic page positions its own
-  // floating map buttons: a child of the results sheet, 64px above its top
-  // edge at the right (#rt-locate / #rt-layers2 in rizal_traffic_map.html).
-  // With the sheet closed it rides the right-hand stack instead, so it is
-  // never out of reach.
-  const filterFab = (
-    <button
-      type="button"
-      id="hc-filter-btn"
-      className="hc-filter-fab"
-      onClick={openPicker}
-      title="Filter"
-      aria-label="Filter"
-    >
-      <Filter />
-    </button>
-  );
 
   return (
     <div id="help-center-view" className="absolute inset-0 z-30 bg-white" aria-label="Help Center">
       {dbError && stage === 'map' && (
         <div role="status" className="absolute bottom-24 left-4 right-4 z-[1000] rounded-lg bg-white p-3 text-sm shadow">
-          Hindi ma-load ang ilang Supabase locations. Built-in pins muna ang ipinapakita.
+          Cannot reach the Supabase location tables, so these filters show no pins. Check the connection, then retry.
           <button type="button" className="ml-2 underline" onClick={() => setRetryTick(t => t + 1)}>Retry</button>
         </div>
       )}
@@ -784,8 +715,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       )}
 
       {/* Basemap switch — the Traffic view's Street | Satellite card, in the
-          same top-right slot, same order, same active styling. Street carries
-          the live traffic raster. */}
+          same top-right slot, same order, same active styling. Street is the
+          Leaflet OpenStreetMap layer; Satellite is the Esri imagery. */}
       {stage === 'map' && (
         <div id="hc-base-switch" role="group" aria-label="Map style">
           {(['streets', 'satellite'] as const).map((option) => (
@@ -795,8 +726,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               onClick={() => {
                 setBasemap(option);
                 rememberedBasemap = option;
-                // Coming back to Street should try the traffic tiles again.
-                setTrafficTilesFailed(false);
               }}
               aria-pressed={basemap === option}
               className={basemap === option ? 'active' : undefined}
@@ -815,8 +744,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           handle, 24px top corners, tabs and rows. */}
       {stage === 'map' && sheetOpen && (
         <div id="hc-sheet" className={sheetExpanded ? 'is-expanded' : undefined}>
-          {filterFab}
-
           <button
             type="button"
             className="hc-sheet-handle"
@@ -827,15 +754,27 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
           <div className="hc-sheet-head">
             <p className="hc-sheet-title">Selected places</p>
-            <span className="hc-sheet-count">{sortedPlaces.length}</span>
+            {/* Filter button — the sheet header is now the ONLY way back to
+                the picker ("Choose what you want to filter"); the floating
+                Filter FAB is gone. */}
+            <button
+              type="button"
+              className="hc-sheet-filter"
+              onClick={openPicker}
+              title="Filter"
+              aria-label="Filter"
+            >
+              <Filter aria-hidden="true" />
+              <span>Filter</span>
+            </button>
             {(
               <button
                 type="button"
                 className="hc-sheet-cb"
-                onClick={refreshLivePins}
-                title="Refresh live OSM pins"
-                aria-label="Refresh live OSM pins"
-                disabled={liveStatus === 'loading'}
+                onClick={refreshPins}
+                title="Refresh pins"
+                aria-label="Refresh pins"
+                disabled={dbStatus === 'loading'}
               >
                 <RefreshCw className="h-4 w-4" />
               </button>
@@ -893,9 +832,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <div className="hc-sheet-body custom-scrollbar">
             {sortedPlaces.length === 0 && (
               <div className="hc-sheet-empty">
-                {liveStatus === 'loading'
-                  ? 'Searching for pins…'
-                  : 'No matching places. Try another filter, or tap “Filter” above.'}
+                {dbStatus === 'loading'
+                  ? 'Loading pins from Supabase…'
+                  : supabaseReady
+                    ? 'No pins in Supabase for these filters yet. Add rows to the matching tables, or tap “Filter” above.'
+                    : 'Connect your Supabase project below to load pins.'}
               </div>
             )}
             {sortedPlaces.map(({ place, km }) => {
@@ -934,10 +875,35 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
           <div className="hc-sheet-foot">
             <p>
-              {liveMessage || 'Community pins are approximate — please verify before you go.'}
-              {trafficNotice && ' Traffic unavailable; showing the street map.'}
-              {' Community locations/hours are unverified; confirm before travelling.'}
+              {dbError
+                ? 'Some Supabase tables could not be reached — showing only the rows that loaded.'
+                : 'Locations come from the barangay Supabase directory.'}
+              {' Please confirm the location and hours before travelling.'}
             </p>
+            {/* Diagnostics: without this an empty Supabase filter looks like a
+                broken map. Each row names the table that was read and what it
+                answered (rows / empty / missing). */}
+            {dbReport.length > 0 && dbReport.some(result => result.status !== 'ok') && (
+              <details className="hc-diagnostics">
+                <summary>Why no pins?</summary>
+                <ul>
+                  {dbReport.map(result => (
+                    <li key={result.category}>
+                      <code>{result.table}</code>
+                      {' · '}
+                      {CATEGORY_BY_ID[result.category]?.label ?? result.category}
+                      {' — '}
+                      {result.detail}
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  Pins come only from Supabase. Add rows to those tables (or switch
+                  the project to a single <code>help_places</code> table with a
+                  <code> category</code> column), then tap refresh.
+                </p>
+              </details>
+            )}
             {!sheetExpanded && (
               <button type="button" className="hc-pill" onClick={() => setSheetExpanded(true)}>
                 View all
@@ -953,48 +919,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           <button type="button" className="hc-pill" onClick={() => setSheetOpen(true)}>
             <List className="h-4 w-4" /> List ({sortedPlaces.length})
           </button>
-        </div>
-      )}
-
-      {/* Right-hand stack — the Traffic view's Directions button above the
-          four-swatch legend, same sizes and same slot. */}
-      {stage === 'map' && (
-        <div id="hc-legend-stack" className={sheetOpen ? 'hc-under-sheet' : undefined}>
-          {!sheetOpen && filterFab}
-          <button
-            type="button"
-            id="hc-directions-btn"
-            title="Directions"
-            aria-label="Directions"
-            onClick={openDirections}
-          >
-            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff" />
-              <path
-                d="M23.5 34v-6.5a3 3 0 0 1 3-3H31"
-                fill="none"
-                stroke="#0b7a87"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
-            </svg>
-          </button>
-
-          {/* Same four-swatch legend in Street mode while the live-traffic
-              raster is up, and now also in Satellite mode so the imagery view
-              carries the same key as the rest of the app. */}
-          {(basemap === 'satellite' || (basemap === 'streets' && !trafficTilesFailed)) && (
-            <div id="hc-legend">
-              {LEGEND_ROWS.map((row) => (
-                <div key={row.label} className="row">
-                  <span className="sw" style={{ background: row.color }} />
-                  {row.label}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

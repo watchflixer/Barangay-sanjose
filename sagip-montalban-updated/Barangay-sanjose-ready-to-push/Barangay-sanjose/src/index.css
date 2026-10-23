@@ -403,98 +403,36 @@ body,
   color: #ffffff;
 }
 
-/* --- Right-hand stack: Directions button above the legend card ---------- */
-#hc-legend-stack {
-  position: absolute;
-  right: 12px;
-  bottom: 24px;
-  z-index: 400;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
+/* --- "Why no pins?" diagnostics under the results sheet ------------------ */
+#hc-sheet .hc-diagnostics {
+  margin: 6px 12px 0;
+  font-size: 11.5px;
+  color: #5f6368;
 }
 
-/* Raise the stack on phone portrait so it clears the app's bottom overlays,
-   the way the Traffic page does. */
-@media (orientation: portrait) and (max-width: 640px) {
-  #hc-legend-stack {
-    bottom: 56px;
-  }
-}
-
-/* While the results sheet is up it covers the bottom of the screen on narrow
-   views — Traffic hides its legend the same way while a route is on screen
-   (body.routing #legend-stack{display:none}). */
-@media (max-width: 900px) {
-  #hc-legend-stack.hc-under-sheet {
-    display: none;
-  }
-}
-
-#hc-directions-btn {
-  display: block;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  border: 0;
-  border-radius: 14px;
-  background: #0b7a87;
+#hc-sheet .hc-diagnostics summary {
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
+  font-weight: 600;
+  color: #00697a;
 }
 
-#hc-directions-btn svg {
-  display: block;
-  width: 100%;
-  height: 100%;
+#hc-sheet .hc-diagnostics ul {
+  margin: 6px 0 4px;
+  padding-left: 16px;
+  list-style: disc;
 }
 
-#hc-directions-btn:hover {
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+#hc-sheet .hc-diagnostics code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #202124;
 }
 
-#hc-directions-btn:active {
-  transform: scale(0.94);
+#hc-sheet .hc-diagnostics p {
+  margin: 4px 0 0;
+  line-height: 1.4;
 }
 
-#hc-directions-btn:focus-visible {
-  outline: 3px solid #ffffff;
-  outline-offset: -6px;
-}
-
-#hc-legend {
-  min-width: 150px;
-  padding: 10px 12px;
-  border: 1px solid #d4d8d4;
-  border-radius: 8px;
-  background: rgba(244, 246, 244, 0.95);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 0.78rem;
-  color: #1b2a2f;
-}
-
-#hc-legend .row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 3px 0;
-}
-
-#hc-legend .sw {
-  display: inline-block;
-  width: 13px;
-  height: 13px;
-  border-radius: 2px;
-}
-
-/* --- Messages: Traffic's #notice. Traffic drops it further down whenever
-       other chrome is on screen (body.routing #notice{top:132px}); here the
-       top bar holds the control column, the Filter FAB and the basemap
-       switch, so the notice starts just below it. --------------------------- */
 #hc-notice {
   position: absolute;
   top: 52px;
@@ -518,53 +456,6 @@ body,
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-/* --- Filter: Traffic's floating map button. The Traffic page keeps these as
-       children of its bottom sheet (#rt-locate at top:-64px, #rt-layers2 at
-       top:-124px, right:12px, 48px, radius 14, 0 2px 8px rgba(0,0,0,.3),
-       22px glyph in #3c4043) so they hover over the map right above the sheet;
-       the Help Center does the same with its sheet. With the sheet closed the
-       same button rides the top of the right-hand stack instead. ---------- */
-.hc-filter-fab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  border: 0;
-  border-radius: 14px;
-  background: #ffffff;
-  color: #3c4043;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.hc-filter-fab svg {
-  width: 22px;
-  height: 22px;
-}
-
-.hc-filter-fab:hover {
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
-}
-
-.hc-filter-fab:active {
-  transform: scale(0.94);
-}
-
-.hc-filter-fab:focus-visible {
-  outline: 3px solid #0b7a87;
-  outline-offset: -6px;
-}
-
-#hc-sheet .hc-filter-fab {
-  position: absolute;
-  right: 12px;
-  top: -64px;
 }
 
 /* --- Results sheet: Traffic's route sheet recipe (#rt-sheet + .rt-head +
@@ -621,14 +512,51 @@ body,
   color: #0f172a;
 }
 
-#hc-sheet .hc-sheet-count {
+/* Filter button in the sheet header: a real button that reopens the picker
+   ("Choose what you want to filter"). Icon-only on the narrowest phones so
+   the header never wraps. */
+#hc-sheet .hc-sheet-filter {
   flex: none;
-  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
   border-radius: 6px;
   background: #111827;
   color: #ffffff;
+  font-family: inherit;
   font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+#hc-sheet .hc-sheet-filter svg {
+  width: 14px;
+  height: 14px;
+}
+
+#hc-sheet .hc-sheet-filter:active {
+  filter: brightness(1.3);
+}
+
+#hc-sheet .hc-sheet-filter:focus-visible {
+  outline: 3px solid #d3eef5;
+  outline-offset: 2px;
+}
+
+@media (max-width: 400px) {
+  #hc-sheet .hc-sheet-filter {
+    width: 32px;
+    padding: 0;
+  }
+
+  #hc-sheet .hc-sheet-filter span {
+    display: none;
+  }
 }
 
 /* Head buttons: Traffic's .rt-cb circles. */
@@ -1124,6 +1052,11 @@ body,
   flex-direction: column;
   min-width: 0;
   flex: 1;
+  /* Half of the removed “N PIN / LIVE OSM” line's 19.25px slot sits above
+     and below the two remaining lines: the title + caption are now optically
+     centred against the icon circle, and the card keeps exactly the height
+     it had while that line was there. */
+  padding: 9.625px 0;
 }
 
 .hc-cat-title {
@@ -1140,12 +1073,6 @@ body,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.hc-cat-meta {
-  font-size: 11.5px;
-  color: #5f6368;
-  margin-top: 2px;
 }
 
 .hc-cat-check {
