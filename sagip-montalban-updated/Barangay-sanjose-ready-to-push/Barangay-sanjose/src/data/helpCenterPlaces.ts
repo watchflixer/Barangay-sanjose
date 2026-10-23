@@ -233,9 +233,12 @@ export const CATEGORIES_BY_GROUP: { group: PlaceGroupId; categories: PlaceCatego
   }));
 
 /**
- * Community-mapped places around Barangay San Jose (Rodriguez, Rizal).
- * Coordinates are approximate anchors around the known sitios - the
- * "Live OSM" switch pulls the surveyed OpenStreetMap pins on top of these.
+ * SEED REFERENCE ONLY — not used by the app.
+ *
+ * The Help Center draws every pin from Supabase (`<group>_<category>`
+ * tables, see supabase/help_places.sql). This curated list is kept only as
+ * source material for seeding those tables; importing it into the map would
+ * break the "Supabase is the single source of truth" rule.
  */
 export const HELP_CENTER_PLACES: Place[] = [
   // ------------------------------------------------------------ 7-Eleven

@@ -139,9 +139,9 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
           ))}
 
           <p className="hc-picker-note">
-            <strong>Note:</strong> some pins are community-mapped and may be a few metres off. We
-            also add the live location from OpenStreetMap whenever it is available, and the Street
-            map carries a live traffic layer, just like the Traffic view.
+            <strong>Note:</strong> every pin on this map comes from the barangay's Supabase
+            directory — one table per filter. The Street map also carries a live traffic layer,
+            just like the Traffic view.
           </p>
         </div>
 
