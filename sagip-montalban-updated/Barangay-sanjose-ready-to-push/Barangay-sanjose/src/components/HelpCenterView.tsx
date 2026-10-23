@@ -17,8 +17,6 @@ import {
   fetchSupabaseCategory,
   isSupabaseEnabled,
   resetHelpPlacesSchema,
-  setSupabaseConfig,
-  supabaseConfigFromEnv,
   type CategoryFetchResult,
   type HelpPlacesSchema,
 } from '../services/helpCenterService';
@@ -147,11 +145,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // Credentials: the build ships them (Pages secrets), or the user pastes the
   // public URL + anon key here once — it is kept in localStorage.
   const [supabaseReady, setSupabaseReady] = useState(isSupabaseEnabled);
-  const [setupUrl, setSetupUrl] = useState('');
-  const [setupKey, setSetupKey] = useState('');
-  const [setupError, setSetupError] = useState('');
-  const [setupOpen, setSetupOpen] = useState(false);
-  const [setupDismissed, setSetupDismissed] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>(SAN_JOSE_CENTER);
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
@@ -641,20 +634,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     );
   }, [originMode, userCoords, lockCameraToBounds, showToast]);
 
-  // Save the public Supabase URL + anon key (kept in localStorage) and load.
-  const handleSaveSupabase = useCallback(() => {
-    const saved = setSupabaseConfig({ url: setupUrl, key: setupKey });
-    if (!saved) {
-      setSetupError('Paste the project URL (https://xxxx.supabase.co) and the anon public key.');
-      return;
-    }
-    setSetupError('');
-    setSetupKey('');
-    setSupabaseReady(true);
-    setRetryTick((tick) => tick + 1);
-    showToast('Supabase connected — loading pins…');
-  }, [setupUrl, setupKey, showToast]);
-
   const refreshPins = useCallback(() => {
     setRetryTick((tick) => tick + 1);
     showToast('Refreshing pins from Supabase…');
@@ -733,63 +712,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           ref={containerRef}
           className="block h-full w-full cursor-grab active:cursor-grabbing"
         />
-      )}
-
-      {/* No credentials yet: without them Supabase returns nothing, so the map
-          would be empty. Paste the public URL + anon key once (kept in this
-          browser) or set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. */}
-      {stage === 'map' && !supabaseReady && !supabaseConfigFromEnv() && !setupDismissed && (
-        <form
-          id="hc-supabase-setup"
-          className={setupOpen ? 'is-open' : undefined}
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleSaveSupabase();
-          }}
-        >
-          <button
-            type="button"
-            className="hc-setup-close"
-            aria-label="Hide the Supabase setup"
-            onClick={() => setSetupDismissed(true)}
-          >
-            <X className="h-4 w-4" />
-          </button>
-          <p className="hc-setup-title">No Supabase keys in this build</p>
-          <p className="hc-setup-sub">
-            Pins come from your Supabase tables, and this build shipped without
-            the keys. Your <strong>GitHub Pages</strong> site reads them from the
-            repo's Actions secrets at build time; this preview/local build does
-            not. Paste them once below to use them here too.
-          </p>
-          {!setupOpen && (
-            <button type="button" className="hc-pill" onClick={() => setSetupOpen(true)}>
-              Use my keys here
-            </button>
-          )}
-          {setupOpen && (<>
-          <input
-            type="url"
-            value={setupUrl}
-            onChange={(event) => setSetupUrl(event.target.value)}
-            placeholder="https://your-project.supabase.co"
-            aria-label="Supabase project URL"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          <input
-            type="password"
-            value={setupKey}
-            onChange={(event) => setSetupKey(event.target.value)}
-            placeholder="anon public key"
-            aria-label="Supabase anon key"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          {setupError && <p className="hc-setup-error">{setupError}</p>}
-          <button type="submit" className="hc-pill go">Connect</button>
-          </>)}
-        </form>
       )}
 
       {/* Basemap switch — the Traffic view's Street | Satellite card, in the
