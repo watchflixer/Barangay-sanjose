@@ -556,14 +556,38 @@ body,
   color: #0f172a;
 }
 
-#hc-sheet .hc-sheet-count {
+/* Head Filter button — the old count badge's dark chip, now clickable: it
+   opens the picker ("Choose what you want to filter"). The count itself
+   moved into the sheet title. */
+#hc-sheet .hc-sheet-filter {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 10px;
+  border: 0;
   border-radius: 6px;
   background: #111827;
   color: #ffffff;
+  font-family: inherit;
   font-size: 12px;
   font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#hc-sheet .hc-sheet-filter:hover {
+  background: #1f2937;
+}
+
+#hc-sheet .hc-sheet-filter:active {
+  transform: scale(0.97);
+}
+
+#hc-sheet .hc-sheet-filter:focus-visible {
+  outline: 2px solid #0b7a87;
+  outline-offset: 2px;
 }
 
 /* Head buttons: Traffic's .rt-cb circles. */

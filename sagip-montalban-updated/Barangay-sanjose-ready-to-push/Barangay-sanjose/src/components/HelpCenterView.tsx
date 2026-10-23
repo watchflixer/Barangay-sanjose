@@ -807,8 +807,17 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           />
 
           <div className="hc-sheet-head">
-            <p className="hc-sheet-title">Selected places</p>
-            <span className="hc-sheet-count">{sortedPlaces.length}</span>
+            <p className="hc-sheet-title">Selected places ({sortedPlaces.length})</p>
+            <button
+              type="button"
+              className="hc-sheet-filter"
+              onClick={openPicker}
+              title="Choose what you want to filter"
+              aria-label="Choose what you want to filter"
+            >
+              <Filter className="h-3 w-3" />
+              Filter
+            </button>
             {(
               <button
                 type="button"
