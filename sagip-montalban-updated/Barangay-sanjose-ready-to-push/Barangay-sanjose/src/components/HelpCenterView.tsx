@@ -807,7 +807,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           />
 
           <div className="hc-sheet-head">
-            <p className="hc-sheet-title">Selected places ({sortedPlaces.length})</p>
+            <p className="hc-sheet-title">Selected places</p>
             <button
               type="button"
               className="hc-sheet-filter"
