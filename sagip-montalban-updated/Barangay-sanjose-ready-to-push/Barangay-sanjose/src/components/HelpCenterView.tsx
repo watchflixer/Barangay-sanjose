@@ -730,17 +730,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const trafficNotice = basemap === 'streets' && trafficTilesFailed;
   const noticeText = toast;
 
-  const openDirections = useCallback(() => {
-    const center = localMapRef.current?.getCenter();
-    const lat = center ? center.lat : SAN_JOSE_CENTER[0];
-    const lng = center ? center.lng : SAN_JOSE_CENTER[1];
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-      '_blank',
-      'noopener,noreferrer',
-    );
-  }, []);
-
   // The Filter FAB, positioned the way the Traffic page positions its own
   // floating map buttons: a child of the results sheet, 64px above its top
   // edge at the right (#rt-locate / #rt-layers2 in rizal_traffic_map.html).
@@ -948,31 +937,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Right-hand stack — just the Traffic view's Directions button now
-          (the Help Center map carries no traffic legend). */}
-      {stage === 'map' && (
-        <div id="hc-control-stack" className={sheetOpen ? 'hc-under-sheet' : undefined}>
-          {!sheetOpen && filterFab}
-          <button
-            type="button"
-            id="hc-directions-btn"
-            title="Directions"
-            aria-label="Directions"
-            onClick={openDirections}
-          >
-            <svg viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <rect x="17" y="17" width="22" height="22" rx="3.5" transform="rotate(45 28 28)" fill="#ffffff" />
-              <path
-                d="M23.5 34v-6.5a3 3 0 0 1 3-3H31"
-                fill="none"
-                stroke="#0b7a87"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
-            </svg>
-          </button>
+      {/* Right-hand stack — the Filter FAB only. The Help Center map carries
+          no traffic legend and no Directions button. */}
+      {stage === 'map' && !sheetOpen && (
+        <div id="hc-control-stack">
+          {filterFab}
         </div>
       )}
 
