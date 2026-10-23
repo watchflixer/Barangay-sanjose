@@ -58,9 +58,14 @@ test('community fallback has valid pins even with no external connection', () =>
   assert.ok(HELP_CENTER_PLACES.every(place => place.source === 'curated' && place.coords.every(Number.isFinite)));
 });
 
-test('School pins come from Supabase, not built-in or OSM data', () => {
+test('School filter always has curated pins; OSM school spam stays out', () => {
   const schools = HELP_CENTER_PLACES.filter(place => place.category === 'school');
-  assert.equal(schools.length, 0);
+  // The School filter must never open an empty map, even with no Supabase
+  // credentials and no network — the curated list is the offline fallback.
+  assert.ok(schools.length >= 20, `expected the curated school list, got ${schools.length}`);
+  assert.ok(schools.every(place => place.source === 'curated' && place.coords.every(Number.isFinite)));
+  assert.ok(schools.some(place => place.id === 'sc-kasiglahan-nhs'));
+  // Live OSM school results are still skipped (they duplicate the curated pins).
   assert.deepEqual(osmElementsToPlaces([{ ...element, tags: { amenity: 'school', name: 'Named school' } }], ['school']), []);
   assert.equal(osmElementsToPlaces([element], ['pharmacy']).length, 1);
 });

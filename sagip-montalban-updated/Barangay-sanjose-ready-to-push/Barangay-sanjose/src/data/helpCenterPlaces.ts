@@ -494,6 +494,117 @@ export const HELP_CENTER_PLACES: Place[] = [
     id: 'br-satellite-1k2', category: 'barangay', name: 'Barangay San Jose Satellite Office (Kasiglahan 1K2)',
     coords: [14.7455, 121.1368], address: 'Kasiglahan Village 1K2, Brgy. San Jose', approx: false, source: 'curated',
   },
+  // ------------------------------------------------------------- school
+  {
+    id: 'sc-sanjose-elem', category: 'school', name: 'San Jose Elementary School',
+    coords: [14.7435, 121.1445], address: 'Narra St., Brgy. San Jose, Rodriguez, Rizal', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-kasiglahan-elem', category: 'school', name: 'Kasiglahan Village Elementary School',
+    coords: [14.7483, 121.1416], address: 'Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal',
+    note: 'Also an evacuation center during floods', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-kasiglahan-nhs', category: 'school', name: 'Kasiglahan Village National High School',
+    coords: [14.7495, 121.1416], address: 'Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-eastwood-learning', category: 'school', name: 'Eastwood Greenview Learning Center',
+    coords: [14.7391, 121.1213], address: 'Eastwood Greenview Phase 3, Brgy. San Jose', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-tagumpay-daycare', category: 'school', name: 'Tagumpay Village Day Care Center',
+    coords: [14.7458, 121.132], address: 'Tagumpay Village, Brgy. San Jose', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-westbridge-amityville', category: 'school', name: 'Westbridge Institute of Technology, Inc. - Amityville Campus',
+    coords: [14.7342, 121.1292], address: 'Amityville Subd., Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-westbridge-balite', category: 'school', name: 'Westbridge Institute of Technology, Inc. - Balite Campus',
+    coords: [14.7608, 121.1448], address: 'Sitio Balite, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'TESDA-accredited • Senior High & College', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-sanjose-litex-shs', category: 'school', name: 'San Jose Litex Senior High School',
+    coords: [14.7295, 121.1128], address: 'Litex Road, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public Senior High • Grades 11-12 • DepEd', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-southville8b-nhs', category: 'school', name: 'Southville 8B National High School',
+    coords: [14.752, 121.1491], address: 'Block 52-D Lot 1 Phase 1 Southville 8B, Brgy. San Isidro, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public High School • Junior & Senior High', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-stand-alone-shs5', category: 'school', name: 'Stand-Alone Senior High School No. 5 (San Jose)',
+    coords: [14.7438, 121.1415], address: 'Rodriguez Highway, Brgy. San Jose (near Sub-Urban)', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Senior High • DepEd', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-maranatha-kasiglahan', category: 'school', name: 'Maranatha Christian Academy - Kasiglahan',
+    coords: [14.7462, 121.135], address: 'Kasiglahan Village 1K1, Brgy. San Jose, Rodriguez, Rizal', hours: '7:00 AM - 4:00 PM (Mon-Fri)', note: 'Private Elementary & Junior High', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-southville8b-elem', category: 'school', name: 'Southville 8B Elementary School',
+    coords: [14.7601, 121.1506], address: 'Southville 8-B, Brgy. San Isidro, Rodriguez, Rizal', hours: '8:00 AM - 4:00 PM (Mon-Fri)', note: 'Kinder • Public Day Care', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-college-colegio-montalban', category: 'school', name: 'Colegio de Montalban (Pamantasan ng Montalban)',
+    coords: [14.7504, 121.1417], address: 'Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'College • Semi-public • TESDA & CHED courses', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-urs-rodriguez', category: 'school', name: 'University of Rizal System - Rodriguez Campus',
+    coords: [14.7491, 121.1274], address: 'T. Reyes St., Amityville Subd., Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Fri)', note: 'State University • CHED • Public college', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-feu-rodriguez', category: 'school', name: 'FEU Roosevelt - Rodriguez Campus',
+    coords: [14.7287, 121.1397], address: 'Lardizabal St., Brgy. Manggahan, Rodriguez, Rizal', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College & Senior High • FEU Group', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-aics-montalban', category: 'school', name: 'Asian Institute of Computer Studies - Montalban Campus',
+    coords: [14.7368, 121.1365], address: 'Rodriguez Highway, Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'Private College • IT & Business', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-casp-montalban', category: 'school', name: 'College of Arts and Sciences of Asia and the Pacific',
+    coords: [14.7402, 121.1422], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Sat)', note: 'Private College', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-frobelian', category: 'school', name: 'Frobelian College of Science & Technology',
+    coords: [14.7385, 121.1355], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '8:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College • Science & Tech', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-st-joseph-college', category: 'school', name: 'St. Joseph College - Rodriguez',
+    coords: [14.7412, 121.1438], address: 'Brgy. San Jose, Rodriguez, Rizal', hours: '7:00 AM - 5:00 PM (Mon-Fri)', note: 'Private College & Basic Ed', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-san-jose-nhs', category: 'school', name: 'San Jose National High School',
+    coords: [14.743, 121.1458], address: 'Ipil St., Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public • Junior & Senior High', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-kasiglahan-shs', category: 'school', name: 'Kasiglahan Village Senior High School',
+    coords: [14.741, 121.1406], address: 'Granite St., Phase 1K2, Kasiglahan Village, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public Senior High • Kasiglahan Annex', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-southville8c-nhs', category: 'school', name: 'Southville 8C National High School',
+    coords: [14.7549, 121.1433], address: 'Double L, Southville 8C, Brgy. San Isidro, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public High School', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-tagumpay-nhs', category: 'school', name: 'Tagumpay National High School',
+    coords: [14.7453, 121.1313], address: 'Tagumpay, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 6:00 PM (Mon-Fri)', note: 'Public High School • 308114', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-tagumpay-elem', category: 'school', name: 'Tagumpay Elementary School',
+    coords: [14.7458, 121.1315], address: 'Tagumpay, Brgy. San Jose, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Elementary', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-southville8c-elem', category: 'school', name: 'Southville 8C Elementary School',
+    coords: [14.756, 121.1452], address: 'Southville 8-C, Brgy. San Isidro, Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Elementary', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-wawa-nhs', category: 'school', name: 'Wawa National High School',
+    coords: [14.7308, 121.1853], address: 'M.H. Del Pilar Ave., Brgy. San Rafael (Wawa), Rodriguez, Rizal', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public High School', approx: false, source: 'curated',
+  },
+  {
+    id: 'sc-san-jose-elem-unit1', category: 'school', name: 'Kasiglahan Village Elementary School Unit I',
+    coords: [14.7465, 121.1378], address: 'Block 40 Phase 1A, Kasiglahan Village, Brgy. San Jose', hours: '6:00 AM - 5:00 PM (Mon-Fri)', note: 'Public Elementary • Unit I', approx: false, source: 'curated',
+  },
+
   // ------------------------------------------------------------- church
   {
     id: 'ch-san-jose-parish', category: 'church', name: 'San Jose Parish Church',
