@@ -125,10 +125,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
                       <span className="hc-cat-tx">
                         <span className="hc-cat-title">{category.label}</span>
                         <span className="hc-cat-sub">{category.caption}</span>
-                        {/* Empty on purpose: the “N PIN / LIVE OSM” caption
-                            was removed, but the line box stays so the cards
-                            keep exactly the same height. */}
-                        <span className="hc-cat-meta" aria-hidden="true" />
                       </span>
                       {isOn && (
                         <span className="hc-cat-check" aria-hidden="true">

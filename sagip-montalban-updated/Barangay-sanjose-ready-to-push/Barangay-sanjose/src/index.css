@@ -1022,6 +1022,11 @@ body,
   flex-direction: column;
   min-width: 0;
   flex: 1;
+  /* Half of the removed “N PIN / LIVE OSM” line's 19.25px slot sits above
+     and below the two remaining lines: the title + caption are now optically
+     centred against the icon circle, and the card keeps exactly the height
+     it had while that line was there. */
+  padding: 9.625px 0;
 }
 
 .hc-cat-title {
@@ -1038,17 +1043,6 @@ body,
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.hc-cat-meta {
-  /* The “N PIN / LIVE OSM” caption is gone from the picker cards, but the
-     line keeps its slot (same font size, line box and 2px gap) so every card
-     stays the exact height it was. */
-  font-size: 11.5px;
-  line-height: 1.5;
-  min-height: 1.5em;
-  color: #5f6368;
-  margin-top: 2px;
 }
 
 .hc-cat-check {
