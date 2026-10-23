@@ -74,14 +74,6 @@ interface HelpCenterViewProps {
 
 const ALL_CATEGORY_IDS = HELP_CENTER_CATEGORIES.map((category) => category.id);
 
-/** The Traffic view's legend, row for row: same wording, same swatches. */
-const LEGEND_ROWS = [
-  { color: '#2BC82B', label: 'Free flowing' },
-  { color: '#F1BF40', label: 'Slow traffic' },
-  { color: '#CC0704', label: 'Heavy congestion' },
-  { color: '#7A1F1B', label: 'Road closed' },
-] as const;
-
 /**
  * The "lock camera to Barangay San Jose" box, 0.015° larger than the barangay
  * on every side — the same box the host map used to hard-clamp against.
@@ -316,7 +308,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // Basemap (Street / Satellite) + the live-traffic layer, mirroring the
   // Traffic view: in Street mode the traffic raster is the basemap; Satellite
   // keeps the imagery. If the traffic tiles cannot be fetched the view falls
-  // back to the plain street basemap and says so in the legend.
+  // back to the plain street basemap and says so in the notice.
   useEffect(() => {
     const map = localMapRef.current;
     if (!mapReady || !map) return;
@@ -956,10 +948,10 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         </div>
       )}
 
-      {/* Right-hand stack — the Traffic view's Directions button above the
-          four-swatch legend, same sizes and same slot. */}
+      {/* Right-hand stack — just the Traffic view's Directions button now
+          (the Help Center map carries no traffic legend). */}
       {stage === 'map' && (
-        <div id="hc-legend-stack" className={sheetOpen ? 'hc-under-sheet' : undefined}>
+        <div id="hc-control-stack" className={sheetOpen ? 'hc-under-sheet' : undefined}>
           {!sheetOpen && filterFab}
           <button
             type="button"
@@ -981,20 +973,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               <path d="M30.5 19.8L36 24.5l-5.5 4.7z" fill="#0b7a87" transform="translate(-0.5 0)" />
             </svg>
           </button>
-
-          {/* Same four-swatch legend in Street mode while the live-traffic
-              raster is up, and now also in Satellite mode so the imagery view
-              carries the same key as the rest of the app. */}
-          {(basemap === 'satellite' || (basemap === 'streets' && !trafficTilesFailed)) && (
-            <div id="hc-legend">
-              {LEGEND_ROWS.map((row) => (
-                <div key={row.label} className="row">
-                  <span className="sw" style={{ background: row.color }} />
-                  {row.label}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

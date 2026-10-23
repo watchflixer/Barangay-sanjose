@@ -403,8 +403,8 @@ body,
   color: #ffffff;
 }
 
-/* --- Right-hand stack: Directions button above the legend card ---------- */
-#hc-legend-stack {
+/* --- Right-hand stack: the floating Directions button -------------------- */
+#hc-control-stack {
   position: absolute;
   right: 12px;
   bottom: 24px;
@@ -418,16 +418,16 @@ body,
 /* Raise the stack on phone portrait so it clears the app's bottom overlays,
    the way the Traffic page does. */
 @media (orientation: portrait) and (max-width: 640px) {
-  #hc-legend-stack {
+  #hc-control-stack {
     bottom: 56px;
   }
 }
 
 /* While the results sheet is up it covers the bottom of the screen on narrow
-   views — Traffic hides its legend the same way while a route is on screen
+   views — Traffic hides its controls the same way while a route is on screen
    (body.routing #legend-stack{display:none}). */
 @media (max-width: 900px) {
-  #hc-legend-stack.hc-under-sheet {
+  #hc-control-stack.hc-under-sheet {
     display: none;
   }
 }
@@ -463,32 +463,6 @@ body,
 #hc-directions-btn:focus-visible {
   outline: 3px solid #ffffff;
   outline-offset: -6px;
-}
-
-#hc-legend {
-  min-width: 150px;
-  padding: 10px 12px;
-  border: 1px solid #d4d8d4;
-  border-radius: 8px;
-  background: rgba(244, 246, 244, 0.95);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 0.78rem;
-  color: #1b2a2f;
-}
-
-#hc-legend .row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 3px 0;
-}
-
-#hc-legend .sw {
-  display: inline-block;
-  width: 13px;
-  height: 13px;
-  border-radius: 2px;
 }
 
 /* --- Messages: Traffic's #notice. Traffic drops it further down whenever
