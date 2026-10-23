@@ -219,18 +219,80 @@ export async function detectHelpPlacesSchema(signal: AbortSignal): Promise<HelpP
   const config = getSupabaseConfig();
   if (!config) return 'per-filter';
   if (detectedSchema) return detectedSchema;
-  const response = await fetch(`${config.url}/rest/v1/${HELP_PLACES_TABLE}?select=id&limit=1`, {
+  // Select the category column on purpose: a table that merely shares the
+  // name (but has no `category`) must not be mistaken for the single-table
+  // layout — Supabase answers 400 for an unknown column.
+  const response = await fetch(`${config.url}/rest/v1/${HELP_PLACES_TABLE}?select=id,category&limit=1`, {
     signal,
     headers: supabaseHeaders(),
   });
   if (response.ok) {
     detectedSchema = 'single';
-  } else if (response.status === 404) {
+  } else if (response.status === 404 || response.status === 400) {
     detectedSchema = 'per-filter';
   } else {
     throw new Error(`Supabase ${HELP_PLACES_TABLE}: HTTP ${response.status}`);
   }
   return detectedSchema;
+}
+
+export interface CategoryFetchResult {
+  category: PlaceCategoryId;
+  /** Table that was queried, e.g. `community_school` or `help_places`. */
+  table: string;
+  places: Place[];
+  status: 'ok' | 'empty' | 'missing' | 'error' | 'disabled';
+  /** Short human-readable outcome, shown in the sheet's diagnostics. */
+  detail: string;
+}
+
+/**
+ * Same read as fetchSupabasePlaces, but reports what happened — which table was
+ * queried and whether it was missing, empty, or answered. That is what the
+ * Help Center shows under "Why no pins?", so an empty Supabase filter is never
+ * a silent blank map.
+ */
+export async function fetchSupabaseCategory(
+  category: PlaceCategoryId,
+  signal: AbortSignal,
+  schema: HelpPlacesSchema = detectedSchema ?? 'per-filter',
+): Promise<CategoryFetchResult> {
+  const table = supabaseTableForSchema(category, schema);
+  const config = getSupabaseConfig();
+  if (!config) return { category, table, places: [], status: 'disabled', detail: 'no Supabase credentials' };
+  const places: Place[] = [];
+  try {
+    for (let offset = 0; ; offset += 1000) {
+      signal.throwIfAborted();
+      const response = await fetch(`${config.url}/rest/v1/${table}?${supabaseQueryFor(category, schema, offset)}`, {
+        signal,
+        headers: supabaseHeaders(),
+      });
+      if (!response.ok) {
+        return {
+          category,
+          table,
+          places: [],
+          status: response.status === 404 ? 'missing' : 'error',
+          detail: response.status === 404 ? 'table not found' : `HTTP ${response.status}`,
+        };
+      }
+      const rows = await response.json();
+      if (!Array.isArray(rows)) return { category, table, places: [], status: 'error', detail: 'unexpected response' };
+      places.push(...supabaseRowsToPlaces(category, rows));
+      if (rows.length < 1000) break;
+    }
+  } catch (error) {
+    if (signal.aborted) throw error;
+    return { category, table, places: [], status: 'error', detail: 'network error' };
+  }
+  return {
+    category,
+    table,
+    places,
+    status: places.length > 0 ? 'ok' : 'empty',
+    detail: places.length === 0 ? 'table is empty' : `${places.length} row${places.length === 1 ? '' : 's'}`,
+  };
 }
 
 export async function fetchSupabasePlaces(

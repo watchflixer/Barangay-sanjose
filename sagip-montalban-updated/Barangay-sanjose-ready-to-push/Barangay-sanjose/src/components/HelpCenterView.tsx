@@ -14,11 +14,12 @@ import L from 'leaflet';
 import { Filter, List, Loader2, Navigation, RefreshCw, Search, X } from 'lucide-react';
 import {
   detectHelpPlacesSchema,
-  fetchSupabasePlaces,
+  fetchSupabaseCategory,
   isSupabaseEnabled,
   resetHelpPlacesSchema,
   setSupabaseConfig,
   supabaseConfigFromEnv,
+  type CategoryFetchResult,
   type HelpPlacesSchema,
 } from '../services/helpCenterService';
 import { HelpCenterFilterPicker } from './HelpCenterFilterPicker';
@@ -140,6 +141,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const [dbPlaces, setDbPlaces] = useState<Place[]>([]);
   const [dbError, setDbError] = useState(false);
   const [dbStatus, setDbStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  // One entry per selected filter: which Supabase table was read and what it
+  // answered. Surfaced under "Why no pins?" so an empty filter is explainable.
+  const [dbReport, setDbReport] = useState<CategoryFetchResult[]>([]);
   // Credentials: the build ships them (Pages secrets), or the user pastes the
   // public URL + anon key here once — it is kept in localStorage.
   const [supabaseReady, setSupabaseReady] = useState(isSupabaseEnabled);
@@ -510,6 +514,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     }
     const controller = new AbortController();
     setDbStatus('loading');
+    setDbReport([]);
     let pending = selected.length;
     if (pending === 0) {
       setDbStatus('ok');
@@ -522,9 +527,13 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       .then((schema: HelpPlacesSchema) => {
         if (controller.signal.aborted) return;
         selected.forEach(id => {
-          fetchSupabasePlaces(id, controller.signal, schema).then(rows => {
+          fetchSupabaseCategory(id, controller.signal, schema).then(result => {
             if (controller.signal.aborted) return;
-            setDbPlaces(current => [...current, ...rows]);
+            setDbReport(current => [...current, result]);
+            if (result.places.length) setDbPlaces(current => [...current, ...result.places]);
+            if (result.status === 'missing' || result.status === 'error' || result.status === 'disabled') {
+              setDbError(true);
+            }
             pending -= 1;
             if (pending === 0) setDbStatus('ok');
           }).catch(() => {
@@ -929,6 +938,30 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
                 : 'Locations come from the barangay Supabase directory.'}
               {' Please confirm the location and hours before travelling.'}
             </p>
+            {/* Diagnostics: without this an empty Supabase filter looks like a
+                broken map. Each row names the table that was read and what it
+                answered (rows / empty / missing). */}
+            {dbReport.length > 0 && dbReport.some(result => result.status !== 'ok') && (
+              <details className="hc-diagnostics">
+                <summary>Why no pins?</summary>
+                <ul>
+                  {dbReport.map(result => (
+                    <li key={result.category}>
+                      <code>{result.table}</code>
+                      {' · '}
+                      {CATEGORY_BY_ID[result.category]?.label ?? result.category}
+                      {' — '}
+                      {result.detail}
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  Pins come only from Supabase. Add rows to those tables (or switch
+                  the project to a single <code>help_places</code> table with a
+                  <code> category</code> column), then tap refresh.
+                </p>
+              </details>
+            )}
             {!sheetExpanded && (
               <button type="button" className="hc-pill" onClick={() => setSheetExpanded(true)}>
                 View all

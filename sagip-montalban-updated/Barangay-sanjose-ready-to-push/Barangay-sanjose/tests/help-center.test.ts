@@ -85,6 +85,29 @@ test('School filter always has curated pins; OSM school spam stays out', () => {
   assert.equal(osmElementsToPlaces([element], ['pharmacy']).length, 1);
 });
 
+test('an empty Supabase filter reports which table it read', async () => {
+  const svc = await import('../src/services/helpCenterService');
+  const signal = new AbortController().signal;
+  // Without credentials nothing is fetched, but the report still says so.
+  const disabled = await svc.fetchSupabaseCategory('school', signal, 'per-filter');
+  assert.equal(disabled.table, 'community_school');
+  assert.equal(disabled.status, 'disabled');
+  assert.deepEqual(disabled.places, []);
+  // A missing table is reported as missing, not as a silent empty map.
+  globalThis.fetch = async () => new Response('', { status: 404 });
+  assert.equal(svc.setSupabaseConfig({ url: 'https://demo.supabase.co', key: 'anon-key' }) !== null, true);
+  const missing = await svc.fetchSupabaseCategory('school', signal, 'per-filter');
+  assert.equal(missing.status, 'missing');
+  assert.equal(missing.detail, 'table not found');
+  // An existing but empty table is reported as empty.
+  globalThis.fetch = async () => Response.json([]);
+  const empty = await svc.fetchSupabaseCategory('school', signal, 'single');
+  assert.equal(empty.table, 'help_places');
+  assert.equal(empty.status, 'empty');
+  assert.equal(empty.detail, 'table is empty');
+  svc.clearSupabaseConfig();
+});
+
 test('Supabase credentials resolve from env or a validated runtime override', async () => {
   const svc = await import('../src/services/helpCenterService');
   // No env in tests, no stored config in Node: not connected, nothing fetched.
