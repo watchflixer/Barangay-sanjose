@@ -12,7 +12,7 @@ import L from 'leaflet';
  * type-check yet fail at runtime.
  */
 import { Filter, List, Loader2, Navigation, RefreshCw, Search, X } from 'lucide-react';
-import { fetchOverpassElements } from '../services/helpCenterService';
+import { fetchOverpassElements, fetchSupabasePlaces, SUPABASE_ENABLED } from '../services/helpCenterService';
 import { HelpCenterFilterPicker } from './HelpCenterFilterPicker';
 import {
   CATEGORY_BY_ID,
@@ -139,6 +139,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // Live traffic raster instead of plain streets (Traffic's own layer), with a
   // one-shot fallback if those tiles cannot be fetched.
   const [trafficTilesFailed, setTrafficTilesFailed] = useState(false);
+  const [dbPlaces, setDbPlaces] = useState<Place[]>([]);
+  const [dbError, setDbError] = useState(false);
   const [livePlaces, setLivePlaces] = useState<Place[]>([]);
   const [liveStatus, setLiveStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [liveMessage, setLiveMessage] = useState('');
@@ -225,8 +227,10 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const live = livePlaces.filter((place) => selectedSet.has(place.category));
     // mergePlaces([], live) first collapses OSM duplicates (node + way),
     // then merges the curated community rows on top.
-    return mergePlaces(curatedPlaces, mergePlaces([], live));
-  }, [curatedPlaces, livePlaces, selectedSet]);
+    const db = dbPlaces.filter(place => selectedSet.has(place.category));
+    const replaced = new Set(db.map(place => place.replaces).filter(Boolean));
+    return mergePlaces(mergePlaces(db, curatedPlaces.filter(place => !replaced.has(place.id))), mergePlaces([], live));
+  }, [curatedPlaces, dbPlaces, livePlaces, selectedSet]);
 
   // ------------------------------------------------------------- the map
   useEffect(() => {
@@ -374,7 +378,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           </div>
         </div>
         ${rows.join('')}
-        <div class="hc-popup-meta">${place.source === 'osm' ? 'SOURCE: OPENSTREETMAP' : 'SOURCE: COMMUNITY PIN'}</div>
+        <div class="hc-popup-meta">${place.source === 'osm' ? 'SOURCE: OPENSTREETMAP' : place.source === 'supabase' ? 'SOURCE: BARANGAY LIST (SUPABASE)' : 'SOURCE: COMMUNITY PIN'}</div>
         <div class="mt-2 flex flex-wrap items-center gap-1.5">
           <a href="${directions}" target="_blank" rel="noopener noreferrer" class="hc-popup-btn hc-popup-btn--primary">Directions</a>
           ${phoneDigits ? `<a href="tel:${escapeHtml(phoneDigits)}" class="hc-popup-btn">Call</a>` : ''}
@@ -504,6 +508,23 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     observer.observe(element);
     return () => observer.disconnect();
   }, [stage, sheetOpen, places.length]);
+
+  // Re-fetch on filter changes/retry; abort stale requests. Failed categories
+  // keep their built-in fallback and do not prevent other tables loading.
+  useEffect(() => {
+    if (!SUPABASE_ENABLED || stage !== 'map') return;
+    const controller = new AbortController();
+    setDbPlaces([]);
+    setDbError(false);
+    selected.forEach(id => {
+      fetchSupabasePlaces(id, controller.signal).then(rows => {
+        if (!controller.signal.aborted) setDbPlaces(current => [...current, ...rows]);
+      }).catch(() => {
+        if (!controller.signal.aborted) setDbError(true);
+      });
+    });
+    return () => controller.abort();
+  }, [stage, selectedKey, retryTick]);
 
   // ---------------------------------------------------------- live OSM data
   const syncLiveFromCache = useCallback(() => {
@@ -748,6 +769,12 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
   return (
     <div id="help-center-view" className="absolute inset-0 z-30 bg-white" aria-label="Help Center">
+      {dbError && stage === 'map' && (
+        <div role="status" className="absolute bottom-24 left-4 right-4 z-[1000] rounded-lg bg-white p-3 text-sm shadow">
+          Hindi ma-load ang ilang Supabase locations. Built-in pins muna ang ipinapakita.
+          <button type="button" className="ml-2 underline" onClick={() => setRetryTick(t => t + 1)}>Retry</button>
+        </div>
+      )}
       {mapReady && (
         <div
           id="help-center-map-root"
