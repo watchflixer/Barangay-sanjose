@@ -12,7 +12,13 @@ import L from 'leaflet';
  * type-check yet fail at runtime.
  */
 import { Filter, List, Loader2, Navigation, RefreshCw, Search, X } from 'lucide-react';
-import { fetchSupabasePlaces, SUPABASE_ENABLED } from '../services/helpCenterService';
+import {
+  detectHelpPlacesSchema,
+  fetchSupabasePlaces,
+  resetHelpPlacesSchema,
+  SUPABASE_ENABLED,
+  type HelpPlacesSchema,
+} from '../services/helpCenterService';
 import { HelpCenterFilterPicker } from './HelpCenterFilterPicker';
 import {
   CATEGORY_BY_ID,
@@ -501,19 +507,31 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       setDbStatus('ok');
       return () => controller.abort();
     }
-    selected.forEach(id => {
-      fetchSupabasePlaces(id, controller.signal).then(rows => {
+    if (retryTick > 0) resetHelpPlacesSchema();
+    // Use whichever Supabase layout the project has: one `help_places` table
+    // with a `category` column, or the per-filter `<group>_<category>` tables.
+    detectHelpPlacesSchema(controller.signal)
+      .then((schema: HelpPlacesSchema) => {
         if (controller.signal.aborted) return;
-        setDbPlaces(current => [...current, ...rows]);
-        pending -= 1;
-        if (pending === 0) setDbStatus('ok');
-      }).catch(() => {
+        selected.forEach(id => {
+          fetchSupabasePlaces(id, controller.signal, schema).then(rows => {
+            if (controller.signal.aborted) return;
+            setDbPlaces(current => [...current, ...rows]);
+            pending -= 1;
+            if (pending === 0) setDbStatus('ok');
+          }).catch(() => {
+            if (controller.signal.aborted) return;
+            setDbError(true);
+            pending -= 1;
+            if (pending === 0) setDbStatus(prev => (prev === 'loading' ? 'error' : prev));
+          });
+        });
+      })
+      .catch(() => {
         if (controller.signal.aborted) return;
         setDbError(true);
-        pending -= 1;
-        if (pending === 0) setDbStatus(prev => (prev === 'loading' ? 'error' : prev));
+        setDbStatus('error');
       });
-    });
     return () => controller.abort();
   }, [stage, selectedKey, retryTick]);
 

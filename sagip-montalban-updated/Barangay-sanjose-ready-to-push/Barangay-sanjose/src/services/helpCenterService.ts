@@ -61,10 +61,54 @@ export interface HelpPlaceRow {
   replaces_id?: string | null;
 }
 
+/**
+ * Two supported Supabase layouts — the map reads whichever the project has:
+ *
+ *   'single'     one table, `help_places`, with a `category` column holding
+ *                the filter id (police, pharmacy, school, …). Simplest to
+ *                maintain, and what "my data in Supabase" usually means.
+ *   'per-filter' one table per filter, `<group>_<category>`
+ *                (emergency_police, community_school, …), created by
+ *                supabase/help_places.sql.
+ *
+ * Detection runs once per session: if `help_places` answers, it wins.
+ */
+export type HelpPlacesSchema = 'single' | 'per-filter';
+export const HELP_PLACES_TABLE = 'help_places';
+
+let detectedSchema: HelpPlacesSchema | null = null;
+
+/** Forgets the detected layout (retry, or a test resetting state). */
+export function resetHelpPlacesSchema() {
+  detectedSchema = null;
+}
+
 export function supabaseTableFor(category: PlaceCategoryId): string {
   const group = CATEGORY_BY_ID[category]?.group;
   if (!group) throw new Error(`Unknown Help Center filter "${category}"`);
   return `${group}_${category}`;
+}
+
+/** Table the rows for this filter live in, for the detected layout. */
+export function supabaseTableForSchema(category: PlaceCategoryId, schema: HelpPlacesSchema): string {
+  return schema === 'single' ? HELP_PLACES_TABLE : supabaseTableFor(category);
+}
+
+/** Query string for one page of rows in either layout. */
+export function supabaseQueryFor(
+  category: PlaceCategoryId,
+  schema: HelpPlacesSchema,
+  offset = 0,
+): string {
+  const params = new URLSearchParams({
+    select: 'id,name,latitude,longitude,address,hours,phone,note,approx,replaces_id',
+    is_active: 'eq.true',
+    order: 'id.asc',
+    limit: '1000',
+    offset: String(offset),
+  });
+  if (schema === 'single') params.set('category', `eq.${category}`);
+  return params.toString();
 }
 
 export function supabaseRowsToPlaces(category: PlaceCategoryId, rows: HelpPlaceRow[]): Place[] {
@@ -85,20 +129,51 @@ export function supabaseRowsToPlaces(category: PlaceCategoryId, rows: HelpPlaceR
   });
 }
 
-export async function fetchSupabasePlaces(category: PlaceCategoryId, signal: AbortSignal): Promise<Place[]> {
-  if (!SUPABASE_ENABLED) return [];
-  const params = new URLSearchParams({
-    select: 'id,name,latitude,longitude,address,hours,phone,note,approx,replaces_id',
-    is_active: 'eq.true', order: 'id.asc', limit: '1000',
+function supabaseHeaders(): HeadersInit {
+  return {
+    apikey: SUPABASE_ANON_KEY!,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    Accept: 'application/json',
+  };
+}
+
+/**
+ * Which layout the project uses. A single `help_places` table wins; a 404
+ * (table missing) means the per-filter tables from help_places.sql are used.
+ * Other HTTP errors bubble up so the caller can show its retry state.
+ */
+export async function detectHelpPlacesSchema(signal: AbortSignal): Promise<HelpPlacesSchema> {
+  if (!SUPABASE_ENABLED) return 'per-filter';
+  if (detectedSchema) return detectedSchema;
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${HELP_PLACES_TABLE}?select=id&limit=1`, {
+    signal,
+    headers: supabaseHeaders(),
   });
+  if (response.ok) {
+    detectedSchema = 'single';
+  } else if (response.status === 404) {
+    detectedSchema = 'per-filter';
+  } else {
+    throw new Error(`Supabase ${HELP_PLACES_TABLE}: HTTP ${response.status}`);
+  }
+  return detectedSchema;
+}
+
+export async function fetchSupabasePlaces(
+  category: PlaceCategoryId,
+  signal: AbortSignal,
+  schema: HelpPlacesSchema = detectedSchema ?? 'per-filter',
+): Promise<Place[]> {
+  if (!SUPABASE_ENABLED) return [];
+  const table = supabaseTableForSchema(category, schema);
   const places: Place[] = [];
   for (let offset = 0; ; offset += 1000) {
     signal.throwIfAborted();
-    params.set('offset', String(offset));
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/${supabaseTableFor(category)}?${params}`, {
-      signal, headers: { apikey: SUPABASE_ANON_KEY!, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, Accept: 'application/json' },
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${supabaseQueryFor(category, schema, offset)}`, {
+      signal,
+      headers: supabaseHeaders(),
     });
-    if (!response.ok) throw new Error(`Supabase ${supabaseTableFor(category)}: HTTP ${response.status}`);
+    if (!response.ok) throw new Error(`Supabase ${table}: HTTP ${response.status}`);
     const rows = await response.json();
     if (!Array.isArray(rows)) throw new Error('Unexpected Supabase response');
     places.push(...supabaseRowsToPlaces(category, rows));

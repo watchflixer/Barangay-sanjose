@@ -85,6 +85,23 @@ test('School filter always has curated pins; OSM school spam stays out', () => {
   assert.equal(osmElementsToPlaces([element], ['pharmacy']).length, 1);
 });
 
+test('both Supabase layouts resolve to the right table and query', async () => {
+  const { HELP_PLACES_TABLE, supabaseQueryFor, supabaseTableForSchema } = await import('../src/services/helpCenterService');
+  // Per-filter layout: one table per filter, no category filter needed.
+  assert.equal(supabaseTableForSchema('school', 'per-filter'), 'community_school');
+  const perFilter = new URLSearchParams(supabaseQueryFor('school', 'per-filter', 0));
+  assert.equal(perFilter.get('category'), null);
+  assert.equal(perFilter.get('is_active'), 'eq.true');
+  assert.equal(perFilter.get('select'), 'id,name,latitude,longitude,address,hours,phone,note,approx,replaces_id');
+  // Single-table layout: one table, rows narrowed by the category column.
+  assert.equal(HELP_PLACES_TABLE, 'help_places');
+  assert.equal(supabaseTableForSchema('school', 'single'), 'help_places');
+  const single = new URLSearchParams(supabaseQueryFor('school', 'single', 1000));
+  assert.equal(single.get('category'), 'eq.school');
+  assert.equal(single.get('offset'), '1000');
+  assert.equal(single.get('limit'), '1000');
+});
+
 test('Supabase tables match all filters and rows validate before becoming pins', async () => {
   const { supabaseRowsToPlaces, supabaseTableFor } = await import('../src/services/helpCenterService');
   const { HELP_CENTER_CATEGORIES } = await import('../src/data/helpCenterPlaces');
