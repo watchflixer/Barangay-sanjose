@@ -553,21 +553,9 @@ body,
   color: #0f172a;
 }
 
-/* Count of the listed places — a quiet grey chip now that the solid dark
-   slot belongs to the Filter button below. */
-#hc-sheet .hc-sheet-count {
-  flex: none;
-  padding: 4px 9px;
-  border-radius: 6px;
-  background: #e9eef0;
-  color: #202124;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-/* Filter button in the sheet header: the dark chip look the count used to
-   have, now a real button that reopens the picker ("Choose what you want to
-   filter"). Icon-only on the narrowest phones so the header never wraps. */
+/* Filter button in the sheet header: a real button that reopens the picker
+   ("Choose what you want to filter"). Icon-only on the narrowest phones so
+   the header never wraps. */
 #hc-sheet .hc-sheet-filter {
   flex: none;
   display: inline-flex;

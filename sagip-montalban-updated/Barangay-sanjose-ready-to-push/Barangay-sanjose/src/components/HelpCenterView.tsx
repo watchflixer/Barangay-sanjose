@@ -808,7 +808,6 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
           <div className="hc-sheet-head">
             <p className="hc-sheet-title">Selected places</p>
-            <span className="hc-sheet-count">{sortedPlaces.length}</span>
             {/* Filter button — the old dark count chip now goes back to the
                 picker ("Choose what you want to filter"). aria-label stays
                 "Change filter" so it never collides with the floating
