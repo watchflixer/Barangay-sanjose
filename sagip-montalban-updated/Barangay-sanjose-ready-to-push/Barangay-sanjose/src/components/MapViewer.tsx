@@ -13,6 +13,7 @@ import L from 'leaflet';
  */
 import { clearRefreshView, readHelpCenterOpen, readRefreshView, rememberHelpCenterOpen } from '../lib/refreshView';
 import { TILE_SERVERS } from '../data/tileServers';
+import { mountTileLayer, type TileMount } from '../lib/tileLayer';
 import { WeatherView } from './WeatherView';
 import { HelpCenterView } from './HelpCenterView';
 import { HazardAlert, MapSettings } from '../types';
@@ -87,7 +88,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const tileMountRef = useRef<TileMount | null>(null);
   const maskLayerRef = useRef<L.Polygon | null>(null);
   const boundaryLayerRef = useRef<L.Polygon | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
@@ -256,16 +257,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       attributionControl: false,
     });
 
-    // Initial Tile Layer
-    const tileConfig = TILE_SERVERS[mapSettings.tileLayer];
-    const tileLayer = new L.TileLayer(tileConfig.url, {
-      attribution: tileConfig.attribution,
-      subdomains: tileConfig.subdomains ?? 'abc',
-      maxZoom: 19,
-      maxNativeZoom: tileConfig.maxNativeZoom,
-      className: tileConfig.className,
-    }).addTo(map);
-    tileLayerRef.current = tileLayer;
+    // Initial Tile Layer — mountTileLayer stamps OSM's required referrer
+    // policy on every tile and swaps to the keyless Esri backup if the tiles
+    // stay blocked ("403r. Access blocked").
+    tileMountRef.current = mountTileLayer(map, TILE_SERVERS[mapSettings.tileLayer]);
 
     // Inverted Mask Layer (Blacks out everything except Barangay San Jose)
     const maskCoords = getInvertedMaskCoordinates(SAN_JOSE_POLYGON_COORDS);
@@ -308,6 +303,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     mapInstanceRef.current = map;
 
     return () => {
+      tileMountRef.current?.dispose();
+      tileMountRef.current = null;
       map.remove();
       mapInstanceRef.current = null;
     };
@@ -331,9 +328,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
   // 2. Update Tile Layer on setting change
   useEffect(() => {
-    if (!mapInstanceRef.current || !tileLayerRef.current) return;
+    if (!mapInstanceRef.current || !tileMountRef.current) return;
     const map = mapInstanceRef.current;
-    const tileConfig = TILE_SERVERS[mapSettings.tileLayer];
 
     // Coming back from Flood Prone mode the container was hidden (display:none),
     // so Leaflet cached a zero size and renders a blank map. Recompute now that
@@ -342,15 +338,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       map.invalidateSize();
     }, 50);
 
-    map.removeLayer(tileLayerRef.current);
-    const newLayer = new L.TileLayer(tileConfig.url, {
-      attribution: tileConfig.attribution,
-      subdomains: tileConfig.subdomains ?? 'abc',
-      maxZoom: 19,
-      maxNativeZoom: tileConfig.maxNativeZoom,
-      className: tileConfig.className,
-    }).addTo(mapInstanceRef.current);
-    tileLayerRef.current = newLayer;
+    tileMountRef.current.dispose();
+    tileMountRef.current = mountTileLayer(map, TILE_SERVERS[mapSettings.tileLayer]);
 
     // Ensure mask and boundary stay on top of tile layer in overlayPane
     if (maskLayerRef.current) {

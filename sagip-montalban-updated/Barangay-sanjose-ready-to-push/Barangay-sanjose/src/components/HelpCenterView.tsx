@@ -24,6 +24,7 @@ import {
   type PlaceCategoryId,
 } from '../data/helpCenterPlaces';
 import { TILE_SERVERS } from '../data/tileServers';
+import { mountTileLayer, type TileMount } from '../lib/tileLayer';
 import { SAN_JOSE_BOUNDS, SAN_JOSE_CENTER } from '../data/geoData';
 
 /**
@@ -147,7 +148,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // ------------------------------------------------------------------ refs
   const containerRef = useRef<HTMLDivElement | null>(null);
   const localMapRef = useRef<L.Map | null>(null);
-  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const tileMountRef = useRef<TileMount | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const markersRef = useRef<Map<string, L.Marker>>(new Map());
   const iconCacheRef = useRef<Map<PlaceCategoryId, L.DivIcon>>(new Map());
@@ -285,7 +286,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       markersRef.current.clear();
       markersLayerRef.current = null;
       meMarkerRef.current = null;
-      tileLayerRef.current = null;
+      tileMountRef.current = null;
       if (mapRef.current === map) mapRef.current = null;
       map.remove();
       localMapRef.current = null;
@@ -294,26 +295,22 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
   // Basemap. Both styles are plain Leaflet raster layers: Street is the
   // OpenStreetMap tile layer (TILE_SERVERS.streets) and Satellite is the Esri
-  // imagery. The Help Center no longer borrows the Traffic view's Google
-  // traffic raster — this map is a Leaflet/OSM directory, not a traffic map.
+  // imagery. mountTileLayer stamps the referrer policy OSM's usage policy
+  // requires on every tile, and quietly swaps to the keyless Esri backup when
+  // the tiles keep failing ("403r. Access blocked").
   useEffect(() => {
     const map = localMapRef.current;
     if (!mapReady || !map) return;
-    if (tileLayerRef.current) {
-      map.removeLayer(tileLayerRef.current);
-      tileLayerRef.current = null;
-    }
-    const tileConfig = TILE_SERVERS[basemap];
-    const layer = new L.TileLayer(tileConfig.url, {
-      attribution: tileConfig.attribution,
-      subdomains: tileConfig.subdomains ?? 'abc',
-      maxZoom: 20,
-      maxNativeZoom: tileConfig.maxNativeZoom ?? 19,
-      className: tileConfig.className,
+    tileMountRef.current?.dispose();
+    tileMountRef.current = mountTileLayer(map, TILE_SERVERS[basemap], {
+      onFallback: () =>
+        showToast('OpenStreetMap tiles were blocked — switched to the backup street map.'),
     });
-    layer.addTo(map);
-    tileLayerRef.current = layer;
-  }, [basemap, mapReady]);
+    return () => {
+      tileMountRef.current?.dispose();
+      tileMountRef.current = null;
+    };
+  }, [basemap, mapReady, showToast]);
 
   // ---------------------------------------------------------- pin factory
   const iconFor = useCallback((category: PlaceCategory) => {

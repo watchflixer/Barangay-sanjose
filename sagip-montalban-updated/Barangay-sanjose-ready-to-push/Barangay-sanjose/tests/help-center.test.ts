@@ -58,6 +58,21 @@ test('community fallback has valid pins even with no external connection', () =>
   assert.ok(HELP_CENTER_PLACES.every(place => place.source === 'curated' && place.coords.every(Number.isFinite)));
 });
 
+test('basemap tiles follow the OSM usage policy and keep a backup', async () => {
+  const { TILE_SERVERS, tileLayerOptions, OSM_REFERRER_POLICY } = await import('../src/data/tileServers');
+  // Canonical host only: the a/b/c subdomains may be withdrawn.
+  assert.equal(TILE_SERVERS.streets.url, 'https://tile.openstreetmap.org/{z}/{x}/{y}.png');
+  assert.ok(!TILE_SERVERS.streets.url.includes('{s}'));
+  // OSM rejects tile requests without a Referer ("403r Access blocked").
+  assert.equal(tileLayerOptions(TILE_SERVERS.streets).referrerPolicy, OSM_REFERRER_POLICY);
+  assert.equal(OSM_REFERRER_POLICY, 'strict-origin-when-cross-origin');
+  // A blocked OSM still leaves a working street map (keyless Esri backup).
+  const fallback = TILE_SERVERS.streets.fallback;
+  assert.ok(fallback);
+  assert.ok(fallback!.url.includes('arcgisonline.com'));
+  assert.equal(fallback!.referrerPolicy, undefined);
+});
+
 test('School filter always has curated pins; OSM school spam stays out', () => {
   const schools = HELP_CENTER_PLACES.filter(place => place.category === 'school');
   // The School filter must never open an empty map, even with no Supabase
