@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
 import {
   CATEGORIES_BY_GROUP,
-  CURATED_COUNT_BY_CATEGORY,
   PLACE_GROUPS,
   type PlaceCategoryId,
 } from '../data/helpCenterPlaces';
@@ -112,7 +111,6 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
               <div className="hc-picker-grid">
                 {categories.map((category) => {
                   const isOn = selectedSet.has(category.id);
-                  const count = CURATED_COUNT_BY_CATEGORY[category.id] ?? 0;
                   return (
                     <button
                       key={category.id}
@@ -127,9 +125,10 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
                       <span className="hc-cat-tx">
                         <span className="hc-cat-title">{category.label}</span>
                         <span className="hc-cat-sub">{category.caption}</span>
-                        <span className="hc-cat-meta">
-                          {count} PIN{category.osm?.length ? ' / LIVE OSM' : ''}
-                        </span>
+                        {/* Empty on purpose: the “N PIN / LIVE OSM” caption
+                            was removed, but the line box stays so the cards
+                            keep exactly the same height. */}
+                        <span className="hc-cat-meta" aria-hidden="true" />
                       </span>
                       {isOn && (
                         <span className="hc-cat-check" aria-hidden="true">

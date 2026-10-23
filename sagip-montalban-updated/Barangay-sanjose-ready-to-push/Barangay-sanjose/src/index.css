@@ -1041,7 +1041,12 @@ body,
 }
 
 .hc-cat-meta {
+  /* The “N PIN / LIVE OSM” caption is gone from the picker cards, but the
+     line keeps its slot (same font size, line box and 2px gap) so every card
+     stays the exact height it was. */
   font-size: 11.5px;
+  line-height: 1.5;
+  min-height: 1.5em;
   color: #5f6368;
   margin-top: 2px;
 }
