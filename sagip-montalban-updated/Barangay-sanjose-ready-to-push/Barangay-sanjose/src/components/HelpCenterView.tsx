@@ -150,6 +150,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const [setupUrl, setSetupUrl] = useState('');
   const [setupKey, setSetupKey] = useState('');
   const [setupError, setSetupError] = useState('');
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupDismissed, setSetupDismissed] = useState(false);
   const [retryTick, setRetryTick] = useState(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>(SAN_JOSE_CENTER);
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
@@ -736,19 +738,36 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       {/* No credentials yet: without them Supabase returns nothing, so the map
           would be empty. Paste the public URL + anon key once (kept in this
           browser) or set VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. */}
-      {stage === 'map' && !supabaseReady && !supabaseConfigFromEnv() && (
+      {stage === 'map' && !supabaseReady && !supabaseConfigFromEnv() && !setupDismissed && (
         <form
           id="hc-supabase-setup"
+          className={setupOpen ? 'is-open' : undefined}
           onSubmit={(event) => {
             event.preventDefault();
             handleSaveSupabase();
           }}
         >
-          <p className="hc-setup-title">Connect your Supabase</p>
+          <button
+            type="button"
+            className="hc-setup-close"
+            aria-label="Hide the Supabase setup"
+            onClick={() => setSetupDismissed(true)}
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <p className="hc-setup-title">No Supabase keys in this build</p>
           <p className="hc-setup-sub">
-            Pins come from your Supabase tables. Paste the project URL and the
-            public anon key — they stay in this browser only.
+            Pins come from your Supabase tables, and this build shipped without
+            the keys. Your <strong>GitHub Pages</strong> site reads them from the
+            repo's Actions secrets at build time; this preview/local build does
+            not. Paste them once below to use them here too.
           </p>
+          {!setupOpen && (
+            <button type="button" className="hc-pill" onClick={() => setSetupOpen(true)}>
+              Use my keys here
+            </button>
+          )}
+          {setupOpen && (<>
           <input
             type="url"
             value={setupUrl}
@@ -769,6 +788,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
           />
           {setupError && <p className="hc-setup-error">{setupError}</p>}
           <button type="submit" className="hc-pill go">Connect</button>
+          </>)}
         </form>
       )}
 
