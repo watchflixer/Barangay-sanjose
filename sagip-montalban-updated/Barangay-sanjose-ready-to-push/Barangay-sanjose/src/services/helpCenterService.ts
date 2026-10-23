@@ -1,4 +1,4 @@
-import type { OverpassElement } from '../data/helpCenterPlaces';
+import { CATEGORY_BY_ID, type Place, type PlaceCategoryId, type OverpassElement } from '../data/helpCenterPlaces';
 
 export const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
@@ -41,4 +41,67 @@ export async function fetchOverpassElements(query: string, signal: AbortSignal):
     }
   }
   throw lastError;
+}
+
+// Public browser credentials only. Never use a service_role key here.
+const SUPABASE_URL = (import.meta.env?.VITE_SUPABASE_URL as string | undefined)?.trim().replace(/\/+$/, '');
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY as string | undefined;
+export const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+export interface HelpPlaceRow {
+  id: string;
+  name: string;
+  latitude: number | string;
+  longitude: number | string;
+  address?: string | null;
+  hours?: string | null;
+  phone?: string | null;
+  note?: string | null;
+  approx?: boolean | null;
+  replaces_id?: string | null;
+}
+
+export function supabaseTableFor(category: PlaceCategoryId): string {
+  const group = CATEGORY_BY_ID[category]?.group;
+  if (!group) throw new Error(`Unknown Help Center filter "${category}"`);
+  return `${group}_${category}`;
+}
+
+export function supabaseRowsToPlaces(category: PlaceCategoryId, rows: HelpPlaceRow[]): Place[] {
+  if (!CATEGORY_BY_ID[category]) return [];
+  const text = (value: unknown) => typeof value === 'string' ? value.trim() : '';
+  return rows.flatMap((row): Place[] => {
+    if (!row || !text(row.id) || !text(row.name) || row.latitude == null || row.longitude == null ||
+        String(row.latitude).trim() === '' || String(row.longitude).trim() === '') return [];
+    const lat = Number(row.latitude), lng = Number(row.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 4 || lat > 22 || lng < 116 || lng > 128) return [];
+    return [{
+      id: `sb-${category}-${row.id}`, category, name: text(row.name), coords: [lat, lng],
+      address: text(row.address) || 'Brgy. San Jose, Rodriguez, Rizal',
+      hours: text(row.hours) || undefined, phone: text(row.phone) || undefined,
+      note: text(row.note) || undefined, approx: row.approx === true,
+      replaces: text(row.replaces_id) || undefined, source: 'supabase',
+    }];
+  });
+}
+
+export async function fetchSupabasePlaces(category: PlaceCategoryId, signal: AbortSignal): Promise<Place[]> {
+  if (!SUPABASE_ENABLED) return [];
+  const params = new URLSearchParams({
+    select: 'id,name,latitude,longitude,address,hours,phone,note,approx,replaces_id',
+    is_active: 'eq.true', order: 'id.asc', limit: '1000',
+  });
+  const places: Place[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    signal.throwIfAborted();
+    params.set('offset', String(offset));
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${supabaseTableFor(category)}?${params}`, {
+      signal, headers: { apikey: SUPABASE_ANON_KEY!, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`Supabase ${supabaseTableFor(category)}: HTTP ${response.status}`);
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error('Unexpected Supabase response');
+    places.push(...supabaseRowsToPlaces(category, rows));
+    if (rows.length < 1000) return places;
+  }
 }
