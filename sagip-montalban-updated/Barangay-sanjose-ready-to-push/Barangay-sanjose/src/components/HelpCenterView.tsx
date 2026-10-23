@@ -915,7 +915,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
 
       {/* Re-open the list after the user closes it. */}
       {stage === 'map' && !sheetOpen && (
-        <div className="absolute bottom-6 left-4 z-[400]">
+        <div className="absolute bottom-6 right-4 z-[400]">
           <button type="button" className="hc-pill" onClick={() => setSheetOpen(true)}>
             <List className="h-4 w-4" /> List ({sortedPlaces.length})
           </button>
