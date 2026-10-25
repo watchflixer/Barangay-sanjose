@@ -4,10 +4,9 @@ import { chromium } from 'playwright-core';
 /*
  * Help Center filter picker — the phone-portrait scroll behaviour.
  *
- * The picker's title, X and search field are pinned: flicking the category
- * list must slide the rows UNDER that bar, never take the bar off screen, and
- * never scroll the page itself. Section labels (Emergency, Everyday essentials,
- * …) pin themselves right below the bar while their group is on screen.
+ * The picker's title, X, search and footer stay fixed outside the category
+ * scroll pane. Its scrollbar starts at the Emergency section, and section labels
+ * pin to the top of that pane while their group is on screen.
  *
  * This suite needs no backend: it only measures geometry, so it runs against
  * the plain app with no Supabase credentials and no mocked providers.
@@ -50,7 +49,43 @@ try {
       search: await top(page, '.hc-picker-search'),
       x: await top(page, '[aria-label="Close Help Center filters"]'),
     };
+    const alignment = await page.evaluate(() => {
+      const header = document.querySelector('.hc-picker-sticky');
+      const scroll = document.querySelector('.hc-picker-scroll');
+      const emergency = document.querySelector('.hc-picker-sec');
+      return {
+        headerBottom: Math.round(header.getBoundingClientRect().bottom),
+        scrollTop: Math.round(scroll.getBoundingClientRect().top),
+        emergencyTop: Math.round(emergency.getBoundingClientRect().top),
+      };
+    });
+    assert.equal(alignment.headerBottom, alignment.scrollTop, 'list starts just below the fixed search header');
+    assert.equal(alignment.scrollTop, alignment.emergencyTop, 'scrollbar starts level with the Emergency section');
+    const emergencyOverlay = await page.locator('.hc-picker-sec').evaluate((node) =>
+      getComputedStyle(node, '::after').content,
+    );
+    assert.equal(emergencyOverlay, 'none', 'section decoration does not cover the first card border');
+    const cardGap = await page.evaluate(() => {
+      const heading = document.querySelector('.hc-picker-sec');
+      const firstGrid = document.querySelector('.hc-picker-grid');
+      return Math.round(firstGrid.getBoundingClientRect().top - heading.getBoundingClientRect().bottom);
+    });
+    assert.ok(cardGap >= 11, `the Police card has a visible gap above it (${cardGap}px)`);
     assert.equal((await page.locator('#hc-picker').getAttribute('class')) ?? '', '', 'bar starts flat at the top of the list');
+
+    const police = await page.locator('.hc-cat').first().boundingBox();
+    const list = await page.locator('.hc-picker-scroll').boundingBox();
+    assert.ok(police.y >= list.y && police.y + police.height <= list.y + list.height,
+      `${viewport.label}: the Police card is fully visible in the scroll area`);
+    await page.locator('.hc-cat').first().click();
+    const policeOutline = await page.locator('.hc-cat').first().evaluate((node) => {
+      const style = getComputedStyle(node);
+      return { style: style.outlineStyle, color: style.outlineColor };
+    });
+    assert.ok(
+      policeOutline.style === 'none' || policeOutline.color === 'rgb(0, 105, 122)',
+      `${viewport.label}: pointer selection never adds a black outline (${JSON.stringify(policeOutline)})`,
+    );
 
     // Scroll the list the way a thumb does — far enough to leave section one.
     await page.locator('.hc-picker-scroll').evaluate((node) => node.scrollTo({ top: 1500 }));
