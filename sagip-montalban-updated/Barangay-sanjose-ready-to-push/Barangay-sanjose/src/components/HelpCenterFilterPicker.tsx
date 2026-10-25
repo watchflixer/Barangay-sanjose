@@ -133,16 +133,25 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   // section labels pin themselves right below it and the bar grows/shrinks
   // with the title wrapping (one line on desktop, two on a narrow phone) and
   // with the font the device actually has. ResizeObserver keeps it exact.
+  // --hc-picker-label does the same for a section label, so a snapped card
+  // (and the label that captures a tapped card's scroll) lands just below the
+  // label instead of sliding underneath it.
   useEffect(() => {
     const scroll = scrollRef.current;
     const sticky = stickyRef.current;
     if (!scroll || !sticky) return;
-    const sync = () => scroll.style.setProperty('--hc-picker-bar', `${sticky.offsetHeight}px`);
+    const label = scroll.querySelector<HTMLElement>('.hc-picker-sec');
+    const sync = () => {
+      scroll.style.setProperty('--hc-picker-bar', `${sticky.offsetHeight}px`);
+      scroll.style.setProperty('--hc-picker-label', `${label?.offsetHeight ?? 0}px`);
+    };
     sync();
     const observer = new ResizeObserver(sync);
     observer.observe(sticky);
+    if (label) observer.observe(label);
     return () => observer.disconnect();
-  }, []);
+    // Re-measure when a search rewrites the list (labels can change size).
+  }, [query]);
 
   // A new search rewrites the list, so jump back to its first result instead
   // of leaving the user parked at an old offset that now shows nothing.
@@ -150,6 +159,31 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [query]);
+
+  /**
+   * Keeps the card the user just tapped whole on screen. The list can come to
+   * rest with a card sliced by the pinned bar above it or by the pane's lower
+   * edge, and on Android a tap does not scroll the focused card into view by
+   * itself — so the selected tile would stay half hidden. One short, smooth
+   * nudge in whichever direction is needed fixes it; cards that are already
+   * whole are left alone.
+   */
+  const revealCard = (card: HTMLElement) => {
+    const pane = scrollRef.current;
+    const sticky = stickyRef.current;
+    if (!pane || !sticky) return;
+    const paneBox = pane.getBoundingClientRect();
+    const cardBox = card.getBoundingClientRect();
+    // scroll-padding-top is the pinned bar + the section label under it.
+    const topInset = parseFloat(getComputedStyle(pane).scrollPaddingTop) || sticky.offsetHeight;
+    const topLimit = paneBox.top + topInset;
+    const bottomLimit = paneBox.bottom - 8;
+    let delta = 0;
+    if (cardBox.top < topLimit) delta = cardBox.top - topLimit;
+    else if (cardBox.bottom > bottomLimit) delta = Math.min(cardBox.bottom - bottomLimit, cardBox.top - topLimit);
+    if (Math.abs(delta) < 2) return;
+    pane.scrollBy({ top: delta, behavior: 'smooth' });
+  };
 
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     // setState bails out when the value is unchanged, so this stays cheap
@@ -242,7 +276,11 @@ export const HelpCenterFilterPicker: React.FC<HelpCenterFilterPickerProps> = ({
                     <button
                       key={category.id}
                       type="button"
-                      onClick={() => onToggleCategory(category.id)}
+                      onClick={(event) => {
+                        onToggleCategory(category.id);
+                        const card = event.currentTarget;
+                        requestAnimationFrame(() => revealCard(card));
+                      }}
                       aria-pressed={isOn}
                       className={`hc-cat${isOn ? ' on' : ''}`}
                     >

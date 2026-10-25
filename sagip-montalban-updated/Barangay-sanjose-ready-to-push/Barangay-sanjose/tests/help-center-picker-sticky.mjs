@@ -109,6 +109,81 @@ try {
     console.log(`PASS pinned picker bar: list scrolls under title/X/search, section labels pin (${viewport.label})`);
     await context.close();
   }
+
+  // ---------------------------------------------------------------- touches
+  // A finger tap must not leave Chrome's black focus ring around the tile, and
+  // the tile the user taps must end up whole on screen (never sliced by the
+  // pinned bar above it or the footer action bar below it).
+  for (const viewport of [
+    { width: 390, height: 844, label: 'Android 390x844' },
+    { width: 1280, height: 900, label: 'desktop 1280x900' },
+  ]) {
+    const context = await browser.newContext({ viewport, hasTouch: true });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+
+    await page.goto(base, { waitUntil: 'domcontentloaded' });
+    await page.getByTitle('Layers', { exact: true }).first().click();
+    await page.getByRole('button', { name: 'Help Center', exact: true }).first().click();
+    await page.getByRole('heading', { name: 'Choose what you want to filter' }).waitFor();
+
+    // 1) tap -> selected, teal border, and NO black outline.
+    await page.locator('.hc-cat').first().tap();
+    await page.waitForTimeout(300);
+    const tapped = await page.evaluate(() => {
+      const card = document.querySelector('.hc-cat');
+      const style = getComputedStyle(card);
+      return {
+        selected: card.getAttribute('aria-pressed'),
+        focused: document.activeElement === card,
+        outlineStyle: style.outlineStyle,
+        borderColor: style.borderColor,
+      };
+    });
+    assert.equal(tapped.selected, 'true', `${viewport.label}: the tapped tile is selected`);
+    if (tapped.focused) {
+      assert.equal(tapped.outlineStyle, 'none', `${viewport.label}: a tap paints no focus ring`);
+    }
+    assert.equal(tapped.borderColor, 'rgb(0, 105, 122)', `${viewport.label}: the selected tile keeps its teal border`);
+
+    // 2) tap a tile that a flick has left sliced at the bottom edge -> whole.
+    const cut = await page.evaluate(() => {
+      const pane = document.querySelector('.hc-picker-scroll');
+      const foot = document.querySelector('.hc-picker-foot').getBoundingClientRect();
+      const card = [...document.querySelectorAll('.hc-cat')].find((node) => {
+        const box = node.getBoundingClientRect();
+        return box.top < foot.top && box.bottom > foot.top + 4;
+      });
+      if (!card) return null;
+      card.dataset.tapped = 'yes';
+      const box = card.getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: (box.top + foot.top) / 2 };
+    });
+    if (cut) {
+      await page.touchscreen.tap(cut.x, cut.y);
+      await page.waitForTimeout(700);
+      const whole = await page.evaluate(() => {
+        const card = document.querySelector('.hc-cat[data-tapped="yes"]');
+        const box = card.getBoundingClientRect();
+        const pane = document.querySelector('.hc-picker-scroll');
+        const barBottom = document.querySelector('.hc-picker-sticky').getBoundingClientRect().bottom;
+        const footTop = document.querySelector('.hc-picker-foot').getBoundingClientRect().top;
+        return { top: Math.round(box.top), bottom: Math.round(box.bottom),
+          barBottom: Math.round(barBottom), footTop: Math.round(footTop),
+          fullyVisible: box.top >= barBottom - 1 && box.bottom <= footTop + 1,
+          paneBottom: Math.round(pane.getBoundingClientRect().bottom) };
+      });
+      assert.ok(
+        whole.fullyVisible,
+        `${viewport.label}: the tapped tile scrolls fully into view (${JSON.stringify(whole)})`,
+      );
+    }
+
+    assert.deepEqual(errors, []);
+    console.log(`PASS tapped tiles: no black focus ring, tapped tile revealed whole (${viewport.label})`);
+    await context.close();
+  }
 } finally {
   await browser.close();
 }

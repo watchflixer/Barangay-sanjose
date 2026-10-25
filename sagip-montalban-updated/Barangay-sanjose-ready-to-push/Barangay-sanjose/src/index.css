@@ -806,6 +806,10 @@ body,
   color: #ffffff;
 }
 
+.hc-pill {
+  -webkit-tap-highlight-color: transparent;
+}
+
 .hc-pill:active {
   filter: brightness(0.93);
 }
@@ -989,7 +993,7 @@ body,
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 20px 20px 8px;
+  padding: 20px 20px 10px;
   background: #ffffff;
 }
 
@@ -1028,7 +1032,7 @@ body,
     flex-direction: column;
     align-items: stretch;
     gap: 1px;
-    padding: 16px 18px 8px;
+    padding: 16px 18px 12px;
   }
 
   .hc-picker-sec h3,
@@ -1056,7 +1060,14 @@ body,
   overflow-y: auto;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: 12px;
+  /* Cards settle on their own boundaries, so a scroll never comes to rest with
+     a tile sliced in half at the top edge. "proximity" keeps the list free —
+     it only tidies up when a card edge is already close. The padding keeps the
+     snapped card clear of the pinned bar and its section label (both heights
+     are measured in HelpCenterFilterPicker). */
+  scroll-snap-type: y proximity;
+  scroll-padding-top: calc(var(--hc-picker-bar, 0px) + var(--hc-picker-label, 0px));
+  padding-bottom: 24px;
 }
 
 .hc-picker-grid {
@@ -1094,6 +1105,26 @@ body,
   text-align: left;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease;
+  /* Snap the list to this card's top edge (see .hc-picker-scroll). */
+  scroll-snap-align: start;
+  /* Android paints its own grey/blue tap flash over the tile; the tile
+     already answers the tap with its selected state. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Tapping a card leaves it focused, and Chrome's default focus ring drew a
+   heavy black border around the chosen tile (very visible on Android). Keep
+   the ring for keyboard users only, in the picker's own teal instead. */
+.hc-cat:focus,
+.hc-pill:focus {
+  outline: none;
+}
+
+@media (hover: hover) {
+  .hc-cat:focus-visible {
+    outline: 2px solid #00697a;
+    outline-offset: 2px;
+  }
 }
 
 .hc-cat:hover {
