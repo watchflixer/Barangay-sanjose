@@ -686,14 +686,14 @@ body,
 }
 
 /* In-sheet search: Traffic's .dir-fields input, only while the sheet is
-   expanded. A 12px bottom margin gives the field breathing room, so the
+   expanded. A 16px bottom margin gives the field breathing room, so the
    first result row is not glued to its bottom border. */
 #hc-sheet .hc-sheet-search {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 40px;
-  margin: 10px 12px 12px;
+  margin: 10px 12px 16px;
   padding: 0 12px;
   border: 1px solid #c4c7c5;
   border-radius: 8px;
@@ -868,7 +868,8 @@ body,
   /* Hairline + soft shadow stay invisible until the list moves. */
   border-bottom: 1px solid transparent;
   box-shadow: 0 0 0 rgba(32, 33, 36, 0);
-  padding-bottom: 10px;
+  /* Gap below the search field, before the first option group. */
+  padding-bottom: 14px;
   transition: box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
@@ -973,7 +974,9 @@ body,
   }
 
   #hc-picker .hc-picker-sticky {
-    padding-bottom: 4px;
+    /* Still compact, but the search field keeps a real gap underneath it —
+       4px read as "glued" to the Emergency label on a Pixel 7. */
+    padding-bottom: 14px;
   }
 
   #hc-picker .hc-picker-search {
