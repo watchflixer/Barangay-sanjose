@@ -157,13 +157,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
                 <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
                 <span>Rizal</span>
-                {/* Live clock beside “Rizal” — mobile phone views (narrow width or portrait).
-                    On extra-narrow screens it steps aside so the Navbar buttons
-                    (Buy Me a Coffee + Report) never overflow. */}
-                <span className="flex sm:hidden sm:portrait:flex items-center gap-1 normal-case tracking-tight text-slate-700 tabular-nums whitespace-nowrap">
-                  <span className="w-0.5 h-2.5 rounded-full bg-slate-300" />
-                  {currentTime || 'PST'}
-                </span>
               </span>
             </span>
           </button>
