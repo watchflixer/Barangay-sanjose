@@ -122,7 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={handleRefresh}
             title="Refresh"
             aria-label="Refresh page"
-            className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0 cursor-pointer rounded-md text-left transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[.99]"
+            className="flex items-center gap-2 sm:gap-3 min-w-0 cursor-pointer rounded-md text-left transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[.99]"
           >
             {/* HazardSync mark — rounded delta with a monitoring dot and a
                 shelter arch cut out of the base. Plain vector, so it stays
@@ -130,7 +130,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 hindi ito na-bo-boost ng mobile font-boosting. */}
             <svg
               viewBox="0 0 32 32"
-              className="h-8 w-8 shrink-0 portrait:h-7 portrait:w-7 sm:portrait:h-8 sm:portrait:w-8"
+              className="h-6 w-6 shrink-0 sm:h-7 sm:w-7"
               role="img"
               aria-label="HazardSync"
               fill="#111827"
@@ -141,17 +141,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 d="M14.15 5.35Q16 1.8 17.85 5.35L29.41 27.54Q30.8 30.2 27.8 30.2H4.2Q1.2 30.2 2.59 27.54L14.15 5.35Z M16 8.9a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Z M11.25 30.2V26.45a4.75 4.75 0 0 1 9.5 0V30.2H11.25Z"
               />
             </svg>
-            {/* Spans (hindi div/h1/p) ang laman ng button — phrasing content
-                lang ang valid sa loob ng <button>. Nasa span pa rin ang
-                heading semantics via role="heading"/aria-level. */}
             <span className="block min-w-0">
-              <span className="flex items-center space-x-1.5 sm:space-x-2">
+              <span className="flex flex-col leading-none">
                 <span
                   role="heading"
                   aria-level={1}
-                  className="text-base sm:text-lg font-bold text-slate-800 leading-none tracking-[-0.015em] whitespace-nowrap"
+                  className="text-sm font-bold text-slate-800 tracking-[-0.015em] whitespace-nowrap sm:text-base"
                 >
                   HazardSync
+                </span>
+                <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500 whitespace-nowrap">
+                  Rizal
                 </span>
               </span>
             </span>
@@ -190,7 +190,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Action Buttons — the ●●● button hides itself on mobile portrait,
               where it moves into the Incident Feeds header (Sidebar.tsx). */}
           <div className="flex items-center space-x-2 shrink-0 portrait:flex-row-reverse">
-            <div className="hidden sm:flex h-8 items-center justify-center mr-4 sm:mr-5 text-slate-800 font-sans font-semibold text-xs tracking-tight tabular-nums whitespace-nowrap portrait:hidden">
+            <div className="flex h-8 items-center justify-center mr-2 sm:mr-4 text-slate-800 font-sans font-semibold text-[10px] sm:text-xs tracking-tight tabular-nums whitespace-nowrap">
               {currentTime || 'PST'}
             </div>
 
@@ -226,6 +226,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               id="btn-emergency-hotlines"
               onClick={onOpenHotlinesModal}
               className="hidden sm:inline-flex h-8 items-center space-x-1.5 px-3 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-md transition-colors"
+              type="button"
             >
               <PhoneCall className="w-3.5 h-3.5 text-rose-500" />
               <span>Hotlines</span>
@@ -235,7 +236,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               id="btn-mobile-menu"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="hidden sm:flex lg:hidden portrait:hidden sm:portrait:flex h-7 w-7 sm:h-8 sm:w-8 p-1 sm:p-2 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 border border-slate-200 shrink-0"
+              className="hidden sm:flex lg:hidden portrait:hidden sm:portrait:flex h-7 w-7 sm:h-8 sm:w-8 p-1 sm:p-2 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 border border-slate-200 bg-white"
+              type="button"
+              aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-4 h-4 sm:w-5 sm:h-5" /> : <Menu className="w-4 h-4 sm:w-5 sm:h-5" />}
             </button>
