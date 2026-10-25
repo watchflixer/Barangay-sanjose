@@ -114,6 +114,16 @@ Standalone embedded pages route to `index.html?help=1`; hosted pages use the
 existing origin-checked layer-selection messages. The filter picker can be
 closed without first selecting a category.
 
+On phone portrait (Android and iPhone), the picker's title, X and search field
+are **pinned**: only the category list scrolls, and the rows slide under that
+bar — the header never leaves the screen and the page behind it never scrolls.
+Each group's label (Emergency, Everyday essentials, …) pins itself right below
+the bar while its sections are on screen, and a hairline + soft shadow appears
+once the list starts moving. On phones the label's caption drops to its own
+line so the pinned label is always a single row. Desktop keeps the same
+behaviour, with the bar measured automatically (`--hc-picker-bar`), so a
+wrapping title can never overlap the labels.
+
 Live places use a bounded POST query, avoiding URL-length failures with many
 categories. Up to three Overpass mirrors are tried (10 seconds each, with an
 8-second server-side query budget). Failed/malformed/partial replies are not
@@ -126,6 +136,9 @@ A failed optional traffic layer no longer hides the live-places Retry action.
 npm run test:help-center
 # Start npm run preview first; use your installed Chromium executable:
 BROWSER_PATH=/path/to/chromium npm run test:help-center:browser
+# Pinned picker bar (title/X/search stay put while the list scrolls) — no
+# backend needed, so it runs against a plain dev/preview server:
+BROWSER_PATH=/path/to/chromium npm run test:help-center:picker
 ```
 
 The browser suite checks desktop/mobile Weather → Help Center navigation,
