@@ -149,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span
                   role="heading"
                   aria-level={1}
-                  className="text-lg sm:text-xl font-extrabold text-slate-800 leading-none tracking-[-0.015em] whitespace-nowrap"
+                  className="text-lg sm:text-xl font-medium text-slate-800 leading-none tracking-[-0.015em] whitespace-nowrap"
                 >
                   HazardSync
                 </span>
