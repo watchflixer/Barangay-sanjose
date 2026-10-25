@@ -686,13 +686,14 @@ body,
 }
 
 /* In-sheet search: Traffic's .dir-fields input, only while the sheet is
-   expanded. */
+   expanded. A 12px bottom margin gives the field breathing room, so the
+   first result row is not glued to its bottom border. */
 #hc-sheet .hc-sheet-search {
   display: flex;
   align-items: center;
   gap: 8px;
   height: 40px;
-  margin: 10px 12px 4px;
+  margin: 10px 12px 12px;
   padding: 0 12px;
   border: 1px solid #c4c7c5;
   border-radius: 8px;
