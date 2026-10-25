@@ -125,11 +125,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0 cursor-pointer rounded-md text-left transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 active:scale-[.99]"
           >
             {/* HazardSync mark — rounded delta with a monitoring dot and a
-                shelter arch cut out of the base. Plain vector so it stays crisp
-                at 32px (and can't be blown up by mobile font-boosting). */}
+                shelter arch cut out of the base. Plain vector, so it stays
+                crisp habang lumalaki (36px desktop / 32px phone portrait) at
+                hindi ito na-bo-boost ng mobile font-boosting. */}
             <svg
               viewBox="0 0 32 32"
-              className="h-8 w-8 shrink-0 portrait:h-7 portrait:w-7 sm:portrait:h-8 sm:portrait:w-8"
+              className="h-9 w-9 shrink-0 portrait:h-8 portrait:w-8 sm:portrait:h-9 sm:portrait:w-9"
               role="img"
               aria-label="HazardSync"
               fill="#111827"
@@ -148,7 +149,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span
                   role="heading"
                   aria-level={1}
-                  className="text-sm sm:text-base font-bold text-slate-800 leading-tight tracking-tight whitespace-nowrap"
+                  className="text-lg sm:text-xl font-extrabold text-slate-800 leading-none tracking-[-0.015em] whitespace-nowrap"
                 >
                   HazardSync
                 </span>
