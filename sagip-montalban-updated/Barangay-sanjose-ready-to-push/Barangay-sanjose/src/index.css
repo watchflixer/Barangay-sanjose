@@ -854,6 +854,40 @@ body,
   #hc-picker .hc-picker-body {
     width: 100%;
   }
+
+  /* Phone portrait: the pinned bar is the screen's own header, so it starts
+     closer to the top edge and gives the extra pixels back to the list. */
+  #hc-picker .hc-picker-top {
+    padding-top: 4px;
+  }
+
+  #hc-picker .hc-picker-sticky {
+    padding-bottom: 8px;
+  }
+}
+
+/* The pinned bar: title + X + search. It is the first child of the scroll
+   pane and `sticky`, so dragging the list (phone portrait especially) slides
+   the categories UNDER it instead of taking the header off screen. White
+   background on purpose — it has to cover the rows passing behind it. */
+#hc-picker .hc-picker-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  /* Hairline + soft shadow stay invisible until the list moves. */
+  border-bottom: 1px solid transparent;
+  box-shadow: 0 0 0 rgba(32, 33, 36, 0);
+  padding-bottom: 10px;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+/* Scrolled: the bar lifts off the list a little, so it reads as fixed. */
+#hc-picker.is-scrolled .hc-picker-sticky {
+  border-bottom-color: #dadce0;
+  box-shadow: 0 6px 12px -8px rgba(32, 33, 36, 0.35);
 }
 
 /* Close (X) pill rides the right end of the header row; the title starts at
@@ -943,12 +977,31 @@ body,
   cursor: pointer;
 }
 
-/* Section headers: Traffic's .dir-sec (15px/500) with the caption in gray. */
+/* Section headers: Traffic's .dir-sec (15px/500) with the caption in gray.
+   They pin themselves right below the pinned bar (--hc-picker-bar is measured
+   from that bar in HelpCenterFilterPicker) for as long as their own group is
+   on screen, so a long list always says which group you are looking at. The
+   gradient underneath softens the row that is passing behind the label. */
 .hc-picker-sec {
+  position: sticky;
+  top: var(--hc-picker-bar, 0px);
+  z-index: 4;
   display: flex;
   align-items: baseline;
   gap: 8px;
   padding: 20px 20px 8px;
+  background: #ffffff;
+}
+
+.hc-picker-sec::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 7px;
+  background: linear-gradient(#ffffff, rgba(255, 255, 255, 0));
+  pointer-events: none;
 }
 
 .hc-picker-sec h3 {
@@ -959,11 +1012,31 @@ body,
 }
 
 .hc-picker-sec span {
+  min-width: 0;
   font-size: 12.5px;
   color: #5f6368;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Phone portrait: the label must never wrap to two lines while it is pinned
+   (that would eat the list's height under the bar), so the caption drops to
+   its own single line below the name instead of sharing the row with it. */
+@media (orientation: portrait) and (max-width: 640px) {
+  .hc-picker-sec {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1px;
+    padding: 16px 18px 8px;
+  }
+
+  .hc-picker-sec h3,
+  .hc-picker-sec span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 .hc-picker-note {
@@ -975,9 +1048,14 @@ body,
 }
 
 .hc-picker-scroll {
+  /* Owns every bit of scrolling in the picker: the page behind it never
+     moves, so the pinned bar stays put on Android and iPhone alike. */
+  position: relative;
   min-height: 0;
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
   padding-bottom: 12px;
 }
 
