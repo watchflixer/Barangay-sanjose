@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShieldAlert, 
-  MapPin, 
   PlusCircle, 
   PhoneCall, 
   Menu, 
@@ -153,10 +152,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   HazardSync
                 </span>
-              </span>
-              <span className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold flex items-center gap-1 mt-0.5">
-                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                <span>Rizal</span>
               </span>
             </span>
           </button>
