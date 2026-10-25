@@ -843,37 +843,24 @@ body,
   overflow: hidden;
 }
 
-/* Phone sizing. These have to come after the base rules above: the selectors
-   match with the same specificity, so source order decides. */
+/* The picker fills the parent view on a phone; its own header, list and footer
+   then divide that space as a fixed column. */
 @media (orientation: portrait) and (max-width: 640px) {
   #hc-picker {
     padding: 10px;
   }
 
-
   #hc-picker .hc-picker-body {
     width: 100%;
   }
-
-  /* Phone portrait: the pinned bar is the screen's own header, so it starts
-     closer to the top edge and gives the extra pixels back to the list. */
-  #hc-picker .hc-picker-top {
-    padding-top: 4px;
-  }
-
-  #hc-picker .hc-picker-sticky {
-    padding-bottom: 8px;
-  }
 }
 
-/* The pinned bar: title + X + search. It is the first child of the scroll
-   pane and `sticky`, so dragging the list (phone portrait especially) slides
-   the categories UNDER it instead of taking the header off screen. White
-   background on purpose — it has to cover the rows passing behind it. */
+/* Fixed header: title + X + search live outside the category scroll pane, so
+   the scrollbar starts beside the first section rather than at the page top. */
 #hc-picker .hc-picker-sticky {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 5;
+  flex: none;
   display: flex;
   flex-direction: column;
   background: #ffffff;
@@ -977,31 +964,34 @@ body,
   cursor: pointer;
 }
 
-/* Section headers: Traffic's .dir-sec (15px/500) with the caption in gray.
-   They pin themselves right below the pinned bar (--hc-picker-bar is measured
-   from that bar in HelpCenterFilterPicker) for as long as their own group is
-   on screen, so a long list always says which group you are looking at. The
-   gradient underneath softens the row that is passing behind the label. */
+/* Compact the fixed header on small phones, leaving more room for complete
+   option cards between the search field and the fixed action bar. */
+@media (orientation: portrait) and (max-width: 640px) {
+  #hc-picker .hc-picker-top {
+    padding-top: 4px;
+  }
+
+  #hc-picker .hc-picker-sticky {
+    padding-bottom: 4px;
+  }
+
+  #hc-picker .hc-picker-search {
+    margin-top: 8px;
+  }
+}
+
+/* Section labels stick to the top of the category scroll pane (immediately
+   below the fixed search header), so the scrollbar and active group stay in
+   the same area. */
 .hc-picker-sec {
   position: sticky;
-  top: var(--hc-picker-bar, 0px);
+  top: 0;
   z-index: 4;
   display: flex;
   align-items: baseline;
   gap: 8px;
   padding: 20px 20px 8px;
   background: #ffffff;
-}
-
-.hc-picker-sec::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 7px;
-  background: linear-gradient(#ffffff, rgba(255, 255, 255, 0));
-  pointer-events: none;
 }
 
 .hc-picker-sec h3 {
@@ -1028,7 +1018,7 @@ body,
     flex-direction: column;
     align-items: stretch;
     gap: 1px;
-    padding: 16px 18px 8px;
+    padding: 8px 18px 4px;
   }
 
   .hc-picker-sec h3,
@@ -1036,6 +1026,12 @@ body,
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* A tighter top offset on the first Emergency label, while retaining the
+     separate 12px gap before its first card. */
+  .hc-picker-scroll > section:first-of-type > .hc-picker-sec {
+    padding-top: 4px;
   }
 }
 
@@ -1048,8 +1044,8 @@ body,
 }
 
 .hc-picker-scroll {
-  /* Owns every bit of scrolling in the picker: the page behind it never
-     moves, so the pinned bar stays put on Android and iPhone alike. */
+  /* Only the options move; fixed header/footer siblings and the page behind
+     the picker stay still on Android and iPhone alike. */
   position: relative;
   min-height: 0;
   flex: 1;
@@ -1063,6 +1059,7 @@ body,
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 6px;
+  margin-top: 12px; /* Keep the first card's top border clear of its section heading. */
   padding: 0 12px;
 }
 
@@ -1093,6 +1090,8 @@ body,
   font-family: inherit;
   text-align: left;
   cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -1103,6 +1102,13 @@ body,
 .hc-cat.on {
   border-color: #00697a;
   background: #d3eef5;
+}
+
+/* Suppress the browser's sudden black touch-focus ring; keyboard users keep a
+   clear, on-brand focus indicator. */
+.hc-cat:focus-visible {
+  outline: 2px solid #00697a;
+  outline-offset: 2px;
 }
 
 .hc-cat-ic {
@@ -1186,6 +1192,13 @@ body,
   border-radius: 22px;
   justify-content: center;
   font-size: 16px;
+}
+
+@media (orientation: portrait) and (max-width: 640px) {
+  #hc-picker .hc-picker-foot {
+    padding-top: 8px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* --- Pins, popups and the canvas --------------------------------------- */
