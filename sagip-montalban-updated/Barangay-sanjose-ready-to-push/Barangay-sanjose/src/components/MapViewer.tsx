@@ -16,7 +16,6 @@ import { TILE_SERVERS } from '../data/tileServers';
 import { mountTileLayer, type TileMount } from '../lib/tileLayer';
 import { WeatherView } from './WeatherView';
 import { HelpCenterView } from './HelpCenterView';
-import { LocationPermissionCard, type LocationPermissionResult, type LocationPermissionState } from './LocationPermissionCard';
 import { HazardAlert, MapSettings } from '../types';
 import {
   SAN_JOSE_POLYGON_COORDS,
@@ -226,10 +225,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // 3 seconds. Anything else uses the plain hint banner top-left.
   const [locationBanner, setLocationBanner] = React.useState<'none' | 'success' | 'error'>('none');
   const locationMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showLocationPermissionCard, setShowLocationPermissionCard] = React.useState(false);
-  const [locationPermissionState, setLocationPermissionState] = React.useState<LocationPermissionState>('idle');
-  const [locationPermissionError, setLocationPermissionError] = React.useState('');
-  const [locationPermissionResult, setLocationPermissionResult] = React.useState<LocationPermissionResult | null>(null);
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const floodMapFrameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -446,14 +441,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // request only fires after the user taps one of the Allow buttons.
   const handleShowUserLocation = () => {
     if (!mapInstanceRef.current) return;
-    setLocationPermissionState('idle');
-    setLocationPermissionError('');
-    setLocationPermissionResult(null);
-    setShowLocationPermissionCard(true);
     if (!navigator.geolocation) {
-      setLocationPermissionError('Your browser doesn’t support location.');
-      setLocationPermissionState('err');
+      setLocationMessage('Location is unavailable.');
+      return;
     }
+    runLocationRequest(true);
   };
 
   // Embedded map pages own their map buttons and ask the host only for the
@@ -508,13 +500,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   }, []);
 
   const runLocationRequest = (highAccuracy: boolean) => {
-    if (!mapInstanceRef.current) return;
-    if (!navigator.geolocation) {
-      setIsLocating(false);
-      setLocationPermissionError('Your browser doesn’t support location.');
-      setLocationPermissionState('err');
-      return;
-    }
+    if (!mapInstanceRef.current || !navigator.geolocation) return;
 
     // Clear any pending auto-hide timer from a previous run so a new request
     // always starts with a fresh, visible message.
@@ -535,13 +521,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             position.coords.latitude,
             position.coords.longitude,
           ];
-          setLocationPermissionResult({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-          });
-          setLocationPermissionError('');
-          setLocationPermissionState('ok');
           const locationIcon = new L.DivIcon({
             className: 'user-location-marker',
             html: '<span class="user-location-dot"></span>',
@@ -594,22 +573,32 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             });
           }
           setIsLocating(false);
-          setLocationMessage('');
-          setLocationBanner('none');
+          setLocationMessage('Location Found!');
+          setLocationBanner('success');
+          if (locationMessageTimerRef.current) clearTimeout(locationMessageTimerRef.current);
+          locationMessageTimerRef.current = setTimeout(() => {
+            setLocationMessage('');
+            setLocationBanner('none');
+          }, 3000);
         },
         (error) => {
           setIsLocating(false);
           setLocationBanner('none');
-          setLocationMessage('');
-          const message = error.code === error.PERMISSION_DENIED
-            ? 'Location permission was blocked. Allow it in your browser settings.'
-            : error.code === error.POSITION_UNAVAILABLE
-              ? 'Your location is currently unavailable. Please try again.'
-              : error.code === error.TIMEOUT
-                ? 'Couldn’t get your location. Please try again.'
-                : 'Couldn’t get your location. Please try again.';
-          setLocationPermissionError(message);
-          setLocationPermissionState('err');
+          if (error.code === error.PERMISSION_DENIED) {
+            setLocationMessage('Location access denied!');
+            setLocationBanner('error');
+            if (locationMessageTimerRef.current) clearTimeout(locationMessageTimerRef.current);
+            locationMessageTimerRef.current = setTimeout(() => {
+              setLocationMessage('');
+              setLocationBanner('none');
+            }, 3000);
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            setLocationMessage('Your location is currently unavailable. Please try again.');
+          } else if (error.code === error.TIMEOUT) {
+            setLocationMessage('Location request timed out. Please try again.');
+          } else {
+            setLocationMessage('Could not get your location. Please try again.');
+          }
         },
         { enableHighAccuracy: highAccuracy, timeout: 10000, maximumAge: 60000 },
       );
@@ -633,32 +622,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // Fires the native dialog immediately (still inside the click gesture):
     requestGeolocation();
-  };
-
-  const handleAllowLocationRequest = () => {
-    setLocationMessage('');
-    setLocationBanner('none');
-    setLocationPermissionError('');
-    setLocationPermissionState('load');
-    runLocationRequest(true);
-  };
-
-  const handleNeverAllowLocation = () => {
-    setLocationMessage('');
-    setLocationBanner('none');
-    setLocationPermissionError('');
-    setLocationPermissionState('no');
-  };
-
-  const handleUseSampleLocation = () => {
-    setLocationPermissionError('');
-    setLocationPermissionResult({
-      latitude: 14.7566,
-      longitude: 121.1355,
-      accuracy: 35,
-      sample: true,
-    });
-    setLocationPermissionState('ok');
   };
 
   const handleZoomIn = () => {
@@ -1272,16 +1235,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         )
       )}
 
-      {showLocationPermissionCard && (
-        <LocationPermissionCard
-          state={locationPermissionState}
-          errorMessage={locationPermissionError}
-          result={locationPermissionResult}
-          onAllow={handleAllowLocationRequest}
-          onDeny={handleNeverAllowLocation}
-          onUseSample={handleUseSampleLocation}
-        />
-      )}
+
 
     </div>
   );
