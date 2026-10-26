@@ -60,21 +60,7 @@ export default function App() {
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  // True only on phone-sized portrait screens (Android/iPhone/Pixel). There the
-  // Hazard Feeds lives in a bottom sheet instead of the left drawer, so the
-  // Sidebar is rendered exactly once — inside the sheet.
-  const [isSmallPortrait, setIsSmallPortrait] = useState(false);
-  // Bottom sheet expanded (feeds visible) vs collapsed (just the title card).
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [recenterCount, setRecenterCount] = useState(0);
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 639px) and (orientation: portrait)');
-    const apply = () => setIsSmallPortrait(mq.matches);
-    apply();
-    mq.addEventListener('change', apply);
-    return () => mq.removeEventListener('change', apply);
-  }, []);
   
   // STRICT USER DIRECTIVE: Default to NO live stream unless user explicitly provides/pastes a URL
   const [liveStreamUrl, setLiveStreamUrl] = useState<string>(() => localStorage.getItem('san-jose-live-url') || '');
@@ -175,7 +161,6 @@ export default function App() {
     setSelectedAlert(alert);
     if (alert && window.innerWidth < 1024) {
       setMobileMenuOpen(false); // Close mobile drawer when selecting from sidebar
-      setSheetOpen(false); // Collapse the Hazard Feeds bottom sheet too
     }
   };
 
@@ -242,36 +227,6 @@ export default function App() {
     setRecenterCount((prev) => prev + 1);
   };
 
-  /* One Sidebar instance, rendered either in the left drawer (tablet /
-     landscape / desktop) or inside the Hazard Feeds bottom sheet (phone
-     portrait), so no duplicate ids end up in the DOM. */
-  const hazardFeedsPanel = (
-    <Sidebar
-      alerts={alerts}
-      selectedAlert={selectedAlert}
-      onSelectAlert={handleSelectAlert}
-      onToggleAlertStatus={handleToggleAlertStatus}
-      onOpenReportModal={() => {
-        setPickedCoordinates(null);
-        setIsReportModalOpen(true);
-      }}
-      onOpenHotlinesModal={() => setIsHotlinesModalOpen(true)}
-      activeFilterType={mapSettings.activeFilterType}
-      setActiveFilterType={(type) => handleUpdateMapSettings({ activeFilterType: type })}
-      activeFilterStatus={mapSettings.activeFilterStatus}
-      setActiveFilterStatus={(status) => handleUpdateMapSettings({ activeFilterStatus: status })}
-      liveUrl={liveStreamUrl}
-      onOpenLiveModal={() => setIsLiveModalOpen(true)}
-      onRemoveLive={() => setLiveStreamUrl('')}
-      onClose={() => setMobileMenuOpen(false)}
-      onOpenUpdates={() => setIsUpdatesModalOpen(true)}
-      onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
-      onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
-      onOpenHistory={() => setIsHistoryModalOpen(true)}
-      optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
-    />
-  );
-
   return (
     // h-full resolves against the 100dvh html height fix in index.css — the
     // app always fits the phone screen with no cut-off or extra scrolling.
@@ -305,15 +260,57 @@ export default function App() {
         <div
           className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 z-20 w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:h-full lg:min-h-0 lg:translate-x-0 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          } ${alternateMapOpen ? 'hidden' : ''} ${isSmallPortrait ? 'hidden' : ''}`}
+          } ${alternateMapOpen ? 'hidden' : ''}`}
         >
-          {/* Phone portrait renders the feeds in the bottom sheet instead. */}
-          {!isSmallPortrait && hazardFeedsPanel}
+          {/* On mobile portrait the Sidebar also carries the ●●● options menu
+              (the Navbar hides its own copy of that button there). */}
+          <Sidebar
+            alerts={alerts}
+            selectedAlert={selectedAlert}
+            onSelectAlert={handleSelectAlert}
+            onToggleAlertStatus={handleToggleAlertStatus}
+            onOpenReportModal={() => {
+              setPickedCoordinates(null);
+              setIsReportModalOpen(true);
+            }}
+            onOpenHotlinesModal={() => setIsHotlinesModalOpen(true)}
+            activeFilterType={mapSettings.activeFilterType}
+            setActiveFilterType={(type) => handleUpdateMapSettings({ activeFilterType: type })}
+            activeFilterStatus={mapSettings.activeFilterStatus}
+            setActiveFilterStatus={(status) => handleUpdateMapSettings({ activeFilterStatus: status })}
+            liveUrl={liveStreamUrl}
+            onOpenLiveModal={() => setIsLiveModalOpen(true)}
+            onRemoveLive={() => setLiveStreamUrl('')}
+            onClose={() => setMobileMenuOpen(false)}
+            onOpenUpdates={() => setIsUpdatesModalOpen(true)}
+            onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
+            onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
+            onOpenHistory={() => setIsHistoryModalOpen(true)}
+            optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
+          />
 
+          {/* Arrow toggle attached to the outer right edge of the incident feed drawer on mobile portrait */}
+          <button
+            id="btn-mobile-sidebar-toggle-arrow"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+            aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+            className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none"
+          >
+            <svg
+              viewBox="0 0 70 140"
+              className={`w-3 h-5 transition-transform duration-300 ${
+                mobileMenuOpen ? 'rotate-180' : 'rotate-0'
+              }`}
+              fill="#000000"
+            >
+              <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
+            </svg>
+          </button>
         </div>
 
         {/* Backdrop for Mobile Sidebar */}
-        {mobileMenuOpen && !isSmallPortrait && !alternateMapOpen && (
+        {mobileMenuOpen && !alternateMapOpen && (
           <div
             onClick={() => setMobileMenuOpen(false)}
             className="fixed inset-0 z-10 bg-slate-900/50 backdrop-blur-xs lg:hidden"
@@ -333,7 +330,7 @@ export default function App() {
             onMapClickCoordinate={handleMapClickCoordinate}
             recenterTrigger={recenterCount}
             onOpenMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
-            isMobileMenuOpen={mobileMenuOpen || sheetOpen}
+            isMobileMenuOpen={mobileMenuOpen}
             onFloodProneChange={setFloodProneOpen}
             onTrafficChange={setTrafficOpen}
             onHelpCenterChange={setHelpCenterOpen}
@@ -341,60 +338,6 @@ export default function App() {
           />
           {!alternateMapOpen && <PagasaFloodStatus />}
         </main>
-      </div>
-
-      {/* Hazard Feeds — expandable bottom sheet (phone portrait only).
-          Collapsed: white card with a grab handle and the "Hazard Feeds"
-          title. Tapping the card/text grows it upward and the hazard feeds
-          list appears inside the sheet (no more left-side drawer here). */}
-      <div
-        className={`hidden portrait:flex sm:portrait:hidden fixed inset-x-0 bottom-0 z-30 w-full flex-col overflow-hidden rounded-t-[28px] bg-white shadow-[0_-10px_34px_rgba(15,23,42,0.20)] transition-[height,transform] duration-300 ease-in-out ${
-          alternateMapOpen ? 'translate-y-full pointer-events-none' : 'translate-y-0'
-        }`}
-        style={{
-          height: sheetOpen ? 'calc(100dvh - 3.25rem)' : '4.25rem',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-        }}
-      >
-        {/* Grab handle + title — the whole card is the expand/collapse tap area */}
-        <button
-          id="btn-mobile-sidebar-toggle-arrow"
-          onClick={() => setSheetOpen((prev) => !prev)}
-          title={sheetOpen ? 'Collapse Hazard Feeds' : 'Expand Hazard Feeds'}
-          aria-label={sheetOpen ? 'Collapse Hazard Feeds' : 'Expand Hazard Feeds'}
-          aria-expanded={sheetOpen}
-          className={`flex w-full shrink-0 flex-col items-stretch px-6 pt-2.5 text-left cursor-pointer select-none transition-colors active:bg-slate-50 ${
-            sheetOpen ? 'pb-2' : 'pb-3'
-          }`}
-        >
-          <span className="relative flex w-full items-center justify-center">
-            <span className="block h-1.5 w-16 shrink-0 rounded-full bg-slate-300" />
-            {/* Chevron hint: up = expand, down = collapse */}
-            <svg
-              viewBox="0 0 24 24"
-              className={`absolute right-0 h-4 w-4 text-slate-400 transition-transform duration-300 ${
-                sheetOpen ? 'rotate-180' : 'rotate-0'
-              }`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="m18 15-6-6-6 6" />
-            </svg>
-          </span>
-          {!sheetOpen && (
-            <span className="mt-2 block text-[18px] font-semibold leading-none tracking-tight text-slate-900">
-              Hazard Feeds
-            </span>
-          )}
-        </button>
-
-        {/* Feeds content — clipped while collapsed, full list when expanded */}
-        <div className="min-h-0 flex-1 overflow-hidden">
-          {isSmallPortrait && hazardFeedsPanel}
-        </div>
       </div>
 
       {/* Add Hazard Incident Modal */}

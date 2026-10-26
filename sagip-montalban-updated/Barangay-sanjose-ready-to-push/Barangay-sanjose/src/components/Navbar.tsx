@@ -199,14 +199,14 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
 
           {/* Action Buttons — the ●●● button hides itself on mobile portrait,
-              where it moves into the Hazard Feeds header (Sidebar.tsx). */}
+              where it moves into the Incident Feeds header (Sidebar.tsx). */}
           <div className="flex items-center space-x-2 shrink-0 portrait:flex-row-reverse">
             <div className="hidden sm:flex h-8 items-center justify-center mr-4 sm:mr-5 text-slate-800 font-sans font-semibold text-xs tracking-tight tabular-nums whitespace-nowrap portrait:hidden">
               {currentTime || 'PST'}
             </div>
 
             {/* ●●● options menu. On mobile portrait (Android/iPhone) it is
-                moved INSIDE the Hazard Feeds header — see Sidebar.tsx. */}
+                moved INSIDE the Incident Feeds header — see Sidebar.tsx. */}
             <OptionsMenu
               className="shrink-0 portrait:hidden"
               disabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
@@ -218,7 +218,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Report — itim na plus sa puting bilog, katabi ng ●●●.
                 Sa portrait phone ito ay naka-hide dito at lumalabas sa
-                Hazard Feeds header sa tabi ng ⋮ (Sidebar.tsx). */}
+                Incident Feeds header sa tabi ng ⋮ (Sidebar.tsx). */}
             <ReportButton
               id="btn-report-hazard"
               className="portrait:hidden"

@@ -145,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 kopya ng Navbar). */}
             <div className="relative flex items-center justify-between gap-2">
               <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                <span>Hazard Feeds</span>
+                <span>Incident Feeds</span>
                 <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold rounded bg-slate-900 text-white">
                   {filteredAlerts.length}
                 </span>
@@ -328,7 +328,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       />
 
       {/* Alert Cards List */}
-      <div className="flex-1 overflow-y-auto p-3 pb-5 space-y-2.5 custom-scrollbar bg-slate-50/30">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar bg-slate-50/30">
         {filteredAlerts.length === 0 ? (
           <div className="py-12 text-center space-y-3">
             <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
