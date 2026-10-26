@@ -226,6 +226,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [locationBanner, setLocationBanner] = React.useState<'none' | 'success' | 'error'>('none');
   const locationMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
+  const helpCenterUserLocationMarkerRef = useRef<L.Marker | null>(null);
   const floodMapFrameRef = useRef<HTMLIFrameElement | null>(null);
 
   React.useEffect(() => {
@@ -447,9 +448,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
     runLocationRequest(true);
   };
+  const handleShowUserLocationRef = useRef(handleShowUserLocation);
+  handleShowUserLocationRef.current = handleShowUserLocation;
 
   // Embedded map pages own their map buttons and ask the host only for the
-  // existing location-consent flow or when switching to another app layer.
+  // direct browser location flow or when switching to another app layer.
   React.useEffect(() => {
     const onEmbeddedMapAction = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -460,7 +463,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       const message = event.data as { type?: string; layer?: string } | null;
       if (message?.type === 'hazardsync-location-request') {
-        handleShowUserLocation();
+        handleShowUserLocationRef.current();
         return;
       }
       if (message?.type !== 'hazardsync-layer-select') return;
@@ -561,6 +564,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 duration: 1.6,
                 easeLinearity: 0.25,
               });
+              const helpLocationMarker = helpCenterUserLocationMarkerRef.current;
+              if (helpLocationMarker && helpMap.hasLayer(helpLocationMarker)) {
+                helpLocationMarker.setLatLng(coordinates);
+              } else {
+                helpCenterUserLocationMarkerRef.current = new L.Marker(coordinates, {
+                  icon: locationIcon,
+                  zIndexOffset: 1000,
+                  title: 'Your location',
+                }).addTo(helpMap);
+              }
             }
           } else {
             // The location can be outside Barangay San Jose. Temporarily release
@@ -1006,7 +1019,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS controls stay mounted beneath the mobile drawer while it slides in. */}
-      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${showFloodProneBlank || showTrafficMap || showWeather || helpFilterOpen ? 'hidden' : ''}`}>
+      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'}`}>
+        {!showFloodProneBlank && !showTrafficMap && !showWeather && !helpFilterOpen && (
+          <>
         {/* These controls operate on the embedded Panahon map in Weather mode. */}
         <button
           id="btn-recenter-gis"
@@ -1181,10 +1196,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </div>
           </>
         )}
-      </div>
+            </div>
+          </>
+        )}
 
-        {/* Use the existing permission card; forward approved coordinates to Panahon. */}
-        <button
+        {/* Keep location access available over every basemap and embedded map. */}
+        {!helpFilterOpen && <button
           id="btn-show-user-location"
             onClick={handleShowUserLocation}
             title="Show your location"
@@ -1192,7 +1209,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
           >
             <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
-          </button>
+          </button>}
 
         {/* Weather's zoom pair shares one white card, as in the GIS controls. */}
         {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && (
