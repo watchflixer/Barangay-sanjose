@@ -41,8 +41,6 @@ import {
   LocateFixed,
   Plus,
   Minus,
-  Check,
-  ShieldCheck,
   Radio,
   LightbulbOff
 } from 'lucide-react';
@@ -227,8 +225,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // 3 seconds. Anything else uses the plain hint banner top-left.
   const [locationBanner, setLocationBanner] = React.useState<'none' | 'success' | 'error'>('none');
   const locationMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showLocationPermissionCard, setShowLocationPermissionCard] = React.useState(false);
-  const [precisionChoice, setPrecisionChoice] = React.useState<'precise' | 'approximate'>('precise');
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
   const floodMapFrameRef = useRef<HTMLIFrameElement | null>(null);
 
@@ -445,8 +441,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // request only fires after the user taps one of the Allow buttons.
   const handleShowUserLocation = () => {
     if (!mapInstanceRef.current) return;
-    if (!navigator.geolocation) { setLocationMessage('Location is unavailable.'); return; }
-    setShowLocationPermissionCard(true);
+    if (!navigator.geolocation) {
+      setLocationMessage('Location is unavailable.');
+      return;
+    }
+    runLocationRequest(true);
   };
 
   // Embedded map pages own their map buttons and ask the host only for the
@@ -623,23 +622,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // Fires the native dialog immediately (still inside the click gesture):
     requestGeolocation();
-  };
-
-  const handleAllowLocationRequest = () => {
-    setShowLocationPermissionCard(false);
-    setLocationBanner('none');
-    runLocationRequest(precisionChoice === 'precise');
-  };
-
-  const handleNeverAllowLocation = () => {
-    setShowLocationPermissionCard(false);
-    setLocationMessage('Location access denied!');
-    setLocationBanner('error');
-    if (locationMessageTimerRef.current) clearTimeout(locationMessageTimerRef.current);
-    locationMessageTimerRef.current = setTimeout(() => {
-      setLocationMessage('');
-      setLocationBanner('none');
-    }, 3000);
   };
 
   const handleZoomIn = () => {
@@ -1253,103 +1235,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         )
       )}
 
-      {/* Chrome-style in-app location permission card — replicates the native
-          Android Chrome dialog so the same Precise/Approximate + Allow flow
-          appears on every device, even after the browser stops showing its
-          own native prompt. */}
-      {showLocationPermissionCard && (
-        <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-[320px] rounded-3xl bg-[#1f2430] p-4 shadow-2xl ring-1 ring-white/10">
-            <div className="flex items-start gap-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1a73e8]">
-                <MapPin className="h-4 w-4 text-white" />
-              </div>
-              <p className="pt-0.5 text-sm leading-snug text-slate-100">
-                <span className="font-bold">HazardSync</span> wants to use your device's location
-              </p>
-            </div>
 
-            {/* Precise option */}
-            <button
-              onClick={() => setPrecisionChoice('precise')}
-              className="mt-3.5 flex w-full items-center gap-2.5 rounded-2xl bg-[#2a303c] p-2.5 text-left ring-1 transition-colors ring-transparent active:scale-[0.99] hover:ring-white/20"
-            >
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#3a4150]">
-                <svg viewBox="0 0 56 56" className="h-full w-full">
-                  <rect width="56" height="56" fill="#3c4454" />
-                  <path d="M-2 14 L20 2 L34 16 L58 8" stroke="#5a6577" strokeWidth="4" fill="none" />
-                  <path d="M-2 34 L14 26 L30 40 L58 30" stroke="#5a6577" strokeWidth="4" fill="none" />
-                  <path d="M14 -2 L22 20 L10 38 L18 58" stroke="#5a6577" strokeWidth="3" fill="none" />
-                  <path d="M40 -2 L34 22 L46 40 L40 58" stroke="#5a6577" strokeWidth="3" fill="none" />
-                  <rect x="2" y="40" width="14" height="10" rx="2" fill="#3f7d5c" />
-                  <rect x="42" y="2" width="12" height="10" rx="2" fill="#3f7d5c" />
-                  <circle cx="28" cy="26" r="6" fill="#4285f4" stroke="#dfe3ea" strokeWidth="3" />
-                </svg>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-slate-100">Precise</div>
-                <div className="text-xs text-slate-400">Exact location</div>
-              </div>
-              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${precisionChoice === 'precise' ? 'bg-[#4285f4]' : 'border-2 border-slate-500'}`}>
-                {precisionChoice === 'precise' && <Check className="h-4 w-4 text-white" />}
-              </div>
-            </button>
-
-            {/* Approximate option */}
-            <button
-              onClick={() => setPrecisionChoice('approximate')}
-              className="mt-2 flex w-full items-center gap-2.5 rounded-2xl bg-[#2a303c] p-2.5 text-left ring-1 transition-colors ring-transparent active:scale-[0.99] hover:ring-white/20"
-            >
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-[#3a4150]">
-                <svg viewBox="0 0 56 56" className="h-full w-full">
-                  <rect width="56" height="56" fill="#3c4454" />
-                  <path d="M-2 14 L20 2 L34 16 L58 8" stroke="#5a6577" strokeWidth="4" fill="none" />
-                  <path d="M-2 34 L14 26 L30 40 L58 30" stroke="#5a6577" strokeWidth="4" fill="none" />
-                  <path d="M14 -2 L22 20 L10 38 L18 58" stroke="#5a6577" strokeWidth="3" fill="none" />
-                  <path d="M40 -2 L34 22 L46 40 L40 58" stroke="#5a6577" strokeWidth="3" fill="none" />
-                  <rect x="2" y="40" width="14" height="10" rx="2" fill="#3f7d5c" />
-                  <rect x="42" y="2" width="12" height="10" rx="2" fill="#3f7d5c" />
-                  <circle cx="28" cy="26" r="20" fill="#4285f4" fillOpacity="0.25" stroke="#a8c7fa" strokeWidth="2" />
-                  <circle cx="28" cy="26" r="4" fill="#a8c7fa" />
-                </svg></div>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-slate-100">Approximate</div>
-                <div className="text-xs text-slate-400">Neighborhood</div>
-              </div>
-              <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${precisionChoice === 'approximate' ? 'bg-[#4285f4]' : 'border-2 border-slate-500'}`}>
-                {precisionChoice === 'approximate' && <Check className="h-4 w-4 text-white" />}
-              </div>
-            </button>
-
-            <div className="mt-3.5 space-y-2">
-              <button
-                onClick={handleAllowLocationRequest}
-                className="w-full rounded-full bg-[#0b57d0] py-2.5 text-[13px] font-semibold text-white shadow-lg transition-colors active:scale-[0.98] hover:bg-[#1a73e8]"
-              >
-                Allow while visiting the site
-              </button>
-              <button
-                onClick={handleAllowLocationRequest}
-                className="w-full rounded-full bg-[#0b57d0] py-2.5 text-[13px] font-semibold text-white shadow-lg transition-colors active:scale-[0.98] hover:bg-[#1a73e8]"
-              >
-                Allow this time
-              </button>
-              <button
-                onClick={handleNeverAllowLocation}
-                className="w-full rounded-full bg-[#0b57d0] py-2.5 text-[13px] font-semibold text-white shadow-lg transition-colors active:scale-[0.98] hover:bg-[#1a73e8]"
-              >
-                Never allow
-              </button>
-              <p className="pt-1 text-center text-[10px] leading-relaxed text-slate-400 flex items-start justify-center gap-1.5">
-                <ShieldCheck className="w-3 h-3 shrink-0 text-emerald-400 mt-0.5" />
-                <span>
-                  By continuing, you consent to the use of your device location solely for displaying your position on this map. Your location is never saved, stored, or shared — in accordance with the Data Privacy Act (RA 10173).
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );
