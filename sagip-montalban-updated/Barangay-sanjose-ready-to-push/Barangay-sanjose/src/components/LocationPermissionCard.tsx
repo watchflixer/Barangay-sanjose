@@ -66,7 +66,7 @@ export const LocationPermissionCard: React.FC<LocationPermissionCardProps> = ({
       : copy[state].description;
 
   return (
-    <div className="absolute inset-0 z-[70] flex items-center justify-center bg-white/85 p-4 backdrop-blur-xs">
+    <div className="absolute inset-0 z-[70] flex items-center justify-center bg-transparent p-4">
       <section
         className="w-full max-w-[300px] rounded-[24px] border border-[#dadce0] bg-white px-[18px] pb-3.5 pt-5 text-center text-[#202124] shadow-[0_1px_2px_rgba(60,64,67,.2),0_2px_6px_2px_rgba(60,64,67,.12)]"
         role="dialog"
