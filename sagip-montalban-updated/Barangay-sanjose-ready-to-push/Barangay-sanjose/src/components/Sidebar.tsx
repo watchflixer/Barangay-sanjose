@@ -138,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <h2 className="m-0 text-xl font-medium leading-6 tracking-tight text-[#1f1f1f]">Incident Feeds</h2>
+              <h2 className="m-0 text-lg font-medium leading-6 tracking-tight text-[#1f1f1f]">Incident Feeds</h2>
               <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-medium leading-none text-[#5f6368] shadow-sm">
                 {filteredAlerts.length}
               </span>
