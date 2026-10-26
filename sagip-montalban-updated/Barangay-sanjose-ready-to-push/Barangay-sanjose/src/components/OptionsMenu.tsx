@@ -10,16 +10,16 @@ interface OptionsMenuProps {
   onOpenHistory: () => void;
   /**
    * Placement classes for the wrapper. The Navbar shows the button on
-   * desktop/landscape only (`shrink-0 portrait:hidden`); the Hazard Feeds
+   * desktop/landscape only (`shrink-0 portrait:hidden`); the Incident Feeds
    * header shows it on mobile portrait only (`hidden portrait:inline-flex`),
-   * where the ●●● sits at the end of the "Hazard Feeds" text.
+   * where the ●●● sits at the end of the "Incident Feeds" text.
    */
   className?: string;
   /**
    * Where the 14rem dropdown is anchored:
    *  - 'button' (default): to the ●●● button itself. The Navbar has room, so
    *    the panel gets the little speech-bubble arrow pointing up at the button.
-   *  - 'row': to a positioned ancestor row. Used inside the Hazard Feeds
+   *  - 'row': to a positioned ancestor row. Used inside the Incident Feeds
    *    header: the drawer is only 20rem wide, so the panel is anchored to the
    *    header row (whose right edge is flush with the ●●● button) to keep the
    *    whole menu inside the panel instead of being clipped.
@@ -29,7 +29,7 @@ interface OptionsMenuProps {
 
 /**
  * ●●● options button + its dropdown (Updates, Evacuation Centers,
- * Resolved / Cleared, History). Shared by the Navbar and the Hazard Feeds
+ * Resolved / Cleared, History). Shared by the Navbar and the Incident Feeds
  * header so both keep exactly the same menu and behaviour.
  */
 export const OptionsMenu: React.FC<OptionsMenuProps> = ({
@@ -96,7 +96,7 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({
           className={`${menuPosition} w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 divide-y divide-slate-100`}
         >
           {/* Speech-bubble arrow pointing up at the ●●● button (which sits at
-              the right end of the row in the Hazard Feeds header too). */}
+              the right end of the row in the Incident Feeds header too). */}
           <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 rounded-[2px] border-l border-t border-slate-200 bg-white" />
           <div className="py-1">
             <button

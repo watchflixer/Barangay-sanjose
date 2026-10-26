@@ -7,7 +7,7 @@ interface ReportButtonProps {
   disabled?: boolean;
   /**
    * Placement classes. Navbar: `shrink-0 portrait:hidden` (portrait phones
-   * hide it — it moves to the Hazard Feeds header). Hazard Feeds header:
+   * hide it — it moves to the Incident Feeds header). Incident Feeds header:
    * `hidden portrait:inline-flex`.
    */
   className?: string;
@@ -18,7 +18,7 @@ interface ReportButtonProps {
 /**
  * Report button — itim na plus sa puting bilog (32px, kasing-taas ng ●●●).
  * Kaparehas ng ●●● ang itsura para mukha silang magkapatid, at nakatabi ito
- * palagi sa ●●● button (Navbar sa desktop, Hazard Feeds header sa portrait).
+ * palagi sa ●●● button (Navbar sa desktop, Incident Feeds header sa portrait).
  */
 export const ReportButton: React.FC<ReportButtonProps> = ({
   onClick,
