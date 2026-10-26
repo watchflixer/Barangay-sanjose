@@ -1123,7 +1123,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                           : layer === 'light' ? showFloodProneBlank
                           : layer === 'satellite' ? showHelpCenter
                           : mapSettings.tileLayer === layer && !showTrafficMap && !showHelpCenter && !showWeather)
-                          ? 'bg-black text-white border-black'
+                          ? 'bg-[#00697a] text-white border-[#00697a] shadow-xs'
                           : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
