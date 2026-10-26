@@ -15,6 +15,7 @@ import { HazardAlert, MapSettings, HazardType, HazardStatus } from './types';
 import { INITIAL_HAZARDS, SAN_JOSE_POLYGON_COORDS } from './data/geoData';
 import { useFloodStatus } from './hooks/useFloodStatus';
 import { classifyFloodLevel, SAN_JOSE_BRIDGE_COORDS, AUTO_FLOOD_ALERT_ID } from './lib/flood';
+import { readRefreshView } from './lib/refreshView';
 
 export default function App() {
   const [alerts, setAlerts] = useState<HazardAlert[]>(() => {
@@ -203,18 +204,23 @@ export default function App() {
   // True while the Help Center view (independent Traffic duplicate) is open.
   const [helpCenterOpen, setHelpCenterOpen] = useState(false);
   // True while the Weather view (the AuraCast app) is open — also gates navbar actions.
-  const [weatherOpen, setWeatherOpen] = useState(false);
-  // Keep the app navbar, but let each alternate map page own the rest of its UI.
+  // Seed from the refresh snapshot so the Hazard Map's sidebar arrow is never
+  // briefly rendered over Weather during a direct/reloaded Weather entry.
+  const [weatherOpen, setWeatherOpen] = useState(() => readRefreshView() === 'weather');
+  // Alternate map modes replace the map content while keeping the shared
+  // incident drawer available above the active view.
   const alternateMapOpen = floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen;
-
-  useEffect(() => {
-    if (alternateMapOpen) setMobileMenuOpen(false);
-  }, [alternateMapOpen]);
 
   const resolvedAlerts = alerts.filter((a) => a.status === 'resolved');
 
   const handleFilterToResolved = () => {
     setMapSettings((prev) => ({ ...prev, activeFilterStatus: 'resolved' }));
+  };
+
+  const handleOpenReportModal = () => {
+    setMobileMenuOpen(false);
+    setPickedCoordinates(null);
+    setIsReportModalOpen(true);
   };
 
   const handleResetMap = () => {
@@ -234,10 +240,7 @@ export default function App() {
       {/* Top Navbar */}
       <Navbar
         alerts={alerts}
-        onOpenReportModal={() => {
-          setPickedCoordinates(null);
-          setIsReportModalOpen(true);
-        }}
+        onOpenReportModal={handleOpenReportModal}
         onOpenHotlinesModal={() => setIsHotlinesModalOpen(true)}
         onResetMap={handleResetMap}
         mobileMenuOpen={mobileMenuOpen}
@@ -258,9 +261,9 @@ export default function App() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar (Alerts Feed & GIS Controls) */}
         <div
-          className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 z-20 w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:h-full lg:min-h-0 lg:translate-x-0 ${
+          className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          } ${alternateMapOpen ? 'hidden' : ''}`}
+          }`}
         >
           {/* On mobile portrait the Sidebar also carries the ●●● options menu
               (the Navbar hides its own copy of that button there). */}
@@ -269,10 +272,7 @@ export default function App() {
             selectedAlert={selectedAlert}
             onSelectAlert={handleSelectAlert}
             onToggleAlertStatus={handleToggleAlertStatus}
-            onOpenReportModal={() => {
-              setPickedCoordinates(null);
-              setIsReportModalOpen(true);
-            }}
+            onOpenReportModal={handleOpenReportModal}
             onOpenHotlinesModal={() => setIsHotlinesModalOpen(true)}
             activeFilterType={mapSettings.activeFilterType}
             setActiveFilterType={(type) => handleUpdateMapSettings({ activeFilterType: type })}
@@ -289,8 +289,8 @@ export default function App() {
             optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
           />
 
-          {/* Arrow toggle attached to the outer right edge of the incident feed drawer on mobile portrait */}
-          <button
+          {/* The feed toggle belongs only to the main Hazard Map on the Streets layer. */}
+          {!alternateMapOpen && mapSettings.tileLayer === 'streets' && !isReportModalOpen && !isLocationPickerOpen && <button
             id="btn-mobile-sidebar-toggle-arrow"
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
@@ -306,14 +306,14 @@ export default function App() {
             >
               <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
             </svg>
-          </button>
+          </button>}
         </div>
 
         {/* Backdrop for Mobile Sidebar */}
-        {mobileMenuOpen && !alternateMapOpen && (
+        {mobileMenuOpen && (
           <div
-            onClick={() => setMobileMenuOpen(false)}
-            className="fixed inset-0 z-10 bg-slate-900/50 backdrop-blur-xs lg:hidden"
+            aria-hidden="true"
+            className="pointer-events-none fixed inset-x-0 top-16 max-sm:portrait:top-13 bottom-0 z-[65] bg-slate-900/50 backdrop-blur-xs lg:hidden"
           />
         )}
 
@@ -389,8 +389,7 @@ export default function App() {
         alerts={alerts}
         onOpenReportModal={() => {
           setIsUpdatesModalOpen(false);
-          setPickedCoordinates(null);
-          setIsReportModalOpen(true);
+          handleOpenReportModal();
         }}
         onOpenLiveModal={() => {
           setIsUpdatesModalOpen(false);
