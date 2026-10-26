@@ -543,7 +543,7 @@ body,
   filter: brightness(1.3);
 }
 
-#hc-sheet .hc-sheet-filter:focus-visible {
+html.kb-nav #hc-sheet .hc-sheet-filter:focus-visible {
   outline: 3px solid #d3eef5;
   outline-offset: 2px;
 }
@@ -1104,11 +1104,16 @@ body,
   background: #d3eef5;
 }
 
-/* Suppress the browser's sudden black touch-focus ring; keyboard users keep a
-   clear, on-brand focus indicator. */
-.hc-cat:focus-visible {
-  outline: 2px solid #00697a;
-  outline-offset: 2px;
+/* Category cards already have a selected border. Never add another outline
+   outside the card; for keyboard focus, underline the label instead. */
+html.kb-nav .hc-cat:focus-visible {
+  outline: none;
+}
+
+html.kb-nav .hc-cat:focus-visible .hc-cat-title {
+  text-decoration: underline;
+  text-decoration-color: #00697a;
+  text-underline-offset: 3px;
 }
 
 .hc-cat-ic {
@@ -1345,4 +1350,29 @@ body,
   border-color: #000000;
   background: #000000;
   color: #ffffff;
+}
+
+/* --- Focus modality -------------------------------------------------------
+   Browsers retain focus on buttons after a tap/click. Their default focus
+   outline can appear as a black border, sometimes only after repeated taps.
+   Suppress pointer-focus outlines consistently; main.tsx marks keyboard
+   navigation so keyboard users still get a visible, brand-color indicator. */
+button,
+[role='button'],
+a,
+summary,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:is(button, [role='button'], a, summary, input, select, textarea):focus,
+:is(button, [role='button'], a, summary, input, select, textarea):active {
+  outline: none;
+}
+
+html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):not(.hc-cat):focus-visible {
+  outline: 2px solid #00697a;
+  outline-offset: 2px;
 }

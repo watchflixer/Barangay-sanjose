@@ -17,7 +17,8 @@
     "test:weather:browser": "node tests/weather-browser.mjs",
     "test:help-center": "tsx --test tests/help-center.test.ts",
     "test:help-center:browser": "node tests/help-center-browser.mjs",
-    "test:help-center:picker": "node tests/help-center-picker-sticky.mjs"
+    "test:help-center:picker": "node tests/help-center-picker-sticky.mjs",
+    "test:tap-artifacts": "tsx --test tests/tap-artifacts.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
