@@ -28,9 +28,10 @@ test('pointer focus and active states cannot show the browser black outline', ()
 });
 
 test('keyboard focus remains visible with an on-brand teal indicator', () => {
-  assert.match(css, /html\.kb-nav \.hc-cat:focus-visible/);
+  assert.match(css, /html\.kb-nav \.hc-cat:focus-visible \{\s*outline: none/);
+  assert.match(css, /html\.kb-nav \.hc-cat:focus-visible \.hc-cat-title/);
   assert.match(css, /html\.kb-nav #hc-sheet \.hc-sheet-filter:focus-visible/);
-  assert.match(css, /html\.kb-nav :is\(button, \[role='button'\], a, summary, input, select, textarea\):focus-visible/);
+  assert.match(css, /html\.kb-nav :is\(button, \[role='button'\], a, summary, input, select, textarea\):not\(\.hc-cat\):focus-visible/);
   assert.match(css, /outline: 2px solid #00697a/);
   assert.match(main, /classList\.add\('kb-nav'\)/);
   assert.match(main, /classList\.remove\('kb-nav'\)/);

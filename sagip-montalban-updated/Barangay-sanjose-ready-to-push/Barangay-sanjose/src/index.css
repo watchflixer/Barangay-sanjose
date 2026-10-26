@@ -1104,11 +1104,16 @@ html.kb-nav #hc-sheet .hc-sheet-filter:focus-visible {
   background: #d3eef5;
 }
 
-/* Suppress the browser's sudden black touch-focus ring; keyboard users keep a
-   clear, on-brand focus indicator. */
+/* Category cards already have a selected border. Never add another outline
+   outside the card; for keyboard focus, underline the label instead. */
 html.kb-nav .hc-cat:focus-visible {
-  outline: 2px solid #00697a;
-  outline-offset: 2px;
+  outline: none;
+}
+
+html.kb-nav .hc-cat:focus-visible .hc-cat-title {
+  text-decoration: underline;
+  text-decoration-color: #00697a;
+  text-underline-offset: 3px;
 }
 
 .hc-cat-ic {
@@ -1367,7 +1372,7 @@ textarea {
   outline: none;
 }
 
-html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):focus-visible {
+html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):not(.hc-cat):focus-visible {
   outline: 2px solid #00697a;
   outline-offset: 2px;
 }
