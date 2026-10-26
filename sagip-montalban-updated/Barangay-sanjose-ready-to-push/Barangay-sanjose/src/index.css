@@ -399,7 +399,7 @@ body,
 }
 
 #hc-base-switch button.active {
-  background: #00697a;
+  background: #111827;
   color: #ffffff;
 }
 
@@ -525,7 +525,7 @@ body,
   padding: 0 10px;
   border: 0;
   border-radius: 6px;
-  background: #00697a;
+  background: #111827;
   color: #ffffff;
   font-family: inherit;
   font-size: 12px;
@@ -1342,17 +1342,16 @@ html.kb-nav .hc-cat:focus-visible {
 }
 
 .hc-popup-btn--primary {
-  border-color: #00697a;
-  background: #00697a;
+  border-color: #000000;
+  background: #000000;
   color: #ffffff;
 }
 
-/* --- Tap / click artifacts -------------------------------------------------
-   Android Chrome and iOS Safari paint a dark focus ring (and their own tap
-   overlay) on whatever control was just tapped, which read as "the button
-   turned black after I clicked it". Kill both: no default highlight, and no
-   outline for pointer/touch focus. Keyboard users still get a clear teal ring
-   (html.kb-nav is set by main.tsx on the first Tab / arrow-key press). */
+/* --- Focus modality -------------------------------------------------------
+   Browsers retain focus on buttons after a tap/click. Their default focus
+   outline can appear as a black border, sometimes only after repeated taps.
+   Suppress pointer-focus outlines consistently; main.tsx marks keyboard
+   navigation so keyboard users still get a visible, brand-color indicator. */
 button,
 [role='button'],
 a,
@@ -1363,8 +1362,8 @@ textarea {
   -webkit-tap-highlight-color: transparent;
 }
 
-:is(button, [role='button'], a, summary, select, textarea):focus,
-:is(button, [role='button'], a, summary, select, textarea):active {
+:is(button, [role='button'], a, summary, input, select, textarea):focus,
+:is(button, [role='button'], a, summary, input, select, textarea):active {
   outline: none;
 }
 

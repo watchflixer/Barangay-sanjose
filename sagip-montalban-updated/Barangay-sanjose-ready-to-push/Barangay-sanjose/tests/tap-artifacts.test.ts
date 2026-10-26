@@ -3,24 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-/**
- * "Nagka-black yung button pag clinick" regression guard
- * ------------------------------------------------------
- * Two things used to turn a control black the moment it was tapped:
- *   1. The selected basemap / filter buttons were filled with near-black
- *      (#111827 / bg-black) instead of the app's teal accent.
- *   2. Chrome on Android / iOS Safari painted their default dark focus ring on
- *      whatever was tapped, because nothing suppressed it.
- * These assertions keep both from coming back.
- */
-
-const cssPath = fileURLToPath(new URL('../src/index.css', import.meta.url));
-const mapViewerPath = fileURLToPath(new URL('../src/components/MapViewer.tsx', import.meta.url));
-const mainPath = fileURLToPath(new URL('../src/main.tsx', import.meta.url));
-
-const css = readFileSync(cssPath, 'utf8');
-const mapViewer = readFileSync(mapViewerPath, 'utf8');
-const main = readFileSync(mainPath, 'utf8');
+/** Regression guard for black borders appearing on controls after repeated taps. */
+const css = readFileSync(fileURLToPath(new URL('../src/index.css', import.meta.url)), 'utf8');
+const mapViewer = readFileSync(fileURLToPath(new URL('../src/components/MapViewer.tsx', import.meta.url)), 'utf8');
+const main = readFileSync(fileURLToPath(new URL('../src/main.tsx', import.meta.url)), 'utf8');
 
 const rule = (selector: string) => {
   const start = css.indexOf(selector);
@@ -28,28 +14,24 @@ const rule = (selector: string) => {
   return css.slice(start, css.indexOf('}', start) + 1);
 };
 
-test('selected basemap pill uses the brand teal, never black', () => {
-  const active = rule('#hc-base-switch button.active');
-  assert.match(active, /#00697a/);
-  assert.doesNotMatch(active, /#111827|#000000|#000\b/);
+test('the existing selected-state colors are preserved', () => {
+  assert.match(rule('#hc-base-switch button.active'), /background:\s*#111827/);
+  assert.match(rule('#hc-sheet .hc-sheet-filter'), /background:\s*#111827/);
+  assert.match(rule('.hc-popup-btn--primary'), /background:\s*#000000/);
+  assert.match(mapViewer, /'bg-black text-white border-black'/);
 });
 
-test('the results-sheet Filters button and popup CTA use the brand teal', () => {
-  assert.match(rule('#hc-sheet .hc-sheet-filter'), /background:\s*#00697a/);
-  assert.match(rule('.hc-popup-btn--primary'), /background:\s*#00697a/);
-});
-
-test('Map Settings basemap buttons no longer fill with black when selected', () => {
-  assert.doesNotMatch(mapViewer, /'bg-black text-white border-black'/);
-  assert.match(mapViewer, /bg-\[#00697a\] text-white border-\[#00697a\]/);
-});
-
-test('taps do not paint a focus ring; keyboard users still get one', () => {
+test('pointer focus and active states cannot show the browser black outline', () => {
   assert.match(css, /-webkit-tap-highlight-color:\s*transparent/);
-  // Rings are gated behind the keyboard-navigation class…
-  assert.match(css, /html\.kb-nav\s+\.hc-cat:focus-visible/);
-  assert.match(css, /html\.kb-nav\s+:is\(button, \[role='button'\], a, summary, input, select, textarea\):focus-visible/);
-  // …which main.tsx only adds on keyboard input.
+  assert.match(css, /:is\(button, \[role='button'\], a, summary, input, select, textarea\):focus,[\s\S]*outline:\s*none/);
+  assert.match(css, /:is\(button, \[role='button'\], a, summary, input, select, textarea\):active/);
+});
+
+test('keyboard focus remains visible with an on-brand teal indicator', () => {
+  assert.match(css, /html\.kb-nav \.hc-cat:focus-visible/);
+  assert.match(css, /html\.kb-nav #hc-sheet \.hc-sheet-filter:focus-visible/);
+  assert.match(css, /html\.kb-nav :is\(button, \[role='button'\], a, summary, input, select, textarea\):focus-visible/);
+  assert.match(css, /outline: 2px solid #00697a/);
   assert.match(main, /classList\.add\('kb-nav'\)/);
   assert.match(main, /classList\.remove\('kb-nav'\)/);
 });
