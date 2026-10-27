@@ -292,7 +292,7 @@ export default function App() {
             title="Hide incident feeds"
             className="app-feed-collapse"
           >
-            <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
+            <ChevronLeft className="h-[22px] w-[22px]" strokeWidth={1.8} />
           </button>
 
           {/* The feed sits inside the outer card as an inner card. */}

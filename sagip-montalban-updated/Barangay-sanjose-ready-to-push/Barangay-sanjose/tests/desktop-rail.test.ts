@@ -124,7 +124,11 @@ test('the ‹ tab collapses the feed and exists only on laptop/desktop', () => {
   // CSS: hidden by default, shown only from 1024px, sitting on the card edge.
   assert.match(css, /\.app-feed-collapse \{\s*display: none;\s*\}/);
   const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
-  assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -15px;[\s\S]*?border-radius: 999px;/);
+  // Exactly the reference tab: flat left edge on the card, rounded right
+  // corners, hairline outline, light grey fill, thin chevron.
+  assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -14px;[\s\S]*?width: 26px;[\s\S]*?height: 74px;[\s\S]*?border-radius: 0 16px 16px 0;[\s\S]*?background: #f8f9fa;/);
+  assert.match(card, /border-left: 0;/);
+  assert.match(app, /<ChevronLeft className="h-\[22px\] w-\[22px\]" strokeWidth=\{1\.8\} \/>/);
   assert.match(card, /@media \(min-width: 1024px\) \{\s*\.app-feed-collapse \{\s*display: flex;\s*\}/);
 
   // The inner wrapper keeps full height at every width, so phones are unchanged.
