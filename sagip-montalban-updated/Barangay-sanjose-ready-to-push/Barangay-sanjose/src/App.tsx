@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
+import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
 import { MapViewer } from './components/MapViewer';
 import { AddHazardModal } from './components/AddHazardModal';
@@ -259,6 +260,11 @@ export default function App() {
 
       {/* Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
+        {/* Google-Maps-style icon rail. Renders on laptop/desktop widths only
+            (all of its CSS sits behind @media (min-width: 1024px)), so the
+            Android/iPhone portrait layout is untouched. */}
+        <DesktopRail />
+
         {/* Left Sidebar (Alerts Feed & GIS Controls) */}
         <div
           className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 ${
