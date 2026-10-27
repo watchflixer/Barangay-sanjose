@@ -1547,4 +1547,10 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   #app-sidebar-panel > aside > div:first-child {
     border-top-right-radius: 0 !important;
   }
+
+  /* The clip-path is an inline style, so it needs an !important reset here —
+     otherwise the portrait drawer would lose its corner too. */
+  #app-sidebar-panel {
+    clip-path: none !important;
+  }
 }

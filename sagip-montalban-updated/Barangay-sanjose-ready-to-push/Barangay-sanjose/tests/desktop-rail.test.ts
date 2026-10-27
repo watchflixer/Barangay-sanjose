@@ -132,7 +132,8 @@ test('the incident feed rounds exactly one corner, at every width except phone p
 test('the rounded corner is also inline, so a stale stylesheet cannot hide it', () => {
   // Inline styles beat any stylesheet rule without !important — this is the
   // belt for the case where the built CSS the browser holds is older.
-  assert.match(app, /style=\{\{ borderTopRightRadius: 24, overflow: 'hidden' \}\}/);
+  // (the wrapper's inline style is a multi-line object carrying clipPath too)
+  assert.match(app, /borderTopRightRadius: 24,\s*overflow: 'hidden',/);
   assert.match(sidebar, /style=\{\{ borderTopRightRadius: 24, borderRight: 0, boxShadow: 'none' \}\}/);
   assert.match(sidebar, /style=\{\{ borderTopRightRadius: 24 \}\}/);
 
@@ -145,4 +146,14 @@ test('the rounded corner is also inline, so a stale stylesheet cannot hide it', 
   for (const source of [app, sidebar]) {
     assert.doesNotMatch(source, /borderTopLeftRadius|borderBottomLeftRadius|borderBottomRightRadius/);
   }
+});
+
+test('the corner is clipped with clip-path too, and phones opt out of it', () => {
+  // clip-path cuts the shape itself — a child cannot paint over it.
+  assert.match(app, /clipPath: 'inset\(0 0 0 0 round 0 24px 0 0\)'/);
+
+  const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
+  // Phone portrait must switch the clip (an inline style) back off.
+  assert.match(feed, /@media \(orientation: portrait\) and \(max-width: 640px\)/);
+  assert.match(feed, /clip-path:\s*none !important;/);
 });
