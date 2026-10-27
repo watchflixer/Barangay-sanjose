@@ -1504,3 +1504,31 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     display: none;
   }
 }
+
+/* ==========================================================================
+   LAPTOP / DESKTOP: ROUNDED FEED EDGE (Google-Maps style)
+   --------------------------------------------------------------------------
+   The incident feed stays welded to the rail and to the top/bottom edges — it
+   does NOT float — but its side that meets the map is rounded, so the map
+   shows through at the corners exactly like the reference.
+
+   MOBILE PORTRAIT IS UNTOUCHED: everything is inside `@media (min-width:
+   1024px)`; phones keep the full-height square drawer.
+   ========================================================================== */
+@media (min-width: 1024px) {
+  #app-sidebar-panel {
+    /* Radius only where the map is: top-right and bottom-right. */
+    border-top-right-radius: 16px;
+    border-bottom-right-radius: 16px;
+    overflow: hidden;
+    /* Keeps the rounded edge readable against the map without a hard line. */
+    box-shadow: 2px 0 6px rgba(15, 23, 42, 0.12);
+  }
+
+  /* The inner <aside> already paints the white surface edge to edge; drop its
+     own right border so only the rounded outer edge reads as the panel edge. */
+  #app-sidebar-panel > aside {
+    border-right: 0;
+    box-shadow: none;
+  }
+}

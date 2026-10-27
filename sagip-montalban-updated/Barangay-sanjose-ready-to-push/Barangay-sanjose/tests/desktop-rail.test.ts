@@ -93,3 +93,17 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   const displayRules = css.match(/#app-navbar[\s\S]{0,40}display:/g) ?? [];
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
+
+test('the feed edge is rounded only on the map side (desktop)', () => {
+  assert.match(app, /id="app-sidebar-panel"/);
+  // Radius lives on the panel, inside the 1024px query, and only on the right.
+  assert.match(css, /@media \(min-width: 1024px\) \{[\s\S]*#app-sidebar-panel \{[\s\S]*border-top-right-radius:\s*16px;[\s\S]*border-bottom-right-radius:\s*16px;/);
+  // It must stay welded to the rail: no floating margins/height hacks.
+  const block = css.slice(css.indexOf('#app-sidebar-panel {'));
+  assert.doesNotMatch(block.slice(0, 400), /margin:/, 'the feed must not float away from the rail');
+  assert.doesNotMatch(block.slice(0, 400), /height:\s*calc/, 'the feed must keep its full height');
+  // No phone breakpoint may restyle it.
+  for (const [phoneBlock] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
+    assert.doesNotMatch(phoneBlock, /app-sidebar-panel/);
+  }
+});
