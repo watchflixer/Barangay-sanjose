@@ -1487,3 +1487,20 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   }
 
 }
+
+/* ==========================================================================
+   LAPTOP / DESKTOP: NO TOP NAVBAR
+   --------------------------------------------------------------------------
+   On laptop/desktop the app is rail + map (Google-Maps style), so the whole
+   top bar — brand, alert chips, clock, ●●● menu, Report +, Guide, Donate,
+   Hotlines — is hidden there.
+
+   MOBILE PORTRAIT IS UNTOUCHED: this rule is inside `@media (min-width:
+   1024px)`, so phones and tablets keep their navbar exactly as it is, along
+   with every function on it.
+   ========================================================================== */
+@media (min-width: 1024px) {
+  #app-navbar {
+    display: none;
+  }
+}

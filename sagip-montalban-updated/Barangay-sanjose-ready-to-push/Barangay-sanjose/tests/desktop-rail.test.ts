@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Guard for the desktop/laptop left rail (Google-Maps-style).
+ * Guard for the laptop/desktop layout: the Google-Maps-style left rail, and
+ * the removed top navbar.
  *
  * The rail is a laptop/desktop-only strip. The Android/iPhone portrait layout
  * must stay exactly as it is, which means:
@@ -19,6 +20,7 @@ const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.m
 const css = read('../src/index.css');
 const app = read('../src/App.tsx');
 const rail = read('../src/components/DesktopRail.tsx');
+const navbar = read('../src/components/Navbar.tsx');
 
 /** The rail section of index.css (everything after the section banner). */
 const railSection = css.slice(css.indexOf('DESKTOP / LAPTOP LEFT RAIL'));
@@ -71,4 +73,23 @@ test('the rail is mounted on the desktop layout, and is visual-only', () => {
   // without a new decision (and its CSS is gone too).
   assert.doesNotMatch(rail, /desktop-rail__thumb|San Jose/);
   assert.doesNotMatch(railSection, /desktop-rail__thumb|desktop-rail__divider/);
+});
+
+test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
+  // Still rendered (phones, tablets and portrait keep it and its functions).
+  assert.match(navbar, /id="app-navbar"/);
+  assert.match(app, /<Navbar/);
+
+  // Hidden only from 1024px up.
+  const rule = /@media \(min-width: 1024px\) \{\s*#app-navbar \{\s*display:\s*none;\s*\}\s*\}/;
+  assert.match(css, rule);
+
+  // No phone breakpoint may hide the navbar.
+  for (const [block] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
+    assert.doesNotMatch(block, /app-navbar/, 'a phone-only media query must not touch the navbar');
+  }
+
+  // The desktop hide rule is the ONLY navbar display rule in the stylesheet.
+  const displayRules = css.match(/#app-navbar[\s\S]{0,40}display:/g) ?? [];
+  assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
