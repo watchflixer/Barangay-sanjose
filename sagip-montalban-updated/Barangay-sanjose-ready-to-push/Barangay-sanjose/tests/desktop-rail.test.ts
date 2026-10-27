@@ -21,6 +21,7 @@ const css = read('../src/index.css');
 const app = read('../src/App.tsx');
 const rail = read('../src/components/DesktopRail.tsx');
 const navbar = read('../src/components/Navbar.tsx');
+const sidebar = read('../src/components/Sidebar.tsx');
 
 /** The rail section of index.css (everything after the section banner). */
 const railSection = css.slice(css.indexOf('DESKTOP / LAPTOP LEFT RAIL'));
@@ -94,29 +95,29 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
 
-test('the feed edge is rounded on the map side, on every layer that paints it', () => {
+test('the incident feed is a rounded card on laptop/desktop only', () => {
+  // The radius is applied with Tailwind utilities (all four corners) on the two
+  // elements that paint the edge, and both are `lg:` prefixed so phones keep
+  // the square full-height drawer.
   assert.match(app, /id="app-sidebar-panel"/);
+  const wrapperClasses = app.slice(app.indexOf('id="app-sidebar-panel"'));
+  assert.match(wrapperClasses.slice(0, 700), /lg:rounded-3xl/);
+  assert.match(wrapperClasses.slice(0, 700), /lg:overflow-hidden/);
+  assert.match(wrapperClasses.slice(0, 700), /lg:border /);
 
-  const desktop = css.slice(css.indexOf('LAPTOP / DESKTOP: ROUNDED FEED EDGE'));
+  const asideTag = sidebar.slice(sidebar.indexOf('<aside'), sidebar.indexOf('<aside') + 400);
+  assert.match(asideTag, /lg:rounded-3xl/);
+  assert.match(asideTag, /lg:border-r-0/);
+  // Mobile keeps the square drawer: no un-prefixed rounded/border-tweak class.
+  assert.doesNotMatch(asideTag.replace(/lg:[a-z0-9:\-\[\]\./]+/g, ''), /rounded/);
 
-  // The wrapper clips to the curve…
-  assert.match(desktop, /#app-sidebar-panel \{[\s\S]*?border-top-right-radius:\s*18px;[\s\S]*?border-bottom-right-radius:\s*18px;[\s\S]*?overflow:\s*hidden;/);
-  // …and the white surface itself is rounded, so the shape cannot be defeated
-  // by a child that paints its own background.
-  assert.match(desktop, /#app-sidebar-panel > aside \{[\s\S]*?border-top-right-radius:\s*18px !important;/);
-  assert.match(desktop, /#app-sidebar-panel > aside \{[\s\S]*?border-bottom-right-radius:\s*18px !important;/);
-  // Header strip + scroll area follow the curve too.
-  assert.match(desktop, /#app-sidebar-panel > aside > div:first-child \{[\s\S]*?border-top-right-radius:\s*18px !important;/);
-  assert.match(desktop, /#app-sidebar-panel > aside > div:last-child \{[\s\S]*?border-bottom-right-radius:\s*18px !important;/);
-  // The inner aside's full-bleed border/shadow is dropped: one edge only.
-  assert.match(desktop, /border-right:\s*0 !important;/);
+  // Belt and braces in CSS: children cannot paint a square corner past the curve.
+  const desktop = css.slice(css.indexOf('LAPTOP / DESKTOP: ROUNDED INCIDENT FEED CARD'));
+  assert.match(desktop, /@media \(min-width: 1024px\)/);
+  assert.match(desktop, /#app-sidebar-panel > aside > div:first-child \{[\s\S]*?border-top-right-radius: 1\.5rem;/);
+  assert.match(desktop, /#app-sidebar-panel > aside > div:last-child \{[\s\S]*?border-bottom-right-radius: 1\.5rem;/);
 
-  // It must stay welded to the rail and full height (that was the "pangit"
-  // floating-card version this replaced).
-  assert.doesNotMatch(desktop, /margin:/, 'the feed must not float away from the rail');
-  assert.doesNotMatch(desktop, /height:\s*calc/, 'the feed must keep its full height');
-
-  // No phone breakpoint may restyle it.
+  // No phone breakpoint may restyle the feed.
   for (const [phoneBlock] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
     assert.doesNotMatch(phoneBlock, /app-sidebar-panel/);
   }
