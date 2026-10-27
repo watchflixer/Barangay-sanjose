@@ -66,17 +66,10 @@ test('the rail is mounted on the desktop layout, and is visual-only', () => {
   assert.doesNotMatch(rail, /className="[^"]*\b(?:flex|block|grid)\b[^"]*"/, 'the rail must not opt into a display utility');
   // Visual only for now: no handlers wired yet.
   assert.doesNotMatch(rail, /onClick=/);
-  // Only these two items remain (Ask Maps / Saved / Recents were removed).
-  for (const label of ['Menu', 'Get app']) {
+  // The items the design calls for.
+  for (const label of ['Menu', 'Ask Maps', 'Saved', 'Recents', 'Get app']) {
     assert.ok(rail.includes(label), `missing rail item: ${label}`);
   }
-  // Check the rendered markup only — the header comment may still name them.
-  const railMarkup = rail.replace(/\/\*[\s\S]*?\*\//g, '');
-  for (const removed of ['Ask Maps', 'Saved', 'Recents']) {
-    assert.ok(!railMarkup.includes(removed), `removed rail item came back: ${removed}`);
-  }
-  // …and no unused icon imports are left behind.
-  assert.doesNotMatch(rail, /Bookmark|History|Sparkles/);
   // The location thumbnail chip was removed on request — it must not come back
   // without a new decision (and its CSS is gone too).
   assert.doesNotMatch(rail, /desktop-rail__thumb|San Jose/);
