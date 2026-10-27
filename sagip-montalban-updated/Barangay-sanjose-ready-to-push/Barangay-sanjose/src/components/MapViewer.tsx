@@ -226,12 +226,40 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [locationBanner, setLocationBanner] = React.useState<'none' | 'success' | 'error'>('none');
   const locationMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userLocationMarkerRef = useRef<L.Marker | null>(null);
+  // The Help Center is its own Leaflet map, so its "you are here" dot has to
+  // be drawn on THAT map (the GIS marker underneath is covered by the view).
+  // The request is handed over as coordinates + a nonce, and HelpCenterView
+  // applies it once the request (and its map) are ready.
+  const [helpCenterUserLocation, setHelpCenterUserLocation] = React.useState<
+    { coords: [number, number]; nonce: number } | null
+  >(null);
+  const helpCenterLocationNonceRef = useRef(0);
   const floodMapFrameRef = useRef<HTMLIFrameElement | null>(null);
+  /**
+   * Latest "Show your location" handler.
+   *
+   * The embedded Traffic / Flood / Weather documents post
+   * `hazardsync-location-request` to the host, and that listener is registered
+   * once (empty dependency list). Reading the handler through a ref means the
+   * request is always answered by the CURRENT view — without this, the handler
+   * captured on first mount still thought no embedded view was open, so the
+   * coordinates were dropped onto the hidden GIS map and nothing appeared to
+   * happen on Traffic, Flood Prone or Weather.
+   */
+  const showUserLocationRef = useRef<() => void>(() => {});
 
   React.useEffect(() => {
     floodMapFrameRef.current?.contentWindow?.postMessage({ type: 'hazardsync-locating', isLocating }, '*');
     trafficMapFrameRef.current?.contentWindow?.postMessage({ type: 'hazardsync-locating', isLocating }, '*');
+    weatherMapFrameRef.current?.contentWindow?.postMessage({ type: 'hazardsync-locating', isLocating }, '*');
   }, [isLocating]);
+
+  // The Help Center map is destroyed when the view closes; forget the pending
+  // location too, so reopening the view starts at the barangay instead of
+  // jumping to wherever the user last tapped Locate.
+  React.useEffect(() => {
+    if (!showHelpCenter) setHelpCenterUserLocation(null);
+  }, [showHelpCenter]);
 
   // 1. Initialize Map
   useEffect(() => {
@@ -440,13 +468,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // Opens the Chrome-style in-app permission card. The real geolocation
   // request only fires after the user taps one of the Allow buttons.
   const handleShowUserLocation = () => {
-    if (!mapInstanceRef.current) return;
     if (!navigator.geolocation) {
       setLocationMessage('Location is unavailable.');
       return;
     }
     runLocationRequest(true);
   };
+
+  // Always answer embedded-map requests with the handler from the latest
+  // render (see showUserLocationRef above).
+  showUserLocationRef.current = handleShowUserLocation;
 
   // Embedded map pages own their map buttons and ask the host only for the
   // existing location-consent flow or when switching to another app layer.
@@ -460,7 +491,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       const message = event.data as { type?: string; layer?: string } | null;
       if (message?.type === 'hazardsync-location-request') {
-        handleShowUserLocation();
+        showUserLocationRef.current();
         return;
       }
       if (message?.type !== 'hazardsync-layer-select') return;
@@ -499,8 +530,18 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     return () => window.removeEventListener('message', onEmbeddedMapAction);
   }, []);
 
+  // One "you are here" icon for every Leaflet map the host draws on, so the
+  // dot looks the same on the GIS map and inside the Help Center.
+  const createUserLocationIcon = () =>
+    new L.DivIcon({
+      className: 'user-location-marker',
+      html: '<span class="user-location-dot"></span>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+
   const runLocationRequest = (highAccuracy: boolean) => {
-    if (!mapInstanceRef.current || !navigator.geolocation) return;
+    if (!navigator.geolocation) return;
 
     // Clear any pending auto-hide timer from a previous run so a new request
     // always starts with a fresh, visible message.
@@ -521,22 +562,19 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             position.coords.latitude,
             position.coords.longitude,
           ];
-          const locationIcon = new L.DivIcon({
-            className: 'user-location-marker',
-            html: '<span class="user-location-dot"></span>',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
-          });
+          const locationIcon = createUserLocationIcon();
 
+          // The GIS map always keeps the dot (it stays mounted underneath the
+          // other views), so switching back to Streets shows it right away.
           if (userLocationMarkerRef.current) {
             userLocationMarkerRef.current.setLatLng(coordinates);
             userLocationMarkerRef.current.setIcon(locationIcon);
-          } else {
+          } else if (mapInstanceRef.current) {
             userLocationMarkerRef.current = new L.Marker(coordinates, {
               icon: locationIcon,
               zIndexOffset: 1000,
               title: 'Your location',
-            }).addTo(mapInstanceRef.current!);
+            }).addTo(mapInstanceRef.current);
           }
 
           // Forward the approved coordinates to whichever map is visible.
@@ -553,24 +591,25 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               '*'
             );
           } else if (showHelpCenter) {
-            // While the Help Center Leaflet map is open, fly it to the user.
-            const helpMap = helpCenterMapInstanceRef.current;
-            if (helpMap) {
-              if (mapSettings.lockCameraToBounds) helpMap.setMaxBounds(null as any);
-              helpMap.flyTo(coordinates, 16, {
-                duration: 1.6,
-                easeLinearity: 0.25,
-              });
-            }
+            // The Help Center draws on its own Leaflet map (and owns its own
+            // camera lock), so hand the coordinates over and let it drop the
+            // dot and fly there.
+            helpCenterLocationNonceRef.current += 1;
+            setHelpCenterUserLocation({
+              coords: [position.coords.latitude, position.coords.longitude],
+              nonce: helpCenterLocationNonceRef.current,
+            });
           } else {
             // The location can be outside Barangay San Jose. Temporarily release
             // the GIS boundary lock so the button can always reach the user.
             const map = mapInstanceRef.current;
-            if (mapSettings.lockCameraToBounds) map.setMaxBounds(null as any);
-            map.flyTo(coordinates, 16, {
-              duration: 1.6,
-              easeLinearity: 0.25,
-            });
+            if (map) {
+              if (mapSettings.lockCameraToBounds) map.setMaxBounds(null as any);
+              map.flyTo(coordinates, 16, {
+                duration: 1.6,
+                easeLinearity: 0.25,
+              });
+            }
           }
           setIsLocating(false);
           setLocationMessage('Location Found!');
@@ -980,6 +1019,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           mapRef={helpCenterMapInstanceRef}
           lockCameraToBounds={mapSettings.lockCameraToBounds}
           onStageChange={handleHelpStageChange}
+          userLocationRequest={helpCenterUserLocation}
         />
       )}
 
