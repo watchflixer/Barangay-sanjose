@@ -137,24 +137,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      /* One rounded corner only (top-right, map side), inline so it always
-         renders. Phone portrait squares it again via !important in index.css. */
-      style={{
-        borderTopRightRadius: 28,
-        /* Keep the hairline right border: on a light basemap the cut corner is
-           almost invisible without an edge, so the 1px line is what makes the
-           curve read. */
-        borderRightWidth: 1,
-        borderRightStyle: 'solid',
-        borderRightColor: 'rgb(226 232 240)',
-      }}
-      className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0"
+      /* Desktop/laptop: the panel is the INNER card (rounded, own hairline) —
+         its looks come from index.css. Phones keep the plain drawer styling. */
+      className="flex h-full w-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white shadow-xs lg:w-full lg:rounded-2xl lg:border"
     >
       {/* Compact header, search, and filters styled after the supplied screenshots. */}
-      <div
-        style={{ borderTopRightRadius: 28 }}
-        className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5"
-      >
+      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5 lg:rounded-t-2xl">
         <div className="flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">

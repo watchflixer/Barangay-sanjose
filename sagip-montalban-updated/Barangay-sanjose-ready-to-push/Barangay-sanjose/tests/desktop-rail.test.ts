@@ -97,69 +97,34 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
 
-test('the incident feed rounds exactly one corner, at every width except phone portrait', () => {
+test('the incident feed is a card inside a card on desktop', () => {
   assert.match(app, /id="app-sidebar-panel"/);
+  assert.match(app, /className="app-feed-inner"/);
 
-  const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
+  const card = css.slice(css.indexOf('INCIDENT FEED = CARD INSIDE A CARD'));
 
-  // Exactly one corner: top-right, on the wrapper (which clips).
-  assert.match(feed, /#app-sidebar-panel \{\s*border-top-right-radius:\s*28px;\s*overflow:\s*hidden;/);
-  // …painted on the white surface and the header strip too.
-  assert.match(feed, /#app-sidebar-panel > aside \{[\s\S]*?border-top-right-radius:\s*28px !important;/);
-  assert.match(feed, /#app-sidebar-panel > aside > div:first-child \{[\s\S]*?border-top-right-radius:\s*28px !important;/);
-
-  // No other corner is ever rounded.
-  assert.doesNotMatch(feed, /border-top-left-radius/);
-  assert.doesNotMatch(feed, /border-bottom-left-radius/);
-  assert.doesNotMatch(feed, /border-bottom-right-radius/);
-
-  // The radius must NOT be locked behind a desktop-only media query again —
-  // that hid it in narrow preview panes.
-  const radiusPart = feed.slice(0, feed.indexOf('#app-sidebar-panel {'));
-  assert.doesNotMatch(radiusPart, /@media/, 'the corner must not be gated by a min-width query');
-
-  // Phone portrait (Android/iPhone) is explicitly reset to square.
-  assert.match(
-    feed,
-    /@media \(orientation: portrait\) and \(max-width: 640px\) \{\s*#app-sidebar-panel,[\s\S]*?border-top-right-radius:\s*0 !important;/,
-  );
-
-  // Flush + full height: no floating card, no Tailwind radius utilities.
-  assert.doesNotMatch(feed, /margin:/);
-  assert.doesNotMatch(feed, /height:\s*calc/);
-  assert.doesNotMatch(app, /lg:rounded/);
-  assert.doesNotMatch(sidebar, /lg:rounded/);
+  // Outer card: gap from the rail, rounded, hairline + shadow.
+  assert.match(card, /#app-sidebar-panel \{[\s\S]*?margin: 8px 10px 8px 8px;[\s\S]*?border-radius: 24px;[\s\S]*?box-shadow:/);
+  // Inner card: the feed itself, rounded inside the outer card.
+  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border-radius: 18px;[\s\S]*?overflow: hidden;/);
+  // Both live behind the desktop media query.
+  assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('margin: 8px 10px 8px 8px;'));
 });
 
-test('the rounded corner is also inline, so a stale stylesheet cannot hide it', () => {
-  // Inline styles beat any stylesheet rule without !important — this is the
-  // belt for the case where the built CSS the browser holds is older.
-  // (the wrapper's inline style is a multi-line object carrying clipPath too)
-  assert.match(app, /borderTopRightRadius: 28,\s*overflow: 'hidden',/);
-  // The <aside> keeps a hairline right border so the curve reads on a light
-  // basemap (it is a multi-line object too).
-  assert.match(sidebar, /borderTopRightRadius: 28,[\s\S]{0,220}borderRightWidth: 1,/);
-  assert.match(sidebar, /style=\{\{ borderTopRightRadius: 28 \}\}/);
+test('the ‹ tab collapses the feed and exists only on laptop/desktop', () => {
+  // Markup: a real button wired to the open state.
+  assert.match(app, /id="btn-collapse-incident-feeds"/);
+  assert.match(app, /onClick=\{\(\) => setDesktopFeedOpen\(false\)\}/);
+  assert.match(app, /className="app-feed-collapse"/);
 
-  // …and phone portrait resets it with !important, which beats inline styles.
-  const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
-  assert.match(feed, /@media \(orientation: portrait\) and \(max-width: 640px\)/);
-  assert.match(feed, /border-top-right-radius:\s*0 !important;/);
+  // CSS: hidden by default, shown only from 1024px, sitting on the card edge.
+  assert.match(css, /\.app-feed-collapse \{\s*display: none;\s*\}/);
+  const card = css.slice(css.indexOf('INCIDENT FEED = CARD INSIDE A CARD'));
+  assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -15px;[\s\S]*?border-radius: 999px;/);
+  assert.match(card, /@media \(min-width: 1024px\) \{\s*\.app-feed-collapse \{\s*display: flex;\s*\}/);
 
-  // Only the top-right corner is ever rounded, anywhere.
-  for (const source of [app, sidebar]) {
-    assert.doesNotMatch(source, /borderTopLeftRadius|borderBottomLeftRadius|borderBottomRightRadius/);
-  }
-});
-
-test('the corner is clipped with clip-path too, and phones opt out of it', () => {
-  // clip-path cuts the shape itself — a child cannot paint over it.
-  assert.match(app, /clipPath: 'inset\(0 0 0 0 round 0 28px 0 0\)'/);
-
-  const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
-  // Phone portrait must switch the clip (an inline style) back off.
-  assert.match(feed, /@media \(orientation: portrait\) and \(max-width: 640px\)/);
-  assert.match(feed, /clip-path:\s*none !important;/);
+  // The inner wrapper keeps full height at every width, so phones are unchanged.
+  assert.match(css, /\.app-feed-inner \{\s*height: 100%;\s*min-height: 0;\s*\}/);
 });
 
 test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => {
@@ -167,7 +132,8 @@ test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => 
   assert.match(mapViewer, /id="map-coord-badge"/);
 
   // Hidden from 1024px up…
-  assert.match(css, /@media \(min-width: 1024px\) \{\s*#map-coord-badge \{\s*display: none;\s*\}\s*\}/);
+  const badgeBlock = css.slice(css.indexOf('NO COORDINATE BADGE ON THE MAP'));
+  assert.match(badgeBlock, /@media \(min-width: 1024px\) \{\s*#map-coord-badge \{\s*display: none;\s*\}\s*\}/);
 
   // …and no phone/portrait breakpoint may start hiding or restyling it.
   for (const [phoneBlock] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
@@ -175,13 +141,13 @@ test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => 
   }
 });
 
-test('the incident feed keeps a wide desktop panel (384px)', () => {
-  // lg:w-96 (384px) on both the wrapper and the <aside>.
-  assert.match(app, /lg:w-96/);
-  assert.match(sidebar, /lg:w-96/);
+test('the incident feed keeps a wide desktop panel (~400px)', () => {
+  // Outer card 25rem (400px); the inner card fills it (minus the 6px padding).
+  assert.match(app, /lg:w-\[25rem\]/);
+  assert.match(sidebar, /lg:w-full/);
   // The phone drawer keeps its own widths: no un-prefixed width change.
   assert.match(app, / w-80 sm:w-96 /);
-  assert.match(sidebar, /className="w-full lg:w-96 /);
+  assert.match(sidebar, /className="flex h-full w-full /);
   // …and the narrow desktop width must not linger anywhere.
   assert.doesNotMatch(app, /lg:w-72/);
   assert.doesNotMatch(sidebar, /lg:w-72/);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
@@ -275,23 +276,27 @@ export default function App() {
         {/* Left Sidebar (Alerts Feed & GIS Controls) */}
         <div
           id="app-sidebar-panel"
-          /* Inline so the single rounded corner can never be lost to a stale
-             stylesheet or a specificity clash. Phone portrait resets it in
-             index.css with !important (inline loses to that). */
-          style={{
-            /* clip-path cuts the shape itself, so it cannot be defeated by a
-               child painting its own square background. Per-corner radii:
-               top-left 0, top-right 24px, bottom-right 0, bottom-left 0. */
-            clipPath: 'inset(0 0 0 0 round 0 28px 0 0)',
-            borderTopRightRadius: 28,
-            overflow: 'hidden',
-          }}
-          className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:w-96 lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 ${
+          className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:w-[25rem] lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 app-feed-outer ${
             desktopFeedOpen ? '' : 'lg:hidden'
           } ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
+          {/* Desktop/laptop: the `‹` tab on the card's map-side edge collapses
+              the feed (the rail's ☰ brings it back). Hidden on phones. */}
+          <button
+            type="button"
+            id="btn-collapse-incident-feeds"
+            onClick={() => setDesktopFeedOpen(false)}
+            aria-label="Hide incident feeds"
+            title="Hide incident feeds"
+            className="app-feed-collapse"
+          >
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+
+          {/* The feed sits inside the outer card as an inner card. */}
+          <div className="app-feed-inner">
           {/* On mobile portrait the Sidebar also carries the ●●● options menu
               (the Navbar hides its own copy of that button there). */}
           <Sidebar
@@ -335,6 +340,7 @@ export default function App() {
               <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
             </svg>
           </button>}
+          </div>
         </div>
 
         {/* Backdrop for Mobile Sidebar */}
