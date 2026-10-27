@@ -128,3 +128,21 @@ test('the incident feed rounds exactly one corner, at every width except phone p
   assert.doesNotMatch(app, /lg:rounded/);
   assert.doesNotMatch(sidebar, /lg:rounded/);
 });
+
+test('the rounded corner is also inline, so a stale stylesheet cannot hide it', () => {
+  // Inline styles beat any stylesheet rule without !important — this is the
+  // belt for the case where the built CSS the browser holds is older.
+  assert.match(app, /style=\{\{ borderTopRightRadius: 24, overflow: 'hidden' \}\}/);
+  assert.match(sidebar, /style=\{\{ borderTopRightRadius: 24, borderRight: 0, boxShadow: 'none' \}\}/);
+  assert.match(sidebar, /style=\{\{ borderTopRightRadius: 24 \}\}/);
+
+  // …and phone portrait resets it with !important, which beats inline styles.
+  const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
+  assert.match(feed, /@media \(orientation: portrait\) and \(max-width: 640px\)/);
+  assert.match(feed, /border-top-right-radius:\s*0 !important;/);
+
+  // Only the top-right corner is ever rounded, anywhere.
+  for (const source of [app, sidebar]) {
+    assert.doesNotMatch(source, /borderTopLeftRadius|borderBottomLeftRadius|borderBottomRightRadius/);
+  }
+});

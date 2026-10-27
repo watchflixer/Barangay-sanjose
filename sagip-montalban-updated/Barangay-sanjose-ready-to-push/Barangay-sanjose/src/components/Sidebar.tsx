@@ -132,9 +132,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0">
+    <aside
+      /* One rounded corner only (top-right, map side), inline so it always
+         renders. Phone portrait squares it again via !important in index.css. */
+      style={{ borderTopRightRadius: 24, borderRight: 0, boxShadow: 'none' }}
+      className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0"
+    >
       {/* Compact header, search, and filters styled after the supplied screenshots. */}
-      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5">
+      <div
+        style={{ borderTopRightRadius: 24 }}
+        className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5"
+      >
         <div className="flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">

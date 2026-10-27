@@ -1527,6 +1527,7 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   overflow: hidden;
 }
 
+
 #app-sidebar-panel > aside {
   border-top-right-radius: 24px !important;
   border-right: 0 !important;
