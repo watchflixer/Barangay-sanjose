@@ -275,8 +275,8 @@ export default function App() {
             /* clip-path cuts the shape itself, so it cannot be defeated by a
                child painting its own square background. Per-corner radii:
                top-left 0, top-right 24px, bottom-right 0, bottom-left 0. */
-            clipPath: 'inset(0 0 0 0 round 0 24px 0 0)',
-            borderTopRightRadius: 24,
+            clipPath: 'inset(0 0 0 0 round 0 28px 0 0)',
+            borderTopRightRadius: 28,
             overflow: 'hidden',
           }}
           className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 ${

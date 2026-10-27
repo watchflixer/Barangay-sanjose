@@ -101,10 +101,10 @@ test('the incident feed rounds exactly one corner, at every width except phone p
   const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
 
   // Exactly one corner: top-right, on the wrapper (which clips).
-  assert.match(feed, /#app-sidebar-panel \{\s*border-top-right-radius:\s*24px;\s*overflow:\s*hidden;/);
+  assert.match(feed, /#app-sidebar-panel \{\s*border-top-right-radius:\s*28px;\s*overflow:\s*hidden;/);
   // …painted on the white surface and the header strip too.
-  assert.match(feed, /#app-sidebar-panel > aside \{[\s\S]*?border-top-right-radius:\s*24px !important;/);
-  assert.match(feed, /#app-sidebar-panel > aside > div:first-child \{[\s\S]*?border-top-right-radius:\s*24px !important;/);
+  assert.match(feed, /#app-sidebar-panel > aside \{[\s\S]*?border-top-right-radius:\s*28px !important;/);
+  assert.match(feed, /#app-sidebar-panel > aside > div:first-child \{[\s\S]*?border-top-right-radius:\s*28px !important;/);
 
   // No other corner is ever rounded.
   assert.doesNotMatch(feed, /border-top-left-radius/);
@@ -133,9 +133,11 @@ test('the rounded corner is also inline, so a stale stylesheet cannot hide it', 
   // Inline styles beat any stylesheet rule without !important — this is the
   // belt for the case where the built CSS the browser holds is older.
   // (the wrapper's inline style is a multi-line object carrying clipPath too)
-  assert.match(app, /borderTopRightRadius: 24,\s*overflow: 'hidden',/);
-  assert.match(sidebar, /style=\{\{ borderTopRightRadius: 24, borderRight: 0, boxShadow: 'none' \}\}/);
-  assert.match(sidebar, /style=\{\{ borderTopRightRadius: 24 \}\}/);
+  assert.match(app, /borderTopRightRadius: 28,\s*overflow: 'hidden',/);
+  // The <aside> keeps a hairline right border so the curve reads on a light
+  // basemap (it is a multi-line object too).
+  assert.match(sidebar, /borderTopRightRadius: 28,[\s\S]{0,220}borderRightWidth: 1,/);
+  assert.match(sidebar, /style=\{\{ borderTopRightRadius: 28 \}\}/);
 
   // …and phone portrait resets it with !important, which beats inline styles.
   const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
@@ -150,7 +152,7 @@ test('the rounded corner is also inline, so a stale stylesheet cannot hide it', 
 
 test('the corner is clipped with clip-path too, and phones opt out of it', () => {
   // clip-path cuts the shape itself — a child cannot paint over it.
-  assert.match(app, /clipPath: 'inset\(0 0 0 0 round 0 24px 0 0\)'/);
+  assert.match(app, /clipPath: 'inset\(0 0 0 0 round 0 28px 0 0\)'/);
 
   const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
   // Phone portrait must switch the clip (an inline style) back off.

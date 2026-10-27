@@ -1523,20 +1523,20 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
    and on its header strip — no square white child can paint over the curve.
    ========================================================================== */
 #app-sidebar-panel {
-  border-top-right-radius: 24px;
+  border-top-right-radius: 28px;
   overflow: hidden;
 }
 
 
 #app-sidebar-panel > aside {
-  border-top-right-radius: 24px !important;
+  border-top-right-radius: 28px !important;
   border-right: 0 !important;
   box-shadow: none !important;
   overflow: hidden;
 }
 
 #app-sidebar-panel > aside > div:first-child {
-  border-top-right-radius: 24px !important;
+  border-top-right-radius: 28px !important;
 }
 
 /* PHONE PORTRAIT (Android/iPhone): unchanged — fully square, full-height

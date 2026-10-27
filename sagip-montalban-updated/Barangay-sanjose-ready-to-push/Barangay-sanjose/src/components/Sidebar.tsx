@@ -135,12 +135,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside
       /* One rounded corner only (top-right, map side), inline so it always
          renders. Phone portrait squares it again via !important in index.css. */
-      style={{ borderTopRightRadius: 24, borderRight: 0, boxShadow: 'none' }}
+      style={{
+        borderTopRightRadius: 28,
+        /* Keep the hairline right border: on a light basemap the cut corner is
+           almost invisible without an edge, so the 1px line is what makes the
+           curve read. */
+        borderRightWidth: 1,
+        borderRightStyle: 'solid',
+        borderRightColor: 'rgb(226 232 240)',
+      }}
       className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0"
     >
       {/* Compact header, search, and filters styled after the supplied screenshots. */}
       <div
-        style={{ borderTopRightRadius: 24 }}
+        style={{ borderTopRightRadius: 28 }}
         className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5"
       >
         <div className="flex items-center gap-2.5">
