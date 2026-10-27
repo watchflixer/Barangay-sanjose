@@ -144,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         borderRightStyle: 'solid',
         borderRightColor: 'rgb(226 232 240)',
       }}
-      className="w-full lg:w-72 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0"
+      className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0"
     >
       {/* Compact header, search, and filters styled after the supplied screenshots. */}
       <div
