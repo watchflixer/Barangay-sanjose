@@ -1506,44 +1506,34 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: ROUNDED FEED EDGE (Google-Maps style)
+   LAPTOP / DESKTOP: ONE ROUNDED CORNER ON THE INCIDENT FEED
    --------------------------------------------------------------------------
-   The incident feed stays welded to the rail and to the top/bottom edges — it
-   does NOT float — but the side that meets the map is rounded, so the map
-   shows through at the corners exactly like the reference.
+   The feed stays welded to the rail and to the top/bottom edges (full height,
+   no gaps). Exactly ONE corner is rounded: the TOP-RIGHT one, where the panel
+   meets the map — the same corner the reference screenshot points at.
 
-   The radius is applied to the white surface itself (the <aside>) AND to its
-   first/last children, not just to the wrapper with overflow:hidden. That way
-   the rounded shape is visible even if clipping on the wrapper is ever
-   defeated (transform, a child with its own background, etc.).
+   The radius is applied on the wrapper (which clips) AND on the white surface
+   plus its header strip, so no square white corner can paint over the curve.
 
    MOBILE PORTRAIT IS UNTOUCHED: everything is inside `@media (min-width:
-   1024px)`; phones keep the full-height square drawer.
+   1024px)`; phones keep the fully square, full-height drawer.
    ========================================================================== */
 @media (min-width: 1024px) {
-  /* The wrapper clips, so nothing can spill past the rounded edge. */
   #app-sidebar-panel {
-    border-top-right-radius: 18px;
-    border-bottom-right-radius: 18px;
+    border-top-right-radius: 20px;
     overflow: hidden;
   }
 
-  /* The white surface itself — this is the edge the user actually sees. */
+  /* The white surface the user actually sees. */
   #app-sidebar-panel > aside {
-    border-top-right-radius: 18px !important;
-    border-bottom-right-radius: 18px !important;
+    border-top-right-radius: 20px !important;
     border-right: 0 !important;
     box-shadow: none !important;
     overflow: hidden;
   }
 
-  /* Header strip (pale background) and the scroll area both follow the curve,
-     so no square white corner can ever poke out of the rounded edge. */
+  /* Header strip paints its own pale background — follow the same curve. */
   #app-sidebar-panel > aside > div:first-child {
-    border-top-right-radius: 18px !important;
-  }
-
-  #app-sidebar-panel > aside > div:last-child {
-    border-bottom-right-radius: 18px !important;
+    border-top-right-radius: 20px !important;
   }
 }
