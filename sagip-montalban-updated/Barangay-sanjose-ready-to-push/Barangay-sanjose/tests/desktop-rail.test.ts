@@ -161,24 +161,22 @@ test('the incident feed keeps a wide desktop panel (~400px)', () => {
   assert.doesNotMatch(sidebar, /lg:w-72/);
 });
 
-test('the incident feed can be closed on desktop and re-opened from the rail', () => {
-  // Close button lives in the feed header and is desktop-only.
-  assert.match(sidebar, /id="btn-close-incident-feeds"/);
-  assert.match(sidebar, /className="hidden lg:inline-flex[^"]*"/);
-  assert.match(sidebar, /onClick=\{\(\) => onCloseDesktop\?\.\(\)\}/);
+test('the ‹ tab is the only close control, and the rail brings the feed back', () => {
+  // The ✕ in the header is gone for good — the ‹ tab closes the panel and the
+  // rail's ☰ reopens it, exactly like the reference.
+  assert.doesNotMatch(sidebar, /btn-close-incident-feeds/);
+  assert.doesNotMatch(sidebar, /onCloseDesktop/);
+  assert.doesNotMatch(app, /onCloseDesktop/);
+  assert.match(app, /id="btn-collapse-incident-feeds"/);
+  assert.match(app, /onClick=\{\(\) => setDesktopFeedOpen\(false\)\}/);
 
-  // App tracks the open state, applies it with an `lg:` utility only…
+  // App tracks the open state and applies it with an `lg:` utility only…
   assert.match(app, /const \[desktopFeedOpen, setDesktopFeedOpen\] = useState\(true\)/);
   assert.match(app, /desktopFeedOpen \? '' : 'lg:hidden'/);
-  assert.match(app, /onCloseDesktop=\{\(\) => setDesktopFeedOpen\(false\)\}/);
 
   // …and the rail's hamburger brings it back.
   assert.match(rail, /onToggleFeed\?\.\(\)/);
   assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
-
-  // Phones keep their own drawer logic: the close button never shows there and
-  // the panel is never lg:hidden by default.
-  assert.doesNotMatch(sidebar, /btn-close-incident-feeds[\s\S]{0,400}?\bportrait:inline-flex\b/);
 });
 
 test('the feed surfaces share the rail white on laptop/desktop', () => {
