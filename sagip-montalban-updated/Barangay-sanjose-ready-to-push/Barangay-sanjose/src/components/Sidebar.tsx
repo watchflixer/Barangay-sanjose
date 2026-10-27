@@ -139,10 +139,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside
       /* Desktop/laptop: the panel is the INNER card (rounded, own hairline) —
          its looks come from index.css. Phones keep the plain drawer styling. */
-      className="flex h-full w-full min-h-0 shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white shadow-xs lg:w-full lg:rounded-2xl lg:border"
+      className="flex h-full w-full min-h-0 shrink-0 flex-col overflow-hidden bg-white lg:w-full lg:border-0 lg:shadow-none"
     >
       {/* Compact header, search, and filters styled after the supplied screenshots. */}
-      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5 lg:rounded-t-2xl">
+      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5">
         <div className="flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">

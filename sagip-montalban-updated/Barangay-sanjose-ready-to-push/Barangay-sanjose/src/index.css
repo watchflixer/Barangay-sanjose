@@ -1506,16 +1506,16 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: INCIDENT FEED = CARD INSIDE A CARD
+   LAPTOP / DESKTOP: THE INCIDENT FEED IS ONE FLOATING CARD
    --------------------------------------------------------------------------
-   Google-Maps geometry: the feed floats as an OUTER white card (8px gap from
-   the rail, the top and the bottom) and the feed itself sits inside it as an
-   INNER card with its own hairline and radius. A `‹` tab on the outer card's
-   map-side edge collapses the whole thing (the rail's ☰ brings it back).
+   Google-Maps geometry: the feed floats as ONE white card — 8px gap from the
+   rail, the top and the bottom, 24px radius, hairline and a soft shadow. The
+   feed content fills it edge to edge (no second card inside), and a `‹` pill
+   tab on the map-side edge collapses the whole card (the rail's ☰ reopens it).
 
-     #app-sidebar-panel           → outer card (this rule)
-     #app-sidebar-panel > aside   → inner card   (this rule)
-     .app-feed-collapse           → the `‹` tab  (this rule)
+     #app-sidebar-panel           → the card itself (this rule)
+     #app-sidebar-panel …> aside  → clipped to the card's rounded corners
+     .app-feed-collapse           → the `‹` tab
 
    MOBILE PORTRAIT IS UNTOUCHED: every rule is inside `@media (min-width:
    1024px)`, so phones keep the flat, full-height slide-in drawer.
@@ -1528,24 +1528,26 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 @media (min-width: 1024px) {
-  /* ---- outer card ---------------------------------------------------- */
+  /* ---- the one and only card ----------------------------------------- */
   #app-sidebar-panel {
     position: relative;
     margin: 8px 10px 8px 8px;
     height: calc(100% - 16px);
-    padding: 6px;
+    padding: 0;
     background: #ffffff;
     border: 1px solid #e6e8eb;
     border-radius: 24px;
     box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
-    overflow: visible; /* lets the `‹` tab hang outside the card edge */
+    /* `clip` keeps the rounded shape (so rows and the header strip are cut to
+       it) while still letting the `‹` tab hang outside the card edge. */
+    overflow: clip;
+    overflow-clip-margin: 20px;
   }
 
-  /* ---- inner card (the feed) ---------------------------------------- */
+  /* The feed fills the card; the card owns the border, radius and shadow. */
   #app-sidebar-panel > .app-feed-inner > aside {
-    border: 1px solid #eceef1;
-    border-right: 1px solid #eceef1;
-    border-radius: 18px;
+    border: 0;
+    border-radius: 23px;
     box-shadow: none;
     overflow: hidden;
   }
@@ -1568,6 +1570,7 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
+    z-index: 2;
   }
 
   .app-feed-collapse:hover {

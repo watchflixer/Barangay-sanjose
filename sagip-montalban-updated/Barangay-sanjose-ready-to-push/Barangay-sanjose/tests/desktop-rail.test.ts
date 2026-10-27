@@ -97,17 +97,21 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
 
-test('the incident feed is a card inside a card on desktop', () => {
+test('the incident feed is ONE floating card on desktop', () => {
   assert.match(app, /id="app-sidebar-panel"/);
   assert.match(app, /className="app-feed-inner"/);
 
-  const card = css.slice(css.indexOf('INCIDENT FEED = CARD INSIDE A CARD'));
+  const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
 
-  // Outer card: gap from the rail, rounded, hairline + shadow.
+  // One card: gap from the rail, rounded, hairline + shadow.
   assert.match(card, /#app-sidebar-panel \{[\s\S]*?margin: 8px 10px 8px 8px;[\s\S]*?border-radius: 24px;[\s\S]*?box-shadow:/);
-  // Inner card: the feed itself, rounded inside the outer card.
-  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border-radius: 18px;[\s\S]*?overflow: hidden;/);
-  // Both live behind the desktop media query.
+  // The feed inside it adds no second card of its own…
+  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border: 0;[\s\S]*?box-shadow: none;/);
+  // …it is only clipped to the card's rounded corners.
+  assert.match(app, /id="app-sidebar-panel"/);
+  assert.match(sidebar, /lg:border-0 lg:shadow-none/);
+  assert.doesNotMatch(sidebar, /lg:rounded-2xl/);
+  // The single card lives behind the desktop media query.
   assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('margin: 8px 10px 8px 8px;'));
 });
 
@@ -119,7 +123,7 @@ test('the ‹ tab collapses the feed and exists only on laptop/desktop', () => {
 
   // CSS: hidden by default, shown only from 1024px, sitting on the card edge.
   assert.match(css, /\.app-feed-collapse \{\s*display: none;\s*\}/);
-  const card = css.slice(css.indexOf('INCIDENT FEED = CARD INSIDE A CARD'));
+  const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
   assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -15px;[\s\S]*?border-radius: 999px;/);
   assert.match(card, /@media \(min-width: 1024px\) \{\s*\.app-feed-collapse \{\s*display: flex;\s*\}/);
 
