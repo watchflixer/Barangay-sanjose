@@ -1454,16 +1454,6 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     color: #1a73e8;
   }
 
-  /* The little sparkle on the "Ask Maps" magnifier. */
-  .desktop-rail__sparkle {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 12px;
-    height: 12px;
-    color: currentColor;
-  }
-
   .desktop-rail__label {
     max-width: 78px;
     overflow: hidden;

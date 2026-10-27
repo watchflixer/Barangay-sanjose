@@ -1,11 +1,12 @@
 import React from 'react';
-import { Bookmark, History, Menu, Search, Smartphone, Sparkles } from 'lucide-react';
+import { Menu, Smartphone } from 'lucide-react';
 
 /**
  * DESKTOP / LAPTOP RAIL — Google-Maps-style icon rail on the far left.
  *
- * Visual only for now (no handlers): it is the narrow strip with the
- * hamburger, "Ask Maps", "Saved", "Recents" and "Get app" at the bottom.
+ * Visual only for now (no handlers): the narrow strip keeps just the
+ * hamburger at the top and "Get app" at the bottom. The Ask Maps / Saved /
+ * Recents items were removed on request.
  *
  * IMPORTANT: this renders ONLY on laptop/desktop widths. Every rule lives in
  * index.css behind `@media (min-width: 1024px)` and the base state is
@@ -19,35 +20,6 @@ export const DesktopRail: React.FC = () => (
       <span className="desktop-rail__icon">
         <Menu className="h-5 w-5" strokeWidth={2} />
       </span>
-    </button>
-
-    {/* Active item, exactly like Google Maps' highlighted "Ask Maps" */}
-    <button
-      type="button"
-      className="desktop-rail__item is-active"
-      aria-label="Ask Maps"
-      aria-current="page"
-      title="Ask Maps"
-    >
-      <span className="desktop-rail__icon desktop-rail__icon--ask">
-        <Search className="h-5 w-5" strokeWidth={2} />
-        <Sparkles className="desktop-rail__sparkle" strokeWidth={2} />
-      </span>
-      <span className="desktop-rail__label">Ask Maps</span>
-    </button>
-
-    <button type="button" className="desktop-rail__item" aria-label="Saved" title="Saved">
-      <span className="desktop-rail__icon">
-        <Bookmark className="h-5 w-5" strokeWidth={2} />
-      </span>
-      <span className="desktop-rail__label">Saved</span>
-    </button>
-
-    <button type="button" className="desktop-rail__item" aria-label="Recents" title="Recents">
-      <span className="desktop-rail__icon">
-        <History className="h-5 w-5" strokeWidth={2} />
-      </span>
-      <span className="desktop-rail__label">Recents</span>
     </button>
 
     {/* Everything above hugs the top; "Get app" sits at the bottom. */}
