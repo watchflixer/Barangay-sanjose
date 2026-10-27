@@ -97,19 +97,22 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
 
-test('the incident feed is ONE flush card on desktop, like the Google panel', () => {
+test('the incident feed is ONE floating card on desktop', () => {
   assert.match(app, /id="app-sidebar-panel"/);
   assert.match(app, /className="app-feed-inner"/);
 
   const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
 
-  // Flush with the rail, the top and the bottom, with only the map-side top
-  // corner rounded — no floating margins, no second card inside.
-  assert.match(card, /#app-sidebar-panel \{[\s\S]*?margin: 0;[\s\S]*?height: 100%;[\s\S]*?border-radius: 0 24px 0 0;/);
-  assert.doesNotMatch(card, /margin: 8px 10px 8px 8px/);
+  // One card: gap from the rail, rounded, hairline + shadow.
+  assert.match(card, /#app-sidebar-panel \{[\s\S]*?margin: 8px 10px 8px 8px;[\s\S]*?border-radius: 24px;[\s\S]*?box-shadow:/);
+  // The feed inside it adds no second card of its own…
   assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border: 0;[\s\S]*?box-shadow: none;/);
+  // …it is only clipped to the card's rounded corners.
+  assert.match(app, /id="app-sidebar-panel"/);
+  assert.match(sidebar, /lg:border-0 lg:shadow-none/);
+  assert.doesNotMatch(sidebar, /lg:rounded-2xl/);
   // The single card lives behind the desktop media query.
-  assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('margin: 0;'));
+  assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('margin: 8px 10px 8px 8px;'));
 });
 
 test('the ‹ tab collapses the feed and exists only on laptop/desktop', () => {
@@ -154,36 +157,39 @@ test('the incident feed keeps a wide desktop panel (~400px)', () => {
   assert.doesNotMatch(sidebar, /lg:w-72/);
 });
 
-test('the feed collapses from the ‹ tab and comes back from the rail', () => {
-  assert.match(app, /id="btn-collapse-incident-feeds"/);
-  assert.match(app, /onClick=\{\(\) => setDesktopFeedOpen\(false\)\}/);
+test('the incident feed can be closed on desktop and re-opened from the rail', () => {
+  // Close button lives in the feed header and is desktop-only.
+  assert.match(sidebar, /id="btn-close-incident-feeds"/);
+  assert.match(sidebar, /className="hidden lg:inline-flex[^"]*"/);
+  assert.match(sidebar, /onClick=\{\(\) => onCloseDesktop\?\.\(\)\}/);
+
+  // App tracks the open state, applies it with an `lg:` utility only…
   assert.match(app, /const \[desktopFeedOpen, setDesktopFeedOpen\] = useState\(true\)/);
   assert.match(app, /desktopFeedOpen \? '' : 'lg:hidden'/);
-  assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
+  assert.match(app, /onCloseDesktop=\{\(\) => setDesktopFeedOpen\(false\)\}/);
+
+  // …and the rail's hamburger brings it back.
   assert.match(rail, /onToggleFeed\?\.\(\)/);
-  // The old header X is gone; nothing closes the feed on phones.
-  assert.doesNotMatch(sidebar, /btn-close-incident-feeds/);
-  assert.doesNotMatch(sidebar, /onCloseDesktop/);
+  assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
+
+  // Phones keep their own drawer logic: the close button never shows there and
+  // the panel is never lg:hidden by default.
+  assert.doesNotMatch(sidebar, /btn-close-incident-feeds[\s\S]{0,400}?\bportrait:inline-flex\b/);
 });
 
-test('the desktop panel chrome mirrors the Google Maps Lists panel', () => {
-  // Search pill, underlined status tabs, light-blue CTA, category chips.
-  assert.match(sidebar, /id="input-hazard-search-desktop"/);
-  assert.match(sidebar, /flex h-12 items-center gap-3 rounded-full border border-\[#dadce0\]/);
-  assert.match(sidebar, /id=\{`filter-status-\$\{status\}-desktop`\}/);
-  assert.match(sidebar, /h-\[3px\] rounded-t-sm bg-\[#1a73e8\]/);
-  assert.match(sidebar, /id="btn-report-hazard-desktop"[\s\S]{0,300}?bg-\[#c2e7ff\]/);
-  assert.match(sidebar, /New report/);
-  assert.match(sidebar, /id=\{`filter-\$\{type\}-desktop`\}/);
+test('the feed surfaces share the rail white on laptop/desktop', () => {
+  // Rail and the floating card are white…
+  assert.match(css, /\.desktop-rail \{[\s\S]{0,400}?background: #ffffff;/);
+  assert.match(css, /#app-sidebar-panel \{[\s\S]{0,300}?background: #ffffff;/);
 
-  // Rows are Google-style: leading icon, title + muted meta, actions.
-  assert.match(sidebar, /id=\{`alert-row-\$\{alert\.id\}`\}/);
-  assert.match(sidebar, /truncate text-\[14px\] font-medium leading-5 text-\[#202124\]/);
+  // …so every tinted strip inside the feed turns white from 1024px up:
+  // header, scroll area and the footer bar.
+  const whiteStrips = sidebar.match(/lg:bg-white/g) ?? [];
+  assert.equal(whiteStrips.length, 3, 'header, list area and footer must all be lg:bg-white');
+  assert.match(sidebar, /bg-\[#f6f8fc\][^"]*lg:bg-white/);
+  assert.match(sidebar, /bg-slate-50\/30[^"]*lg:bg-white/);
+  assert.match(sidebar, /class(Name)?="shrink-0 bg-slate-50 px-3 pt-2 lg:bg-white"/);
 
-  // …and the whole chrome is desktop-only, built twice: phones keep the old
-  // compact header (lg:hidden) and the photo cards (lg:hidden).
-  assert.match(sidebar, /className="hidden shrink-0 bg-white lg:block"/);
-  assert.match(sidebar, /bg-\[#f6f8fc\][^"]*lg:hidden/);
-  assert.match(sidebar, /cursor-pointer lg:hidden/);
-  assert.match(sidebar, /hidden cursor-pointer items-center gap-3 rounded-lg px-3 py-2\.5 transition-colors lg:flex/);
+  // Phones keep their tinted strips: the tints are still the base colour.
+  assert.doesNotMatch(sidebar, /\blg:bg-\[#f6f8fc\]\b/);
 });
