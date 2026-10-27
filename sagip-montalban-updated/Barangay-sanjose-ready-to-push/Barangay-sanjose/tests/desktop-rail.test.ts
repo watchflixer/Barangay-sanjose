@@ -176,3 +176,20 @@ test('the incident feed can be closed on desktop and re-opened from the rail', (
   // the panel is never lg:hidden by default.
   assert.doesNotMatch(sidebar, /btn-close-incident-feeds[\s\S]{0,400}?\bportrait:inline-flex\b/);
 });
+
+test('the feed surfaces share the rail white on laptop/desktop', () => {
+  // Rail and the floating card are white…
+  assert.match(css, /\.desktop-rail \{[\s\S]{0,400}?background: #ffffff;/);
+  assert.match(css, /#app-sidebar-panel \{[\s\S]{0,300}?background: #ffffff;/);
+
+  // …so every tinted strip inside the feed turns white from 1024px up:
+  // header, scroll area and the footer bar.
+  const whiteStrips = sidebar.match(/lg:bg-white/g) ?? [];
+  assert.equal(whiteStrips.length, 3, 'header, list area and footer must all be lg:bg-white');
+  assert.match(sidebar, /bg-\[#f6f8fc\][^"]*lg:bg-white/);
+  assert.match(sidebar, /bg-slate-50\/30[^"]*lg:bg-white/);
+  assert.match(sidebar, /class(Name)?="shrink-0 bg-slate-50 px-3 pt-2 lg:bg-white"/);
+
+  // Phones keep their tinted strips: the tints are still the base colour.
+  assert.doesNotMatch(sidebar, /\blg:bg-\[#f6f8fc\]\b/);
+});
