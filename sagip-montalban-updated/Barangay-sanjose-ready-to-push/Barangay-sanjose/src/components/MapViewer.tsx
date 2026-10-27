@@ -327,7 +327,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     mapInstanceRef.current = map;
 
+    // Keep Leaflet in step when the map container changes size — e.g. when the
+    // desktop incident feed is closed with its X and the map gains width.
+    // Without this, Leaflet keeps its cached size and shows grey bands.
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => map.invalidateSize());
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
+      resizeObserver?.disconnect();
       tileMountRef.current?.dispose();
       tileMountRef.current = null;
       map.remove();
@@ -1032,7 +1042,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       )}
 
       {/* Live Coordinate Display (Bottom Left) — desktop/landscape only; hidden on mobile portrait (Android/iPhone) */}
-      <div className="absolute bottom-4 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap portrait:hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono">
+      <div
+        id="map-coord-badge"
+        className="absolute bottom-4 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap portrait:hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono"
+      >
         <Compass className="w-3.5 h-3.5 text-blue-400" />
         <span className="font-semibold text-white">BRGY. SAN JOSE</span>
         <span className="text-slate-600">|</span>

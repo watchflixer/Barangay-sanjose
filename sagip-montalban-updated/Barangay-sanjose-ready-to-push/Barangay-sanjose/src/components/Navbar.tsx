@@ -107,7 +107,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   const waterCount = activeAlerts.filter(a => a.type === 'water').length;
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs shrink-0">
+    <header
+      id="app-navbar"
+      className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs shrink-0"
+    >
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
         {/* Phone portrait (Android/iPhone) gets a taller bar than the original
             h-11/44px — now h-13/52px — so the brand block and the Guide/Donate

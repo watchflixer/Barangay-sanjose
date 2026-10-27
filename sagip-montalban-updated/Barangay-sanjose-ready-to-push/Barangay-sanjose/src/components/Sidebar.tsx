@@ -25,7 +25,8 @@ import {
   PhoneCall,
   ShieldCheck,
   Camera,
-  Image as ImageIcon
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -43,6 +44,8 @@ interface SidebarProps {
   onOpenLiveModal?: () => void;
   onRemoveLive?: () => void;
   onClose?: () => void;
+  /** Closes the desktop/laptop feed panel (the X in the header). */
+  onCloseDesktop?: () => void;
   /** ●●● options menu — lives in this header on mobile portrait. */
   onOpenUpdates?: () => void;
   onOpenEvacuationCenters?: () => void;
@@ -67,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenLiveModal = () => {},
   onRemoveLive = () => {},
   onClose,
+  onCloseDesktop,
   onOpenUpdates = () => {},
   onOpenEvacuationCenters = () => {},
   onOpenResolvedCleared = () => {},
@@ -132,9 +136,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0">
+    <aside
+      /* Desktop/laptop: the panel is the INNER card (rounded, own hairline) —
+         its looks come from index.css. Phones keep the plain drawer styling. */
+      className="flex h-full w-full min-h-0 shrink-0 flex-col overflow-hidden bg-white lg:w-full lg:border-0 lg:shadow-none"
+    >
       {/* Compact header, search, and filters styled after the supplied screenshots. */}
-      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5">
+      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5 lg:bg-white">
         <div className="flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
@@ -149,6 +157,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
+            {/* Desktop/laptop only: closes the feed so the map gets full width.
+                The rail's ☰ brings it back. Hidden on phones/tablets. */}
+            <button
+              type="button"
+              id="btn-close-incident-feeds"
+              onClick={() => onCloseDesktop?.()}
+              aria-label="Close incident feeds"
+              title="Close incident feeds"
+              className="hidden lg:inline-flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#e8eaed] active:scale-95"
+            >
+              <X className="h-5 w-5" strokeWidth={2} />
+            </button>
             <ReportButton
               id="btn-report-hazard-mobile"
               className="hidden portrait:inline-flex"
@@ -267,7 +287,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       />
 
       {/* Alert Cards List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar bg-slate-50/30">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar bg-slate-50/30 lg:bg-white">
         {filteredAlerts.length === 0 ? (
           <div className="py-12 text-center space-y-3">
             <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
@@ -409,7 +429,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Compact footer status bar from the supplied reference. */}
       <footer
-        className="shrink-0 bg-slate-50 px-3 pt-2"
+        className="shrink-0 bg-slate-50 px-3 pt-2 lg:bg-white"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white px-3 py-2 shadow-[0_1px_2px_rgba(60,64,67,.25),0_1px_3px_1px_rgba(60,64,67,.12)]">
