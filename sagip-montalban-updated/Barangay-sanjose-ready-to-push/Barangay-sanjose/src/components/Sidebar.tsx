@@ -26,6 +26,7 @@ import {
   ShieldCheck,
   Camera,
   Image as ImageIcon,
+  Plus,
   X
 } from 'lucide-react';
 
@@ -44,8 +45,7 @@ interface SidebarProps {
   onOpenLiveModal?: () => void;
   onRemoveLive?: () => void;
   onClose?: () => void;
-  /** Closes the desktop/laptop feed panel (the X in the header). */
-  onCloseDesktop?: () => void;
+
   /** ●●● options menu — lives in this header on mobile portrait. */
   onOpenUpdates?: () => void;
   onOpenEvacuationCenters?: () => void;
@@ -70,7 +70,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenLiveModal = () => {},
   onRemoveLive = () => {},
   onClose,
-  onCloseDesktop,
   onOpenUpdates = () => {},
   onOpenEvacuationCenters = () => {},
   onOpenResolvedCleared = () => {},
@@ -141,8 +140,114 @@ export const Sidebar: React.FC<SidebarProps> = ({
          its looks come from index.css. Phones keep the plain drawer styling. */
       className="flex h-full w-full min-h-0 shrink-0 flex-col overflow-hidden bg-white lg:w-full lg:border-0 lg:shadow-none"
     >
+      {/* ---------------------------------------------------------------
+          LAPTOP / DESKTOP ONLY: panel chrome copied from the Google Maps
+          Lists panel — search pill on top, underlined tabs, a light-blue
+          full-width action and clean list rows. Everything here is hidden
+          below 1024px, so phones/tablets keep the compact header below it.
+          --------------------------------------------------------------- */}
+      <div className="hidden shrink-0 bg-white lg:block">
+        <div className="px-4 pb-1 pt-3">
+          <label className="flex h-12 items-center gap-3 rounded-full border border-[#dadce0] bg-white px-4 text-[#5f6368] focus-within:border-[#1a73e8] focus-within:ring-1 focus-within:ring-[#1a73e8]">
+            <Search className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <input
+              id="input-hazard-search-desktop"
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search street, sitio, or incident"
+              aria-label="Search incident feeds"
+              className="min-w-0 flex-1 bg-transparent text-[14px] text-[#202124] outline-none placeholder:text-[#5f6368]"
+            />
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              aria-label="Clear search"
+              className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[#5f6368] transition-colors hover:bg-[#f1f3f4]"
+            >
+              <X className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </label>
+        </div>
+
+        {/* Underlined tabs — Google's Lists / Labeled / Maps row. */}
+        <div className="mt-1 flex items-stretch border-b border-[#e8eaed] px-2">
+          {([
+            ['all', 'All'],
+            ['active', 'Active'],
+            ['monitoring', 'Monitoring'],
+            ['resolved', 'Done'],
+          ] as Array<[typeof activeFilterStatus, string]>).map(([status, label]) => {
+            const selected = activeFilterStatus === status;
+            return (
+              <button
+                key={status}
+                id={`filter-status-${status}-desktop`}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setActiveFilterStatus(status)}
+                className={`relative flex-1 pb-3 pt-2.5 text-[13px] transition-colors ${
+                  selected ? 'font-medium text-[#1a73e8]' : 'text-[#5f6368] hover:text-[#202124]'
+                }`}
+              >
+                {label}
+                {selected && (
+                  <span className="absolute inset-x-2 bottom-0 h-[3px] rounded-t-sm bg-[#1a73e8]" />
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Full-width light-blue action, like "+ New list". */}
+        <div className="px-4 py-3">
+          <button
+            type="button"
+            id="btn-report-hazard-desktop"
+            disabled={optionsDisabled}
+            onClick={onOpenReportModal}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-[#c2e7ff] text-[14px] font-medium text-[#001d35] transition-colors hover:bg-[#b3ddf8] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.5} />
+            New report
+          </button>
+        </div>
+
+        {/* Category chips stay available for filtering. */}
+        <div className="flex items-center gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {([
+            ['all', 'All'],
+            ['fire', 'Fire'],
+            ['flood', 'Flood'],
+            ['power', 'No Power'],
+            ['streetlight', 'Streetlight'],
+            ['water', 'Water'],
+            ['road', 'Road'],
+          ] as Array<[HazardType | 'all', string]>).map(([type, label]) => {
+            const selected = activeFilterType === type;
+            return (
+              <button
+                key={type}
+                id={`filter-${type}-desktop`}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setActiveFilterType(type)}
+                className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12px] font-medium transition-colors ${
+                  selected
+                    ? 'border-transparent bg-[#e8f0fe] text-[#1a73e8]'
+                    : 'border-[#dadce0] text-[#5f6368] hover:bg-[#f8f9fa]'
+                }`}
+              >
+                {type !== 'all' && getTypeIcon(type)}
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Compact header, search, and filters styled after the supplied screenshots. */}
-      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5 lg:bg-white">
+      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5 lg:hidden">
         <div className="flex items-center gap-2.5">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
@@ -157,18 +262,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {/* Desktop/laptop only: closes the feed so the map gets full width.
-                The rail's ☰ brings it back. Hidden on phones/tablets. */}
-            <button
-              type="button"
-              id="btn-close-incident-feeds"
-              onClick={() => onCloseDesktop?.()}
-              aria-label="Close incident feeds"
-              title="Close incident feeds"
-              className="hidden lg:inline-flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#e8eaed] active:scale-95"
-            >
-              <X className="h-5 w-5" strokeWidth={2} />
-            </button>
             <ReportButton
               id="btn-report-hazard-mobile"
               className="hidden portrait:inline-flex"
@@ -287,7 +380,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       />
 
       {/* Alert Cards List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar bg-slate-50/30 lg:bg-white">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar bg-slate-50/30 lg:space-y-0 lg:bg-white lg:p-2">
         {filteredAlerts.length === 0 ? (
           <div className="py-12 text-center space-y-3">
             <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
@@ -318,6 +411,67 @@ export const Sidebar: React.FC<SidebarProps> = ({
             const isResolved = alert.status === 'resolved';
 
             return (
+              <React.Fragment key={alert.id}>
+              {/* LAPTOP / DESKTOP ONLY: Google-Maps list row — leading icon,
+                  title, muted meta line, then the status/resolve actions. */}
+              <div
+                id={`alert-row-${alert.id}`}
+                onClick={() => {
+                  onSelectAlert(alert);
+                  onClose?.();
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelectAlert(alert);
+                    onClose?.();
+                  }
+                }}
+                className={`hidden cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors lg:flex ${
+                  isSelected ? 'bg-[#f1f3f4]' : 'hover:bg-[#f8f9fa]'
+                } ${isResolved ? 'opacity-70 hover:opacity-100' : ''}`}
+              >
+                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getTypeBg(alert.type)}`}>
+                  {getTypeIcon(alert.type)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-medium leading-5 text-[#202124]">
+                    {alert.title}
+                  </p>
+                  <p className="truncate text-[12px] leading-4 text-[#5f6368]">
+                    {alert.streetName} · {alert.timeReported}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                    isResolved
+                      ? 'bg-slate-200 text-slate-700'
+                      : alert.status === 'monitoring'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-red-100 text-red-700'
+                  }`}
+                >
+                  {isResolved ? 'Resolved' : alert.status === 'monitoring' ? 'Monitoring' : 'Active'}
+                </span>
+                <button
+                  id={`btn-row-toggle-${alert.id}`}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleAlertStatus(alert.id);
+                  }}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                    isResolved
+                      ? 'text-[#1a73e8] hover:bg-[#e8f0fe]'
+                      : 'bg-[#1a73e8] text-white hover:bg-[#1765cc]'
+                  }`}
+                >
+                  {isResolved ? 'Reopen' : 'Resolve'}
+                </button>
+              </div>
+
               <div
                 key={alert.id}
                 id={`alert-card-${alert.id}`}
@@ -325,7 +479,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSelectAlert(alert);
                   onClose?.();
                 }}
-                className={`group relative overflow-hidden p-3 rounded-xl border bg-white transition-all cursor-pointer ${
+                className={`group relative overflow-hidden p-3 rounded-xl border bg-white transition-all cursor-pointer lg:hidden ${
                   isSelected
                     ? 'border-blue-300 shadow-md'
                     : isResolved
@@ -422,6 +576,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 </div>
               </div>
+              </React.Fragment>
             );
           })
         )}

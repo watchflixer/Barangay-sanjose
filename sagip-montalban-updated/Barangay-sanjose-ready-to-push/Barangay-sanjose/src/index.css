@@ -1531,15 +1531,18 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   /* ---- the one and only card ----------------------------------------- */
   #app-sidebar-panel {
     position: relative;
-    margin: 8px 10px 8px 8px;
-    height: calc(100% - 16px);
+    /* Flush with the rail, the top and the bottom — exactly like the
+       Google-Maps panel. Only the map-side top corner is rounded. */
+    margin: 0;
+    height: 100%;
     padding: 0;
     background: #ffffff;
-    border: 1px solid #e6e8eb;
-    border-radius: 24px;
-    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
-    /* `clip` keeps the rounded shape (so rows and the header strip are cut to
-       it) while still letting the `‹` tab hang outside the card edge. */
+    border: 0;
+    border-right: 1px solid #e6e8eb;
+    border-radius: 0 24px 0 0;
+    box-shadow: 0 1px 4px rgba(60, 64, 67, 0.18);
+    /* `clip` cuts the rounded corner into the content while still letting the
+       `‹` tab hang outside the card edge. */
     overflow: clip;
     overflow-clip-margin: 20px;
   }
@@ -1547,7 +1550,7 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   /* The feed fills the card; the card owns the border, radius and shadow. */
   #app-sidebar-panel > .app-feed-inner > aside {
     border: 0;
-    border-radius: 23px;
+    border-radius: 0 24px 0 0;
     box-shadow: none;
     overflow: hidden;
   }
