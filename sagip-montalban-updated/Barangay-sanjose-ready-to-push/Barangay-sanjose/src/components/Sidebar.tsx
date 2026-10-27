@@ -132,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0 lg:rounded-3xl lg:border-r-0 lg:shadow-none">
+    <aside className="w-full lg:w-96 bg-white border-r border-slate-200 flex flex-col h-full min-h-0 overflow-hidden shadow-xs shrink-0">
       {/* Compact header, search, and filters styled after the supplied screenshots. */}
       <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5">
         <div className="flex items-center gap-2.5">

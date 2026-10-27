@@ -1506,34 +1506,44 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: ROUNDED INCIDENT FEED CARD
+   LAPTOP / DESKTOP: ROUNDED FEED EDGE (Google-Maps style)
    --------------------------------------------------------------------------
-   The radius itself is applied with Tailwind utilities on the two elements
-   that paint the edge (both prefixed `lg:`, so it exists from 1024px up only):
+   The incident feed stays welded to the rail and to the top/bottom edges — it
+   does NOT float — but the side that meets the map is rounded, so the map
+   shows through at the corners exactly like the reference.
 
-     App.tsx     wrapper  → lg:rounded-3xl lg:overflow-hidden lg:my-2 lg:mx-2
-                            lg:h-[calc(100%-1rem)] lg:border lg:shadow-lg
-     Sidebar.tsx <aside>  → lg:rounded-3xl lg:border-r-0 lg:shadow-none
+   The radius is applied to the white surface itself (the <aside>) AND to its
+   first/last children, not just to the wrapper with overflow:hidden. That way
+   the rounded shape is visible even if clipping on the wrapper is ever
+   defeated (transform, a child with its own background, etc.).
 
-   The rule below only makes sure the white surface can never paint a square
-   corner past the curve, whatever Tailwind emits.
-
-   MOBILE PORTRAIT IS UNTOUCHED: the wrapper and the <aside> keep their square,
-   full-height drawer look below 1024px.
+   MOBILE PORTRAIT IS UNTOUCHED: everything is inside `@media (min-width:
+   1024px)`; phones keep the full-height square drawer.
    ========================================================================== */
 @media (min-width: 1024px) {
+  /* The wrapper clips, so nothing can spill past the rounded edge. */
   #app-sidebar-panel {
-    /* Belt and braces: clip every child to the rounded card. */
+    border-top-right-radius: 18px;
+    border-bottom-right-radius: 18px;
     overflow: hidden;
   }
 
+  /* The white surface itself — this is the edge the user actually sees. */
+  #app-sidebar-panel > aside {
+    border-top-right-radius: 18px !important;
+    border-bottom-right-radius: 18px !important;
+    border-right: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden;
+  }
+
+  /* Header strip (pale background) and the scroll area both follow the curve,
+     so no square white corner can ever poke out of the rounded edge. */
   #app-sidebar-panel > aside > div:first-child {
-    border-top-left-radius: 1.5rem;
-    border-top-right-radius: 1.5rem;
+    border-top-right-radius: 18px !important;
   }
 
   #app-sidebar-panel > aside > div:last-child {
-    border-bottom-left-radius: 1.5rem;
-    border-bottom-right-radius: 1.5rem;
+    border-bottom-right-radius: 18px !important;
   }
 }
