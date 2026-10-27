@@ -39,8 +39,6 @@ test('every visual rail rule lives inside the laptop/desktop media query', () =>
     '.desktop-rail__item',
     '.desktop-rail__icon',
     '.desktop-rail__label',
-    '.desktop-rail__thumb',
-    '.desktop-rail__divider',
     '.desktop-rail__spacer',
   ]) {
     assert.ok(media.includes(selector), `${selector} must sit inside the 1024px media query`);
@@ -66,7 +64,11 @@ test('the rail is mounted on the desktop layout, and is visual-only', () => {
   // Visual only for now: no handlers wired yet.
   assert.doesNotMatch(rail, /onClick=/);
   // The items the design calls for.
-  for (const label of ['Menu', 'Ask Maps', 'Saved', 'Recents', 'San Jose', 'Get app']) {
+  for (const label of ['Menu', 'Ask Maps', 'Saved', 'Recents', 'Get app']) {
     assert.ok(rail.includes(label), `missing rail item: ${label}`);
   }
+  // The location thumbnail chip was removed on request — it must not come back
+  // without a new decision (and its CSS is gone too).
+  assert.doesNotMatch(rail, /desktop-rail__thumb|San Jose/);
+  assert.doesNotMatch(railSection, /desktop-rail__thumb|desktop-rail__divider/);
 });

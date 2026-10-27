@@ -1380,8 +1380,8 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 /* ==========================================================================
    DESKTOP / LAPTOP LEFT RAIL (Google-Maps-style)
    --------------------------------------------------------------------------
-   The narrow icon strip on the far left: hamburger, Ask Maps, Saved, Recents,
-   the small location thumbnail and Get app.
+   The narrow icon strip on the far left: hamburger, Ask Maps, Saved, Recents
+   and Get app.
 
    LAPTOP + DESKTOP ONLY. The base state is `display: none`, and every visual
    rule below sits inside `@media (min-width: 1024px)`, so Android/iPhone
@@ -1486,27 +1486,4 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     min-height: 12px;
   }
 
-  .desktop-rail__thumb {
-    display: block;
-    width: 44px;
-    height: 44px;
-    border: 1px solid #dadce0;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #e8f0e4;
-  }
-
-  .desktop-rail__thumb svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-  }
-
-  .desktop-rail__divider {
-    flex: 0 0 auto;
-    width: 44px;
-    height: 1px;
-    margin: 10px 0 6px;
-    background: #e6e8eb;
-  }
 }
