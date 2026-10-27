@@ -172,3 +172,15 @@ test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => 
     assert.doesNotMatch(phoneBlock, /map-coord-badge/);
   }
 });
+
+test('the incident feed is narrower on laptop/desktop so the map gets more room', () => {
+  // 384px (lg:w-96) -> 288px (lg:w-72) on both the wrapper and the <aside>.
+  assert.match(app, /lg:w-72/);
+  assert.match(sidebar, /lg:w-72/);
+  // The phone drawer keeps its own widths: no un-prefixed width change.
+  assert.match(app, / w-80 sm:w-96 /);
+  assert.match(sidebar, /className="w-full lg:w-72 /);
+  // …and the old desktop width must not linger anywhere.
+  assert.doesNotMatch(app, /lg:w-96/);
+  assert.doesNotMatch(sidebar, /lg:w-96/);
+});
