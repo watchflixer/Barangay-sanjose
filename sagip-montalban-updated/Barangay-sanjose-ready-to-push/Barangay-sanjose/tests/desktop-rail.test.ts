@@ -95,31 +95,36 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
 
-test('the incident feed rounds exactly one corner, on desktop only', () => {
+test('the incident feed rounds exactly one corner, at every width except phone portrait', () => {
   assert.match(app, /id="app-sidebar-panel"/);
 
-  const desktop = css.slice(css.indexOf('LAPTOP / DESKTOP: ONE ROUNDED CORNER'));
+  const feed = css.slice(css.indexOf('ONE ROUNDED CORNER ON THE INCIDENT FEED'));
 
-  // Exactly one corner: top-right.
-  assert.match(desktop, /#app-sidebar-panel \{[\s\S]*?border-top-right-radius:\s*20px;[\s\S]*?overflow:\s*hidden;/);
-  // …painted on the white surface and the header strip too, so the curve
-  // cannot be covered by a square child.
-  assert.match(desktop, /#app-sidebar-panel > aside \{[\s\S]*?border-top-right-radius:\s*20px !important;/);
-  assert.match(desktop, /#app-sidebar-panel > aside > div:first-child \{[\s\S]*?border-top-right-radius:\s*20px !important;/);
+  // Exactly one corner: top-right, on the wrapper (which clips).
+  assert.match(feed, /#app-sidebar-panel \{\s*border-top-right-radius:\s*24px;\s*overflow:\s*hidden;/);
+  // …painted on the white surface and the header strip too.
+  assert.match(feed, /#app-sidebar-panel > aside \{[\s\S]*?border-top-right-radius:\s*24px !important;/);
+  assert.match(feed, /#app-sidebar-panel > aside > div:first-child \{[\s\S]*?border-top-right-radius:\s*24px !important;/);
 
-  // No other corner may be rounded (the four-corner card got rejected).
-  assert.doesNotMatch(desktop, /border-top-left-radius/);
-  assert.doesNotMatch(desktop, /border-bottom-left-radius/);
-  assert.doesNotMatch(desktop, /border-bottom-right-radius/);
+  // No other corner is ever rounded.
+  assert.doesNotMatch(feed, /border-top-left-radius/);
+  assert.doesNotMatch(feed, /border-bottom-left-radius/);
+  assert.doesNotMatch(feed, /border-bottom-right-radius/);
+
+  // The radius must NOT be locked behind a desktop-only media query again —
+  // that hid it in narrow preview panes.
+  const radiusPart = feed.slice(0, feed.indexOf('#app-sidebar-panel {'));
+  assert.doesNotMatch(radiusPart, /@media/, 'the corner must not be gated by a min-width query');
+
+  // Phone portrait (Android/iPhone) is explicitly reset to square.
+  assert.match(
+    feed,
+    /@media \(orientation: portrait\) and \(max-width: 640px\) \{\s*#app-sidebar-panel,[\s\S]*?border-top-right-radius:\s*0 !important;/,
+  );
 
   // Flush + full height: no floating card, no Tailwind radius utilities.
-  assert.doesNotMatch(desktop, /margin:/);
-  assert.doesNotMatch(desktop, /height:\s*calc/);
+  assert.doesNotMatch(feed, /margin:/);
+  assert.doesNotMatch(feed, /height:\s*calc/);
   assert.doesNotMatch(app, /lg:rounded/);
   assert.doesNotMatch(sidebar, /lg:rounded/);
-
-  // No phone breakpoint may restyle the feed.
-  for (const [phoneBlock] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
-    assert.doesNotMatch(phoneBlock, /app-sidebar-panel/);
-  }
 });

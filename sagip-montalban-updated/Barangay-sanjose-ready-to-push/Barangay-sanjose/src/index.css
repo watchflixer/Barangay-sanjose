@@ -1506,34 +1506,44 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: ONE ROUNDED CORNER ON THE INCIDENT FEED
+   ONE ROUNDED CORNER ON THE INCIDENT FEED (top-right, map side)
    --------------------------------------------------------------------------
    The feed stays welded to the rail and to the top/bottom edges (full height,
    no gaps). Exactly ONE corner is rounded: the TOP-RIGHT one, where the panel
-   meets the map — the same corner the reference screenshot points at.
+   meets the map.
 
-   The radius is applied on the wrapper (which clips) AND on the white surface
-   plus its header strip, so no square white corner can paint over the curve.
+   These rules are deliberately NOT inside a min-width query any more: the
+   earlier version only worked from 1024px up, so a preview pane / laptop
+   window narrower than that showed no curve at all. Now the corner is rounded
+   at every width and explicitly reset back to square for PHONE PORTRAIT
+   (`orientation: portrait` + `max-width: 640px`), which keeps the Android /
+   iPhone portrait drawer exactly as it was.
 
-   MOBILE PORTRAIT IS UNTOUCHED: everything is inside `@media (min-width:
-   1024px)`; phones keep the fully square, full-height drawer.
+   The radius is applied on the wrapper (which clips), on the white <aside>,
+   and on its header strip — no square white child can paint over the curve.
    ========================================================================== */
-@media (min-width: 1024px) {
-  #app-sidebar-panel {
-    border-top-right-radius: 20px;
-    overflow: hidden;
-  }
+#app-sidebar-panel {
+  border-top-right-radius: 24px;
+  overflow: hidden;
+}
 
-  /* The white surface the user actually sees. */
-  #app-sidebar-panel > aside {
-    border-top-right-radius: 20px !important;
-    border-right: 0 !important;
-    box-shadow: none !important;
-    overflow: hidden;
-  }
+#app-sidebar-panel > aside {
+  border-top-right-radius: 24px !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+  overflow: hidden;
+}
 
-  /* Header strip paints its own pale background — follow the same curve. */
+#app-sidebar-panel > aside > div:first-child {
+  border-top-right-radius: 24px !important;
+}
+
+/* PHONE PORTRAIT (Android/iPhone): unchanged — fully square, full-height
+   drawer. This mirrors the breakpoint the rest of the app already uses. */
+@media (orientation: portrait) and (max-width: 640px) {
+  #app-sidebar-panel,
+  #app-sidebar-panel > aside,
   #app-sidebar-panel > aside > div:first-child {
-    border-top-right-radius: 20px !important;
+    border-top-right-radius: 0 !important;
   }
 }
