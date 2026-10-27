@@ -1554,3 +1554,19 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     clip-path: none !important;
   }
 }
+
+/* ==========================================================================
+   LAPTOP / DESKTOP: NO COORDINATE BADGE ON THE MAP
+   --------------------------------------------------------------------------
+   The bottom-left "BRGY. SAN JOSE | 14.74250°N, 121.13100°E" chip is hidden on
+   laptop/desktop so the map canvas stays clean (it was the only dark pill
+   floating over the basemap).
+
+   MOBILE / TABLET UNTOUCHED: this rule only exists from 1024px up, so phones
+   and tablets keep whatever the existing utilities decide.
+   ========================================================================== */
+@media (min-width: 1024px) {
+  #map-coord-badge {
+    display: none;
+  }
+}

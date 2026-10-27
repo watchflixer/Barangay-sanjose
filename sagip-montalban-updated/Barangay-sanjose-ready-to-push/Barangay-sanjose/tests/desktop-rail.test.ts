@@ -159,3 +159,16 @@ test('the corner is clipped with clip-path too, and phones opt out of it', () =>
   assert.match(feed, /@media \(orientation: portrait\) and \(max-width: 640px\)/);
   assert.match(feed, /clip-path:\s*none !important;/);
 });
+
+test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => {
+  const mapViewer = read('../src/components/MapViewer.tsx');
+  assert.match(mapViewer, /id="map-coord-badge"/);
+
+  // Hidden from 1024px up…
+  assert.match(css, /@media \(min-width: 1024px\) \{\s*#map-coord-badge \{\s*display: none;\s*\}\s*\}/);
+
+  // …and no phone/portrait breakpoint may start hiding or restyling it.
+  for (const [phoneBlock] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
+    assert.doesNotMatch(phoneBlock, /map-coord-badge/);
+  }
+});

@@ -1032,7 +1032,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       )}
 
       {/* Live Coordinate Display (Bottom Left) — desktop/landscape only; hidden on mobile portrait (Android/iPhone) */}
-      <div className="absolute bottom-4 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap portrait:hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono">
+      <div
+        id="map-coord-badge"
+        className="absolute bottom-4 left-4 z-10 hidden max-w-[calc(100vw-2rem)] flex-wrap portrait:hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-md bg-slate-900/90 backdrop-blur-md text-slate-200 border border-slate-800 shadow-md text-[10px] font-mono"
+      >
         <Compass className="w-3.5 h-3.5 text-blue-400" />
         <span className="font-semibold text-white">BRGY. SAN JOSE</span>
         <span className="text-slate-600">|</span>
