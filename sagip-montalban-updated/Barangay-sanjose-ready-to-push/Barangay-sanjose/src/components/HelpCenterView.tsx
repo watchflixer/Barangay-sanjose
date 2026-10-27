@@ -75,6 +75,14 @@ interface HelpCenterViewProps {
    * shows them again on the map screen, where they drive this map.
    */
   onStageChange?: (stage: 'picker' | 'map') => void;
+  /**
+   * Coordinates approved by the host's "Show your location" button. A fresh
+   * `nonce` means a new request: the view drops the blue "you are here" dot
+   * and flies to it. Handled here (not in the host) because this map owns its
+   * camera lock — a host-side fly-to would be clamped straight back inside
+   * the barangay box.
+   */
+  userLocationRequest?: { coords: [number, number]; nonce: number } | null;
 }
 
 const ALL_CATEGORY_IDS = HELP_CENTER_CATEGORIES.map((category) => category.id);
@@ -122,6 +130,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   mapRef,
   lockCameraToBounds = false,
   onStageChange,
+  userLocationRequest = null,
 }) => {
   // ------------------------------------------------------------------ state
   const cameraLockRef = useRef(lockCameraToBounds);
@@ -176,6 +185,12 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   const lastFitKeyRef = useRef<string | null>(null);
   const userMovedRef = useRef(false);
   const programmaticMoveRef = useRef(false);
+  // Set while a "show my location" fly-to is running: the barangay camera lock
+  // must not drag the map back, or the dot we just added would be off screen.
+  const suppressCameraLockRef = useRef(false);
+  // Last host location request applied, so a stale request is never replayed
+  // when the map mounts (e.g. reopening the view later).
+  const appliedLocationNonceRef = useRef(0);
   const programmaticViewRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
 
   const selectedSet = useMemo(() => new Set(selected), [selected]);
@@ -273,7 +288,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       // "Lock camera to Barangay San Jose": the user can drag past the edge,
       // but the camera comes back over the barangay. Our own fits are exempt,
       // so a fit that has to clear the bottom sheet is never fought.
-      if (cameraLockRef.current && !programmaticMoveRef.current) {
+      if (cameraLockRef.current && !programmaticMoveRef.current && !suppressCameraLockRef.current) {
         const clamped = clampCentreToBarangay(center);
         if (clamped) {
           programmaticMoveRef.current = true;
@@ -305,6 +320,49 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       localMapRef.current = null;
     };
   }, [mapReady, mapRef]);
+
+  // Host "Show your location": draw the blue "you are here" dot on THIS map
+  // and centre on it. It lives here rather than in the host because this view
+  // owns its camera lock — a host-side fly-to would be clamped straight back
+  // inside the barangay box. Applied once per request nonce, and it waits for
+  // the map to exist (the filter picker covers it on first open).
+  useEffect(() => {
+    const request = userLocationRequest;
+    const map = localMapRef.current;
+    if (!request || !map) return;
+    if (appliedLocationNonceRef.current === request.nonce) return;
+    appliedLocationNonceRef.current = request.nonce;
+
+    const coords = request.coords;
+    const icon = new L.DivIcon({
+      className: 'user-location-marker',
+      html: '<span class="user-location-dot"></span>',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+    if (meMarkerRef.current) {
+      meMarkerRef.current.setLatLng(coords);
+      meMarkerRef.current.setIcon(icon);
+      if (!map.hasLayer(meMarkerRef.current)) meMarkerRef.current.addTo(map);
+    } else {
+      meMarkerRef.current = new L.Marker(coords, {
+        icon,
+        zIndexOffset: 1000,
+        title: 'Your location',
+      }).addTo(map);
+    }
+
+    // The user may well be outside Barangay San Jose, so release the camera
+    // lock (and skip its moveend clamp) for this one flight.
+    if (lockCameraToBounds) {
+      map.setMaxBounds(null as unknown as L.LatLngBounds);
+      suppressCameraLockRef.current = true;
+      map.once('moveend', () => {
+        suppressCameraLockRef.current = false;
+      });
+    }
+    map.flyTo(coords, 16, { duration: 1.6, easeLinearity: 0.25 });
+  }, [userLocationRequest, mapReady, lockCameraToBounds]);
 
   // Basemap. Both styles are plain Leaflet raster layers: Street is the
   // OpenStreetMap tile layer (TILE_SERVERS.streets) and Satellite is the Esri
@@ -607,7 +665,14 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         setOriginMode('me');
         const map = localMapRef.current;
         if (map) {
-          if (lockCameraToBounds) map.setMaxBounds(null as unknown as L.LatLngBounds);
+          // Same as the host's Locate: this flight must not be clamped back.
+          if (lockCameraToBounds) {
+            map.setMaxBounds(null as unknown as L.LatLngBounds);
+            suppressCameraLockRef.current = true;
+            map.once('moveend', () => {
+              suppressCameraLockRef.current = false;
+            });
+          }
           map.flyTo(coords, 16, { duration: 1.2, easeLinearity: 0.25 });
           if (meMarkerRef.current) {
             meMarkerRef.current.setLatLng(coords);
