@@ -55,17 +55,19 @@ test('no phone breakpoint touches the rail', () => {
   }
 });
 
-test('the rail is mounted on the desktop layout, and is visual-only', () => {
+test('the rail is mounted on the desktop layout, with only the feed toggle wired', () => {
   // Mounted once, at the top of the workspace row (left of the incident feed).
-  assert.match(app, /<DesktopRail \/>/);
+  assert.match(app, /<DesktopRail/);
   assert.ok(
     app.indexOf('<DesktopRail />') < app.indexOf('<Sidebar'),
     'the rail must come before the Sidebar in the flex row',
   );
   // No Tailwind visibility utilities that would leak it into small screens.
   assert.doesNotMatch(rail, /className="[^"]*\b(?:flex|block|grid)\b[^"]*"/, 'the rail must not opt into a display utility');
-  // Visual only for now: no handlers wired yet.
-  assert.doesNotMatch(rail, /onClick=/);
+  // The only wired control is the hamburger, which toggles the feed panel.
+  const wired = rail.match(/onClick=\{[^}]*\}/g) ?? [];
+  assert.equal(wired.length, 1, 'only the hamburger may be wired');
+  assert.match(wired[0], /onToggleFeed/);
   // The items the design calls for.
   for (const label of ['Menu', 'Ask Maps', 'Saved', 'Recents', 'Get app']) {
     assert.ok(rail.includes(label), `missing rail item: ${label}`);
@@ -183,4 +185,24 @@ test('the incident feed keeps a wide desktop panel (384px)', () => {
   // …and the narrow desktop width must not linger anywhere.
   assert.doesNotMatch(app, /lg:w-72/);
   assert.doesNotMatch(sidebar, /lg:w-72/);
+});
+
+test('the incident feed can be closed on desktop and re-opened from the rail', () => {
+  // Close button lives in the feed header and is desktop-only.
+  assert.match(sidebar, /id="btn-close-incident-feeds"/);
+  assert.match(sidebar, /className="hidden lg:inline-flex[^"]*"/);
+  assert.match(sidebar, /onClick=\{\(\) => onCloseDesktop\?\.\(\)\}/);
+
+  // App tracks the open state, applies it with an `lg:` utility only…
+  assert.match(app, /const \[desktopFeedOpen, setDesktopFeedOpen\] = useState\(true\)/);
+  assert.match(app, /desktopFeedOpen \? '' : 'lg:hidden'/);
+  assert.match(app, /onCloseDesktop=\{\(\) => setDesktopFeedOpen\(false\)\}/);
+
+  // …and the rail's hamburger brings it back.
+  assert.match(rail, /onToggleFeed\?\.\(\)/);
+  assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
+
+  // Phones keep their own drawer logic: the close button never shows there and
+  // the panel is never lg:hidden by default.
+  assert.doesNotMatch(sidebar, /btn-close-incident-feeds[\s\S]{0,400}?\bportrait:inline-flex\b/);
 });

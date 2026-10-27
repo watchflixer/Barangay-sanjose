@@ -12,10 +12,26 @@ import { Bookmark, History, Menu, Search, Smartphone, Sparkles } from 'lucide-re
  * `display: none`, so Android/iPhone portrait views (and tablets) are
  * untouched — no markup, no width, no behaviour changes there.
  */
-export const DesktopRail: React.FC = () => (
+interface DesktopRailProps {
+  /** Whether the incident feed panel is currently open. */
+  feedOpen?: boolean;
+  /** Toggles the incident feed panel on laptop/desktop. */
+  onToggleFeed?: () => void;
+}
+
+export const DesktopRail: React.FC<DesktopRailProps> = ({ feedOpen = true, onToggleFeed }) => (
   <nav className="desktop-rail" aria-label="Map shortcuts">
-    {/* Hamburger — same spot as Google Maps' rail menu */}
-    <button type="button" className="desktop-rail__item" aria-label="Menu" title="Menu">
+    {/* Hamburger — same spot as Google Maps' rail menu. It opens/closes the
+        incident feed panel next to the rail. */}
+    <button
+      type="button"
+      className="desktop-rail__item"
+      aria-label={feedOpen ? 'Hide incident feeds' : 'Show incident feeds'}
+      aria-controls="app-sidebar-panel"
+      aria-expanded={feedOpen}
+      title={feedOpen ? 'Hide incident feeds' : 'Show incident feeds'}
+      onClick={() => onToggleFeed?.()}
+    >
       <span className="desktop-rail__icon">
         <Menu className="h-5 w-5" strokeWidth={2} />
       </span>

@@ -327,7 +327,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     mapInstanceRef.current = map;
 
+    // Keep Leaflet in step when the map container changes size — e.g. when the
+    // desktop incident feed is closed with its X and the map gains width.
+    // Without this, Leaflet keeps its cached size and shows grey bands.
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => map.invalidateSize());
+      resizeObserver.observe(mapContainerRef.current);
+    }
+
     return () => {
+      resizeObserver?.disconnect();
       tileMountRef.current?.dispose();
       tileMountRef.current = null;
       map.remove();

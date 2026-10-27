@@ -62,6 +62,10 @@ export default function App() {
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Desktop/laptop only: the incident feed can be closed with the X in its
+  // header (and re-opened from the rail's ☰). Phones keep using the drawer
+  // above — this flag is applied with `lg:` utilities only.
+  const [desktopFeedOpen, setDesktopFeedOpen] = useState(true);
   const [recenterCount, setRecenterCount] = useState(0);
   
   // STRICT USER DIRECTIVE: Default to NO live stream unless user explicitly provides/pastes a URL
@@ -263,7 +267,10 @@ export default function App() {
         {/* Google-Maps-style icon rail. Renders on laptop/desktop widths only
             (all of its CSS sits behind @media (min-width: 1024px)), so the
             Android/iPhone portrait layout is untouched. */}
-        <DesktopRail />
+        <DesktopRail
+          feedOpen={desktopFeedOpen}
+          onToggleFeed={() => setDesktopFeedOpen((open) => !open)}
+        />
 
         {/* Left Sidebar (Alerts Feed & GIS Controls) */}
         <div
@@ -280,6 +287,8 @@ export default function App() {
             overflow: 'hidden',
           }}
           className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:w-96 lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 ${
+            desktopFeedOpen ? '' : 'lg:hidden'
+          } ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -300,6 +309,7 @@ export default function App() {
             onOpenLiveModal={() => setIsLiveModalOpen(true)}
             onRemoveLive={() => setLiveStreamUrl('')}
             onClose={() => setMobileMenuOpen(false)}
+            onCloseDesktop={() => setDesktopFeedOpen(false)}
             onOpenUpdates={() => setIsUpdatesModalOpen(true)}
             onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
             onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
