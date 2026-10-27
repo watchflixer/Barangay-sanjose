@@ -31,6 +31,7 @@ import {
   type PlaceCategoryId,
 } from '../data/helpCenterPlaces';
 import { TILE_SERVERS } from '../data/tileServers';
+import { flyToUserLocation } from '../lib/locateCamera';
 import { mountTileLayer, type TileMount } from '../lib/tileLayer';
 import { SAN_JOSE_BOUNDS, SAN_JOSE_CENTER } from '../data/geoData';
 
@@ -361,7 +362,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
         suppressCameraLockRef.current = false;
       });
     }
-    map.flyTo(coords, 16, { duration: 1.6, easeLinearity: 0.25 });
+    // Same slow fly-in the hazard map uses (lib/locateCamera.ts).
+    flyToUserLocation(map, coords);
   }, [userLocationRequest, mapReady, lockCameraToBounds]);
 
   // Basemap. Both styles are plain Leaflet raster layers: Street is the
@@ -673,7 +675,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               suppressCameraLockRef.current = false;
             });
           }
-          map.flyTo(coords, 16, { duration: 1.2, easeLinearity: 0.25 });
+          // Same slow fly-in as the host's locate button — this is the view's
+          // own "Near me" control, so it must feel identical.
+          flyToUserLocation(map, coords);
           if (meMarkerRef.current) {
             meMarkerRef.current.setLatLng(coords);
           } else {

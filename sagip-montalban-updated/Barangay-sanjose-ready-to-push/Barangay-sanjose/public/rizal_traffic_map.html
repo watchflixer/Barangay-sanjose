@@ -2232,7 +2232,12 @@
   $('rt-layers2').addEventListener('click', () => { if (nav) { toggleNavTrafficOverlay(); return; } const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
   $('rt-locate').addEventListener('click', () => {
     if (nav) { recenterFollow(); return; }
-    getUserLoc().then((l) => map.flyTo({ center: [l.lng, l.lat], zoom: 15, duration: 1200 })).catch(() => flash('Could not get your location.'));
+    // Same slow locate flight as above (the page's own button must match the
+    // host's "Show your location"). Was zoom 15 / 1200ms — snappier than the
+    // hazard map, which is exactly the mismatch this fixes.
+    getUserLoc()
+      .then((l) => map.flyTo({ center: [l.lng, l.lat], zoom: 16, duration: locateFlightDurationMs(), curve: 1.42, bearing: 0, pitch: 0, essential: true }))
+      .catch(() => flash('Could not get your location.'));
   });
   lf.on('dragstart', () => { if (nav) nav.follow = false; }); // manual pan (Leaflet owns gestures) pauses follow mode
   // ===== On-site Navigation (Start button) — real GPS, like Google Maps =====
@@ -3404,6 +3409,14 @@
     map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 750 });
   };
 
+  // Mirrors locateFlightDuration() in src/lib/locateCamera.ts — the hazard
+  // map's pace (zoom 13→16 in 1.6s) for whatever zoom this map is on, never
+  // faster than 1.6s and capped at 2.6s. Mapbox wants milliseconds.
+  function locateFlightDurationMs() {
+    const span = Math.abs(16 - map.getZoom());
+    return Math.round(Math.min(2.6, Math.max(1.6, (span / 3) * 1.6)) * 1000);
+  }
+
   let trafficUserMarker = null;
   function showTrafficUserLocation(lat, lng) {
     if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
@@ -3419,7 +3432,23 @@
       trafficUserMarker.setLngLat([lng, lat]);
     }
     map.setMaxBounds(null);
-    map.flyTo({ center: [lng, lat], zoom: 16, duration: 1600 });
+    // SLOW LOCATE FLIGHT — the hazard (Streets) map's camera, mirrored for a
+    // Mapbox GL camera (Mapbox takes milliseconds, Leaflet takes seconds):
+    // zoom 16, never faster than 1.6s, one zoom level per ~0.53s, capped 2.6s
+    // (see locateFlightDurationMs below / src/lib/locateCamera.ts). `curve`
+    // keeps Leaflet's fly-arc so the zoom-in glides instead of diving, and the
+    // camera is levelled so the flight is not tilted or facing sideways.
+    // `essential` makes the animation play even under prefers-reduced-motion,
+    // because the flight IS the feedback the user asked for.
+    map.flyTo({
+      center: [lng, lat],
+      zoom: 16,
+      duration: locateFlightDurationMs(),
+      curve: 1.42,
+      bearing: 0,
+      pitch: 0,
+      essential: true
+    });
   }
   window.showTrafficUserLocation = showTrafficUserLocation;
 </script>

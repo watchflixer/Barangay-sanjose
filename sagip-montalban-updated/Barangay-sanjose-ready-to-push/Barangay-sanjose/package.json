@@ -19,7 +19,8 @@
     "test:help-center:browser": "node tests/help-center-browser.mjs",
     "test:help-center:picker": "node tests/help-center-picker-sticky.mjs",
     "test:tap-artifacts": "tsx --test tests/tap-artifacts.test.ts",
-    "test:location": "tsx --test tests/location-all-views.test.ts"
+    "test:location": "tsx --test tests/location-all-views.test.ts",
+    "test:locate-camera": "tsx --test tests/locate-camera-parity.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

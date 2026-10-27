@@ -14,6 +14,7 @@ import L from 'leaflet';
 import { clearRefreshView, readHelpCenterOpen, readRefreshView, rememberHelpCenterOpen } from '../lib/refreshView';
 import { TILE_SERVERS } from '../data/tileServers';
 import { mountTileLayer, type TileMount } from '../lib/tileLayer';
+import { flyToUserLocation } from '../lib/locateCamera';
 import { WeatherView } from './WeatherView';
 import { HelpCenterView } from './HelpCenterView';
 import { HazardAlert, MapSettings } from '../types';
@@ -605,10 +606,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             const map = mapInstanceRef.current;
             if (map) {
               if (mapSettings.lockCameraToBounds) map.setMaxBounds(null as any);
-              map.flyTo(coordinates, 16, {
-                duration: 1.6,
-                easeLinearity: 0.25,
-              });
+              // Same slow fly-in as every other basemap style — the flight
+              // itself is defined once in lib/locateCamera.ts.
+              flyToUserLocation(map, coordinates);
             }
           }
           setIsLocating(false);
