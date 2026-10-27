@@ -1541,15 +1541,7 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     /* `clip` keeps the rounded shape (so rows and the header strip are cut to
        it) while still letting the `‹` tab hang outside the card edge. */
     overflow: clip;
-    overflow-clip-margin: 34px;
-  }
-
-  /* The feed paints above the tab, so the tab's hidden half really is hidden
-     behind the panel instead of overlapping it. */
-  #app-sidebar-panel > .app-feed-inner {
-    position: relative;
-    z-index: 1;
-    background: #ffffff;
+    overflow-clip-margin: 26px;
   }
 
   /* The feed fills the card; the card owns the border, radius and shadow. */
@@ -1561,21 +1553,20 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   }
 
   /* ---- the `‹` collapse tab -------------------------------------------
-     Reference behaviour: the tab lives BEHIND the panel and OUTSIDE it — its
-     left half is hidden under the feed, only a 22px sliver with rounded right
-     corners peeks out on the map side. */
+     Copied from the reference: a flat-edged tab that hangs off the panel's
+     map-side edge, vertically centred, with rounded right corners, a hairline
+     outline and a thin grey chevron. No pill/radius on the left side — that
+     edge is flush with the card. */
   .app-feed-collapse {
     position: absolute;
     top: 50%;
-    right: -22px;
+    right: -14px;
     transform: translateY(-50%);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
+    width: 26px;
     height: 74px;
-    /* the chevron must sit in the visible half, not under the card */
-    padding-left: 22px;
     border: 1px solid #e8eaed;
     border-left: 0;
     border-radius: 0 16px 16px 0;
@@ -1584,8 +1575,7 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     box-shadow: 2px 0 4px rgba(60, 64, 67, 0.18);
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
-    /* below the feed, so the panel looks like it is in front of the tab */
-    z-index: 0;
+    z-index: 2;
   }
 
   .app-feed-collapse:hover {

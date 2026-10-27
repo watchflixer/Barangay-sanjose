@@ -124,15 +124,11 @@ test('the ‹ tab collapses the feed and exists only on laptop/desktop', () => {
   // CSS: hidden by default, shown only from 1024px, sitting on the card edge.
   assert.match(css, /\.app-feed-collapse \{\s*display: none;\s*\}/);
   const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
-  // Exactly the reference tab: it hangs off the map-side edge, OUTSIDE the
-  // panel, with its hidden half painted BEHIND the feed.
-  assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -22px;[\s\S]*?width: 44px;[\s\S]*?height: 74px;[\s\S]*?padding-left: 22px;[\s\S]*?border-radius: 0 16px 16px 0;[\s\S]*?background: #f8f9fa;[\s\S]*?z-index: 0;/);
+  // Exactly the reference tab: flat left edge on the card, rounded right
+  // corners, hairline outline, light grey fill, thin chevron.
+  assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -14px;[\s\S]*?width: 26px;[\s\S]*?height: 74px;[\s\S]*?border-radius: 0 16px 16px 0;[\s\S]*?background: #f8f9fa;/);
   assert.match(card, /border-left: 0;/);
-  // The feed paints on top of it (z-index 1), so the tab really sits behind.
-  assert.match(card, /#app-sidebar-panel > \.app-feed-inner \{\s*position: relative;\s*z-index: 1;\s*background: #ffffff;\s*\}/);
   assert.match(app, /<ChevronLeft className="h-\[22px\] w-\[22px\]" strokeWidth=\{1\.8\} \/>/);
-  // The card's clipping must leave room for the part that sticks out.
-  assert.match(card, /overflow-clip-margin: 34px;/);
   assert.match(card, /@media \(min-width: 1024px\) \{\s*\.app-feed-collapse \{\s*display: flex;\s*\}/);
 
   // The inner wrapper keeps full height at every width, so phones are unchanged.
