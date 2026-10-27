@@ -56,7 +56,8 @@ test('the Help Center drops the dot itself (it owns its camera lock)', () => {
   // The request is applied once per nonce, and the barangay lock must not
   // clamp the camera straight back and leave the dot off screen.
   assert.match(helpCenter, /appliedLocationNonceRef\.current === request\.nonce/);
-  assert.match(helpCenter, /className: 'user-location-marker'[\s\S]{0,900}flyTo\(coords, 16/);
+  // The flight itself is the shared hazard-map camera (lib/locateCamera.ts).
+  assert.match(helpCenter, /className: 'user-location-marker'[\s\S]{0,2000}flyToUserLocation\(map, coords\)/);
   assert.match(helpCenter, /suppressCameraLockRef\.current = true/);
   assert.match(
     helpCenter,

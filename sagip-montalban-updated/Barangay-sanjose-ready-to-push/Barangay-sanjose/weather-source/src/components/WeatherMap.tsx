@@ -35,6 +35,27 @@ const PH_BOUNDS = L.latLngBounds(PH_SOUTH_WEST, PH_NORTH_EAST);
 const VIEW_LAT_OFFSET = -2.0;
 const PH_CENTER = L.latLng(PH_BOUNDS.getCenter().lat + VIEW_LAT_OFFSET, PH_BOUNDS.getCenter().lng);
 
+// SLOW LOCATE FLIGHT — Panahon runs in its own document, so it keeps a copy of
+// the host app's canonical locate camera (src/lib/locateCamera.ts): zoom 16,
+// never faster than 1.6s, one zoom level per ~0.53s, capped at 2.6s, with
+// Leaflet's gentle fly-arc easing. This is what makes "Show your location"
+// zoom in slowly on the pin here exactly like the hazard (Streets) map —
+// Panahon starts on the whole Philippines, so a fixed 1.6s would rush through
+// the ~11 zoom levels and feel much snappier than the hazard map.
+// tests/locate-camera-parity.test.ts fails if these numbers ever drift.
+const LOCATE_ZOOM = 16;
+const LOCATE_DURATION_SECONDS = 1.6;
+const LOCATE_MAX_DURATION_SECONDS = 2.6;
+const LOCATE_EASE_LINEARITY = 0.25;
+/** Mirrors locateFlightDuration() in src/lib/locateCamera.ts. */
+const locateFlightDuration = (currentZoom: number): number => {
+  const span = Math.abs(LOCATE_ZOOM - currentZoom);
+  return Math.min(
+    LOCATE_MAX_DURATION_SECONDS,
+    Math.max(LOCATE_DURATION_SECONDS, (span / 3) * LOCATE_DURATION_SECONDS),
+  );
+};
+
 export const WeatherMap: React.FC<WeatherMapProps> = ({
   mode,
   cities,
@@ -642,11 +663,17 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     }
   }, [cities, mode, onSelectCity, timelineForecastHour, currentTier, userLocationCoords, userLocationCity]);
 
-  // Smoothly fly to user location when requested
+  // Slowly fly in to the user's location when requested — same camera as the
+  // hazard (Streets) map. It used to stop at zoom 10 over 1.5s, which felt like
+  // a small nudge rather than a zoom-in on the pin; the target is street level
+  // now and the duration follows the hazard map's zoom-per-second pace.
   useEffect(() => {
     const map = mapInstanceRef.current;
     if (!map || !userLocationCoords) return;
-    map.flyTo(userLocationCoords, 10, { duration: 1.5 });
+    map.flyTo(userLocationCoords, LOCATE_ZOOM, {
+      duration: locateFlightDuration(map.getZoom()),
+      easeLinearity: LOCATE_EASE_LINEARITY,
+    });
   }, [userLocationCoords]);
 
   return (

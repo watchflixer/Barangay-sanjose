@@ -307,6 +307,14 @@ document.addEventListener('click', function (e) {
   window.open(link.href, '_blank', 'noopener,noreferrer');
 }, true);
 
+// Mirrors locateFlightDuration() in src/lib/locateCamera.ts: keep the hazard
+// map's pace (zoom 13→16 in 1.6s) whatever zoom this map is currently on, and
+// never fly faster than that. tests/locate-camera-parity.test.ts checks it.
+function locateFlightDuration() {
+  const span = Math.abs(16 - map.getZoom());
+  return Math.min(2.6, Math.max(1.6, (span / 3) * 1.6));
+}
+
 let floodUserMarker = null;
 function showFloodUserLocation(lat, lng) {
   if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
@@ -324,7 +332,13 @@ function showFloodUserLocation(lat, lng) {
   }
   // Release maxBounds so the camera can always reach the user's location, just like the Incident Map.
   map.setMaxBounds(null);
-  map.flyTo([lat, lng], 16, { duration: 1.6, easeLinearity: 0.25 });
+  // SLOW LOCATE FLIGHT — the hazard (Streets) map's camera, copied here because
+  // this page cannot import src/lib/locateCamera.ts:
+  //   zoom 16, never faster than 1.6s, one zoom level per ~0.53s, capped 2.6s,
+  //   easeLinearity 0.25 (Leaflet's fly-arc — the zoom-in glides, never dives).
+  // Do not turn this into setView/jumpTo: the slow zoom-in on the pin IS the
+  // feature.
+  map.flyTo([lat, lng], 16, { duration: locateFlightDuration(), easeLinearity: 0.25 });
 }
 
 function hasHostAppParent() {
