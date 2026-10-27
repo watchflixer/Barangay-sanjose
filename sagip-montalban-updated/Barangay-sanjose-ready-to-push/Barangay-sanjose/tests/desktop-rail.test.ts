@@ -93,3 +93,20 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   const displayRules = css.match(/#app-navbar[\s\S]{0,40}display:/g) ?? [];
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
+
+test('the incident feed is a rounded floating card on laptop/desktop only', () => {
+  // The panel is identifiable from CSS.
+  assert.match(app, /id="app-sidebar-panel"/);
+
+  const card = /@media \(min-width: 1024px\) \{\s*#app-sidebar-panel \{[\s\S]*?border-radius:\s*16px;[\s\S]*?\}/;
+  assert.match(css, card, 'the desktop card must define the 16px radius inside the 1024px query');
+  assert.match(css, /#app-sidebar-panel \{[\s\S]*?box-shadow:[\s\S]*?\}/);
+  assert.match(css, /#app-sidebar-panel \{[\s\S]*?height:\s*calc\(100% - 20px\);/);
+  // The inner <aside>'s full-bleed right border/shadow is dropped on desktop.
+  assert.match(css, /#app-sidebar-panel > aside \{\s*border-right:\s*0;/);
+
+  // Nothing here may leak into phone widths: the drawer must stay full-height.
+  for (const [block] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
+    assert.doesNotMatch(block, /app-sidebar-panel/, 'a phone-only media query must not restyle the feed');
+  }
+});
