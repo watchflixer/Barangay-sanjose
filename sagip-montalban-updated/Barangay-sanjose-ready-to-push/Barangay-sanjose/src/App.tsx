@@ -263,7 +263,12 @@ export default function App() {
       />
 
       {/* Main Workspace Layout */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div
+        className="flex-1 flex overflow-hidden relative"
+        /* Lets the desktop CSS move the map's own left-hand controls beside the
+           floating feed card, and put them back when the feed is collapsed. */
+        data-feed-open={desktopFeedOpen ? 'true' : 'false'}
+      >
         {/* Google-Maps-style icon rail. Renders on laptop/desktop widths only
             (all of its CSS sits behind @media (min-width: 1024px)), so the
             Android/iPhone portrait layout is untouched. */}
