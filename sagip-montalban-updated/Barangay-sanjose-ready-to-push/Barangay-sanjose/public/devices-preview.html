@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Device Preview · HazardSync</title>
+<style>
+  :root {
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --stage: #e9edf3;
+    --accent: #2563eb;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--stage);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ------------------------------ toolbar ------------------------------ */
+  header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 9px 14px;
+    background: #fff;
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .07);
+    z-index: 5;
+  }
+  .brand { display: flex; align-items: baseline; gap: 8px; }
+  .brand strong { font-size: 13px; letter-spacing: -.01em; }
+  .brand span { font-size: 11px; color: var(--muted); }
+
+  .pick { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  select {
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink);
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    min-width: 268px;
+    max-width: 42vw;
+  }
+  select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    background: #fff;
+    border: 0;
+    padding: 6px 11px;
+    cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: #eef2ff; color: #3730a3; }
+  .seg button:hover:not([aria-pressed="true"]) { background: #f8fafc; }
+
+  .btn {
+    font: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink);
+    padding: 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+  }
+  .btn:hover { background: #f8fafc; }
+  .btn:active { transform: scale(.97); }
+
+  .spacer { flex: 1 1 auto; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .chip b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .chip.desktop { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
+  .chip.desktop b { color: #312e81; }
+  .chip.drawer { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+  .chip.drawer b { color: #14532d; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ------------------------------- stage ------------------------------- */
+  .stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    overflow: auto;
+    padding: 18px;
+    background:
+      radial-gradient(circle at 50% 0%, #f4f7fb 0%, var(--stage) 70%);
+  }
+
+  /* Sized to the SCALED device, so centring is exact in both fit and 100%. */
+  .wrap {
+    position: relative;
+    margin: auto;          /* centres without clipping when content is larger */
+    flex: 0 0 auto;
+  }
+
+  .device {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+    overflow: hidden;
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid #cfd6e2;
+    box-shadow:
+      0 18px 40px rgba(15, 23, 42, .18),
+      0 3px 10px rgba(15, 23, 42, .10);
+    will-change: transform;
+  }
+  .device iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #fff;
+  }
+
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <strong>Device Preview</strong>
+      <span>HazardSync</span>
+    </div>
+
+    <label class="pick" for="devices">
+      Device
+      <select id="devices"></select>
+    </label>
+
+    <div class="seg" role="group" aria-label="Zoom">
+      <button type="button" id="zoomFit"  aria-pressed="true">Fit</button>
+      <button type="button" id="zoomFull" aria-pressed="false">100%</button>
+    </div>
+
+    <button class="btn" id="reload" type="button" title="Reload the app inside the frame">Reload</button>
+
+    <div class="spacer"></div>
+
+    <span class="chip" id="size"><b>—</b></span>
+    <span class="chip" id="layout"><span class="dot"></span><b>—</b></span>
+  </header>
+
+  <main class="stage" id="stage">
+    <div class="wrap" id="wrap">
+      <div class="device" id="device">
+        <iframe id="view" title="HazardSync device preview" src="/"></iframe>
+      </div>
+    </div>
+  </main>
+
+
+<script>
+(function () {
+  // CSS pixels of the device viewport, portrait and landscape.
+  // Layout rule (index.css DEVICE PROFILES): landscape >=641px = desktop,
+  // every portrait view = drawer.
+  // Built from helpers so every phone/tablet automatically gets BOTH
+  // orientations — the app layout depends on it (landscape = desktop rail +
+  // feed, portrait = drawer).
+  var DEVICES = [];
+
+  function pair(group, label, w, h) {
+    DEVICES.push(
+      { group: group, name: label + ' · portrait ' + w + ' × ' + h, w: w, h: h },
+      { group: group, name: label + ' · landscape ' + h + ' × ' + w, w: h, h: w }
+    );
+  }
+
+  function single(group, name, w, h) {
+    DEVICES.push({ group: group, name: name, w: w, h: h });
+  }
+
+  /* ---------------- desktop ---------------- */
+  single('Desktop', 'Desktop · 1440 × 900',        1440, 900);
+  single('Desktop', 'Laptop · 1280 × 800',         1280, 800);
+  single('Desktop', 'Laptop (small) · 1024 × 768', 1024, 768);
+
+  /* ---------------- iPad ---------------- */
+  pair('iPad', 'iPad Pro 12.9"', 1024, 1366);
+  pair('iPad', 'iPad Air 10.9"',  820, 1180);
+  pair('iPad', 'iPad mini',       768, 1024);
+
+  /* ---------------- Android tablet ---------------- */
+  pair('Android tablet', 'Galaxy Tab S8', 800, 1280);
+
+  /* ---------------- iPhone ---------------- */
+  pair('iPhone', 'iPhone 14 Pro',           393, 852);
+  pair('iPhone', 'iPhone SE (2nd/3rd gen)', 375, 667);
+  pair('iPhone', 'iPhone 12 / 13 mini',     375, 812);
+  pair('iPhone', 'iPhone 12 / 13 / 14',     390, 844);
+  pair('iPhone', 'iPhone 14 Plus',          428, 926);
+
+  /* ---------------- iPhone (legacy) ---------------- */
+  pair('iPhone (legacy)', 'iPhone 6 / 6s / 7 / 8',        375, 667);
+  pair('iPhone (legacy)', 'iPhone 6 / 7 / 8 Plus',        414, 736);
+  pair('iPhone (legacy)', 'iPhone 5 / 5s / SE (1st gen)', 320, 568);
+  pair('iPhone (legacy)', 'iPhone X / XS / 11 Pro',       375, 812);
+  pair('iPhone (legacy)', 'iPhone XR / 11',               414, 896);
+
+  /* ---------------- Android ---------------- */
+  pair('Android', 'Pixel 7',  412, 915);
+  pair('Android', 'Pixel 4a', 393, 851);
+
+  /* ---------------- Android (legacy) ----------------
+     360 × 640 is the classic Android baseline (Galaxy S5, J7, Note 4,
+     Nexus 5, Moto G4 …), so those share one entry instead of six dupes. */
+  pair('Android (legacy)', 'Galaxy S5 / J7 / Note 4 / Nexus 5', 360, 640);
+  pair('Android (legacy)', 'Galaxy S8 / S9',                    360, 740);
+  pair('Android (legacy)', 'Nexus 5X / 6P',                     412, 732);
+  pair('Android (legacy)', 'Pixel 2 / 2 XL',                    411, 731);
+  pair('Android (legacy)', 'Huawei P20 / P30',                  360, 748);
+  pair('Android (legacy)', 'Xiaomi Redmi Note 7',               393, 786);
+
+  var select = document.getElementById('devices');
+  var stage  = document.getElementById('stage');
+  var wrap   = document.getElementById('wrap');
+  var device = document.getElementById('device');
+  var view   = document.getElementById('view');
+  var sizeEl = document.getElementById('size');
+  var layout = document.getElementById('layout');
+  var btnFit = document.getElementById('zoomFit');
+  var btnFull= document.getElementById('zoomFull');
+
+  /* ---- build the grouped dropdown ---- */
+  var groups = Object.create(null);
+  DEVICES.forEach(function (d, i) {
+    var g = groups[d.group];
+    if (!g) {
+      g = groups[d.group] = document.createElement('optgroup');
+      g.label = d.group;
+      select.appendChild(g);
+    }
+    var o = document.createElement('option');
+    o.value = String(i);
+    o.textContent = d.name;
+    g.appendChild(o);
+  });
+
+  var current = 0;
+  var mode = 'fit';          // 'fit' | 'full'
+
+  /* ---- layout maths ---- */
+  function scaleFor(d) {
+    if (mode === 'full') return 1;
+    var pad = 36;                                   // 18px each side
+    var availW = Math.max(80, stage.clientWidth  - pad);
+    var availH = Math.max(80, stage.clientHeight - pad);
+    return Math.max(0.05, Math.min(1, availW / d.w, availH / d.h));
+  }
+
+  function render() {
+    var d = DEVICES[current];
+    var s = scaleFor(d);
+
+    // The device keeps its true pixel size and is scaled from the top-left...
+    device.style.width  = d.w + 'px';
+    device.style.height = d.h + 'px';
+    device.style.transform = 'scale(' + s + ')';
+
+    // ...while the wrapper takes exactly the scaled footprint, so the stage
+    // centres it perfectly (no negative-margin hacks, no clipping).
+    wrap.style.width  = (d.w * s) + 'px';
+    wrap.style.height = (d.h * s) + 'px';
+
+    sizeEl.innerHTML = '<b>' + d.w + ' × ' + d.h + '</b> px' +
+      (s < 0.999 ? ' · ' + Math.round(s * 100) + '%' : ' · 100%');
+
+    // index.css: desktop layout = LANDSCAPE from 641px up; portrait = drawer.
+    var isDesktop = d.w > d.h && d.w >= 641;
+    layout.className = 'chip ' + (isDesktop ? 'desktop' : 'drawer');
+    layout.innerHTML = '<span class="dot"></span><b>' +
+      (isDesktop ? 'Desktop layout · rail + feed' : 'Drawer layout · top navbar') + '</b>';
+
+    btnFit.setAttribute('aria-pressed',  String(mode === 'fit'));
+    btnFull.setAttribute('aria-pressed', String(mode === 'full'));
+    document.title = 'Device Preview · ' + d.w + ' × ' + d.h;
+  }
+
+  function reloadFrame() {
+    try { view.contentWindow.location.reload(); }
+    catch (e) { view.src = '/'; }
+  }
+
+  function pick(index, doReload) {
+    current = index;
+    select.value = String(index);
+    render();
+    if (doReload) reloadFrame();      // re-mount at the new size for a correct first paint
+  }
+
+  select.addEventListener('change', function () { pick(Number(select.value), true); });
+
+  btnFit.addEventListener('click', function () { mode = 'fit';  render(); });
+  btnFull.addEventListener('click', function () { mode = 'full'; render(); });
+
+  document.getElementById('reload').addEventListener('click', reloadFrame);
+
+  // Re-fit whenever the window (or the flex stage) changes size.
+  if (window.ResizeObserver) new ResizeObserver(render).observe(stage);
+  window.addEventListener('resize', render);
+
+  // Arrow keys cycle devices when the dropdown is not focused.
+  window.addEventListener('keydown', function (e) {
+    if (e.target && e.target.tagName === 'SELECT') return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault(); pick(Math.min(DEVICES.length - 1, current + 1), true);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); pick(Math.max(0, current - 1), true);
+    }
+  });
+
+  pick(0, false);   // start on Desktop 1440 × 900
+})();
+</script>
+</body>
+</html>

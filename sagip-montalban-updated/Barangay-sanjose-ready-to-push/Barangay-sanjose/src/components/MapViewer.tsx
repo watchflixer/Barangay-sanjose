@@ -47,6 +47,37 @@ import {
   LightbulbOff
 } from 'lucide-react';
 
+/**
+ * STREET HAZARD MAP — starting zoom.
+ *
+ * Default is 13 (minZoom 13): tight on Barangay San Jose.
+ *
+ * On iPhone 5 / 5s / SE (1st gen) PORTRAIT — 320 x 568 — that framing crops the
+ * barangay outline on the narrow canvas, so the map opens a step further out
+ * (zoom 12) with minZoom 11, then nudged back in HALF a step (12.5) because a
+ * full step overshoots. Everything else keeps zoom 13 / minZoom 13.
+ *
+ * The half step needs `zoomSnap: 0.5`; with the default snap of 1, Leaflet
+ * rounds 12.5 back to 13. The snap is viewport-scoped as well, so every other
+ * device keeps its whole-step zoom buttons.
+ *
+ * The query is the exact portrait-phone media query the CSS device profiles
+ * use, so desktop, tablets and every other phone are untouched.
+ */
+const SMALL_PORTRAIT_QUERY = '(orientation: portrait) and (max-width: 360px)';
+
+const isSmallPortraitViewport = () =>
+  typeof window !== 'undefined' && window.matchMedia(SMALL_PORTRAIT_QUERY).matches;
+
+/** Initial zoom of the street hazard map for this viewport. */
+const hazardStartZoom = () => (isSmallPortraitViewport() ? 12.5 : 13);
+
+/** Lower bound the camera may pull back to. */
+const hazardMinZoom = () => (isSmallPortraitViewport() ? 11 : 13);
+
+/** Zoom step. 0.5 lets the small portrait view land on 12.5; others stay at 1. */
+const hazardZoomSnap = () => (isSmallPortraitViewport() ? 0.5 : 1);
+
 interface MapViewerProps {
   alerts: HazardAlert[];
   selectedAlert: HazardAlert | null;
@@ -274,9 +305,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     const map = new L.Map(mapContainerRef.current, {
       center: SAN_JOSE_CENTER,
-      zoom: 13,
-      minZoom: 13,
+      zoom: hazardStartZoom(),
+      minZoom: hazardMinZoom(),
       maxZoom: 18,
+      zoomSnap: hazardZoomSnap(),
       maxBounds: mapSettings.lockCameraToBounds ? maxBounds : undefined,
       maxBoundsViscosity: 1.0, // Hard lock - rubberband bouncing back
       zoomControl: false, // Zoom buttons are custom buttons in the left control stack, below 'Show your location'
@@ -441,7 +473,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     const t2 = setTimeout(() => {
       mapInstanceRef.current?.invalidateSize();
       // re-center as a safety net in case the view got stuck while hidden
-      mapInstanceRef.current?.setView(SAN_JOSE_CENTER, 13, { animate: false });
+      mapInstanceRef.current?.setView(SAN_JOSE_CENTER, hazardStartZoom(), { animate: false });
     }, 250);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [showFloodProneBlank]);
@@ -967,7 +999,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
 
     // Smooth fast recenter back to Barangay San Jose center
-    mapInstanceRef.current.flyTo(SAN_JOSE_CENTER, 13, {
+    mapInstanceRef.current.flyTo(SAN_JOSE_CENTER, hazardStartZoom(), {
       duration: 0.75,
       easeLinearity: 0.25,
     });
@@ -1060,7 +1092,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       </div>
 
       {/* Floating GIS controls stay mounted beneath the mobile drawer while it slides in. */}
-      <div className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${showFloodProneBlank || showTrafficMap || showWeather || helpFilterOpen ? 'hidden' : ''}`}>
+      <div id="map-control-stack" className={`absolute flex flex-col gap-1.5 ${showWeather ? 'left-4 top-[110px] sm:top-[82px] z-50' : showFloodProneBlank || showTrafficMap || showHelpCenter ? 'left-4 top-4 z-50' : 'left-4 top-4 z-40'} ${showFloodProneBlank || showTrafficMap || showWeather || helpFilterOpen ? 'hidden' : ''}`}>
         {/* These controls operate on the embedded Panahon map in Weather mode. */}
         <button
           id="btn-recenter-gis"
@@ -1250,7 +1282,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
         {/* Weather's zoom pair shares one white card, as in the GIS controls. */}
         {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && (
-          <div className={showWeather ? 'flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs' : 'contents'}>
+          <div
+            id="zoom-pair"
+            className={showWeather ? 'flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs' : 'contents'}
+          >
             <button
               id="btn-zoom-in"
               onClick={handleZoomIn}

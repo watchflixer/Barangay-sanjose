@@ -1385,16 +1385,16 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
    — the incident feed next to the rail is permanently docked, so it toggles
    nothing.
 
-   LAPTOP + DESKTOP ONLY. The base state is `display: none`, and every visual
-   rule below sits inside `@media (min-width: 1024px)`, so Android/iPhone
-   portrait views (and any tablet width) never see it and keep their current
-   layout and behaviour untouched.
+   LANDSCAPE (>=641px) ONLY. The base state is `display: none`, and every
+   visual rule below sits inside `@media (orientation: landscape) and
+   (min-width: 480px)`, so every PORTRAIT view — phone or tablet — never sees
+   it and keeps the drawer layout.
    ========================================================================== */
 .desktop-rail {
   display: none;
 }
 
-@media (min-width: 1024px) {
+@media (orientation: landscape) and (min-width: 480px) {
   .desktop-rail {
     display: flex;
     flex: 0 0 84px;
@@ -1501,17 +1501,18 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: NO TOP NAVBAR
+   LANDSCAPE: NO TOP NAVBAR
    --------------------------------------------------------------------------
-   On laptop/desktop the app is rail + map (Google-Maps style), so the whole
-   top bar — brand, alert chips, clock, ●●● menu, Report +, Guide, Donate,
-   Hotlines — is hidden there.
+   In landscape (>=641px) the app is rail + map (Google-Maps style), so the
+   whole top bar — brand, alert chips, clock, ●●● menu, Report +, Guide,
+   Donate, Hotlines — is hidden there.
 
-   MOBILE PORTRAIT IS UNTOUCHED: this rule is inside `@media (min-width:
-   1024px)`, so phones and tablets keep their navbar exactly as it is, along
-   with every function on it.
+   PORTRAIT IS UNTOUCHED: this rule is inside `@media (orientation: landscape)
+   and (min-width: 480px)`, so every portrait phone AND tablet keeps its navbar
+   along with every function on it (minus the per-device trims at the bottom
+   of this file).
    ========================================================================== */
-@media (min-width: 1024px) {
+@media (orientation: landscape) and (min-width: 480px) {
   #app-navbar {
     display: none;
   }
@@ -1555,7 +1556,7 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   min-height: 0;
 }
 
-@media (min-width: 1024px) {
+@media (orientation: landscape) and (min-width: 480px) {
   /* ---- closed only when the chevron has been pressed ------------------ */
   #app-sidebar-panel {
     display: none;
@@ -1589,13 +1590,451 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 /* ==========================================================================
    LAPTOP / DESKTOP: NO COORDINATE BADGE ON THE MAP
    --------------------------------------------------------------------------
-   The bottom-left "BRGY. SAN JOSE | 14.74250°N, 121.13100°E" chip is hidden on
-   laptop/desktop so the map canvas stays clean.
+   The bottom-left "BRGY. SAN JOSE | 14.74250°N, 121.13100°E" chip is hidden in
+   landscape (>=641px) so the map canvas stays clean.
 
-   MOBILE / TABLET UNTOUCHED: this rule only exists from 1024px up.
+   PORTRAIT UNTOUCHED: this rule only exists in landscape from 641px up.
    ========================================================================== */
-@media (min-width: 1024px) {
+@media (orientation: landscape) and (min-width: 480px) {
   #map-coord-badge {
     display: none;
+  }
+}
+
+/* ==========================================================================
+   DEVICE PROFILES
+   --------------------------------------------------------------------------
+   "Desktop layout" = LANDSCAPE from 641px up: icon rail + docked Incident
+   Feeds + no top navbar. "Drawer layout" = every PORTRAIT view: top navbar,
+   slide-in feed. The four blocks above were retargeted to exactly that, so
+   landscape phones (667, 852, 915) and landscape tablets (1024, 1180, 1280,
+   1366) all get the desktop treatment, while portrait phones AND portrait
+   tablets keep the drawer.
+
+   The three sections below fill the gaps:
+
+     1. Narrow landscape (<1024px) — the desktop geometry that Tailwind only
+        ships behind `lg:` has to be restated, otherwise the dock would still
+        be a fixed drawer.
+     2. Portrait >=1024px — `lg:` still makes the panel `relative`, so portrait
+        tablets are explicitly put back on the drawer.
+     3. Navbar trims per device class (portrait only).
+   ========================================================================== */
+
+/* ---- 1. Landscape below 1024px: complete the desktop dock --------------
+   Tailwind's `lg:` classes only switch on at 1024px, so on a 667px / 852px /
+   915px landscape screen the panel would still be `fixed`, off-canvas and
+   384px wide. These rules supply the `lg:` values, keyed off the same
+   landscape condition. (`.is-feed-open` keeps the card geometry defined
+   earlier, which is more specific and therefore still wins.) */
+@media (orientation: landscape) and (min-width: 480px) and (max-width: 1023px) {
+  #app-sidebar-panel {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+    width: 25rem;          /* lg:w-[25rem] */
+    height: 100%;          /* lg:h-full  */
+    min-height: 0;
+    transform: none;       /* lg:translate-x-0 */
+    z-index: auto;         /* lg:z-auto */
+  }
+
+  /* `lg:hidden` never kicks in below 1024px, so the drawer's dark scrim would
+     sit over a docked panel. It is not needed there at all. */
+  #app-feed-backdrop {
+    display: none;
+  }
+
+  /* `hidden lg:flex` — the round chevron is the only way to close the docked
+     feed, so it has to exist on these landscape widths too. */
+  #btn-desktop-feed-toggle {
+    display: flex;
+  }
+}
+
+/* ---- 2. Portrait tablets at 1024px+ -----------------------------------
+   `lg:` still applies at 1024px wide, which would leave the panel docked to
+   the left even in portrait. Put those devices back on the drawer: off-canvas
+   until the menu opens it. */
+@media (orientation: portrait) and (min-width: 1024px) {
+  #app-sidebar-panel {
+    position: fixed;
+    top: 4rem;
+    right: auto;
+    bottom: 0;
+    left: 0;
+    width: 24rem;
+    height: auto;
+    min-height: 0;
+    z-index: 70;
+    transform: translateX(-100%);
+  }
+
+  #app-sidebar-panel.is-feed-open {
+    transform: translateX(0);
+  }
+}
+
+/* ---- 3. Navbar trims (portrait only) ----------------------------------
+   PORTRAIT PHONES (<=640px) — Pixel 7 portrait, iPhone SE portrait,
+   iPhone 14 Pro portrait: Report + and ●●● leave the navbar. Both already
+   live in the Incident Feeds header on these sizes, so nothing is lost.
+
+   PORTRAIT TABLETS (>=641px) — Galaxy Tab S8, iPad mini, iPad Air, iPad Pro
+   portrait: the same two go, plus Hotlines and the sidebar (☰) button. */
+@media (orientation: portrait) {
+  #app-navbar #btn-report-hazard,
+  #app-navbar button[aria-label="Options"] {
+    display: none;
+  }
+}
+
+@media (orientation: portrait) and (min-width: 641px) {
+  #app-navbar #btn-emergency-hotlines,
+  #app-navbar #btn-mobile-menu {
+    display: none;
+  }
+}
+
+/* ==========================================================================
+   SMALL-SCREEN PROFILES
+   --------------------------------------------------------------------------
+   Landscape down to 480px now gets the desktop layout (rail + docked feed).
+   On those short, narrow screens the 84px rail and the 400px feed would eat
+   almost the whole map, so both are stepped down until the map keeps a
+   workable canvas — the same balance Pixel 7 landscape already had.
+
+     480–639  · iPhone 5 / 5s / SE1 landscape (568 × 320)
+              · icon-only rail 56px + 200px feed → ~312px of map
+     640–767  · iPhone 6/7/8 landscape (667 × 375)
+              · iPhone 6/7/8 Plus landscape (736 × 414)
+              · rail 64px + 240px feed → ~360–430px of map
+
+   768px and up keep the current 84px rail + 400px feed (iPhone X / XR /
+   Pixel 7 landscape and every tablet), which is already correct.
+   ========================================================================== */
+
+/* ---- 480–639 landscape: icon-only rail, 200px feed -------------------- */
+@media (orientation: landscape) and (min-width: 480px) and (max-width: 639px) {
+  .desktop-rail {
+    flex: 0 0 56px;
+    width: 56px;
+    padding: 6px 0 8px;
+    gap: 2px;
+  }
+
+  /* No room for the labels under the icons at this height. */
+  .desktop-rail__label {
+    display: none;
+  }
+
+  .desktop-rail__item {
+    padding: 6px 0;
+    min-height: 34px;
+  }
+
+  .desktop-rail__icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  .desktop-rail__icon svg {
+    width: 17px;
+    height: 17px;
+  }
+
+  /* Both selectors, so the docked width wins over the 25rem restatement. */
+  #app-sidebar-panel,
+  #app-sidebar-panel.is-feed-open {
+    width: 12.5rem;
+  }
+}
+
+/* ---- 640–767 landscape: slightly wider rail, 240px feed --------------- */
+@media (orientation: landscape) and (min-width: 640px) and (max-width: 767px) {
+  .desktop-rail {
+    flex: 0 0 64px;
+    width: 64px;
+  }
+
+  #app-sidebar-panel,
+  #app-sidebar-panel.is-feed-open {
+    width: 15rem;
+  }
+}
+
+/* ==========================================================================
+   iPhone 5 / 5s / SE (1st gen) PORTRAIT — 320 × 568
+   --------------------------------------------------------------------------
+   The narrowest phone in the matrix. At 320px the navbar row and the feed
+   drawer have no slack, so everything steps down one size: the brand mark
+   and wordmark shrink, the Guide / Donate pills get tighter, and the drawer
+   stops at 100vw − 28px so a strip of the page stays visible behind it
+   instead of the panel feeling edge-to-edge.
+
+   Scoped to <=360px portrait, so Pixel 7 portrait (412), iPhone SE (375),
+   iPhone 14 Pro (393), X/XS (375) and every tablet above them are untouched.
+   ========================================================================== */
+@media (orientation: portrait) and (max-width: 360px) {
+  /* --- navbar: one size down across the row --- */
+  #app-navbar #btn-brand-refresh svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  #app-navbar #btn-brand-refresh [role='heading'] {
+    font-size: 12.5px;
+  }
+
+  #app-navbar #btn-guide,
+  #app-navbar #btn-donate {
+    height: 26px;
+    padding-left: 7px;
+    padding-right: 7px;
+    font-size: 10px;
+    gap: 4px;
+  }
+
+  #app-navbar #btn-guide > span:first-child {
+    width: 15px;
+    height: 15px;
+    font-size: 9px;
+  }
+
+  /* --- incident feed drawer: leave a 28px sliver of page visible --- */
+  #app-sidebar-panel {
+    width: calc(100vw - 56px);
+  }
+
+  /* Tighter header + body padding, so the cards keep their proportions. */
+  #app-sidebar-panel .app-feed-inner > aside > div:first-child {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  #app-sidebar-panel .app-feed-inner > aside > div:nth-child(2) {
+    padding: 8px;
+  }
+}
+
+/* ==========================================================================
+   iPhone 5 / 5s / SE (1st gen) PORTRAIT — 320 × 568
+   --------------------------------------------------------------------------
+   Follow-up pass on the narrowest phone: the navbar's map mark and the whole
+   floating map control stack (recenter, layers, show-your-location, zoom in,
+   zoom out) are one step smaller, so they free up the map instead of crowding
+   the 320px canvas.
+
+     nav map mark      32px → 18px   (and its MapPin 12px → 10px)
+     map controls      32px → 26px   (padding 8px → 5px, icon 16px → 14px)
+
+   Scoped to <=360px portrait only. Pixel 7 (412), iPhone SE (375),
+   iPhone 14 Pro (393), iPhone X/XS (375) and every tablet keep the current
+   sizes untouched.
+   ========================================================================== */
+@media (orientation: portrait) and (max-width: 360px) {
+  /* ---- navbar: smaller map mark + location pin ---- */
+  #app-navbar #btn-brand-refresh > svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  #app-navbar #btn-brand-refresh .lucide-map-pin,
+  #app-navbar #btn-brand-refresh svg:not(:first-of-type) {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* ---- floating map controls: one compact stack ---- */
+  #btn-recenter-gis,
+  #btn-toggle-layers-menu,
+  #btn-show-user-location,
+  #btn-zoom-in,
+  #btn-zoom-out {
+    padding: 5px;
+    border-radius: 5px;
+  }
+
+  #btn-recenter-gis svg,
+  #btn-toggle-layers-menu svg,
+  #btn-show-user-location svg,
+  #btn-zoom-in svg,
+  #btn-zoom-out svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* The stack itself: pull it closer to the corner and tighten the gaps, so
+     the five buttons take noticeably less of the map. */
+  #map-control-stack {
+    gap: 4px;
+    left: 10px;
+    top: 10px;
+  }
+}
+
+/* ==========================================================================
+   iPhone 5 / 5s / SE (1st gen) PORTRAIT — 320 × 568 · WEATHER CARD
+   --------------------------------------------------------------------------
+   The weather overlay keeps its full-size layout everywhere else. At 320px it
+   is the last panel that still crowds the map, so here it shrinks one step:
+   224px → 168px wide, tighter padding, and every text run one size down.
+
+   The colours are untouched — same dark slate glass, same blue cloud, blue
+   droplet and green wind icons. Only box and type metrics change.
+
+   Scoped to <=360px portrait only: Pixel 7 (412), iPhone SE (375),
+   iPhone 14 Pro (393), iPhone X/XS (375) and tablets keep the current card.
+   ========================================================================== */
+@media (orientation: portrait) and (max-width: 360px) {
+  #weather-card {
+    width: 160px;
+    top: 68px;
+    right: 8px;
+    border-radius: 7px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.35);
+  }
+
+  /* ---- header row: cloud + "WEATHER" + refresh ---- */
+  #weather-card > div:first-child {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+
+  #weather-card > div:first-child > div:first-child > svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  #weather-card > div:first-child > div:first-child > div {
+    font-size: 8.5px;
+  }
+
+  #weather-card > div:first-child > button {
+    padding: 0;
+  }
+
+  #weather-card > div:first-child > button svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* ---- body: temperature, feels-like, stat row, timestamp ---- */
+  #weather-card > div:nth-child(2) {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  /* Temperature */
+  #weather-card > div:nth-child(2) > div:first-child > div:first-child {
+    font-size: 19px;
+  }
+
+  /* "Feels like … / condition" */
+  #weather-card > div:nth-child(2) > div:first-child > div:last-child {
+    font-size: 8.5px;
+    line-height: 1.35;
+  }
+
+  /* Humidity / wind / rain row */
+  #weather-card > div:nth-child(2) > div:nth-child(2) {
+    font-size: 8px;
+    gap: 2px;
+    padding-top: 5px;
+  }
+
+  #weather-card > div:nth-child(2) > div:nth-child(2) svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  /* "Updated … PHT" */
+  #weather-card > div:nth-child(2) > div:last-child {
+    font-size: 8px;
+    gap: 3px;
+  }
+
+  #weather-card > div:nth-child(2) > div:last-child svg {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+/* ==========================================================================
+   320 x 568 (iPhone 5 / 5s / SE 1st gen) · MAP CONTROL STACK
+   --------------------------------------------------------------------------
+   Final approach for the +/− pair: the wrapper no longer contributes a box.
+
+   In Weather mode the zoom buttons sit inside `#zoom-pair`, which draws its
+   own hairline and inherited padding — that is what made the pair read wider
+   than Recenter / Layers / Locate even after the cells were resized.
+
+   Now `#zoom-pair` is stripped to a bare 4px-gap column and each zoom button
+   is a standalone 26 x 26 control with the same border, radius and 13px icon
+   as the single buttons above it.
+   ========================================================================== */
+@media (orientation: portrait) and (max-width: 360px) {
+  /* --- single controls: one shared 26px box --- */
+  #map-control-stack #btn-recenter-gis,
+  #map-control-stack #btn-toggle-layers-menu,
+  #map-control-stack #btn-show-user-location {
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #map-control-stack #btn-recenter-gis svg,
+  #map-control-stack #btn-toggle-layers-menu svg,
+  #map-control-stack #btn-show-user-location svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* --- wrapper contributes nothing ---
+     `:not(.contents)` is important: on the hazard map the same node is a
+     `display: contents` wrapper (its buttons must stay siblings of the stack),
+     so only the bordered Weather-mode wrapper is turned into a real column. */
+  #zoom-pair:not(.contents) {
+    box-sizing: border-box;
+    width: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* --- the +/− pair: two standalone 26px buttons --- */
+  #zoom-pair:not(.contents) #btn-zoom-in,
+  #zoom-pair:not(.contents) #btn-zoom-out {
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  #zoom-pair #btn-zoom-in svg,
+  #zoom-pair #btn-zoom-out svg {
+    width: 13px;
+    height: 13px;
   }
 }

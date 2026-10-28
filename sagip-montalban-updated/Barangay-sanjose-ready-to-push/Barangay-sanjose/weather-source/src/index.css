@@ -376,3 +376,118 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
        scale, and adding a transform would override it at equal specificity. */
   }
 }
+
+/* ==========================================================================
+   iPhone 5 / 5s / SE (1st gen) PORTRAIT — 320 x 568 · WEATHER MAP CONTROLS
+   --------------------------------------------------------------------------
+   The weather basemap keeps its 34px control stack (Recenter, Layers, Show
+   your location, Zoom) everywhere else. On the narrowest phone the whole
+   stack steps down one size so the 320px canvas stays usable:
+
+     buttons     34px → 26px   (padding 8px → 5px, 5px radius)
+     icons       16px → 13px
+     corner      16px → 10px   (top / left)
+     gaps        6px  → 4px
+
+   Scoped to <=360px portrait only: every other phone, every tablet and every
+   landscape/desktop width keeps the current stack, including the
+   `min-width: 640px` dock above.
+   ========================================================================== */
+@media (orientation: portrait) and (max-width: 360px) {
+  .ph-map-controls {
+    top: 10px;
+    left: 10px;
+    gap: 4px;
+  }
+
+  .ph-map-controls .ph-ctrl {
+    padding: 5px;
+    border-radius: 5px;
+  }
+
+  .ph-map-controls .ph-ctrl svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   WEATHER MAP CONTROLS — 320 x 568 (iPhone 5 / 5s / SE 1st gen) PORTRAIT
+   --------------------------------------------------------------------------
+   Final approach: the +/− pair no longer relies on wrapper arithmetic.
+
+   It used to be two `p-2` buttons inside a bordered `.ph-ctrl` wrapper, so its
+   outer box was  border(2) + padding(10) + 16px icon + 8px padding ≈ 36px —
+   visibly wider than the 26px buttons above it, and no amount of resizing the
+   inner cells fixed that.
+
+   Now the wrapper is stripped (no border, no padding, transparent) and each
+   zoom button is a standalone 26 x 26 control with the SAME border, radius and
+   icon size as Recenter / Layers / Locate. The pair simply stacks, 4px apart,
+   exactly like two of the buttons above.
+   -------------------------------------------------------------------------- */
+@media (orientation: portrait) and (max-width: 360px) {
+  .ph-map-controls {
+    top: 10px;
+    left: 10px;
+    gap: 4px;
+  }
+
+  /* --- the three single controls --- */
+  .ph-map-controls .ph-ctrl--recenter,
+  .ph-map-controls .ph-ctrl--locate,
+  .ph-map-controls .ph-ctrl--layers > button {
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .ph-map-controls .ph-ctrl svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  /* --- wrappers contribute nothing --- */
+  .ph-map-controls .ph-ctrl--layers,
+  .ph-map-controls .ph-ctrl--zoom {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+    width: auto;
+  }
+
+  /* --- the +/− pair: two standalone 26px buttons --- */
+  .ph-map-controls .ph-ctrl--zoom {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .ph-map-controls .ph-ctrl--zoom > button {
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+    padding: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .ph-map-controls .ph-ctrl--zoom > button svg {
+    width: 13px;
+    height: 13px;
+  }
+}

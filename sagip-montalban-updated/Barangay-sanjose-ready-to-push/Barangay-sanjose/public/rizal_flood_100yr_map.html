@@ -131,6 +131,24 @@
     70%{transform:scale(1.15);opacity:0;}
     100%{transform:scale(1.15);opacity:0;}
   }
+
+  /* ----------------------------------------------------------------------
+     iPhone 5 / 5s / SE (1st gen) PORTRAIT — 320 x 568 · compact map controls
+     Recenter / Layers / Show-your-location (plus the zoom pair on Traffic)
+     step down one size so the narrow 320px canvas stays clear. Scoped to this
+     portrait width only — every other device keeps the 34px buttons, 16px
+     icons and the 16px corner offset.
+     ---------------------------------------------------------------------- */
+  @media (orientation: portrait) and (max-width: 360px){
+    #host-map-controls{top:10px;left:10px;gap:4px;}
+    .host-map-control{width:26px;height:26px;padding:5px;border-radius:5px;}
+    .host-map-control svg{width:13px;height:13px;}
+    #host-layer-menu{left:34px;width:min(232px,calc(100vw - 52px));padding:8px;}
+    .leaflet-top.leaflet-left{top:96px;left:6px;}
+    .leaflet-top .leaflet-control{margin-top:6px;}
+    .leaflet-left .leaflet-control{margin-left:6px;}
+    .leaflet-bar a{width:26px;height:26px;line-height:26px;font-size:18px;}
+  }
 </style>
 </head>
 <body>
