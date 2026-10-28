@@ -1380,9 +1380,10 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 /* ==========================================================================
    DESKTOP / LAPTOP LEFT RAIL (Google-Maps-style)
    --------------------------------------------------------------------------
-   The narrow icon strip on the far left: Ask Maps, Saved, Recents and Get
-   app. (The hamburger was removed — it had nothing left to toggle once the
-   incident feed became permanently docked.)
+   The narrow icon strip on the far left: hamburger, Ask Maps, Saved, Recents
+   and Get app. The hamburger is decorative only (`.desktop-rail__item--static`)
+   — the incident feed next to the rail is permanently docked, so it toggles
+   nothing.
 
    LAPTOP + DESKTOP ONLY. The base state is `display: none`, and every visual
    rule below sits inside `@media (min-width: 1024px)`, so Android/iPhone
@@ -1447,6 +1448,16 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 
   .desktop-rail__item:hover .desktop-rail__icon {
     background: #f1f3f4;
+  }
+
+  /* Decorative rail item (the hamburger): looks the same, but it is not a
+     control — default cursor, no hover highlight, no pointer feedback. */
+  .desktop-rail__item--static {
+    cursor: default;
+  }
+
+  .desktop-rail__item--static:hover .desktop-rail__icon {
+    background: transparent;
   }
 
   .desktop-rail__item.is-active .desktop-rail__icon {

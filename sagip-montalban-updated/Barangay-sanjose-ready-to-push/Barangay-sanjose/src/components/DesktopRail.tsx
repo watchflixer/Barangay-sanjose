@@ -1,13 +1,15 @@
 import React from 'react';
-import { Bookmark, History, Search, Smartphone, Sparkles } from 'lucide-react';
+import { Bookmark, History, Menu, Search, Smartphone, Sparkles } from 'lucide-react';
 
 /**
  * DESKTOP / LAPTOP RAIL — Google-Maps-style icon rail on the far left.
  *
- * Visual only (no handlers): the narrow strip with "Ask Maps", "Saved",
- * "Recents" and "Get app" at the bottom. The incident feed card next to it
- * is permanently docked — it has no X, no `‹` tab and no hamburger — so
- * nothing anywhere in the app can hide it on laptop/desktop.
+ * Visual only (no handlers): the narrow strip with the hamburger, "Ask Maps",
+ * "Saved", "Recents" and "Get app" at the bottom.
+ *
+ * The hamburger is DECORATIVE — kept for the Google-Maps look, wired to
+ * nothing. The incident feed card beside the rail is permanently docked (no
+ * X, no `‹` tab), so no control anywhere can hide it on laptop/desktop.
  *
  * IMPORTANT: this renders ONLY on laptop/desktop widths. Every rule lives in
  * index.css behind `@media (min-width: 1024px)` and the base state is
@@ -16,6 +18,17 @@ import { Bookmark, History, Search, Smartphone, Sparkles } from 'lucide-react';
  */
 export const DesktopRail: React.FC = () => (
   <nav className="desktop-rail" aria-label="Map shortcuts">
+    {/* Hamburger — purely decorative, exactly where Google Maps puts its rail
+        menu. It is wired to nothing and touches no state: the incident feed is
+        permanently docked, so there is nothing here to open or close.
+        It is a span, not a button, and hidden from assistive tech — so it is
+        not focusable and nobody thinks it is a broken control. */}
+    <span className="desktop-rail__item desktop-rail__item--static" aria-hidden="true">
+      <span className="desktop-rail__icon">
+        <Menu className="h-5 w-5" strokeWidth={2} />
+      </span>
+    </span>
+
     {/* Active item, exactly like Google Maps' highlighted "Ask Maps" */}
     <button
       type="button"

@@ -69,12 +69,17 @@ test('the rail is mounted on the desktop layout and is purely visual', () => {
   const wired = rail.match(/onClick=\{[^}]*\}/g) ?? [];
   assert.equal(wired.length, 0, 'the rail must stay purely visual');
   assert.doesNotMatch(rail, /onToggleFeed|feedOpen/);
-  // The hamburger is gone for good: it had nothing left to open or close.
-  assert.doesNotMatch(rail, /\bMenu\b/, 'the rail hamburger must not come back');
-  assert.doesNotMatch(rail, /aria-label="Menu"/);
-  assert.doesNotMatch(rail, /desktop-rail__item[^>]*id=/);
+  // The hamburger is back on request — but DECORATIVE: a span, not a
+  // button, with no handler and hidden from assistive tech.
+  assert.match(rail, /<Menu className=/);
+  assert.match(rail, /desktop-rail__item--static/);
+  assert.match(rail, /aria-hidden="true"/);
+  const hamburger = rail.slice(rail.indexOf('Hamburger'), rail.indexOf('Active item'));
+  assert.doesNotMatch(hamburger, /<button/, 'the hamburger must not be a button');
+  assert.doesNotMatch(hamburger, /onClick|aria-label|tabIndex/, 'the hamburger must stay unwired');
+  assert.match(hamburger, /<span className="desktop-rail__item desktop-rail__item--static"/);
   // The items the design calls for.
-  for (const label of ['Ask Maps', 'Saved', 'Recents', 'Get app']) {
+  for (const label of ['Menu', 'Ask Maps', 'Saved', 'Recents', 'Get app']) {
     assert.ok(rail.includes(label), `missing rail item: ${label}`);
   }
   // The location thumbnail chip was removed on request — it must not come back
@@ -137,6 +142,16 @@ test('the ‹ collapse tab is removed and stays gone', () => {
   assert.match(css, /\.app-feed-inner \{\s*height: 100%;\s*min-height: 0;\s*\}/);
 });
 
+test('the decorative hamburger has no hover or pointer feedback', () => {
+  // It looks like the other rail items but must not feel clickable.
+  assert.match(css, /\.desktop-rail__item--static \{\s*cursor: default;\s*\}/);
+  assert.match(css, /\.desktop-rail__item--static:hover \.desktop-rail__icon \{\s*background: transparent;\s*\}/);
+  // The style lives behind the laptop/desktop media query, like the rest.
+  const railSectionEnd = css.indexOf('NO COORDINATE BADGE ON THE MAP');
+  const statics = css.indexOf('.desktop-rail__item--static');
+  assert.ok(css.indexOf('@media (min-width: 1024px)') < statics && statics < railSectionEnd);
+});
+
 test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => {
   const mapViewer = read('../src/components/MapViewer.tsx');
   assert.match(mapViewer, /id="map-coord-badge"/);
@@ -182,9 +197,11 @@ test('the incident feed is permanently docked on laptop/desktop', () => {
   assert.match(app, /lg:w-\[25rem\]/);
   assert.match(app, /lg:relative/);
 
-  // The rail hamburger — the last thing that could hide it — is removed too,
-  // and the rail is mounted with no props at all.
-  assert.doesNotMatch(rail, /\bMenu\b/);
+  // The rail hamburger is decorative only, so it cannot hide the feed either…
+  assert.match(rail, /desktop-rail__item--static/);
+  const hamburger = rail.slice(rail.indexOf('Hamburger'), rail.indexOf('Active item'));
+  assert.doesNotMatch(hamburger, /onClick|<button/, 'the hamburger must stay unwired');
+  // …and the rail is mounted with no props at all.
   assert.match(app, /<DesktopRail \/>/);
 
   // Phones keep their own drawer logic untouched.
