@@ -244,7 +244,7 @@ export default function App() {
         </div>
 
         {/* Floating Bottom Overlays (Timeline Scrubber + Legend Card) */}
-        <div className="absolute bottom-6 left-3 right-3 z-[1000] flex flex-col gap-2 pointer-events-none">
+        <div className="absolute bottom-4 left-3 right-3 z-[1000] flex flex-col gap-1.5 pointer-events-none">
           <div className="pointer-events-auto">
             <PlaybackControls
               mode={currentMode}

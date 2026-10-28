@@ -46,18 +46,18 @@ export const LegendCard: React.FC<LegendCardProps> = ({ mode }) => {
   const config = getLegendConfig();
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xl select-none">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-bold tracking-wider text-black uppercase">
+    <div className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-xl select-none">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[9px] font-bold tracking-wider text-black uppercase">
           {config.title}
         </span>
       </div>
 
       {/* Progress Bar / Gradient Track */}
-      <div className={`w-full h-2 rounded-full ${config.gradientClass} ${mode === 'weather' ? '' : 'border border-slate-200'} shadow-inner`} />
+      <div className={`w-full h-1.5 rounded-full ${config.gradientClass} ${mode === 'weather' ? '' : 'border border-slate-200'} shadow-inner`} />
 
       {/* Scale Labels */}
-      <div className="flex items-center justify-between text-[10px] text-black mt-1.5 font-medium">
+      <div className="flex items-center justify-between text-[8.5px] text-black mt-1 font-medium">
         <span>{config.leftLabel}</span>
         <span>{config.midLabel}</span>
         <span>{config.rightLabel}</span>

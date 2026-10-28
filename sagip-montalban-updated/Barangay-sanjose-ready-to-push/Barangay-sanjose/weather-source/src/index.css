@@ -134,10 +134,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.2);
 }
 
-/* Monochrome timeline for the white Current Conditions card only. */
+/* Monochrome timeline for the white Current Conditions card only — kept
+   compact so the whole card stays a slim strip. */
 input[type="range"].panahon-monochrome-range::-webkit-slider-runnable-track {
   background: #000;
-  height: 4px;
+  height: 3px;
   border-radius: 9999px;
 }
 
@@ -145,12 +146,15 @@ input[type="range"].panahon-monochrome-range::-webkit-slider-thumb {
   background: #fff;
   border: 2px solid #000;
   box-shadow: none;
-  margin-top: -6px;
+  width: 11px;
+  height: 11px;
+  /* (track 3px − thumb 11px) / 2 keeps it centred on the rail. */
+  margin-top: -4px;
 }
 
 input[type="range"].panahon-monochrome-range::-moz-range-track {
   background: #000;
-  height: 4px;
+  height: 3px;
   border-radius: 9999px;
 }
 
@@ -158,8 +162,8 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
   background: #fff;
   border: 2px solid #000;
   box-shadow: none;
-  width: 14px;
-  height: 14px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
 }
 
