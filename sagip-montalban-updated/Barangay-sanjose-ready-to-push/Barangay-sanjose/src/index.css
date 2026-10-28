@@ -1506,17 +1506,19 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: THE INCIDENT FEEDS CARD IS THE ONLY CARD
+   LAPTOP / DESKTOP: THE INCIDENT FEEDS CARD FLOATS OVER THE MAP
    --------------------------------------------------------------------------
-   Only the feed itself looks like a card (24px radius, hairline, soft shadow).
-   The wrapper around it is invisible — `background: none`, no border, no
-   shadow — so nothing paints around the feed except the map. The rail's ☰ is
-   what shows/hides the panel.
+   The card floats above the map — the 8px gap around it shows the basemap, not
+   a slab. The wrapper is taken out of the flow (so the map runs the full width
+   behind it) and paints nothing at all; the feed itself is the only card.
 
-     #app-sidebar-panel           → transparent wrapper (no background)
+     #app-sidebar-panel           → transparent, out-of-flow float
      #app-sidebar-panel …> aside  → the incident-feeds card
 
-   MOBILE PORTRAIT IS UNTOUCHED: every rule is inside `@media (min-width:
+   Because the card now covers the map's left edge, the map's own left-hand
+   controls move beside it (and move back when the feed is closed).
+
+   MOBILE PORTRAIT IS UNTOUCHED: every rule here is inside `@media (min-width:
    1024px)`, so phones keep the flat, full-height slide-in drawer.
    ========================================================================== */
 /* Full height at EVERY width: on phones this wrapper just passes the drawer's
@@ -1527,27 +1529,46 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 @media (min-width: 1024px) {
-  /* ---- invisible wrapper: no background at all ----------------------- */
+  /* ---- the floating wrapper: out of flow, paints nothing -------------- */
   #app-sidebar-panel {
-    position: relative;
-    margin: 8px 10px 8px 8px;
-    height: calc(100% - 16px);
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    /* 84px rail + 8px gap */
+    left: 92px;
+    width: 25rem;
+    height: auto;
+    margin: 0;
     padding: 0;
     background: none;
     border: 0;
     border-radius: 0;
     box-shadow: none;
-    /* the card itself clips its own content; the wrapper must let it breathe */
     overflow: visible;
+    /* above the map's own controls (z-40), below modals (z-50+) */
+    z-index: 45;
+    /* let map clicks through the gap around the card */
+    pointer-events: none;
   }
 
   /* ---- the incident feeds card --------------------------------------- */
   #app-sidebar-panel > .app-feed-inner > aside {
     height: 100%;
+    pointer-events: auto;
     border: 1px solid #e6e8eb;
     border-radius: 24px;
     box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
     overflow: hidden;
+  }
+
+  /* ---- keep the map's left-hand controls clickable -------------------- */
+  #map-control-stack {
+    left: calc(25rem + 1.5rem);
+  }
+
+  /* …and put them back when the feed is collapsed from the rail. */
+  [data-feed-open='false'] #map-control-stack {
+    left: 1rem;
   }
 }
 
