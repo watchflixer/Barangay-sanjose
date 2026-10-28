@@ -239,7 +239,10 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
   .ph-playback {
     width: min(34rem, 100%);
     margin-inline: auto;
-    padding: 6px 10px;
+    /* Slightly taller than the first pass: padding 6px -> 9px and the play
+       button 28px -> 30px. Width is unchanged, so the scrubber keeps its
+       length and the labels keep their breathing room. */
+    padding: 9px 12px;
     gap: 10px;
     border-radius: 12px;
     box-shadow:
@@ -249,13 +252,13 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
 
   /* 40px -> 28px circular play/pause control */
   .ph-playback .ph-playback__button {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
   }
 
   .ph-playback .ph-playback__button svg {
-    width: 12px;
-    height: 12px;
+    width: 13px;
+    height: 13px;
   }
 
   .ph-playback .ph-playback__meta {
