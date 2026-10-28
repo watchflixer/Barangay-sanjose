@@ -1,20 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  X, 
-  Flame, 
-  Waves, 
-  Zap, 
+import {
+  X,
+  Flame,
+  Waves,
+  Zap,
   LightbulbOff,
-  Droplets, 
-  AlertOctagon, 
-  MapPin, 
+  Droplets,
+  AlertOctagon,
+  MapPin,
   Crosshair,
   Send,
   Camera,
   Upload,
   Image as ImageIcon,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { HazardAlert, HazardType, HazardSeverity } from '../types';
 import { INITIAL_HAZARDS, SAN_JOSE_SITIOS } from '../data/geoData';
@@ -43,7 +43,7 @@ const COMMON_STREETS = [
   'Sub-Urban Main Entrance Bridge Rd',
   'Tagumpay Village Commercial Row',
   'Sitio Balite Bypass Road',
-  'Metro Montana Valley St'
+  'Metro Montana Valley St',
 ];
 
 const PRESET_SAMPLE_PHOTOS: Record<HazardType, { label: string; url: string }> = {
@@ -89,8 +89,8 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
   const [reportedBy, setReportedBy] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [reporterEmail, setReporterEmail] = useState('');
-  
-  // Photo verification state
+
+  // Photo evidence state
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [photoError, setPhotoError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,10 +103,10 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
       Math.hypot(latitude - coordinates[0], longitude - coordinates[1]);
 
     const nearestSitio = SAN_JOSE_SITIOS.reduce((nearest, sitio) =>
-      distanceTo(sitio.coordinates) < distanceTo(nearest.coordinates) ? sitio : nearest
+      distanceTo(sitio.coordinates) < distanceTo(nearest.coordinates) ? sitio : nearest,
     );
     const nearestKnownLocation = INITIAL_HAZARDS.reduce((nearest, alert) =>
-      distanceTo(alert.coordinates) < distanceTo(nearest.coordinates) ? alert : nearest
+      distanceTo(alert.coordinates) < distanceTo(nearest.coordinates) ? alert : nearest,
     );
 
     setSitio(nearestSitio.name);
@@ -114,8 +114,8 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
   }, [selectedCoordinates]);
 
   // Default coordinate if none selected
-  const lat = selectedCoordinates ? selectedCoordinates[0] : 14.7430;
-  const lng = selectedCoordinates ? selectedCoordinates[1] : 121.1330;
+  const lat = selectedCoordinates ? selectedCoordinates[0] : 14.743;
+  const lng = selectedCoordinates ? selectedCoordinates[1] : 121.133;
 
   if (!isOpen) return null;
 
@@ -177,11 +177,20 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !streetName.trim() || !reportedBy.trim() || !contactNumber.trim() || !reporterEmail.trim()) return;
+    if (
+      !title.trim() ||
+      !streetName.trim() ||
+      !reportedBy.trim() ||
+      !contactNumber.trim() ||
+      !reporterEmail.trim()
+    )
+      return;
 
     // Strict Photo Requirement to prevent fake reports
     if (!photoUrl.trim()) {
-      setPhotoError('Required: You must upload or add a photo as proof so the hazard pin can be verified.');
+      setPhotoError(
+        'Required: upload or add a photo so an admin can review this report before it is published.',
+      );
       return;
     }
 
@@ -199,7 +208,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
       reporterEmail: reporterEmail.trim(),
       photoUrl: photoUrl.trim(),
       updatesCount: 1,
-      lastUpdated: 'Just now'
+      lastUpdated: 'Just now',
     });
 
     onClose();
@@ -219,7 +228,9 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">Pin Verified Hazard Incident</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">
+              Submit a hazard report
+            </h2>
             <p className="text-[11px] text-slate-500 font-medium">Barangay San Jose, Rodriguez, Rizal</p>
           </div>
           <button
@@ -242,7 +253,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('fire');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some(p => p.url === photoUrl)) {
+                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
                     setPhotoUrl(PRESET_SAMPLE_PHOTOS.fire.url);
                   }
                 }}
@@ -260,7 +271,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('flood');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some(p => p.url === photoUrl)) {
+                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
                     setPhotoUrl(PRESET_SAMPLE_PHOTOS.flood.url);
                   }
                 }}
@@ -278,7 +289,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('power');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some(p => p.url === photoUrl)) {
+                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
                     setPhotoUrl(PRESET_SAMPLE_PHOTOS.power.url);
                   }
                 }}
@@ -296,7 +307,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('streetlight');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some(p => p.url === photoUrl)) {
+                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
                     setPhotoUrl(PRESET_SAMPLE_PHOTOS.streetlight.url);
                   }
                 }}
@@ -314,7 +325,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('water');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some(p => p.url === photoUrl)) {
+                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
                     setPhotoUrl(PRESET_SAMPLE_PHOTOS.water.url);
                   }
                 }}
@@ -332,7 +343,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('road');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some(p => p.url === photoUrl)) {
+                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
                     setPhotoUrl(PRESET_SAMPLE_PHOTOS.road.url);
                   }
                 }}
@@ -353,15 +364,16 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                 <Camera className="w-3.5 h-3.5 text-rose-500" />
-                <span>Photo Required / Photo Verification *</span>
+                <span>Photo evidence required *</span>
               </label>
               <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                Anti-Fake Report
+                Checked on review
               </span>
             </div>
 
             <p className="text-[11px] text-slate-500 leading-snug">
-              Upload an actual photo from the site to confirm the real hazard in Barangay San Jose.
+              Upload an actual photo from the site so an admin can check the hazard before publishing it on
+              the public map.
             </p>
 
             {photoUrl ? (
@@ -386,12 +398,14 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
               </div>
             ) : (
               <div className="space-y-2">
-                <div 
+                <div
                   onClick={() => fileInputRef.current?.click()}
                   className="border-2 border-dashed border-slate-300 hover:border-slate-400 bg-white rounded-lg p-4 text-center cursor-pointer transition-colors"
                 >
                   <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
-                  <p className="text-xs font-bold text-slate-700">Click to upload camera photo or image file</p>
+                  <p className="text-xs font-bold text-slate-700">
+                    Click to upload camera photo or image file
+                  </p>
                   <p className="text-[10px] text-slate-400 mt-0.5">PNG, JPG, JPEG up to 8MB</p>
                   <input
                     ref={fileInputRef}
@@ -402,9 +416,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                   />
                 </div>
 
-                <div className="pt-1 text-[11px] font-semibold text-rose-600">
-                  *Required
-                </div>
+                <div className="pt-1 text-[11px] font-semibold text-rose-600">*Required</div>
               </div>
             )}
 
@@ -452,7 +464,6 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 ))}
               </datalist>
             </div>
-
           </div>
 
           {/* Coordinates & Pin Picker */}
@@ -476,11 +487,15 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs font-mono">
               <div className="bg-white px-2.5 py-1.5 rounded border border-slate-200">
-                <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 block font-sans">Latitude</span>
+                <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 block font-sans">
+                  Latitude
+                </span>
                 <span className="font-semibold text-slate-800">{lat.toFixed(5)}° N</span>
               </div>
               <div className="bg-white px-2.5 py-1.5 rounded border border-slate-200">
-                <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 block font-sans">Longitude</span>
+                <span className="text-[9px] uppercase font-bold tracking-wider text-slate-400 block font-sans">
+                  Longitude
+                </span>
                 <span className="font-semibold text-slate-800">{lng.toFixed(5)}° E</span>
               </div>
             </div>
@@ -535,7 +550,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Google Account
+                Email address
               </label>
               <input
                 type="email"
@@ -548,6 +563,12 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             </div>
           </div>
 
+          <p className="rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">
+            Local demo: report details are saved in this browser. Your name is hidden by default; an
+            administrator can choose to display it. Reports remain private until accepted by an administrator.
+            Email and cellphone are not displayed in public views. Do not submit sensitive personal
+            information to this demo.
+          </p>
           {/* Description */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
@@ -576,7 +597,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
               className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md shadow-xs transition-all cursor-pointer"
             >
               <Send className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Publish Verified Hazard Pin</span>
+              <span>Submit hazard report</span>
             </button>
           </div>
         </form>

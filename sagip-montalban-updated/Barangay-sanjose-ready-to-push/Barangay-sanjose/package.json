@@ -24,7 +24,14 @@
     "test:desktop-rail": "tsx --test tests/desktop-rail.test.ts",
     "test:weather-nav": "tsx --test tests/weather-mode-nav.test.ts",
     "test:weather-zoom": "tsx --test tests/weather-zoom-lock.test.ts",
-    "test:city-density": "tsx --test tests/city-density.test.ts"
+    "test:city-density": "tsx --test tests/city-density.test.ts",
+    "test:admin": "tsx --test tests/admin.test.ts",
+    "test:admin:browser": "node tests/admin-browser.mjs",
+    "test:admin:login": "node tests/admin-login-browser.mjs",
+    "test:admin:dashboard": "tsx --test tests/admin-dashboard.test.ts",
+    "test:admin:dashboard:browser": "node tests/admin-dashboard-browser.mjs",
+    "test:admin:moderation": "tsx --test tests/admin-moderation.test.ts",
+    "test:admin:moderation:browser": "node tests/admin-moderation-browser.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

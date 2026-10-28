@@ -185,3 +185,105 @@ The browser suite checks desktop/mobile Weather → Help Center navigation,
 picker exit, filtering, list search, map pins/popups, directions URLs, mocked
 geolocation, and provider failure/recovery. Like the weather tests, external
 services are mocked because this sandbox blocks live Overpass/tile requests.
+
+## Hidden incident admin workspace
+
+1. Open **Hazard Map / Streets** and **Incident Feeds** (on a phone, use the feed arrow).
+2. Type exactly `Admin` in the incident search. Case and surrounding spaces are ignored;
+   searches such as `Admin street` remain ordinary searches.
+3. Sign in with **Email: `admin`** and **Password: `admin`**. The Email field accepts
+   this admin username, not an email address. Refresh or Logout clears the in-memory login.
+4. In the admin panel you can:
+   - search reports by incident, reporter name, email, cellphone, location or report ID;
+   - read full report/reporter details as text, with Philippine date/time and elapsed age;
+   - change Active / Monitoring / Resolved status;
+   - display or hide the reporter's **name** on public cards, map popups and history;
+   - remove incidents from every public incident view, inspect the archive, and restore them;
+   - accept or decline incoming reports, with an optional decline reason, from the
+     **Pending review** and **Declined** queues;
+   - create and publish an official incident from **Add incident**, including severity,
+     initial status, description, sitio preset/custom coordinates and optional contacts;
+   - inspect all action history or the history for one report, including removed reports.
+
+### Dashboard layout and controls
+
+The Material-inspired workspace has sidebar navigation on desktop and compact top
+navigation on phones. Overview cards show real counts (excluding archived reports)
+and act as status filters. Search, status chips, archive scope and newest/oldest/severity
+sorting work together; reports without dates sort last rather than receiving invented
+timestamps. Select a report to open its text-only details, reporter contacts, Philippine
+time/elapsed age, name visibility and management controls. On smaller screens, selecting
+a report brings its detail section into view; **Back to incident list** returns to the
+selected row. The contact fields remain outside all public incident displays.
+
+New community submissions are **pending** and stay off public cards, popups and the map
+until an admin accepts them. Resolving, hiding a name or archiving never publishes a
+pending report. Declining keeps its details and history available for reconsideration;
+accepting later clears the decline reason. Admin-created incidents are accepted and
+published immediately, with their reporter name hidden by default. Use **Add incident →
+Sitio preset** to place the pin, then adjust street, description and coordinates.
+
+The **Realtime visits** monitor starts at **5,000** and adds one for each subsequent page
+load in this browser, including reloads. Same-origin tabs update live through the
+`storage` event, and the panel never simulates growth. Because this build has no
+server, the number is a per-browser count—not a server-wide visitor or unique-people
+total. A shared counter requires a small backend endpoint.
+
+Removing an incident or publishing a reporter name opens an accessible confirmation
+before any change is made. Cancel/Escape leaves both the report and history unchanged.
+Name hiding is immediate. The archive retains all reporter details and supports restore.
+The History view filters by report and author and can reopen an incident, including an
+archived one. Toasts announce actions; storage failures remain clearly visible.
+
+**Architecture and security limits:** this build is a frontend application, not a
+server-backed CMS for all website content. The search trigger is an entry shortcut,
+**not access security**. The `admin/admin` credential pair lives in public client code,
+so anyone can bypass browser-only state; replace it with server-side authentication
+before treating this as a secured admin system.
+No real personal information should be entered here. Email and phone are omitted from
+public display objects but remain in this browser's storage, accessible to scripts and
+anyone using the device. Public-name visibility is a display preference, not a privacy
+boundary; obtain the reporter's consent before publishing their name.
+
+Reports, archives and action history are saved together under localStorage key
+`san-jose-report-store-v1`. Existing `san-jose-alerts` records migrate automatically;
+only after saving successfully is the legacy copy removed. Changes apply to this browser
+and origin only, do not sync between users/devices/tabs, and are lost if site data is
+cleared. There is no cross-device report inbox yet. If storage is full, text/history
+are saved without inline photos where possible and a warning is displayed. A total
+storage failure also shows a warning. New user reports have ISO timestamps and unique
+IDs; older/sample reports show their original time label and explicitly state when an
+exact date is unavailable. History begins with new submissions/actions after this
+feature is installed; it does not fabricate past events. Automatic PAGASA markers still
+follow live readings, but removed live markers retain their archive flag on updates.
+The visits counter is stored separately under `san-jose-local-visits-v1`, starts at
+5,000, and increments per page load; opening the dashboard does not add a visit, and
+clearing site data resets it. To share reports and visits across devices, replace the
+browser store with a server API and database.
+
+For a real public deployment, use a shared database with server-enforced authorization,
+private reporter records, real admin authentication, consent/retention controls and a
+server-managed audit log. GitHub Pages by itself cannot provide those protections.
+
+Tests:
+
+```bash
+npm run lint
+npm run build
+npm run test:admin
+# With Chromium installed (or BROWSER_PATH set to its executable), against npm run dev:
+npm run test:admin:browser
+# Login layout, show/hide password, errors, keyboard navigation, five screen sizes:
+npm run test:admin:login
+# Overview counts, combined filters, sorting, selections, confirmations, archive/history:
+npm run test:admin:dashboard
+npm run test:admin:dashboard:browser
+# Accept/decline, admin publishing, removal, visits baseline and two viewport flows:
+npm run test:admin:moderation
+npm run test:admin:moderation:browser
+# TEST_BASE_URL can target a different running dev/preview server.
+```
+
+The browser test exercises desktop (1280px) and phone (390px): legacy migration, normal
+search, hidden login, invalid credentials, reporter details, name visibility, status,
+archive/restore, persistence, logout, history, safe popup rendering and new submissions.
