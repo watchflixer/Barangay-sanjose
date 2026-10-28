@@ -97,22 +97,22 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
 
-test('the incident feed is ONE floating card on desktop', () => {
+test('only the incident feeds card is visible on desktop (no wrapper background)', () => {
   assert.match(app, /id="app-sidebar-panel"/);
   assert.match(app, /className="app-feed-inner"/);
 
-  const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
+  const card = css.slice(css.indexOf('THE INCIDENT FEEDS CARD IS THE ONLY CARD'));
 
-  // One card: gap from the rail, rounded, hairline + shadow.
-  assert.match(card, /#app-sidebar-panel \{[\s\S]*?margin: 8px 10px 8px 8px;[\s\S]*?border-radius: 24px;[\s\S]*?box-shadow:/);
-  // The feed inside it adds no second card of its own…
-  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border: 0;[\s\S]*?box-shadow: none;/);
-  // …it is only clipped to the card's rounded corners.
-  assert.match(app, /id="app-sidebar-panel"/);
-  assert.match(sidebar, /lg:border-0 lg:shadow-none/);
-  assert.doesNotMatch(sidebar, /lg:rounded-2xl/);
-  // The single card lives behind the desktop media query.
-  assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('margin: 8px 10px 8px 8px;'));
+  // The wrapper paints nothing: no background, border, radius or shadow.
+  assert.match(card, /#app-sidebar-panel \{[\s\S]*?background: none;[\s\S]*?border: 0;[\s\S]*?box-shadow: none;[\s\S]*?overflow: visible;/);
+  assert.doesNotMatch(card, /#app-sidebar-panel \{[\s\S]{0,400}?background: #ffffff/);
+
+  // The card look lives on the feed itself.
+  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border: 1px solid #e6e8eb;[\s\S]*?border-radius: 24px;[\s\S]*?box-shadow: 0 1px 2px rgba\(60, 64, 67, 0\.3\)/);
+  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?overflow: hidden;/);
+
+  // Everything is behind the desktop media query.
+  assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('background: none;'));
 });
 
 test('the feed has no floating ‹ tab on desktop', () => {
@@ -168,7 +168,7 @@ test('the rail is the only way to show/hide the feed on desktop', () => {
 test('the feed surfaces share the rail white on laptop/desktop', () => {
   // Rail and the floating card are white…
   assert.match(css, /\.desktop-rail \{[\s\S]{0,400}?background: #ffffff;/);
-  assert.match(css, /#app-sidebar-panel \{[\s\S]{0,300}?background: #ffffff;/);
+  assert.match(css, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]{0,200}?border: 1px solid #e6e8eb;/);
 
   // …so every tinted strip inside the feed turns white from 1024px up:
   // header, scroll area and the footer bar.

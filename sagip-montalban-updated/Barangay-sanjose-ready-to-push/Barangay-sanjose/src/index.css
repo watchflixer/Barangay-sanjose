@@ -1506,15 +1506,15 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: THE INCIDENT FEED IS ONE FLOATING CARD
+   LAPTOP / DESKTOP: THE INCIDENT FEEDS CARD IS THE ONLY CARD
    --------------------------------------------------------------------------
-   Google-Maps geometry: the feed floats as ONE white card — 8px gap from the
-   rail, the top and the bottom, 24px radius, hairline and a soft shadow. The
-   feed content fills it edge to edge (no second card inside). The rail's ☰ is
-   what shows/hides the whole card.
+   Only the feed itself looks like a card (24px radius, hairline, soft shadow).
+   The wrapper around it is invisible — `background: none`, no border, no
+   shadow — so nothing paints around the feed except the map. The rail's ☰ is
+   what shows/hides the panel.
 
-     #app-sidebar-panel           → the card itself (this rule)
-     #app-sidebar-panel …> aside  → clipped to the card's rounded corners
+     #app-sidebar-panel           → transparent wrapper (no background)
+     #app-sidebar-panel …> aside  → the incident-feeds card
 
    MOBILE PORTRAIT IS UNTOUCHED: every rule is inside `@media (min-width:
    1024px)`, so phones keep the flat, full-height slide-in drawer.
@@ -1527,28 +1527,28 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 @media (min-width: 1024px) {
-  /* ---- the one and only card ----------------------------------------- */
+  /* ---- invisible wrapper: no background at all ----------------------- */
   #app-sidebar-panel {
     position: relative;
     margin: 8px 10px 8px 8px;
     height: calc(100% - 16px);
     padding: 0;
-    background: #ffffff;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    /* the card itself clips its own content; the wrapper must let it breathe */
+    overflow: visible;
+  }
+
+  /* ---- the incident feeds card --------------------------------------- */
+  #app-sidebar-panel > .app-feed-inner > aside {
+    height: 100%;
     border: 1px solid #e6e8eb;
     border-radius: 24px;
     box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
-    /* Keeps the rounded shape: rows and the header strip are cut to it. */
     overflow: hidden;
   }
-
-  /* The feed fills the card; the card owns the border, radius and shadow. */
-  #app-sidebar-panel > .app-feed-inner > aside {
-    border: 0;
-    border-radius: 23px;
-    box-shadow: none;
-    overflow: hidden;
-  }
-
 }
 
 /* ==========================================================================
