@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import { HazardAlert, HazardType, HazardSeverity } from '../types';
+import { HazardAlert, HazardDraft, HazardType, HazardSeverity } from '../types';
+import { reportDraftError } from '../lib/reportsApi';
 import { INITIAL_HAZARDS, SAN_JOSE_SITIOS } from '../data/geoData';
 import kasiglahanFloodImg from '../assets/images/kasiglahan_flood_rizal_1788211116468.jpg';
 import litexFireImg from '../assets/images/litex_transformer_fire_1788211132714.jpg';
@@ -28,7 +29,7 @@ import suburbanBridgeClearingImg from '../assets/images/suburban_bridge_clearing
 interface AddHazardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddAlert: (newAlert: Omit<HazardAlert, 'id' | 'timeReported'>) => void;
+  onAddAlert: (newAlert: Omit<HazardAlert, 'id' | 'timeReported'>) => Promise<void> | void;
   selectedCoordinates: [number, number] | null;
   onEnablePickCoordinateMode: () => void;
 }
@@ -93,6 +94,8 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
   // Photo evidence state
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -175,26 +178,13 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !title.trim() ||
-      !streetName.trim() ||
-      !reportedBy.trim() ||
-      !contactNumber.trim() ||
-      !reporterEmail.trim()
-    )
-      return;
+    if (submitting) return;
+    setSubmitError('');
+    setPhotoError(null);
 
-    // Strict Photo Requirement to prevent fake reports
-    if (!photoUrl.trim()) {
-      setPhotoError(
-        'Required: upload or add a photo so an admin can review this report before it is published.',
-      );
-      return;
-    }
-
-    onAddAlert({
+    const draft: HazardDraft = {
       type,
       title: title.trim(),
       streetName: streetName.trim(),
@@ -202,24 +192,46 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
       coordinates: [lat, lng],
       status: 'active',
       severity,
-      description: description.trim() || `${type.toUpperCase()} hazard reported along ${streetName}`,
-      reportedBy: reportedBy.trim() || 'Citizen Report',
+      description:
+        description.trim() ||
+        `${type.toUpperCase()} hazard reported along ${streetName.trim() || 'the barangay'}`,
+      reportedBy: reportedBy.trim(),
       contactNumber: contactNumber.trim(),
-      reporterEmail: reporterEmail.trim(),
+      reporterEmail: reporterEmail.trim().toLowerCase(),
       photoUrl: photoUrl.trim(),
-      updatesCount: 1,
-      lastUpdated: 'Just now',
-    });
+      affectedHouseholds: undefined,
+      evacuationCenter: undefined,
+    };
 
-    onClose();
-    // Reset fields
-    setTitle('');
-    setDescription('');
-    setPhotoUrl('');
-    setPhotoError(null);
-    setReportedBy('');
-    setContactNumber('');
-    setReporterEmail('');
+    // A photo is non-negotiable: an admin reviews every report before publishing.
+    if (!draft.photoUrl) {
+      setPhotoError(
+        'Required: upload or add a photo so an admin can review this report before it is published.',
+      );
+      return;
+    }
+    const problem = reportDraftError(draft, true);
+    if (problem) {
+      setSubmitError(problem);
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await onAddAlert(draft);
+      onClose();
+      setTitle('');
+      setDescription('');
+      setPhotoUrl('');
+      setPhotoError(null);
+      setReportedBy('');
+      setContactNumber('');
+      setReporterEmail('');
+    } catch (cause) {
+      setSubmitError(cause instanceof Error ? cause.message : 'Could not submit the report. Please retry.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -521,7 +533,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
 
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Full Name
+                Full name *
               </label>
               <input
                 type="text"
@@ -537,7 +549,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Cellphone Number
+                Cellphone number *
               </label>
               <input
                 type="tel"
@@ -550,25 +562,29 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             </div>
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Email address
+                Google account (Gmail) *
               </label>
               <input
                 type="email"
                 value={reporterEmail}
                 onChange={(e) => setReporterEmail(e.target.value)}
-                placeholder="e.g. sanjose12@gmail.com"
+                placeholder="e.g. juan@gmail.com"
                 required
                 className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
               />
             </div>
           </div>
 
-          <p className="rounded-lg bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">
-            Local demo: report details are saved in this browser. Your name is hidden by default; an
-            administrator can choose to display it. Reports remain private until accepted by an administrator.
-            Email and cellphone are not displayed in public views. Do not submit sensitive personal
-            information to this demo.
+          <p className="rounded-lg bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600">
+            Your report is sent to the barangay admin for review before it appears on the map. Your full name
+            is hidden by default and an admin may choose to show it; your Google account and cellphone number
+            are only used to verify the report and are never shown publicly.
           </p>
+          {submitError && (
+            <p role="alert" className="rounded-lg bg-red-50 p-3 text-[11px] font-medium text-red-700">
+              {submitError}
+            </p>
+          )}
           {/* Description */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
@@ -594,10 +610,11 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md shadow-xs transition-all cursor-pointer"
+              disabled={submitting}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md shadow-xs transition-all cursor-pointer disabled:cursor-wait disabled:opacity-70"
             >
               <Send className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Submit hazard report</span>
+              <span>{submitting ? 'Submitting…' : 'Submit hazard report'}</span>
             </button>
           </div>
         </form>

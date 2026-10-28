@@ -127,6 +127,18 @@ export const SAN_JOSE_SITIOS: SitioLocation[] = [
 /**
  * Pre-seeded Active Hazard Alerts in Barangay San Jose
  */
+/** Stable photos for the seeded barangay incidents. The database only stores
+ * ids for these rows, so a rebuild cannot break their images. */
+export const BASELINE_PHOTOS: Record<string, string> = {
+  'hz-001': kasiglahanFloodImg,
+  'hz-002': litexFireImg,
+  'hz-003': sanJoseDownedPowerImg,
+  'hz-007': tagumpayStreetlightsImg,
+  'hz-004': eastwoodPipeLeakImg,
+  'hz-005': suburbanBridgeClearingImg,
+  'hz-006': amityvilleDrainageImg,
+};
+
 export const INITIAL_HAZARDS: HazardAlert[] = [
   {
     id: 'hz-001',

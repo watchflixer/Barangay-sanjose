@@ -31,11 +31,13 @@ import {
 
 interface SidebarProps {
   onOpenAdmin?: () => void;
-  canManage?: boolean;
   alerts: HazardAlert[];
+  /** Categories the admin hid from public incident feeds. */
+  hiddenTypes?: HazardType[];
   selectedAlert: HazardAlert | null;
   onSelectAlert: (alert: HazardAlert) => void;
-  onToggleAlertStatus: (id: string) => void;
+  /** Residents ask an admin to close an incident; they cannot resolve it directly. */
+  onRequestResolved: (alert: HazardAlert) => void;
   onOpenReportModal: () => void;
   onOpenHotlinesModal: () => void;
   activeFilterType: HazardType | 'all';
@@ -57,9 +59,10 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   alerts,
+  hiddenTypes = [],
   selectedAlert,
   onSelectAlert,
-  onToggleAlertStatus,
+  onRequestResolved,
   onOpenReportModal,
   onOpenHotlinesModal,
   activeFilterType,
@@ -76,7 +79,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenHistory = () => {},
   optionsDisabled = false,
   onOpenAdmin,
-  canManage = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -212,26 +214,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ['streetlight', 'Streetlight'],
             ['water', 'Water'],
             ['road', 'Road'],
-          ] as Array<[HazardType | 'all', string]>).map(([type, label]) => {
-            const selected = activeFilterType === type;
-            return (
-              <button
-                key={type}
-                id={`filter-${type}`}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setActiveFilterType(type)}
-                className={`flex h-7 shrink-0 items-center gap-1 rounded-[9px] border px-2.5 text-[10px] font-semibold whitespace-nowrap transition-colors ${
-                  selected
-                    ? 'border-transparent bg-[#e8f0fe] text-[#1a73e8]'
-                    : 'border-[#e3e6ec] bg-white text-[#1f1f1f] hover:bg-slate-50'
-                }`}
-              >
-                {type !== 'all' && getTypeIcon(type)}
-                <span>{label}</span>
-              </button>
-            );
-          })}
+          ] as Array<[HazardType | 'all', string]>)
+            .filter(([type]) => type === 'all' || !hiddenTypes.includes(type as HazardType))
+            .map(([type, label]) => {
+              const selected = activeFilterType === type;
+              return (
+                <button
+                  key={type}
+                  id={`filter-${type}`}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setActiveFilterType(type)}
+                  className={`flex h-7 shrink-0 items-center gap-1 rounded-[9px] border px-2.5 text-[10px] font-semibold whitespace-nowrap transition-colors ${
+                    selected
+                      ? 'border-transparent bg-[#e8f0fe] text-[#1a73e8]'
+                      : 'border-[#e3e6ec] bg-white text-[#1f1f1f] hover:bg-slate-50'
+                  }`}
+                >
+                  {type !== 'all' && getTypeIcon(type)}
+                  <span>{label}</span>
+                </button>
+              );
+            })}
         </div>
 
         <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -399,20 +403,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span>{alert.timeReported}</span>
                   </div>
 
-                  {canManage && <button
-                    id={`btn-card-toggle-${alert.id}`}
+                  {!isResolved && <button
+                    id={`btn-card-resolve-${alert.id}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onToggleAlertStatus(alert.id);
+                      onRequestResolved(alert);
                     }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-semibold transition-colors ${
-                      isResolved
-                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        : 'bg-[#1a73e8] text-white hover:bg-blue-700'
-                    }`}
+                    disabled={!!alert.pendingResolveFlags}
+                    title={
+                      alert.pendingResolveFlags
+                        ? 'A resolve request is already waiting for admin review.'
+                        : 'Ask the barangay admin to mark this incident resolved.'
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-semibold transition-colors bg-[#1a73e8] text-white hover:bg-blue-700 disabled:cursor-default disabled:bg-slate-100 disabled:text-slate-500"
                   >
                     <CheckCircle2 className="h-3 w-3" />
-                    {isResolved ? 'Reopen' : 'Resolve'}
+                    {alert.pendingResolveFlags ? 'Request pending' : 'Flag as resolved'}
                   </button>}
                 </div>
               </div>

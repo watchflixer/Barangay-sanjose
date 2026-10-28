@@ -9,7 +9,7 @@ export function AdminIncidentForm({
   onCancel,
   onCreated,
 }: {
-  onCreate: (draft: HazardDraft) => HazardAlert | undefined;
+  onCreate: (draft: HazardDraft) => Promise<HazardAlert | undefined> | HazardAlert | undefined;
   onCancel: () => void;
   onCreated: (report: HazardAlert) => void;
 }) {
@@ -66,7 +66,7 @@ export function AdminIncidentForm({
       </div>
       <form
         className="sj-admin-create-form"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           if (submitting.current) return;
           const validation = validateHazardDraft(draft);
@@ -76,7 +76,7 @@ export function AdminIncidentForm({
           }
           submitting.current = true;
           try {
-            const report = onCreate(draft);
+            const report = await onCreate(draft);
             if (report) onCreated(report);
             else {
               setError('Admin access is required. Sign in again.');

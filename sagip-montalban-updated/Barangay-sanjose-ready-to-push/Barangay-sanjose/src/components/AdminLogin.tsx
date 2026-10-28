@@ -12,15 +12,22 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react';
-import { isAdminLogin } from '../lib/admin';
+
 import './AdminLogin.css';
 
 /** Local administrator sign-in. Not a Google account or a hosted identity service. */
-export function AdminLogin({ onLogin, onClose }: { onLogin: () => void; onClose: () => void }) {
+export function AdminLogin({
+  onLogin,
+  onClose,
+}: {
+  onLogin: (password: string) => Promise<boolean>;
+  onClose: () => void;
+}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(false);
+  const [checking, setChecking] = useState(false);
   const passwordInput = useRef<HTMLInputElement>(null);
 
   return (
@@ -126,14 +133,17 @@ export function AdminLogin({ onLogin, onClose }: { onLogin: () => void; onClose:
           </p>
           <form
             className="sj-login-form"
-            onSubmit={(event) => {
+            onSubmit={async (event) => {
               event.preventDefault();
-              if (isAdminLogin(email, password)) {
+              if (checking) return;
+              setChecking(true);
+              const ok = await onLogin(password).catch(() => false);
+              setChecking(false);
+              if (ok) {
                 setEmail('');
                 setPassword('');
                 setShowPassword(false);
                 setError(false);
-                onLogin();
               } else {
                 setError(true);
                 passwordInput.current?.focus();
@@ -198,8 +208,8 @@ export function AdminLogin({ onLogin, onClose }: { onLogin: () => void; onClose:
               </p>
             )}
             <p className="sj-login-form-caption">Your community dashboard is one step away.</p>
-            <button type="submit" className="sj-login-submit">
-              <span>Sign in</span>
+            <button type="submit" className="sj-login-submit" disabled={checking}>
+              <span>{checking ? 'Checking…' : 'Sign in'}</span>
               <ArrowRight size={18} aria-hidden="true" />
             </button>
           </form>

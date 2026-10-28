@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
+import { baseReport, createBackend } from './supabase-mock.mjs';
 const base = process.env.TEST_BASE_URL || 'http://localhost:3000';
 const browser = await chromium.launch({
   executablePath: process.env.BROWSER_PATH,
@@ -14,12 +15,11 @@ try {
     { width: 844, height: 390 },
   ]) {
     const context = await browser.newContext({ viewport, reducedMotion: 'reduce' });
+    const backend = createBackend([baseReport('hz-001')]);
+    await backend.install(context);
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.route('**/*', (route) =>
-      new URL(route.request().url()).origin === new URL(base).origin ? route.continue() : route.abort(),
-    );
     await page.addInitScript(() => {
       try {
         localStorage.setItem('hazardsync:visits-offline', '1');

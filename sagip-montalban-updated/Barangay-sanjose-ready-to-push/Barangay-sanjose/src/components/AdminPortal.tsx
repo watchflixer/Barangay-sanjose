@@ -3,18 +3,24 @@ import { AdminLogin } from './AdminLogin';
 import { AdminDashboard } from './AdminDashboard';
 import type { HazardAlert, HazardDraft } from '../types';
 import type { AdminChange, ReportAction } from '../lib/admin';
+import type { ResolveFlag } from '../lib/reportsApi';
 
 interface Props {
   isOpen: boolean;
   authenticated: boolean;
-  onLogin: () => void;
+  onLogin: (password: string) => Promise<boolean>;
   onLogout: () => void;
   onClose: () => void;
   alerts: HazardAlert[];
   history: ReportAction[];
-  onChange: (id: string, change: AdminChange) => void;
-  storageError: string;
-  onCreate: (draft: HazardDraft) => HazardAlert | undefined;
+  flags: ResolveFlag[];
+  hiddenTypes: HazardAlert['type'][];
+  onChange: (id: string, change: AdminChange) => Promise<void> | void;
+  onCreate: (draft: HazardDraft) => Promise<HazardAlert | undefined> | HazardAlert | undefined;
+  onReviewFlag: (id: string, decision: 'accepted' | 'ignored') => Promise<void> | void;
+  onSetHiddenTypes: (types: HazardAlert['type'][]) => Promise<void> | void;
+  syncError: string;
+  loading: boolean;
 }
 
 export function AdminPortal({
@@ -25,9 +31,14 @@ export function AdminPortal({
   onClose,
   alerts,
   history,
+  flags,
+  hiddenTypes,
   onChange,
-  storageError,
   onCreate,
+  onReviewFlag,
+  onSetHiddenTypes,
+  syncError,
+  loading,
 }: Props) {
   const [, tick] = useState(0);
   const dialog = useRef<HTMLDivElement>(null);
@@ -88,11 +99,16 @@ export function AdminPortal({
           <AdminDashboard
             alerts={alerts}
             history={history}
+            flags={flags}
+            hiddenTypes={hiddenTypes}
             onChange={onChange}
             onCreate={onCreate}
+            onReviewFlag={onReviewFlag}
+            onSetHiddenTypes={onSetHiddenTypes}
             onClose={onClose}
             onLogout={onLogout}
-            storageError={storageError}
+            syncError={syncError}
+            loading={loading}
           />
         ) : (
           <AdminLogin onLogin={onLogin} onClose={onClose} />
