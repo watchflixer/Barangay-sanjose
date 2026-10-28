@@ -126,12 +126,34 @@ export const MapViewer: React.FC<MapViewerProps> = ({
    * the target is pushed east by half of that — the barangay then sits in the
    * open space instead of behind the card. Phones/tablets get the plain centre.
    */
-  const viewCenter = React.useCallback((map: L.Map | null, zoom: number): L.LatLngExpression => {
-    const inset = desktopFeedInset(desktopFeedOpen);
+  const viewCenter = React.useCallback((
+    map: L.Map | null,
+    zoom: number,
+    inset = desktopFeedInset(desktopFeedOpen),
+  ): L.LatLngExpression => {
     if (!map || inset <= 0) return SAN_JOSE_CENTER;
     const shifted = map.project(SAN_JOSE_CENTER, zoom).subtract(L.point(inset / 2, 0));
     return map.unproject(shifted, zoom);
   }, [desktopFeedOpen]);
+
+  /**
+   * Zoom that still shows the WHOLE barangay next to the floating feed card.
+   * With the card covering 500px of a narrow laptop window, zoom 13 alone would
+   * push half of the barangay off the map, so drop one step (12) when the
+   * bounds no longer fit in the free area. Phones/tablets always get 13.
+   */
+  const fitZoomFor = React.useCallback((map: L.Map | null, inset: number): number => {
+    if (!map || inset <= 0) return 13;
+    const base = 13;
+    const a = map.project(L.latLng(SAN_JOSE_BOUNDS[0][0], SAN_JOSE_BOUNDS[0][1]), base);
+    const b = map.project(L.latLng(SAN_JOSE_BOUNDS[1][0], SAN_JOSE_BOUNDS[1][1]), base);
+    const boundsWidth = Math.abs(b.x - a.x);
+    const boundsHeight = Math.abs(b.y - a.y);
+    const container = map.getContainer();
+    const freeWidth = (container?.clientWidth ?? window.innerWidth) - inset - 32;
+    const freeHeight = (container?.clientHeight ?? window.innerHeight) - 48;
+    return boundsWidth > freeWidth || boundsHeight > freeHeight ? base - 1 : base;
+  }, []);
 
   const [mouseCoords, setMouseCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [showLayerMenu, setShowLayerMenu] = React.useState(false);
@@ -476,7 +498,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       const map = mapInstanceRef.current;
       if (!map) return;
       if (!window.matchMedia('(min-width: 1024px)').matches) return;
-      map.panTo(viewCenter(map, map.getZoom()), { animate: false });
+      const inset = desktopFeedInset(desktopFeedOpen);
+      // The zoom floor follows the card: 12 lets the whole barangay fit beside
+      // it on narrower laptops, 13 is the normal floor again once it closes.
+      map.setMinZoom(inset > 0 ? 12 : 13);
+      const zoom = fitZoomFor(map, inset);
+      map.setView(viewCenter(map, zoom, inset), zoom, { animate: false });
     };
     const timer = window.setTimeout(apply, 150);
     window.addEventListener('resize', apply);
@@ -484,7 +511,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       window.clearTimeout(timer);
       window.removeEventListener('resize', apply);
     };
-  }, [desktopFeedOpen, viewCenter]);
+  }, [desktopFeedOpen, viewCenter, fitZoomFor]);
 
   useEffect(() => {
     if (showFloodProneBlank) return; // entering: container hidden, skip
@@ -1020,9 +1047,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       mapInstanceRef.current.setMaxBounds(new L.LatLngBounds(corner1, corner2));
     }
 
-    // Smooth fast recenter back to Barangay San Jose center — shifted so the
-    // barangay lands in the space beside the floating feed card on desktop.
-    mapInstanceRef.current.flyTo(viewCenter(mapInstanceRef.current, 13), 13, {
+    // Smooth fast recenter back to Barangay San Jose center — shifted (and
+    // zoomed out one notch if needed) so the barangay lands fully in the space
+    // beside the floating feed card on desktop.
+    const targetZoom = fitZoomFor(mapInstanceRef.current, desktopFeedInset(desktopFeedOpen));
+    mapInstanceRef.current.flyTo(viewCenter(mapInstanceRef.current, targetZoom), targetZoom, {
       duration: 0.75,
       easeLinearity: 0.25,
     });
