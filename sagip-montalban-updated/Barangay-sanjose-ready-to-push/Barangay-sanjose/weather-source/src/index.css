@@ -193,22 +193,22 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
    ========================================================================== */
 @media (min-width: 1024px) {
   .ph-mode-nav {
-    width: min(28rem, calc(100% - 2rem));
+    width: min(22.5rem, calc(100% - 2rem));
     margin-inline: auto;
-    padding: 3px;
-    gap: 3px;
-    border-radius: 12px;
+    padding: 2px;
+    gap: 2px;
+    border-radius: 10px;
     box-shadow:
-      0 10px 24px -14px rgba(2, 6, 23, 0.55),
-      0 2px 6px -3px rgba(2, 6, 23, 0.35);
+      0 8px 18px -12px rgba(2, 6, 23, 0.55),
+      0 1px 4px -2px rgba(2, 6, 23, 0.35);
   }
 
   .ph-mode-nav .ph-mode-btn {
-    padding: 4px 10px;
-    border-radius: 9px;
-    font-size: 13px;
-    line-height: 18px;
-    letter-spacing: 0.01em;
+    padding: 3px 4px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: -0.01em;
   }
 
   /* Keep the hover feedback consistent at the smaller size. */
