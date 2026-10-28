@@ -247,7 +247,7 @@ test('the weather control buttons keep the 34x34 Flood Prone footprint', () => {
  * The card now grows to fit the whole label, but only above the 640px gate —
  * portrait phones keep the original fixed boxes.
  */
-test('city pills grow to fit their label above the phone gate', () => {
+test('city pills widen to fit their label above the phone gate', () => {
   const rules = rulesMentioning(cssWithoutComments, 'custom-city-pin-container');
   assert.ok(rules.length >= 1, 'expected a rule for the city pin container');
 
@@ -270,4 +270,46 @@ test('city pills grow to fit their label above the phone gate', () => {
   // The marker HTML really is a single-line pill, so max-content fits the text.
   const map = read('../weather-source/src/components/WeatherMap.tsx');
   assert.match(map, /city-marker-pin flex items-center gap-1\.5[^`]*whitespace-nowrap/);
+});
+
+/**
+ * The weather basemap's control stack swaps two buttons: Layers and
+ * "Show your location". Because the swap is done with flex `order` inside the
+ * same 640px gate, portrait phones keep both the DOM order and the visual
+ * order they always had (Recenter, Layers, Locate, Zoom).
+ */
+test('layers and locate swap places above the phone gate only', () => {
+  const map = read('../weather-source/src/components/WeatherMap.tsx');
+
+  // The hooks must exist on the four stack children.
+  for (const hook of ['ph-ctrl--recenter', 'ph-ctrl--layers', 'ph-ctrl--locate', 'ph-ctrl--zoom']) {
+    assert.ok(map.includes(hook), `missing hook ${hook}`);
+  }
+
+  const order = (hook: string) => {
+    const rule = rulesMentioning(cssWithoutComments, hook)
+      .find((item) => item.selector.includes('.ph-map-controls'));
+    assert.ok(rule, `expected an order rule for ${hook}`);
+    return { rule, value: Number(/order:\s*(\d+)/.exec(rule.declarations)?.[1]) };
+  };
+
+  const recenter = order('ph-ctrl--recenter');
+  const locate = order('ph-ctrl--locate');
+  const layers = order('ph-ctrl--layers');
+  const zoom = order('ph-ctrl--zoom');
+
+  // Swapped: Locate now sits where Layers used to be, and vice versa.
+  assert.ok(locate.value < layers.value, 'Locate must come before Layers above 640px');
+  assert.ok(recenter.value < locate.value, 'Recenter must stay first');
+  assert.ok(layers.value < zoom.value, 'Zoom must stay last');
+
+  // Every one of those rules must be phone-safe.
+  for (const rule of [recenter.rule, locate.rule, layers.rule, zoom.rule]) {
+    assert.ok(isDesktopOnly(rule.gates), `${rule.selector} would also reorder on phones`);
+  }
+
+  // The markup order itself is untouched, which is what phones render.
+  const layersIndex = map.indexOf('ph-ctrl--layers');
+  const locateIndex = map.indexOf('ph-ctrl--locate');
+  assert.ok(layersIndex < locateIndex, 'the DOM order must stay Layers then Locate');
 });

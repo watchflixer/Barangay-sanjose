@@ -773,22 +773,23 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       <div ref={mapContainerRef} className="w-full h-full" />
 
       {/* The weather page owns these map controls, just like the other map
-          layers. `ph-map-controls` is a hook only: the laptop/desktop raise
-          lives behind @media (min-width: 640px) in index.css, so the stack
-          tucks under the mode nav there while portrait phones keep this exact
-          top-[110px] / sm:top-[82px] dock. */}
+          layers. `ph-map-controls` and the `ph-ctrl--*` hooks are markers only:
+          the laptop/desktop position and button order live behind
+          @media (min-width: 640px) in index.css, so portrait phones keep this
+          exact top-[110px] / sm:top-[82px] dock and this exact button order
+          (Recenter, Layers, Locate, Zoom). */}
       <div className="ph-map-controls absolute left-4 top-[110px] z-[1050] flex flex-col gap-1.5 sm:top-[82px]">
         <button
           type="button"
           onClick={handleRecenter}
           title="Recenter"
           aria-label="Recenter"
-          className="cursor-pointer rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+          className="ph-ctrl ph-ctrl--recenter cursor-pointer rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
         >
           <RefreshCw className={`h-4 w-4 transition-transform ${isRecenterSpinning ? 'animate-fast-spin text-slate-900' : 'text-slate-700'}`} />
         </button>
 
-        <div className="relative">
+        <div className="ph-ctrl ph-ctrl--layers relative">
           <button
             ref={layersButtonRef}
             type="button"
@@ -862,12 +863,12 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
           onClick={onRequestLocation}
           title="Show your location"
           aria-label="Show your location"
-          className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+          className="ph-ctrl ph-ctrl--locate rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
         >
           <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
         </button>
 
-        <div className="flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs">
+        <div className="ph-ctrl ph-ctrl--zoom flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs">
           <button
             type="button"
             onClick={handleZoomIn}

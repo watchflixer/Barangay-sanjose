@@ -334,6 +334,17 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
     top: 16px;
     left: 16px;
   }
+
+  /* Button order: the Layers button and "Show your location" swap places, so
+     the weather basemap reads Recenter, Locate, Layers, Zoom. Done with flex
+     `order` instead of moving markup: portrait phones keep the DOM order
+     (and therefore their original stack) because none of this applies below
+     640px. The layers menu still opens to the right of whichever slot the
+     button occupies, since it is positioned inside the button's own wrapper. */
+  .ph-map-controls .ph-ctrl--recenter { order: 1; }
+  .ph-map-controls .ph-ctrl--locate { order: 2; }
+  .ph-map-controls .ph-ctrl--layers { order: 3; }
+  .ph-map-controls .ph-ctrl--zoom { order: 4; }
 }
 
 /* ==========================================================================
