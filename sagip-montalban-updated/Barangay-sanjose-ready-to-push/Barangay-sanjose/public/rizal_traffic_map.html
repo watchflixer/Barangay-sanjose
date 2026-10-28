@@ -229,6 +229,10 @@
   .dir-sc-row{display:flex;overflow-x:auto;border-bottom:8px solid #f1f3f4;}
   .dir-sc{display:flex;align-items:center;gap:10px;padding:14px 12px;border:0;background:transparent;cursor:pointer;text-align:left;flex:none;border-right:1px solid #dadce0;}
   .dir-sc:last-child{border-right:0;}
+  /* Travel + School are laptop/desktop-only slots. Hidden by default here so
+     PHONE PORTRAIT keeps the original Home / Work / More row untouched; the
+     `(min-width: 641px)` block below switches them back on. */
+  .dir-sc--extra{display:none;}
   .dir-sc-ic,.dir-row-ic{width:44px;height:44px;border-radius:50%;background:#d7ebee;display:flex;align-items:center;justify-content:center;flex:none;color:#202124;}
   .dir-sc-ic.o{background:#fff;border:1px solid #c4c7c5;}
   .dir-sc-tx,.dir-row-tx{display:flex;flex-direction:column;min-width:0;}
@@ -553,6 +557,196 @@
     .rt-chip{height:37px;font-size:13px;padding:0 12px 0 10px;}
     .rt-chip.go{padding:0 14px 0 12px;}
   }
+
+  /* ==========================================================================
+     LAPTOP / DESKTOP: DIRECTIONS STILL COVERS THE WHOLE MAP — CONTENT CENTRED,
+     ITEMS SMALLER
+     --------------------------------------------------------------------------
+     The panel keeps its ORIGINAL full coverage: `inset:0`, edge to edge, white
+     all the way to the map borders — exactly the footprint it had before. What
+     changes is what sits INSIDE it, on laptop/desktop only:
+
+       1. The content is CENTRED in a 640px column instead of stretching across
+          a widescreen, so the eye lands in the middle of the map.
+       2. Every item is SMALLER — inputs, the back/swap buttons, the travel-mode
+          buttons, the Home / Work / More cards, the Recent rows and their type
+          scale all step down.
+
+     NOTHING WAS REMOVED OR REORDERED. Same back arrow, same origin/destination
+     inputs (blue "Your location" dot, gray connectors, red pin), same four
+     travel modes, same "Recent" heading with its info icon, same empty state,
+     same behaviour. The Home / Work row gains two slots (Travel and School) on
+     laptop/desktop only, so the row reads Home | Work | Travel | School | More.
+
+     PHONE PORTRAIT IS UNTOUCHED: this is `min-width: 641px`, the exact
+     complement of the phone blocks `(orientation: portrait) and (max-width:
+     640px)`, so a portrait Android/iPhone can never match it and keeps its
+     current full-screen panel with the current item sizes, pixel for pixel.
+     ========================================================================== */
+  @media (min-width: 641px){
+    /* --- the centred column: same full-height panel, narrower content --- */
+    .dir-top,
+    .dir-modes,
+    #dir-hint,
+    #dir-body{
+      width:100%;
+      max-width:760px;
+      margin-left:auto;
+      margin-right:auto;
+    }
+    .dir-top{padding:14px 12px 0 8px;}
+    .dir-modes{padding:10px 16px 8px;}
+    .dir-sec{padding-left:16px;padding-right:16px;}
+    .dir-row{padding-left:16px;padding-right:16px;}
+
+    /* --- Home / Work / Travel / School / More: FIVE EQUAL SLOTS ---------
+       The row stops being a scrolling strip and becomes a 5-column grid, so
+       every card gets exactly 1/5 of the width — no leftover space, nothing
+       stretched, and "More" is no longer the only wide one. `minmax(0,1fr)`
+       lets a column shrink below its content width, which is what keeps all
+       five on one line instead of overflowing. */
+    .dir-sc-row{
+      display:grid;
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      overflow:visible;
+    }
+    .dir-sc--extra{display:flex;}
+    .dir-sc{width:100%;min-width:0;justify-content:flex-start;}
+    /* Every slot keeps its divider, including the ones that used to be last */
+    .dir-sc{border-right:1px solid #dadce0;}
+    .dir-sc:last-child{border-right:0;}
+
+    /* --- origin/destination inputs + back/swap: smaller --- */
+    .dir-ib{width:34px;height:34px;}
+    .dir-fields{gap:8px;}
+    .dir-fields input{height:34px;border-radius:7px;font-size:14px;padding:0 10px;}
+    .dir-fields input:focus{padding:0 9px;}
+
+    /* Dot rail re-fitted to the smaller inputs: 34px row + 8px gap + 34px row
+       = 76px. Blue dot centres on row 1, red pin on row 2, and the three gray
+       connectors sit evenly between them. The connector `top` values are inline
+       in the markup, so they need !important to be overridden here. */
+    .dir-dots{height:76px;width:22px;}
+    .dir-dots .b{top:9px;left:1px;width:16px;height:16px;}
+    .dir-dots .b:after{width:8px;height:8px;}
+    .dir-dots .p{top:47px;left:0;}
+    .dir-dots i:nth-of-type(1){top:26px!important;}
+    .dir-dots i:nth-of-type(2){top:38px!important;}
+    .dir-dots i:nth-of-type(3){top:50px!important;}
+
+    /* --- travel modes: smaller pills --- */
+    .dir-modes button{width:46px;height:28px;border-radius:14px;}
+    .dir-modes button svg{width:19px;height:19px;}
+
+    /* --- Home / Work / Travel / School / More cards: smaller --- */
+    .dir-sc{gap:8px;padding:9px 10px;}
+    .dir-sc-ic{width:32px;height:32px;}
+    .dir-sc-ic svg{width:16px;height:16px;}
+    .dir-sc-title{font-size:13.5px;}
+    /* No 62px cap here — each slot has its own column now, so "Set location"
+       and saved place names get the room instead of being cut short. */
+    .dir-sc-sub{font-size:11.5px;max-width:none;}
+
+    /* --- "Recent" heading, its rows, and the empty state: smaller --- */
+    .dir-sec{padding-top:14px;padding-bottom:6px;font-size:13.5px;}
+    .dir-row{padding-top:7px;padding-bottom:7px;gap:11px;}
+    .dir-row-ic{width:34px;height:34px;}
+    .dir-row-ic svg{width:16px;height:16px;}
+    .dir-row-title{font-size:14.5px;}
+    .dir-row-sub{font-size:12px;}
+    .dir-more{font-size:13px;padding:9px 16px;}
+    .dir-empty{font-size:12.5px;padding:13px 16px;}
+    #dir-hint{font-size:12.5px;padding:7px 16px;}
+
+    /* ======================================================================
+       THE "DRIVE" ROUTE SHEET: SAME WIDTH, MUCH SHALLOWER
+       ----------------------------------------------------------------------
+       The result card that appears once a destination is picked used to be a
+       phone-shaped 520px slab, tall and chunky. On laptop/desktop it now takes
+       its 520px width (unchanged) while every vertical step SHRINKS — shorter header, shallower tabs, tighter summary,
+       smaller chips — so it eats far less of the map's height.
+
+       Nothing was removed or reordered: same "Drive" title, same four round
+       action buttons, same four travel-mode tabs, same "7 min (1.6 km)" /
+       "Best route …" / green "Saves N% gas" summary, same Start / Add stops /
+       Share / Save. The four chips share the row equally (`flex:1 1 0`) so
+       they read as one group instead of four pills pushed far apart.
+
+       PHONE PORTRAIT IS UNTOUCHED: `min-width: 641px` is the exact complement
+       of the phone blocks `(orientation: portrait) and (max-width: 640px)`, so
+       a portrait Android/iPhone keeps the current sheet pixel for pixel.
+       ====================================================================== */
+
+    /* --- the card: same 520px width, much shallower --- */
+    #rt-sheet{
+      max-width:520px;
+      padding-top:10px;
+      border-radius:20px 20px 0 0;
+      box-shadow:0 -2px 16px rgba(0,0,0,.22);
+    }
+    #rt-sheet:before{top:5px;width:40px;height:4px;margin-left:-20px;}
+
+    /* --- title row: smaller buttons, tighter padding --- */
+    .rt-head{padding:2px 18px 4px 22px;gap:8px;}
+    #rt-title{font-size:19px;font-weight:500;}
+    .rt-cb{width:36px;height:36px;}
+    .rt-cb svg{width:18px;height:18px;}
+
+    /* --- travel-mode tabs: shallower strip --- */
+    .rt-tab{padding:8px 0 9px;font-size:14px;gap:6px;}
+    .rt-tab b svg{width:17px;height:17px;}
+    .rt-tab.on:after{width:48px;height:3px;margin-left:-24px;}
+
+    /* --- "7 min (1.6 km)" + subtitle + "Saves N% gas": compact --- */
+    .rt-sum{padding:8px 22px 9px;}
+    #rt-time,#rt-dist{font-size:19px;}
+    #rt-sub{font-size:13px;margin-top:2px;}
+    #rt-gas{font-size:13px;margin-top:5px;gap:6px;}
+    #rt-gas svg{width:14px;height:14px;}
+
+    /* --- Start / Add stops / Share / Save: the four chips now stretch to
+           share the row EQUALLY (`flex:1`) instead of being packed at their
+           natural size and pushed apart. Each chip is therefore wider, and the
+           small gap keeps them looking like one connected group rather than
+           four lonely pills floating far from each other. Text is centred
+           inside each chip so the labels still read straight. --- */
+    .rt-chips{padding:9px 18px 12px;gap:8px;justify-content:flex-start;}
+    .rt-chip{
+      flex:1 1 0;
+      min-width:0;
+      justify-content:center;
+      height:38px;
+      border-radius:19px;
+      font-size:14px;
+      padding:0 10px;
+      gap:8px;
+    }
+    .rt-chip.go{padding:0 10px;}
+    .rt-chip svg{width:17px;height:17px;}
+
+    /* --- floating buttons sit above the shallower sheet --- */
+    #rt-locate{width:44px;height:44px;top:-56px;border-radius:12px;}
+    #rt-locate span{width:28px;height:28px;}
+    #rt-locate span:after{width:12px;height:12px;}
+    #rt-layers2{width:44px;height:44px;top:-108px;border-radius:12px;}
+    #rt-layers2 svg{width:20px;height:20px;}
+
+    /* --- top origin/destination card matches the sheet, A LITTLE
+           SHORTER: the two rows drop 48px → 40px and the side buttons column
+           follows, so the whole card is ~20px less tall. The dot rail is
+           re-fitted to the new 40px rows (blue dot centred on row 1 at 20,
+           red pin on row 2 at 60) and the three gray connectors are re-spaced
+           between them — they are inline `top` values in the markup, so they
+           need !important here. --- */
+    #rt-top{max-width:520px;padding:4px 4px 4px 14px;}
+    #rt-edit .r{height:40px;}
+    #rt-side{height:80px;}
+    #rt-edit .dc .b{top:10px;}
+    #rt-edit .dc .p{top:52px;}
+    #rt-edit .dc i:nth-of-type(1){top:36px!important;}
+    #rt-edit .dc i:nth-of-type(2){top:42px!important;}
+    #rt-edit .dc i:nth-of-type(3){top:48px!important;}
+  }
 </style>
 </head>
 <body class="leaflet-touch">
@@ -643,7 +837,7 @@
 <button type="button" id="rt-layers" class="rt" aria-label="Map type" data-i="layers"></button>
 <div id="rt-sheet" class="rt">
   <button type="button" id="rt-layers2" class="rt" aria-label="Layers" data-i="layers"></button>
-  <button type="button" id="rt-locate" aria-label="My location"><span></span></button>
+  <button type="button" id="rt-locate" aria-label="Reset to initial view" title="Reset to initial view"><span></span></button>
   <div class="rt-head"><div id="rt-title">Drive</div>
     <button type="button" class="rt-cb" id="rt-tune" aria-label="Route options" data-i="tune"></button>
     <button type="button" class="rt-cb" id="rt-pricing" aria-label="Fare" data-i="ticket"></button>
@@ -1010,6 +1204,34 @@
   map.setMaxBounds(MAX_BOUNDS);
   map.fitBounds(RIZAL_BOUNDS, { padding: 20, duration: 0 });
 
+  // ===== "Reset to initial view" baseline =====
+  // Stored as BOUNDS + PADDING, never as a raw centre/zoom. This matters:
+  // fitBounds() with asymmetric padding BAKES the padding offset into the
+  // resulting centre, so replaying that centre without the padding drops the
+  // content off-centre (the route ended up hugging the top card instead of
+  // sitting in the middle). Replaying the same fit with the same padding is the
+  // only way to get "buong dadaanan nasa gitna" back exactly.
+  let initialView = null;
+  let userTouchedMap = false;
+  // Shared with fitRoute() so the opening fit and the reset fit can never
+  // diverge. The Drive sheet's live height is part of the bottom padding.
+  // NOTE: uses getElementById, not the `$` helper — `$` is declared further
+  // down and this runs first.
+  const routePadding = () => ({
+    top: 150,
+    bottom: (document.getElementById('rt-sheet').offsetHeight || 200) + 40,
+    left: 40,
+    right: 40,
+  });
+  // Overview baseline — the same fit that just ran above.
+  initialView = { bounds: RIZAL_BOUNDS, padding: 20 };
+  // Any real gesture means the opening view is already history, so a late
+  // async fit must never overwrite the baseline the user actually started on.
+  lf.on('dragstart', () => { userTouchedMap = true; });
+  ['wheel', 'touchstart'].forEach((ev) =>
+    document.getElementById('map').addEventListener(ev, () => { userTouchedMap = true; }, { passive: true })
+  );
+
   // Zoom in / out buttons that mirror the Flood Prone map's Leaflet control.
   // Leaflet 1.9.4 treats any browser with PointerEvent as "touch" and adds
   // .leaflet-touch (30px buttons), so mirror that exactly - otherwise desktop
@@ -1069,7 +1291,11 @@
     bookmark:'<path d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z" '+S+'/>',
     bookmarkOn:'<path fill="currentColor" d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/>',
     pricing:'<path fill="currentColor" d="M6 3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2h1a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-1V5a2 2 0 0 0-2-2H6zm0 2h6v2H6V5zm1 4h4v2H7V9zm-1 4h1v5H6v-5zm3 0h4a1 1 0 0 1 1 1v4h-5v-5z"/><circle cx="18" cy="6" r="2.5" fill="currentColor"/>',
-    ticket:'<path fill="currentColor" d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-9 7.5h-2v-2h2v2zm0-4.5h-2v-2h2v2zm0-4.5h-2v-2h2v2z"/>'
+    ticket:'<path fill="currentColor" d="M22 10V6c0-1.1-.9-2-2-2H4c-1.1 0-1.99.9-1.99 2v4c1.1 0 1.99.9 1.99 2s-.9 2-2 2v4c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2v-4c-1.1 0-2-.9-2-2s.9-2 2-2zm-9 7.5h-2v-2h2v2zm0-4.5h-2v-2h2v2zm0-4.5h-2v-2h2v2z"/>',
+    // Extra saved-place shortcuts (laptop/desktop only — the two cards are
+    // hidden again on phone portrait, so the phone row keeps Home/Work/More).
+    travel:'<path fill="currentColor" d="M17 6h-2V3c0-.55-.45-1-1-1h-4c-.55 0-1 .45-1 1v3H7c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2 0 .55.45 1 1 1s1-.45 1-1h6c0 .55.45 1 1 1s1-.45 1-1c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zM9.5 4h5v2h-5V4zM17 19H7V8h10v11z"/>',
+    school:'<path fill="currentColor" d="M12 3 1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/>'
   });
   const svg = (n, sz) => '<svg viewBox="0 0 24 24" width="'+(sz||24)+'" height="'+(sz||24)+'" aria-hidden="true">'+ICONS[n]+'</svg>';
   document.querySelectorAll('[data-i]').forEach((e) => { e.innerHTML = svg(e.dataset.i, e.dataset.i === 'pin' ? 24 : 22); });
@@ -1082,7 +1308,15 @@
   let mode = 'car', from = { user: true }, to = null, active = 'to', pendingSave = null, showAll = false;
   let userLoc = null, userLocSource = null, results = [], searching = false, searchEnriching = false, searchErr = false, seq = 0, timer = null, searchDeadlineTimer = null;
   let recent = store.get('traffic_recent_v2', store.get('traffic_recent', []));
-  const saved = { home: store.get('traffic_home', null), work: store.get('traffic_work', null) };
+  // Four saved-place slots. `travel` and `school` are the additions; on phone
+  // portrait their cards are hidden by CSS, so the phone row still shows the
+  // original Home / Work / More trio.
+  const saved = {
+    home: store.get('traffic_home', null),
+    work: store.get('traffic_work', null),
+    travel: store.get('traffic_travel', null),
+    school: store.get('traffic_school', null),
+  };
   const dirty = { from: false, to: false };
   const setHint = (t) => { $('dir-hint').textContent = t || ''; };
 
@@ -1114,7 +1348,7 @@
     if(!psgcSearchIndexData){loadPSGCSearchIndex().catch(()=>{});loadPSGCPointsIndex().catch(()=>{});}
     if (!from) setUserFrom();
     if (!to) toIn.value = '';
-    loadEta('home'); loadEta('work');
+    loadEta('home'); loadEta('work'); loadEta('travel'); loadEta('school');
     active = 'to'; if (addingStop) { toIn.value = ''; toIn.placeholder = 'Add a stop'; }
     renderBody(); setTimeout(() => toIn.focus(), 60);
   }
@@ -1953,13 +2187,17 @@
     }
     if (active === 'from') body.appendChild(userRow());
     const sc = h('div', 'dir-sc-row');
-    [['home', 'Home'], ['work', 'Work']].forEach(([k, label]) => {
+    // Five equal slots on laptop/desktop: Home, Work, Travel, School, More.
+    // `travel` and `school` carry `dir-sc--extra`, which the stylesheet hides
+    // below 641px so the phone portrait row still shows just Home/Work/More.
+    [['home', 'Home'], ['work', 'Work'], ['travel', 'Travel'], ['school', 'School']].forEach(([k, label]) => {
       const p = saved[k];
       const el = shortcut(k, label, p ? (eta[k] || p.label) : 'Set location', '', () => {
         if (p) return applyPlace(p);
         pendingSave = k; active = 'to'; to = null; toIn.value = ''; toIn.placeholder = 'Search ' + label + ' location';
         setHint('Pumili ng lugar na ise-save bilang ' + label + '.'); toIn.focus();
       });
+      if (k === 'travel' || k === 'school') el.classList.add('dir-sc--extra');
       if (p && eta[k]) el.querySelector('.dir-sc-sub').classList.add('eta');
       sc.appendChild(el);
     });
@@ -2137,10 +2375,15 @@
     originMarker = new mapboxgl.Marker({ element: el }).setLngLat([a.lng, a.lat]).addTo(map);
     stops.forEach((p) => stopMarkers.push(new mapboxgl.Marker({ element: h('div', 'rt-stop') }).setLngLat([p.lng, p.lat]).addTo(map)));
   }
-  function fitRoute() {
+  // Bounding box of the selected route — shared by the opening fit and by the
+  // "reset to initial view" snapshot so both frame the journey identically.
+  function routeBounds() {
     const bb = new mapboxgl.LngLatBounds();
     (routes[curMode] || []).forEach((r) => r.geometry.coordinates.forEach((c) => bb.extend(c)));
-    map.fitBounds(bb, { padding: { top: 150, bottom: $('rt-sheet').offsetHeight + 40, left: 40, right: 40 }, duration: 900 });
+    return bb;
+  }
+  function fitRoute() {
+    map.fitBounds(routeBounds(), { padding: routePadding(), duration: 900 });
   }
   // Start (on-site navigation) follows the user's GPS from the ORIGIN, so it
   // only makes sense while "Your location" is the top field. Once it is
@@ -2191,6 +2434,11 @@
     document.body.classList.remove('directions-open');
     placeMarkers(); ensureLayers(); renderLabels(); renderTop(); renderSheet();
     requestAnimationFrame(fitRoute);
+    // Opening from a shared route link: the framed route is the view the user
+    // first sees, so THAT fit becomes the reset target — stored as
+    // bounds + padding so replaying it re-centres the whole journey between the
+    // top card and the sheet. Ignored if the user already grabbed the map.
+    if (!userTouchedMap) lf.once('moveend', () => { if (!userTouchedMap) initialView = { bounds: routeBounds(), padding: routePadding() }; });
   }
   function clearRoute() {
     // The sheet's X while navigating also ends navigation: stop the GPS
@@ -2231,13 +2479,27 @@
   $('rt-layers').addEventListener('click', () => { if (nav) { toggleNavTrafficOverlay(); return; } const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
   $('rt-layers2').addEventListener('click', () => { if (nav) { toggleNavTrafficOverlay(); return; } const b = document.querySelector('#base-switch button:not(.active)'); if (b) b.click(); });
   $('rt-locate').addEventListener('click', () => {
+    // SAME BUTTON, SAME ICON — new job. This used to fly the camera to the
+    // device's GPS position. It now returns the map to the view it opened
+    // with: the Rizal overview, level and north-up. That is the exact same
+    // camera the page sets on load (`map.fitBounds(RIZAL_BOUNDS,
+    // {padding: 20, duration: 0})`) and the same one the host's Recenter
+    // button and the sheet's ✕ restore, so all three now agree.
+    //
+    // While turn-by-turn navigation is running the button keeps its old
+    // meaning (resume follow mode) — resetting the camera mid-navigation
+    // would fight the nav loop and drop the driver out of the route view.
     if (nav) { recenterFollow(); return; }
-    // Same slow locate flight as above (the page's own button must match the
-    // host's "Show your location"). Was zoom 15 / 1200ms — snappier than the
-    // hazard map, which is exactly the mismatch this fixes.
-    getUserLoc()
-      .then((l) => map.flyTo({ center: [l.lng, l.lat], zoom: 16, duration: locateFlightDurationMs(), curve: 1.42, bearing: 0, pitch: 0, essential: true }))
-      .catch(() => flash('Could not get your location.'));
+    // Clicking this IS an interaction: freeze the baseline so a still-pending
+    // opening fit can never overwrite the target with a mid-animation camera.
+    userTouchedMap = true;
+    map.setMaxBounds(MAX_BOUNDS);
+    // Re-run the SAME fit the view was opened with. Because the bounds and the
+    // padding (including the sheet's live height) are replayed together, the
+    // whole route lands centred in the space that is actually visible between
+    // the top card and the Drive sheet — level, north-up, no leftover tilt.
+    const view = initialView || { bounds: RIZAL_BOUNDS, padding: 20 };
+    map.fitBounds(view.bounds, { ...(view.padding || 20), duration: 750, pitch: 0, bearing: 0 });
   });
   lf.on('dragstart', () => { if (nav) nav.follow = false; }); // manual pan (Leaflet owns gestures) pauses follow mode
   // ===== On-site Navigation (Start button) — real GPS, like Google Maps =====
