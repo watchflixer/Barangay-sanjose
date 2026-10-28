@@ -1285,7 +1285,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       {/* Laptop/desktop only: round chevron pinned to the BOTTOM of the map —
           it collapses the floating incident-feeds card and brings it back. It
           follows the same left offset as the control stack above it. */}
-      <div id="feed-toggle-round-wrap" className="absolute bottom-5 z-40 hidden lg:flex">
+      <div
+        id="feed-toggle-round-wrap"
+        /* Inline bottom so no utility/stylesheet can pull it back up: the
+           button is pinned to the very bottom edge of the map. */
+        style={{ bottom: '12px' }}
+        className="absolute z-40 hidden lg:flex"
+      >
         <button
           id="btn-toggle-feed-round"
           type="button"
