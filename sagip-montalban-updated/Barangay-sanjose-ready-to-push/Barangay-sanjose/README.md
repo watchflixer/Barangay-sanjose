@@ -8,15 +8,15 @@ Ang root URL (`npm run preview` at `npm run dev`) ay nagsa-serve na ng **normal 
 Ang **Pixel 7 device preview** ay opt-in: bisita mo lang `/?pixel7=1` (375×820 phone frame
 na nag-e-embed ng totoong app, naka-fit sa kahit gaano kaliit na preview panel).
 
-| URL | Ano ang lalabas |
-| --- | --- |
-| `/` | Normal app (default) |
-| `/?pixel7=1` | Pixel 7 device preview |
-| `/?full=1` o `/?desktop=1` | Desktop/regular app |
-| `/index.html` | Raw app (ito ang ini-embed ng device frames) |
-| `/pixel7-preview.html?w=375&h=820` | Pixel 7 frame sa ibang viewport size |
-| `/mobile-preview.html` | Lahat ng devices (Pixel 7, iPhone SE, iPhone 14 Pro, Android) |
-| `/?traffic=1&sfrom=...` | Deep link papuntang app (hindi ni-re-redirect) |
+| URL                                | Ano ang lalabas                                               |
+| ---------------------------------- | ------------------------------------------------------------- |
+| `/`                                | Normal app (default)                                          |
+| `/?pixel7=1`                       | Pixel 7 device preview                                        |
+| `/?full=1` o `/?desktop=1`         | Desktop/regular app                                           |
+| `/index.html`                      | Raw app (ito ang ini-embed ng device frames)                  |
+| `/pixel7-preview.html?w=375&h=820` | Pixel 7 frame sa ibang viewport size                          |
+| `/mobile-preview.html`             | Lahat ng devices (Pixel 7, iPhone SE, iPhone 14 Pro, Android) |
+| `/?traffic=1&sfrom=...`            | Deep link papuntang app (hindi ni-re-redirect)                |
 
 ```bash
 npm install
@@ -84,28 +84,28 @@ test, at huwag isulat nang buo ang mga utility name sa dokumentasyon.
 Nasa `public/rizal_traffic_map.html` (`FARE_RATES` + `getRealtimeFares()`). **Auto-compute** —
 galing sa totoong Mapbox route (km at minuto) ng piniling ruta, hindi manual na input:
 
-| Sasakyan | Rate (October 3, 2026) |
-| --- | --- |
-| Grab (Hatchback) | ₱55 flag-down + ₱15.00/km + ₱2.00/min, dynamic surge ≤ 2× (rush hour 1.2×, weekend peak 1.3×) |
-| Tricycle | ₱15.00 unang km, +₱2.00/km |
-| Jeepney | ₱14.00 unang 4 km, +₱2.40/km |
-| E-Trike | ₱30 unang km, +₱15.00/km |
-| Bus | ₱18.00 unang 5 km, +₱2.98/km |
-| Airplane | Depende sa **airlines na nagse-serve sa ruta** — presyo kada airline (Cebu Pacific, PAL, AirAsia, Cebgo, PAL Express, Royal Air, Sunlight Air, AirSWIFT) |
-| Ship | Depende sa **shipping line** (2GO, Starlite, Montenegro, FastCat, Aleson, Weesam, Supercat, Cokaliong, Lite) |
+| Sasakyan         | Rate (October 3, 2026)                                                                                                                                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Grab (Hatchback) | ₱55 flag-down + ₱15.00/km + ₱2.00/min, dynamic surge ≤ 2× (rush hour 1.2×, weekend peak 1.3×)                                                            |
+| Tricycle         | ₱15.00 unang km, +₱2.00/km                                                                                                                               |
+| Jeepney          | ₱14.00 unang 4 km, +₱2.40/km                                                                                                                             |
+| E-Trike          | ₱30 unang km, +₱15.00/km                                                                                                                                 |
+| Bus              | ₱18.00 unang 5 km, +₱2.98/km                                                                                                                             |
+| Airplane         | Depende sa **airlines na nagse-serve sa ruta** — presyo kada airline (Cebu Pacific, PAL, AirAsia, Cebgo, PAL Express, Royal Air, Sunlight Air, AirSWIFT) |
+| Ship             | Depende sa **shipping line** (2GO, Starlite, Montenegro, FastCat, Aleson, Weesam, Supercat, Cokaliong, Lite)                                             |
 
 ### Airplane / Ship — paano nag-a-update
 
 - **Airport/port-based**: may table ng ~40 PH airports at ~40 ports. Ang presyo ay
   airport-to-airport (great-circle) na distansya × rate ng airline/linya.
 - **Kung walang airport/port sa destination**: ipapakita ang pinakamalapit
-  (hal. *"Walang port sa destination • via Surigao (73 km)"*) at sinasabing hindi
+  (hal. _"Walang port sa destination • via Surigao (73 km)"_) at sinasabing hindi
   kasama ang land transfer. Kung < 40 km ang layo ng pinanggalingan at pupuntahan,
   tinatanggal na lang ang Airplane/Ship row (land travel na iyon).
 - **Fare cycle** (`fareCycle()`): nagre-refresh tuwing **ika-15** at **katapusan ng
   buwan** (PH time), para sa lahat ng airline at shipping line. Naka-indeks kada
   cycle ang bawat airline (0.88×–1.20×), kaya kusang nagbabago ang presyo at ang
-  pinaka-mura, at nakalagay sa card: *"Na-refresh Oct 15, 2026 • susunod Nov 1, 2026"*.
+  pinaka-mura, at nakalagay sa card: _"Na-refresh Oct 15, 2026 • susunod Nov 1, 2026"_.
 - Buksan ang Airplane o Ship row para makita ang **listahan ng presyo kada airline/linya**
   (may CHEAPEST tag) — per pax, one-way, hindi kasama ang hotel.
 
@@ -223,11 +223,32 @@ accepting later clears the decline reason. Admin-created incidents are accepted 
 published immediately, with their reporter name hidden by default. Use **Add incident →
 Sitio preset** to place the pin, then adjust street, description and coordinates.
 
-The **Realtime visits** monitor starts at **5,000** and adds one for each subsequent page
-load in this browser, including reloads. Same-origin tabs update live through the
-`storage` event, and the panel never simulates growth. Because this build has no
-server, the number is a per-browser count—not a server-wide visitor or unique-people
-total. A shared counter requires a small backend endpoint.
+The **Realtime visits** monitor is backed by the Supabase project
+`hazardsync-map-data`. It starts at **5,000** and each page load calls the
+`increment_site_visit` RPC, so the total is shared by every visitor on every device.
+The admin dashboard subscribes to Postgres changes and refreshes instantly; a 15-second
+poll is the fallback when realtime is unavailable. Each browser sends a per-load ID, so
+a retried request cannot double-count. Counts page loads, not unique people.
+
+Setup already applied to that project (see `supabase/realtime_site_visits.sql`):
+
+- `public.site_visits` holds the single counter row and is world-readable by design;
+  there are no write policies, so visitors cannot tamper with the total.
+- `public.increment_site_visit(p_load_id uuid)` is a `security definer` function and the
+  only write path; it is granted to `anon` and deduplicates retries.
+- The table is added to the `supabase_realtime` publication.
+
+The publishable/anon key in `src/lib/siteVisits.ts` is a public browser credential. The
+counter deliberately uses its own credentials: the Help Center's `VITE_SUPABASE_*`
+variables point at a different project and are ignored here. To point the counter
+elsewhere, set `VITE_SITE_VISITS_SUPABASE_URL` and `VITE_SITE_VISITS_SUPABASE_ANON_KEY`.
+Setting `hazardsync:visits-offline=1` in localStorage disables shared counting and falls
+back to a per-browser count (used by the browser tests so automation never inflates the
+public total).
+
+Anyone can still increase a page-load counter by calling the public RPC repeatedly; if
+you need abuse-resistant numbers, add a server-side rate limit or move the increment
+into an edge function.
 
 Removing an incident or publishing a reporter name opens an accessible confirmation
 before any change is made. Cancel/Escape leaves both the report and history unchanged.
@@ -281,6 +302,9 @@ npm run test:admin:dashboard:browser
 # Accept/decline, admin publishing, removal, visits baseline and two viewport flows:
 npm run test:admin:moderation
 npm run test:admin:moderation:browser
+# Shared Supabase visit counter: config, parsing, dedupe and live dashboard refresh:
+npm run test:visits
+npm run test:visits:browser
 # TEST_BASE_URL can target a different running dev/preview server.
 ```
 

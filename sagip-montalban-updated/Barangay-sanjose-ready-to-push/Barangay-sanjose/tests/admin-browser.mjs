@@ -35,6 +35,9 @@ try {
     });
     await page.addInitScript(
       ({ key, fixture }) => {
+        try {
+          localStorage.setItem('hazardsync:visits-offline', '1');
+        } catch {}
         if (!localStorage.getItem('admin-browser-seeded')) {
           localStorage.setItem('san-jose-alerts', JSON.stringify([fixture]));
           localStorage.setItem('admin-browser-seeded', '1');
@@ -163,10 +166,7 @@ try {
     assert.equal(created.history[0].action, 'Hazard report submitted');
     assert.equal(created.history[0].actor, 'reporter');
     await portal.getByRole('button', { name: 'Accept report', exact: true }).click();
-    await page
-      .getByRole('status')
-      .filter({ hasText: 'Report accepted and published' })
-      .waitFor();
+    await page.getByRole('status').filter({ hasText: 'Report accepted and published' }).waitFor();
     await portal.getByRole('button', { name: 'Close admin' }).click();
     await openFeed();
     await page.getByRole('heading', { name: 'New submitted test hazard', exact: true }).waitFor();

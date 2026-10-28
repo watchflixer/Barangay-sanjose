@@ -2057,6 +2057,8 @@ html.kb-nav .sj-admin-inspector:focus {
   .sj-admin-nav-short { display: inline; }
 }
 .sj-admin-confirm-icon.is-decline { background: #fcebea; color: #b3261e; }
+.sj-admin-visits-label b.is-live { border-color: #c9e7d3; background: #e9f7ee; color: #2f7d4f; }
 .sj-admin-visits-pulse { display: inline-flex; align-items: center; gap: 5px; margin-left: 9px; color: #3f7d5b; font-size: 9px; font-weight: 600; }
 .sj-admin-visits-pulse::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #34a853; box-shadow: 0 0 0 3px #e7f6ec; }
-@media (max-width: 767px) { .sj-admin-visits-pulse { margin-left: 0; } }
+@media (max-width: 767px) { .sj-admin-visits-label b.is-live { border-color: #c9e7d3; background: #e9f7ee; color: #2f7d4f; }
+.sj-admin-visits-pulse { margin-left: 0; } }

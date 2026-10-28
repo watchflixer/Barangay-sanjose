@@ -35,6 +35,9 @@ try {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.addInitScript(
       ({ key, alerts }) => {
+        try {
+          localStorage.setItem('hazardsync:visits-offline', '1');
+        } catch {}
         if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({ alerts, history: [] }));
       },
       {
