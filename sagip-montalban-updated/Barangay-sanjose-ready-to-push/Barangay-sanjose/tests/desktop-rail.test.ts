@@ -50,7 +50,7 @@ test('every visual rail rule lives inside the laptop/desktop media query', () =>
 
 test('no phone breakpoint touches the rail', () => {
   // matchAll yields the full match at index 0 (the pattern has no capture groups).
-  for (const [block] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
+  for (const [block] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 344px)\)\s*\{[\s\S]*?\n\}/g)) {
     assert.doesNotMatch(block, /desktop-rail/, 'a phone-only media query must not style the rail');
   }
 });
@@ -98,7 +98,7 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   assert.match(css, rule);
 
   // No phone breakpoint may hide the navbar.
-  for (const [block] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
+  for (const [block] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 344px)\)\s*\{[\s\S]*?\n\}/g)) {
     assert.doesNotMatch(block, /app-navbar/, 'a phone-only media query must not touch the navbar');
   }
 
@@ -161,7 +161,7 @@ test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => 
   assert.match(badgeBlock, /@media \(min-width: 1024px\) \{\s*#map-coord-badge \{\s*display: none;\s*\}\s*\}/);
 
   // …and no phone/portrait breakpoint may start hiding or restyling it.
-  for (const [phoneBlock] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 400px)\)\s*\{[\s\S]*?\n\}/g)) {
+  for (const [phoneBlock] of css.matchAll(/@media \((?:orientation: portrait\) and \(max-width: 640px|max-width: 344px)\)\s*\{[\s\S]*?\n\}/g)) {
     assert.doesNotMatch(phoneBlock, /map-coord-badge/);
   }
 });

@@ -28,6 +28,27 @@ npm run build     # production build sa dist/
 Ang Pixel 7 redirect ay nasa `vite.config.ts` (plugin na `pixel7-on-demand`), kaya pareho
 ang behavior sa dev at preview server.
 
+### Android = Pixel 7 profile (STANDING RULE)
+
+**Lahat ng Android phone ay dapat kapareho ng Pixel 7 portrait profile (412px) — walang
+hiwalay na layout para sa 360/384/393.** Ang mga Android ay nagsisimula sa 360 CSS px, kaya
+ipinagbabawal ang anumang portrait media query na may `max-width` sa **345–411px** na banda:
+puputulin nito ang 360/384/393 na Android mula sa 412 na Pixel 7. Ang compact na 320-class
+profile (iPhone 5/5s/SE1) lang ang pinapayagan, at naka-gate ito sa `max-width: 344px`.
+
+Saklaw nito ang lahat ng surface ng app: `src/index.css`, `src/components/AdminLogin.css`,
+`src/components/AdminDashboard.css`, ang hazard map zoom profile
+(`SMALL_PORTRAIT_QUERY` sa `MapViewer.tsx`), ang Weather app
+(`weather-source/src/index.css`), at ang standalone na
+`public/rizal_traffic_map.html` / `public/rizal_flood_100yr_map.html`.
+
+Dalawang guard test ang bantay dito:
+
+```bash
+npm run test:android-parity          # static: walang breakpoint sa 345–411px
+npm run test:android-parity:browser  # 360/384/393/412 == Pixel 7, 320 == compact
+```
+
 ## Weather (Panahon project)
 
 Ang Weather button ay nagbubukas ng `weather.html` na nag-e-embed ng **buong

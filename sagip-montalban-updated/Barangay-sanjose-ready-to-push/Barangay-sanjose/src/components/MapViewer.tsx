@@ -65,7 +65,7 @@ import {
  * The query is the exact portrait-phone media query the CSS device profiles
  * use, so desktop, tablets and every other phone are untouched.
  */
-const SMALL_PORTRAIT_QUERY = '(orientation: portrait) and (max-width: 360px)';
+const SMALL_PORTRAIT_QUERY = '(orientation: portrait) and (max-width: 344px)';
 
 const isSmallPortraitViewport = () =>
   typeof window !== 'undefined' && window.matchMedia(SMALL_PORTRAIT_QUERY).matches;

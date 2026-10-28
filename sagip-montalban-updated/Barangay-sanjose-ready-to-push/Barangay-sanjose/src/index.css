@@ -548,7 +548,7 @@ html.kb-nav #hc-sheet .hc-sheet-filter:focus-visible {
   outline-offset: 2px;
 }
 
-@media (max-width: 400px) {
+@media (max-width: 344px) {
   #hc-sheet .hc-sheet-filter {
     width: 32px;
     padding: 0;
@@ -1611,6 +1611,12 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
    1366) all get the desktop treatment, while portrait phones AND portrait
    tablets keep the drawer.
 
+   ANDROID PARITY RULE (requested): every Android phone renders the Pixel 7
+   portrait profile. Androids start at 360 CSS px, so no portrait media query
+   may be scoped between 345px and 412px — that band belongs to the Pixel 7
+   profile. The 320-class steps live behind `max-width: 344px` only. Tests in
+   tests/android-parity.test.ts enforce this.
+
    The three sections below fill the gaps:
 
      1. Narrow landscape (<1024px) — the desktop geometry that Tailwind only
@@ -1774,10 +1780,12 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
    stops at 100vw − 28px so a strip of the page stays visible behind it
    instead of the panel feeling edge-to-edge.
 
-   Scoped to <=360px portrait, so Pixel 7 portrait (412), iPhone SE (375),
-   iPhone 14 Pro (393), X/XS (375) and every tablet above them are untouched.
+   ANDROID PARITY: scoped to <=344px portrait only, i.e. the 320-class
+   iPhone 5/5s/SE1. Every Android phone is at least 360 CSS px (360, 384,
+   393, 412, 432 ...), so all of them keep the Pixel 7 portrait profile —
+   the same navbar, drawer and map-control metrics as a 412px Pixel 7.
    ========================================================================== */
-@media (orientation: portrait) and (max-width: 360px) {
+@media (orientation: portrait) and (max-width: 344px) {
   /* --- navbar: one size down across the row --- */
   #app-navbar #btn-brand-refresh svg {
     width: 22px;
@@ -1830,11 +1838,10 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
      nav map mark      32px → 18px   (and its MapPin 12px → 10px)
      map controls      32px → 26px   (padding 8px → 5px, icon 16px → 14px)
 
-   Scoped to <=360px portrait only. Pixel 7 (412), iPhone SE (375),
-   iPhone 14 Pro (393), iPhone X/XS (375) and every tablet keep the current
-   sizes untouched.
+   Scoped to <=344px portrait only (320-class phones). Android phones from
+   360px up — including the 360x800 preview — keep the Pixel 7 sizes.
    ========================================================================== */
-@media (orientation: portrait) and (max-width: 360px) {
+@media (orientation: portrait) and (max-width: 344px) {
   /* ---- navbar: smaller map mark + location pin ---- */
   #app-navbar #btn-brand-refresh > svg {
     width: 18px;
@@ -1885,10 +1892,10 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
    The colours are untouched — same dark slate glass, same blue cloud, blue
    droplet and green wind icons. Only box and type metrics change.
 
-   Scoped to <=360px portrait only: Pixel 7 (412), iPhone SE (375),
-   iPhone 14 Pro (393), iPhone X/XS (375) and tablets keep the current card.
+   Scoped to <=344px portrait only (320-class phones). Android phones from
+   360px up keep the Pixel 7 weather card unchanged.
    ========================================================================== */
-@media (orientation: portrait) and (max-width: 360px) {
+@media (orientation: portrait) and (max-width: 344px) {
   #weather-card {
     width: 160px;
     top: 68px;
@@ -1975,7 +1982,7 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
    is a standalone 26 x 26 control with the same border, radius and 13px icon
    as the single buttons above it.
    ========================================================================== */
-@media (orientation: portrait) and (max-width: 360px) {
+@media (orientation: portrait) and (max-width: 344px) {
   /* --- single controls: one shared 26px box --- */
   #map-control-stack #btn-recenter-gis,
   #map-control-stack #btn-toggle-layers-menu,

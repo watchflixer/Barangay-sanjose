@@ -1643,7 +1643,7 @@ html.kb-nav .sj-admin-shell .sj-admin-search input:focus-visible {
     font-size: 20px;
   }
 }
-@media (max-width: 359px) {
+@media (max-width: 344px) {
   .sj-admin-header {
     padding-left: 13px;
     padding-right: 8px;
@@ -1941,7 +1941,7 @@ html.kb-nav .sj-admin-shell .sj-admin-search input:focus-visible {
     font-size: 16px;
   }
 }
-@media (max-width: 359px) {
+@media (max-width: 344px) {
   .sj-admin-stat-label {
     font-size: 9px;
   }
