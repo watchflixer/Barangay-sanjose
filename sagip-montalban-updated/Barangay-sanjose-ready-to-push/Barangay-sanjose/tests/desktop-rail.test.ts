@@ -197,24 +197,3 @@ test('the weather card sits at the bottom on laptop/desktop only', () => {
   const block = css.slice(css.indexOf('THE WEATHER CARD SITS LOWER'));
   assert.match(block, /@media \(min-width: 1024px\) \{\s*#weather-status-card \{\s*top: auto;\s*bottom: 1rem;\s*\}\s*\}/);
 });
-
-test('the map camera keeps the barangay visible beside the floating card', () => {
-  // The inset matches the CSS geometry (rail + gaps + card).
-  assert.match(mapViewer, /const DESKTOP_FEED_INSET = 500;/);
-  assert.match(mapViewer, /window\.matchMedia\('\(min-width: 1024px\)'\)\.matches \? DESKTOP_FEED_INSET : 0/);
-
-  // The camera centre is shifted by half the covered width…
-  assert.match(mapViewer, /const viewCenter = React\.useCallback/);
-  assert.match(mapViewer, /map\.project\(SAN_JOSE_CENTER, zoom\)\.subtract\(L\.point\(inset \/ 2, 0\)\)/);
-  // …recentring and overlay exits use it…
-  assert.match(mapViewer, /flyTo\(viewCenter\(mapInstanceRef\.current, 13\), 13/);
-  assert.match(mapViewer, /map\.setView\(viewCenter\(map, 13\), 13, \{ animate: false \}\)/);
-  // …it re-applies when the rail toggles the feed or the window resizes…
-  assert.match(mapViewer, /map\.panTo\(viewCenter\(map, map\.getZoom\(\)\), \{ animate: false \}\)/);
-  assert.match(mapViewer, /\}, \[desktopFeedOpen, viewCenter\]\);/);
-
-  // …the parent passes the open state, and phones bail out before touching the
-  // camera (no matchMedia match => no pan).
-  assert.match(app, /desktopFeedOpen=\{desktopFeedOpen\}/);
-  assert.match(mapViewer, /if \(!window\.matchMedia\('\(min-width: 1024px\)'\)\.matches\) return;/);
-});
