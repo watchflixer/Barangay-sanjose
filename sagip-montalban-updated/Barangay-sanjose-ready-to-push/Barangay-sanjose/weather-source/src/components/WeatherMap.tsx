@@ -6,6 +6,7 @@ import { getOwmTileUrl } from '../services/openWeatherService';
 import { getRainViewerTileUrl } from '../services/rainViewerService';
 import { getWeatherConditionInfo } from '../services/openMeteoService';
 import { WindCloudEngine } from '../services/windCloudEngine';
+import { visibleCitiesAtZoom } from '../services/cityDensity';
 
 interface WeatherMapProps {
   mode: WeatherMode;
@@ -545,6 +546,11 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   // Discrete Level-of-Detail tier to avoid re-rendering DOM markers during smooth zoom transitions
   const currentTier = currentZoom <= minZoomLevel + 0.55 ? 1 : currentZoom <= minZoomLevel + 1.25 ? 2 : 3;
 
+  // Progressive density step: zoom quantised to 0.05 so the marker layer is
+  // rebuilt only when a city can actually appear or disappear, not on every
+  // intermediate zoom frame.
+  const densityZoom = Math.round(currentZoom * 20) / 20;
+
   // Update Markers with Progressive Level-of-Detail (LOD) based on Zoom Level
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -553,26 +559,32 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     markersGroup.clearLayers();
 
-    // Adaptive Level-of-Detail relative to the locked overview zoom:
-    // Tier 1: The 16 major regional anchors from user's screenshot
-    // Tier 2 (+0.55x): Adds 30+ key provincial centers
-    // Tier 3 (+1.25x): Adds all 50+ towns, islands & municipalities
+    // Progressive Level-of-Detail.
+    //
+    // Laptop/desktop (>= 640px) uses `visibleCitiesAtZoom`: a handful of
+    // anchors at the locked overview, then more and more cities trickle in as
+    // you zoom. Every mode (weather / temperature / wind / rain) draws from the
+    // same list, so all four ramp together.
+    //
+    // Portrait phones keep the original three-step tiers untouched.
     const isBaseZoom = currentTier === 1;
     const isMediumZoom = currentTier === 2;
 
-    const visibleCities = cities.filter((city) => {
-      const cityTier = city.minZoom ?? 6;
-      if (cityTier <= 6) {
-        // Always show the 16 primary national & regional anchors on the locked overview
-        return true;
-      } else if (cityTier === 7) {
-        // Show provincial centers when zoomed in by at least 0.55x
-        return !isBaseZoom;
-      } else {
-        // Show all towns, municipalities and islands when zoomed in further
-        return !isBaseZoom && !isMediumZoom;
-      }
-    });
+    const visibleCities = isWideViewport()
+      ? visibleCitiesAtZoom(cities, densityZoom, minZoomLevel)
+      : cities.filter((city) => {
+          const cityTier = city.minZoom ?? 6;
+          if (cityTier <= 6) {
+            // Always show the primary national & regional anchors on the locked overview
+            return true;
+          } else if (cityTier === 7) {
+            // Show provincial centers when zoomed in by at least 0.55x
+            return !isBaseZoom;
+          } else {
+            // Show all towns, municipalities and islands when zoomed in further
+            return !isBaseZoom && !isMediumZoom;
+          }
+        });
 
     visibleCities.forEach((city) => {
       let temp = city.temperature;
@@ -725,7 +737,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
       markersGroup.addLayer(userMarker);
     }
-  }, [cities, mode, onSelectCity, timelineForecastHour, currentTier, userLocationCoords, userLocationCity]);
+  }, [cities, mode, onSelectCity, timelineForecastHour, currentTier, densityZoom, minZoomLevel, userLocationCoords, userLocationCity]);
 
   // Slowly fly in to the user's location when requested — same camera as the
   // hazard (Streets) map. It used to stop at zoom 10 over 1.5s, which felt like
