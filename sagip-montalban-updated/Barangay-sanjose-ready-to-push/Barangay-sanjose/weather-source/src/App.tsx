@@ -243,8 +243,12 @@ export default function App() {
           />
         </div>
 
-        {/* Floating Bottom Overlays (Timeline Scrubber + Legend Card) */}
-        <div className="absolute bottom-6 left-3 right-3 z-[1000] flex flex-col gap-2 pointer-events-none">
+        {/* Timeline Scrubber + Legend Card.
+            Portrait phones keep them docked at the bottom (unchanged). Above
+            640px the `ph-overlays` rule in index.css lifts the whole stack to
+            the top of the map, the way the Flood Prone map keeps every panel
+            in its top row and leaves the bottom of the map clear. */}
+        <div className="ph-overlays absolute bottom-6 left-3 right-3 z-[1000] flex flex-col gap-2 pointer-events-none">
           <div className="pointer-events-auto">
             <PlaybackControls
               mode={currentMode}
