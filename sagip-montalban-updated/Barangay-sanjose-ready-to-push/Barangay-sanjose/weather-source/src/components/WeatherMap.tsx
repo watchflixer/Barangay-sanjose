@@ -190,7 +190,16 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     // zoom out past this frame. On laptop/desktop the frame sits
     // `OVERVIEW_ZOOM_OUT` levels further out; portrait phones keep the original.
     const applyOverviewLock = (animate: boolean) => {
-      const fitZoom = Math.floor(map.getBoundsZoom(PH_BOUNDS, false, L.point(16, 16)) * 10) / 10;
+      // Before layout (an iframe that is still 0x0) Leaflet's bounds zoom is
+      // Infinity/NaN, which would push the camera to nonsense zooms and hide
+      // markers. Wait for a real size; the resize handler re-applies this.
+      const size = map.getSize();
+      if (!size || size.x <= 0 || size.y <= 0) return;
+
+      const rawFit = Math.floor(map.getBoundsZoom(PH_BOUNDS, false, L.point(16, 16)) * 10) / 10;
+      if (!Number.isFinite(rawFit)) return;
+      const fitZoom = rawFit;
+
       const nextZoom = overviewZoomFor(fitZoom);
 
       map.setMinZoom(nextZoom);
@@ -264,7 +273,10 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     // pan lock on every zoom too, so zooming back in does not leave the camera
     // free to roam the whole ocean it explored while zoomed out.
     map.on('zoomend', () => {
-      setCurrentZoom(map.getZoom());
+      // `getZoom()` is undefined until the first setView; storing that would
+      // make the density maths NaN and hide every marker (NaN >= 0 is false).
+      const zoom = map.getZoom();
+      if (Number.isFinite(zoom)) setCurrentZoom(zoom);
       const lock = overviewLockBounds();
       const visible = map.getBounds();
       map.setMaxBounds(lock.contains(visible) ? lock : lock.extend(visible).pad(0.02));
@@ -548,8 +560,11 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
   // Progressive density step: zoom quantised to 0.05 so the marker layer is
   // rebuilt only when a city can actually appear or disappear, not on every
-  // intermediate zoom frame.
-  const densityZoom = Math.round(currentZoom * 20) / 20;
+  // intermediate zoom frame. Falls back to the locked overview, because a
+  // non-finite zoom would filter every city out.
+  const densityZoom = Number.isFinite(currentZoom) && Number.isFinite(minZoomLevel)
+    ? Math.round(currentZoom * 20) / 20
+    : minZoomLevel;
 
   // Update Markers with Progressive Level-of-Detail (LOD) based on Zoom Level
   useEffect(() => {

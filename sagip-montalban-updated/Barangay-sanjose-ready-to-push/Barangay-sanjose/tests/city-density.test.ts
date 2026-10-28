@@ -144,3 +144,39 @@ test('the map uses progressive density on wide screens and keeps the phone tiers
   // Quantised zoom keeps the marker layer from rebuilding on every frame.
   assert.match(source, /Math\.round\(currentZoom \* 20\) \/ 20/);
 });
+
+/**
+ * Regression: Leaflet reports `getZoom()` as undefined until the first setView.
+ * That value used to reach the density maths, make the offset NaN, and hide
+ * every marker (`NaN >= 0` is false). The far view must never go empty.
+ */
+test('a missing or broken zoom still shows the overview set', () => {
+  const broken = [NaN, undefined as unknown as number, Infinity, -Infinity];
+  for (const zoom of broken) {
+    const visible = visibleCitiesAtZoom(CITIES, zoom, OVERVIEW);
+    assert.equal(
+      visible.length,
+      OVERVIEW_VISIBLE_LIMIT,
+      `zoom ${String(zoom)} must fall back to the overview set, got ${visible.length}`
+    );
+  }
+
+  // Same when the overview itself is the broken value.
+  assert.equal(visibleCitiesAtZoom(CITIES, OVERVIEW, NaN).length, OVERVIEW_VISIBLE_LIMIT);
+  assert.equal(visibleCitiesAtZoom(CITIES, 4.4, undefined as unknown as number).length, OVERVIEW_VISIBLE_LIMIT);
+
+  // A zoom below the overview (never expected, but possible while resizing)
+  // must not empty the map either.
+  assert.equal(visibleCitiesAtZoom(CITIES, OVERVIEW - 3, OVERVIEW).length, OVERVIEW_VISIBLE_LIMIT);
+});
+
+test('the component never feeds a non-finite zoom into the density maths', () => {
+  const source = readFileSync(
+    fileURLToPath(new URL('../weather-source/src/components/WeatherMap.tsx', import.meta.url)),
+    'utf8'
+  );
+  // zoomend must guard before storing.
+  assert.match(source, /const zoom = map\.getZoom\(\);\s*\n\s*if \(Number\.isFinite\(zoom\)\) setCurrentZoom\(zoom\);/);
+  // densityZoom must guard too.
+  assert.match(source, /const densityZoom = Number\.isFinite\(currentZoom\) && Number\.isFinite\(minZoomLevel\)/);
+});

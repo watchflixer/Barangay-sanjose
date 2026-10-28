@@ -118,7 +118,14 @@ export function visibleCitiesAtZoom<T extends DensityCity>(
   overviewZoom: number
 ): T[] {
   const offsets = revealOffsets(cities);
-  const offset = zoom - overviewZoom;
+
+  // Fail safe: a missing/undefined zoom (Leaflet reports `undefined` before the
+  // first setView) would make `offset` NaN, and `NaN >= 0` is false — which
+  // hides every marker. Treat that as "we are at the overview" instead.
+  const offset = Number.isFinite(zoom) && Number.isFinite(overviewZoom)
+    ? Math.max(0, zoom - overviewZoom)
+    : 0;
+
   if (offset >= FULL_DENSITY_OFFSET) return cities;
   return cities.filter((city) => offset >= (offsets.get(city.id) ?? 0));
 }
