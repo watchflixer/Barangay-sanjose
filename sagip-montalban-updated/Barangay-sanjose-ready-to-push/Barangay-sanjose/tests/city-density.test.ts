@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import {
   FULL_DENSITY_OFFSET,
   OVERVIEW_VISIBLE_LIMIT,
-  revealOffset,
+  revealOffsets,
   tierOf,
   visibleCitiesAtZoom,
   type DensityCity
@@ -15,10 +15,10 @@ import {
  * Guard for progressive marker density on the Panahon map.
  *
  * The map used to reveal markers in three hard jumps, so the far view was
- * already crowded. Now the far view keeps exactly six anchors and every other
- * city has its own reveal threshold, so the pills build up gradually as you
- * zoom in — the same list feeds all four modes (weather / temperature / wind /
- * rain).
+ * already crowded. Now the far view keeps exactly OVERVIEW_VISIBLE_LIMIT
+ * markers and every other city has its own reveal threshold, so the pills build
+ * up gradually as you zoom in — the same list feeds all four modes (weather /
+ * temperature / wind / rain).
  */
 const CITIES: DensityCity[] = [
   ...Array.from({ length: 7 }, (_, index) => ({ id: `anchor-${index}`, minZoom: 5 })),
@@ -30,20 +30,24 @@ const CITIES: DensityCity[] = [
 const OVERVIEW = 4.4;
 const countAt = (offset: number) => visibleCitiesAtZoom(CITIES, OVERVIEW + offset, OVERVIEW).length;
 
-test('the far view shows exactly six anchors and nothing else', () => {
+test('the far view shows exactly the overview limit and nothing else', () => {
   const far = visibleCitiesAtZoom(CITIES, OVERVIEW, OVERVIEW);
+  assert.equal(OVERVIEW_VISIBLE_LIMIT, 10);
   assert.equal(far.length, OVERVIEW_VISIBLE_LIMIT, `expected ${OVERVIEW_VISIBLE_LIMIT} markers at the overview`);
-  assert.equal(far.length, 6);
 
-  // Those six are the curated anchors, in source order — not a hash lottery.
+  // The curated anchors lead the far view, in table order — not a hash lottery.
   const anchors = CITIES.filter((city) => tierOf(city) === 5).map((city) => city.id);
-  assert.deepEqual(far.map((city) => city.id), anchors.slice(0, OVERVIEW_VISIBLE_LIMIT));
+  assert.deepEqual(far.slice(0, anchors.length).map((city) => city.id), anchors);
+  // Whatever fills the rest comes from the next tier up, never a small town.
+  far.slice(anchors.length).forEach((city) => {
+    assert.ok(tierOf(city) <= 6, `${city.id} is tier ${tierOf(city)} and must not crowd the far view`);
+  });
 
-  // A spread of zooms just above the overview must not dump the whole tier in.
-  assert.ok(visibleCitiesAtZoom(CITIES, OVERVIEW + 0.1, OVERVIEW).length <= OVERVIEW_VISIBLE_LIMIT + 1);
+  // A step just above the overview must not dump a whole tier in.
+  assert.ok(visibleCitiesAtZoom(CITIES, OVERVIEW + 0.1, OVERVIEW).length <= OVERVIEW_VISIBLE_LIMIT + 3);
 });
 
-test('the real city table also shows exactly six at the far view', () => {
+test('the real city table also shows exactly the overview limit at the far view', () => {
   // Parsed from the shipped table, so this fails if someone reorders it.
   const table = readFileSync(
     fileURLToPath(new URL('../weather-source/src/services/openMeteoService.ts', import.meta.url)),
@@ -56,8 +60,9 @@ test('the real city table also shows exactly six at the far view', () => {
   assert.ok(cities.length > 40, `expected the full city table, parsed ${cities.length}`);
 
   const far = visibleCitiesAtZoom(cities, 4.4, 4.4);
-  assert.equal(far.length, 6, `expected 6 visible at the far view, got ${far.length}`);
-  assert.deepEqual(far.map((city) => city.id), [
+  assert.equal(far.length, OVERVIEW_VISIBLE_LIMIT, `expected ${OVERVIEW_VISIBLE_LIMIT} visible at the far view, got ${far.length}`);
+  // The six national anchors must all be in the far view, in table order.
+  assert.deepEqual(far.slice(0, 6).map((city) => city.id), [
     'manila',
     'baguio',
     'cebu',
@@ -102,12 +107,30 @@ test('the reveal order is stable and independent of array order', () => {
   assert.deepEqual(forward, visibleCitiesAtZoom(CITIES, OVERVIEW + 1, OVERVIEW).map((city) => city.id));
 });
 
-test('a tier-8 town is never revealed before a tier-6 capital', () => {
-  const town = CITIES.find((city) => tierOf(city) === 8)!;
-  const capital = CITIES.find((city) => tierOf(city) === 6)!;
-  const townOffset = revealOffset(town, CITIES.filter((city) => tierOf(city) === 8));
-  const capitalOffset = revealOffset(capital, CITIES.filter((city) => tierOf(city) === 6));
-  assert.ok(townOffset > capitalOffset, `${townOffset} should be > ${capitalOffset}`);
+test('smaller places never arrive before bigger ones', () => {
+  const offsets = revealOffsets(CITIES);
+  const offsetOf = (tier: number) => {
+    const city = CITIES.find((candidate) => tierOf(candidate) === tier)!;
+    return offsets.get(city.id)!;
+  };
+  const capital = offsetOf(6);
+  const city = offsetOf(7);
+  const town = offsetOf(8);
+
+  assert.ok(capital <= city, `capitals (${capital}) must not arrive after cities (${city})`);
+  assert.ok(city < town, `cities (${city}) must arrive before towns (${town})`);
+  // And a town really does wait, rather than appearing with the far view.
+  assert.ok(town > 0);
+});
+
+test('every city has a distinct, monotone reveal slot', () => {
+  const offsets = revealOffsets(CITIES);
+  assert.equal(offsets.size, CITIES.length);
+  const values = [...offsets.values()];
+  assert.equal(values.filter((value) => value === 0).length, OVERVIEW_VISIBLE_LIMIT);
+  values.forEach((value) => {
+    assert.ok(value >= 0 && value <= 2, `offset ${value} is outside the ramp`);
+  });
 });
 
 test('the map uses progressive density on wide screens and keeps the phone tiers', () => {

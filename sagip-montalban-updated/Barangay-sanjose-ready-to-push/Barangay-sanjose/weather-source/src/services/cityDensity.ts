@@ -2,18 +2,19 @@
  * Progressive city-marker density for the Panahon map.
  *
  * The map used to reveal markers in three hard jumps (19 → 34 → 68 pills), so
- * the far view was already crowded and the markers appeared in lumps as you
- * zoomed. This module hands every city its own reveal threshold instead:
+ * the far view was already crowded and the rest arrived in lumps. Now every
+ * city has its own reveal threshold:
  *
- *   – exactly six national anchors are visible at the far view (the curated
- *     tier-5 list: Manila, Baguio, Cebu, Davao, Puerto Princesa, CDO),
- *   – every other city trickles in at its own zoom offset,
- *   – the ramp is keyed to the city's `minZoom` tier, and inside a tier the
- *     order is a stable hash of the id, so the same cities always appear in
- *     the same order (no flicker, no random reshuffling between renders).
+ *   – the far view keeps exactly OVERVIEW_VISIBLE_LIMIT markers (the six
+ *     national anchors first, then the biggest regional capitals),
+ *   – every other city trickles in a few at a time as you zoom in,
+ *   – the ranking is fixed: tier first (5 = anchor … 8 = smallest town), then
+ *     the curated table order for the anchors and a stable hash for the rest,
+ *     so the same cities always appear in the same order — no flicker between
+ *     renders and no reshuffling after a reload.
  *
  * Offsets are measured from the locked overview zoom, so the behaviour is the
- * same whatever the screen size makes that overview.
+ * same whatever screen size makes that overview.
  */
 
 export interface DensityCity {
@@ -22,17 +23,14 @@ export interface DensityCity {
   minZoom?: number;
 }
 
-/** How many markers the far view keeps — the rest waits for a zoom-in. */
-export const OVERVIEW_VISIBLE_LIMIT = 6;
+/** Markers the far view keeps — the rest waits for a zoom-in. */
+export const OVERVIEW_VISIBLE_LIMIT = 10;
 
-/** Zoom offset (from the overview) where each tier starts revealing. */
-const TIER_START: Record<number, number> = { 5: 0.15, 6: 0.3, 7: 0.75, 8: 1.3 };
-
-/** How much zoom a whole tier takes to reveal, smallest city last. */
-const TIER_SPREAD: Record<number, number> = { 5: 0.2, 6: 0.45, 7: 0.55, 8: 0.7 };
+/** Zoom offset of the first city that does not fit in the far view. */
+const FIRST_REVEAL_OFFSET = 0.15;
 
 /** Nothing hides once you are this far in: every city is on screen. */
-export const FULL_DENSITY_OFFSET = 2.2;
+export const FULL_DENSITY_OFFSET = 2.0;
 
 /** Stable 32-bit string hash — identical order on every render and reload. */
 export function stableHash(value: string): number {
@@ -53,43 +51,13 @@ export function tierOf(city: DensityCity): number {
 }
 
 /**
- * Zoom offset (from the locked overview) at which this city appears.
- * Anchors return 0, the smallest municipalities return ~2.1.
+ * Stable priority order for the whole table.
+ *
+ * Tier decides the broad order; inside a tier the six anchors keep the curated
+ * table order (so the far view is Manila, Baguio, Cebu, … and not a hash
+ * lottery) while everything else is ordered by a stable hash.
  */
-export function revealOffset(city: DensityCity, peersInTier: DensityCity[]): number {
-  const tier = tierOf(city);
-
-  // Anchors: the first six (curated order) hold the far view. Any extra
-  // tier-5 city — e.g. a located-but-unlisted place — waits one small step.
-  if (tier === 5) {
-    const rank = peersInTier.findIndex((peer) => peer.id === city.id);
-    return rank >= 0 && rank < OVERVIEW_VISIBLE_LIMIT ? 0 : TIER_START[5];
-  }
-
-  const start = TIER_START[tier];
-  const spread = TIER_SPREAD[tier];
-
-  // Everything else ranks by stable hash, so the reveal order never depends
-  // on the order the caller happens to pass cities in.
-  const ordered = [...peersInTier].sort((a, b) => {
-    const diff = stableHash(a.id) - stableHash(b.id);
-    return diff !== 0 ? diff : a.id.localeCompare(b.id);
-  });
-  const rank = ordered.findIndex((peer) => peer.id === city.id);
-  const fraction = ordered.length <= 1 ? 0 : rank / (ordered.length - 1);
-  return start + fraction * spread;
-}
-
-/**
- * The cities visible at `zoom`, given the locked overview zoom.
- * The far view keeps OVERVIEW_VISIBLE_LIMIT anchors, so it is never empty
- * and never crowded; the rest arrive as you zoom in.
- */
-export function visibleCitiesAtZoom<T extends DensityCity>(
-  cities: T[],
-  zoom: number,
-  overviewZoom: number
-): T[] {
+export function densityOrder<T extends DensityCity>(cities: T[]): T[] {
   const byTier = new Map<number, T[]>();
   cities.forEach((city) => {
     const tier = tierOf(city);
@@ -98,10 +66,59 @@ export function visibleCitiesAtZoom<T extends DensityCity>(
     else byTier.set(tier, [city]);
   });
 
-  const offset = zoom - overviewZoom;
-  return cities.filter((city) => {
-    if (offset >= FULL_DENSITY_OFFSET) return true;
-    const peers = byTier.get(tierOf(city)) ?? [city];
-    return offset >= revealOffset(city, peers);
+  const priority = new Map<string, number>();
+  byTier.forEach((peers, tier) => {
+    const ordered =
+      tier === 5
+        ? [...peers]
+        : [...peers].sort((a, b) => {
+            const diff = stableHash(a.id) - stableHash(b.id);
+            return diff !== 0 ? diff : a.id.localeCompare(b.id);
+          });
+    ordered.forEach((city, index) => priority.set(city.id, tier * 1000 + index));
   });
+
+  return [...cities].sort((a, b) => (priority.get(a.id) ?? 0) - (priority.get(b.id) ?? 0));
+}
+
+/**
+ * The zoom offset (from the locked overview) at which each city appears.
+ * The first OVERVIEW_VISIBLE_LIMIT cities map to 0 — visible at the far view.
+ */
+export function revealOffsets<T extends DensityCity>(cities: T[]): Map<string, number> {
+  const ordered = densityOrder(cities);
+  const offsets = new Map<string, number>();
+  const remaining = Math.max(1, ordered.length - OVERVIEW_VISIBLE_LIMIT);
+
+  ordered.forEach((city, rank) => {
+    if (rank < OVERVIEW_VISIBLE_LIMIT) {
+      offsets.set(city.id, 0);
+      return;
+    }
+    const progress = (rank - OVERVIEW_VISIBLE_LIMIT) / remaining;
+    offsets.set(city.id, FIRST_REVEAL_OFFSET + progress * (FULL_DENSITY_OFFSET - FIRST_REVEAL_OFFSET));
+  });
+
+  return offsets;
+}
+
+/** Zoom offset at which a single city appears, given the whole table. */
+export function revealOffset<T extends DensityCity>(city: T, cities: T[]): number {
+  return revealOffsets(cities).get(city.id) ?? 0;
+}
+
+/**
+ * The cities visible at `zoom`, given the locked overview zoom.
+ * The far view keeps OVERVIEW_VISIBLE_LIMIT markers, so it is never empty and
+ * never crowded; the rest arrive as you zoom in.
+ */
+export function visibleCitiesAtZoom<T extends DensityCity>(
+  cities: T[],
+  zoom: number,
+  overviewZoom: number
+): T[] {
+  const offsets = revealOffsets(cities);
+  const offset = zoom - overviewZoom;
+  if (offset >= FULL_DENSITY_OFFSET) return cities;
+  return cities.filter((city) => offset >= (offsets.get(city.id) ?? 0));
 }

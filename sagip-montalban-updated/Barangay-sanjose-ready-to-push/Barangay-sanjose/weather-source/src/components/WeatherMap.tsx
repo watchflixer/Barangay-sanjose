@@ -561,10 +561,11 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     // Progressive Level-of-Detail.
     //
-    // Laptop/desktop (>= 640px) uses `visibleCitiesAtZoom`: exactly six anchors
-    // at the locked overview, then more and more cities trickle in as you zoom.
-    // Every mode (weather / temperature / wind / rain) draws from the same
-    // list, so all four ramp together.
+    // Laptop/desktop (>= 640px) uses `visibleCitiesAtZoom`: ten markers at the
+    // locked overview (the six national anchors plus the biggest capitals),
+    // then a few more at a time as you zoom in. Every mode (weather /
+    // temperature / wind / rain) draws from the same list, so all four ramp
+    // together.
     //
     // Portrait phones keep the original three-step tiers untouched.
     const isBaseZoom = currentTier === 1;
