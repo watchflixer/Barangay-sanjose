@@ -234,20 +234,8 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
    smaller controls and calmer type.
    ========================================================================== */
 @media (min-width: 640px) {
-  /* TOP ROW, LIKE FLOOD PRONE -------------------------------------------
-     Flood Prone keeps every panel in its top row and leaves the bottom of
-     the map clear. The weather overlays now do the same: the whole column is
-     anchored under the mode nav instead of sitting on the southern islands.
-     Portrait phones keep their original bottom-6 dock — nothing here applies
-     below 640px. */
-  .ph-overlays {
-    top: 52px;
-    bottom: auto;
-    gap: 6px;
-  }
-
   .ph-playback {
-    width: min(34rem, calc(100% - 7rem));
+    width: min(34rem, 100%);
     margin-inline: auto;
     padding: 6px 10px;
     gap: 10px;
@@ -300,7 +288,7 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
   }
 
   .ph-legend {
-    width: min(26rem, calc(100% - 7rem));
+    width: min(26rem, 100%);
     margin-inline: auto;
     padding: 6px 10px 7px;
     border-radius: 12px;

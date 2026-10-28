@@ -29,7 +29,7 @@ const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
  * query is NOT mistaken for one inside it.
  */
 function rulesMentioning(source: string, needle: string) {
-  const found: { selector: string; gates: string[]; declarations: string }[] = [];
+  const found: { selector: string; gates: string[] }[] = [];
   const stack: string[] = [];
   let buffer = '';
   let index = 0;
@@ -44,7 +44,7 @@ function rulesMentioning(source: string, needle: string) {
         continue;
       }
       const close = source.indexOf('}', index);
-      found.push({ selector: head, gates: [...stack], declarations: source.slice(index + 1, close === -1 ? source.length : close) });
+      found.push({ selector: head, gates: [...stack] });
       index = close === -1 ? source.length : close + 1;
       continue;
     }
@@ -191,25 +191,4 @@ test('the bottom overlays keep their original phone markup', () => {
   for (const token of ['bg-white', 'rounded-2xl', 'p-3', 'shadow-2xl']) {
     assert.ok(legendRoot.includes(token), `legend card lost its "${token}" utility`);
   }
-});
-
-test('the overlays sit in the top row on laptop/desktop and stay docked on phones', () => {
-  const app = read('../weather-source/src/App.tsx');
-
-  // Phone layout must be untouched: the bottom dock utilities stay on the node.
-  const wrapper = /<div className="(ph-overlays [^"]*)"/.exec(app)?.[1].split(' ') ?? [];
-  for (const token of ['absolute', 'bottom-6', 'left-3', 'right-3', 'z-[1000]']) {
-    assert.ok(wrapper.includes(token), `overlay wrapper lost its "${token}" utility`);
-  }
-
-  const rules = rulesMentioning(cssWithoutComments, 'ph-overlays');
-  assert.ok(rules.length >= 1, 'expected the top-row rule for the overlays');
-  const leaked = rules.filter((rule) => !isDesktopOnly(rule.gates));
-  assert.deepEqual(leaked.map((rule) => rule.selector), [], 'the top-row move would also hit phones');
-
-  // It really is the top row: top set, bottom released.
-  const topRule = rules.find((rule) => rule.selector.trim() === '.ph-overlays');
-  assert.ok(topRule, 'expected a .ph-overlays rule');
-  assert.match(topRule.declarations, /top:\s*52px/);
-  assert.match(topRule.declarations, /bottom:\s*auto/);
 });
