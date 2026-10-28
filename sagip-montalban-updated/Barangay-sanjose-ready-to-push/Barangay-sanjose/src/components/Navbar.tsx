@@ -218,7 +218,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 moved INSIDE the Incident Feeds header — see Sidebar.tsx. */}
             <OptionsMenu
               className={`shrink-0 ${feedsVisible ? 'portrait:hidden' : ''}`}
-              disabled
+              disabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
               onOpenUpdates={onOpenUpdates}
               onOpenEvacuationCenters={onOpenEvacuationCenters}
               onOpenResolvedCleared={onOpenResolvedCleared}
@@ -244,9 +244,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             <button
               id="btn-emergency-hotlines"
-              disabled
-              aria-label="Hotlines temporarily unavailable"
-              className="hidden sm:inline-flex h-8 items-center space-x-1.5 px-3 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-md cursor-not-allowed"
+              onClick={onOpenHotlinesModal}
+              aria-label="Open emergency hotlines"
+              className="hidden sm:inline-flex h-8 items-center space-x-1.5 px-3 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-md cursor-pointer"
             >
               <PhoneCall className="w-3.5 h-3.5 text-rose-500" />
               <span>Hotlines</span>

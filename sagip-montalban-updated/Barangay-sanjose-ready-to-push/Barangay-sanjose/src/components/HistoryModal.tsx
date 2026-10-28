@@ -27,7 +27,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
             <div>
               <h2 className="text-base font-bold tracking-tight">Reports & Actions History Log</h2>
               <p className="text-xs text-slate-300">
-                Official record of reported hazards and responses in Barangay San Jose
+                Published incident reports in Barangay San Jose
               </p>
             </div>
           </div>

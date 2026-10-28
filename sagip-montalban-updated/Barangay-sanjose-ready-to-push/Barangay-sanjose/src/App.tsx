@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Navbar } from './components/Navbar';
 import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
 import { MapViewer } from './components/MapViewer';
 import { AddHazardModal } from './components/AddHazardModal';
 import { EmergencyHotlinesModal } from './components/EmergencyHotlinesModal';
-import { LiveStreamModal } from './components/LiveStreamModal';
 import { PagasaFloodStatus } from './components/PagasaFloodStatus';
 import { EvacuationCentersModal } from './components/EvacuationCentersModal';
 import { UpdatesModal } from './components/UpdatesModal';
@@ -13,47 +12,79 @@ import { ResolvedModal } from './components/ResolvedModal';
 import { HistoryModal } from './components/HistoryModal';
 import { LocationPickerModal } from './components/LocationPickerModal';
 import { HazardAlert, MapSettings, HazardType, HazardStatus } from './types';
-import { INITIAL_HAZARDS, SAN_JOSE_POLYGON_COORDS } from './data/geoData';
+import { SAN_JOSE_POLYGON_COORDS } from './data/geoData';
+import { DEFAULT_MAP_DISPLAY, type OperationsData } from './admin/types';
+import { isDemoMode, readDemoData, loadPublicData, visibleHazards, submitCommunityReport, OPERATIONS_CHANGED_EVENT } from './services/operationsService';
 import { useFloodStatus } from './hooks/useFloodStatus';
 import { classifyFloodLevel, SAN_JOSE_BRIDGE_COORDS, AUTO_FLOOD_ALERT_ID } from './lib/flood';
 import { readRefreshView } from './lib/refreshView';
+// The admin workspace is loaded only after the secret door opens, so the
+// public page never pays for the dashboard code.
+const AdminWorkspace = React.lazy(() => import('./admin/AdminApp').then(module => ({ default: module.AdminWorkspace })));
+import { ADMIN_GATE_EVENT, isAdminUnlocked, lockAdmin } from './admin/gate';
 
 export default function App() {
-  const [alerts, setAlerts] = useState<HazardAlert[]>(() => {
-    try {
-      const saved = localStorage.getItem('san-jose-alerts');
-      return saved ? JSON.parse(saved) as HazardAlert[] : INITIAL_HAZARDS;
-    } catch {
-      return INITIAL_HAZARDS;
-    }
+  const demo = isDemoMode();
+  const [operations, setOperations] = useState<OperationsData>(() => demo ? readDemoData() : {
+    hazards: [], map: DEFAULT_MAP_DISPLAY, evacuationCenters: [], emergencyContacts: [], liveStreamUrl: '', places: [], activity: [],
   });
+  const [dataError, setDataError] = useState('');
+  const [reportNotice, setReportNotice] = useState('');
+  const [autoFloodAlert, setAutoFloodAlert] = useState<HazardAlert | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<HazardAlert | null>(null);
-
-  // Keep community reports available after refresh or accidental tab close safely
+  // Secret admin door: the feed search box reveals the sign-in card, and a
+  // successful unlock mounts the full admin workspace over the site.
+  const [adminOpen, setAdminOpen] = useState(false);
   useEffect(() => {
-    try {
-      localStorage.setItem('san-jose-alerts', JSON.stringify(alerts));
-    } catch (err) {
-      console.warn('LocalStorage quota or storage error caught, recovering:', err);
+    if (!isAdminUnlocked()) setAdminOpen(false);
+  }, []);
+  useEffect(() => {
+    const onChange = () => { if (!isAdminUnlocked()) setAdminOpen(false); };
+    window.addEventListener(ADMIN_GATE_EVENT, onChange);
+    return () => window.removeEventListener(ADMIN_GATE_EVENT, onChange);
+  }, []);
+
+  // Published changes are shared across browsers through Supabase. In the
+  // clearly labelled demo they are shared only between tabs of this browser.
+  useEffect(() => {
+    let alive = true;
+    const refresh = async () => {
       try {
-        // If quota exceeded, strip out bulky photo data from user reports so alerts remain intact
-        const trimmed = alerts.map((a) => {
-          if (a.photoUrl && a.photoUrl.startsWith('data:image')) {
-            return { ...a, photoUrl: undefined };
-          }
-          return a;
-        });
-        localStorage.setItem('san-jose-alerts', JSON.stringify(trimmed));
+        const next = await loadPublicData();
+        if (alive) { setOperations(next); setDataError(''); }
       } catch {
-        // Silently prevent app crash if browser storage is completely blocked
+        if (alive) {
+          // Do not silently present demo data as live data when the backend fails.
+          setOperations(current => ({ ...current, hazards: [] }));
+          setDataError('Hindi ma-load ang pinakabagong incidents. Subukan muli o makipag-ugnayan sa barangay.');
+        }
       }
-    }
-  }, [alerts]);
+    };
+    void refresh();
+    window.addEventListener('storage', refresh);
+    window.addEventListener(OPERATIONS_CHANGED_EVENT, refresh);
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 30000);
+    return () => { alive = false; window.removeEventListener('storage', refresh); window.removeEventListener(OPERATIONS_CHANGED_EVENT, refresh); window.removeEventListener('focus', refresh); window.clearInterval(timer); };
+  }, []);
+  useEffect(() => {
+    if (!reportNotice) return;
+    const timer = window.setTimeout(() => setReportNotice(''), 6500);
+    return () => window.clearTimeout(timer);
+  }, [reportNotice]);
+
+  const alerts = useMemo(() => {
+    const published = visibleHazards(operations);
+    if (autoFloodAlert && operations.map.showPagasa && operations.map.types.flood) return [autoFloodAlert, ...published];
+    return published;
+  }, [operations, autoFloodAlert]);
+  useEffect(() => {
+    if (selectedAlert && !alerts.some(alert => alert.id === selectedAlert.id)) setSelectedAlert(null);
+  }, [alerts, selectedAlert]);
 
   // Modals state
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isHotlinesModalOpen, setIsHotlinesModalOpen] = useState(false);
-  const [isLiveModalOpen, setIsLiveModalOpen] = useState(false);
   const [isEvacuationModalOpen, setIsEvacuationModalOpen] = useState(false);
   const [isUpdatesModalOpen, setIsUpdatesModalOpen] = useState(false);
   const [isResolvedModalOpen, setIsResolvedModalOpen] = useState(false);
@@ -72,13 +103,8 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(isDesktopFeedViewport);
   const [recenterCount, setRecenterCount] = useState(0);
   
-  // STRICT USER DIRECTIVE: Default to NO live stream unless user explicitly provides/pastes a URL
-  const [liveStreamUrl, setLiveStreamUrl] = useState<string>(() => localStorage.getItem('san-jose-live-url') || '');
-
-  useEffect(() => {
-    if (liveStreamUrl) localStorage.setItem('san-jose-live-url', liveStreamUrl);
-    else localStorage.removeItem('san-jose-live-url');
-  }, [liveStreamUrl]);
+  // The broadcast link is managed centrally by the administrator.
+  const liveStreamUrl = operations.liveStreamUrl;
 
   // Map and GIS settings
   const [mapSettings, setMapSettings] = useState<MapSettings>({
@@ -105,7 +131,6 @@ export default function App() {
       setMobileMenuOpen(false);
       setIsReportModalOpen(false);
       setIsHotlinesModalOpen(false);
-      setIsLiveModalOpen(false);
       setIsEvacuationModalOpen(false);
       setIsUpdatesModalOpen(false);
       setIsResolvedModalOpen(false);
@@ -121,49 +146,21 @@ export default function App() {
   const floodStatus = useFloodStatus();
 
   useEffect(() => {
-    if (!floodStatus.data || !floodStatus.data.stations?.length) return;
+    if (!floodStatus.data || !floodStatus.data.stations?.length) { setAutoFloodAlert(null); return; }
     const station = floodStatus.data.stations[0];
     const level = classifyFloodLevel(station);
     const displayName = station.landmark || station.name || 'San Jose Bridge';
-
-    setAlerts((prev) => {
-      const withoutAuto = prev.filter((a) => a.id !== AUTO_FLOOD_ALERT_ID);
-
-      if (level === 'watch' || level === 'alarm' || level === 'critical') {
-        const severity = level === 'critical' ? 'critical' : level === 'alarm' ? 'high' : 'moderate';
-        const autoAlert: HazardAlert = {
-          id: AUTO_FLOOD_ALERT_ID,
-          type: 'flood',
-          title: `${level.toUpperCase()} \u2014 ${displayName} Water Level (Live PAGASA)`,
-          streetName: `${displayName}, Rodriguez Highway`,
-          sitio: `${displayName} Crossing`,
-          coordinates: SAN_JOSE_BRIDGE_COORDS,
-          timeReported: 'Automatic \u2014 PAGASA FFWS',
-          status: 'active',
-          severity,
-          description: `Automatic live reading from PAGASA's official river gauge at ${displayName}: current water level is ${station.currentLevel}${station.unit || 'm'} (Watch ${station.alertLevel}${station.unit || 'm'} / Alarm ${station.alarmLevel}${station.unit || 'm'} / Critical ${station.criticalLevel}${station.unit || 'm'}). This marker is generated automatically \u2014 not a manual report \u2014 and updates every 15 minutes.`,
-          reportedBy: 'PAGASA FFWS (Automatic Real-Time Feed)',
-          updatesCount: 0,
-          lastUpdated: (() => {
-            if (!floodStatus.data?.fetchedAt) return undefined;
-            try {
-              const d = new Date(floodStatus.data.fetchedAt);
-              if (isNaN(d.getTime())) return undefined;
-              return d.toLocaleTimeString('en-PH', {
-                timeZone: 'Asia/Manila',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true,
-              });
-            } catch {
-              return undefined;
-            }
-          })(),
-        };
-        return [autoAlert, ...withoutAuto];
-      }
-
-      return withoutAuto;
+    if (level !== 'watch' && level !== 'alarm' && level !== 'critical') { setAutoFloodAlert(null); return; }
+    const severity = level === 'critical' ? 'critical' : level === 'alarm' ? 'high' : 'moderate';
+    setAutoFloodAlert({
+      id: AUTO_FLOOD_ALERT_ID, type: 'flood',
+      title: `${level.toUpperCase()} — ${displayName} Water Level (Live PAGASA)`,
+      streetName: `${displayName}, Rodriguez Highway`, sitio: `${displayName} Crossing`,
+      coordinates: SAN_JOSE_BRIDGE_COORDS, timeReported: 'Automatic — PAGASA FFWS',
+      status: 'active', severity,
+      description: `Automatic reading from PAGASA's river gauge at ${displayName}: current water level is ${station.currentLevel}${station.unit || 'm'} (Watch ${station.alertLevel}${station.unit || 'm'} / Alarm ${station.alarmLevel}${station.unit || 'm'} / Critical ${station.criticalLevel}${station.unit || 'm'}).`,
+      reportedBy: 'PAGASA FFWS (Automatic Feed)', updatesCount: 0,
+      lastUpdated: floodStatus.data.fetchedAt ? new Date(floodStatus.data.fetchedAt).toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: true }) : undefined,
     });
   }, [floodStatus.data]);
 
@@ -174,30 +171,11 @@ export default function App() {
     }
   };
 
-  const handleToggleAlertStatus = (id: string) => {
-    setAlerts((prev) =>
-      prev.map((alert) => {
-        if (alert.id === id) {
-          const newStatus: HazardStatus = alert.status === 'resolved' ? 'active' : 'resolved';
-          return {
-            ...alert,
-            status: newStatus,
-            lastUpdated: 'Just now',
-          };
-        }
-        return alert;
-      })
-    );
-  };
-
-  const handleAddAlert = (newAlertData: Omit<HazardAlert, 'id' | 'timeReported'>) => {
-    const newAlert: HazardAlert = {
-      ...newAlertData,
-      id: `hz-${Date.now().toString().slice(-4)}`,
-      timeReported: 'Just now (Live Report)',
-    };
-    setAlerts((prev) => [newAlert, ...prev]);
-    setSelectedAlert(newAlert);
+  const handleAddAlert = async (newAlertData: Omit<HazardAlert, 'id' | 'timeReported'>) => {
+    await submitCommunityReport(newAlertData);
+    setReportNotice(demo
+      ? 'Demo report submitted for admin review on this browser only.'
+      : 'Naipadala ang report. Lalabas ito sa mapa kapag na-review at na-publish ng admin.');
   };
 
   const handleMapClickCoordinate = (coords: [number, number]) => {
@@ -274,7 +252,6 @@ export default function App() {
         trafficOpen={trafficOpen}
         helpCenterOpen={helpCenterOpen}
         weatherOpen={weatherOpen}
-        onOpenLiveModal={() => setIsLiveModalOpen(true)}
         onOpenUpdates={() => setIsUpdatesModalOpen(true)}
         onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
         onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
@@ -282,6 +259,9 @@ export default function App() {
         feedsVisible={incidentFeedsVisible}
       />
 
+      {incidentFeedsVisible && (demo || dataError) && <div role="status" className="shrink-0 px-3 py-1.5 text-center text-[10px] font-semibold bg-amber-50 text-amber-800 border-b border-amber-200">
+        {dataError || 'DEMO ONLY · Sample incidents and local changes are not live barangay reports.'}
+      </div>}
       {/* Main Workspace Layout */}
       <div className="flex-1 flex overflow-hidden relative">
         {/* Google-Maps-style icon rail. Renders on laptop/desktop widths only
@@ -305,7 +285,6 @@ export default function App() {
                 alerts={alerts}
                 selectedAlert={selectedAlert}
                 onSelectAlert={handleSelectAlert}
-                onToggleAlertStatus={handleToggleAlertStatus}
                 onOpenReportModal={handleOpenReportModal}
                 onOpenHotlinesModal={() => setIsHotlinesModalOpen(true)}
                 activeFilterType={mapSettings.activeFilterType}
@@ -313,14 +292,13 @@ export default function App() {
                 activeFilterStatus={mapSettings.activeFilterStatus}
                 setActiveFilterStatus={(status) => handleUpdateMapSettings({ activeFilterStatus: status })}
                 liveUrl={liveStreamUrl}
-                onOpenLiveModal={() => setIsLiveModalOpen(true)}
-                onRemoveLive={() => setLiveStreamUrl('')}
-                onClose={() => setMobileMenuOpen(false)}
+                        onClose={() => setMobileMenuOpen(false)}
                 onOpenUpdates={() => setIsUpdatesModalOpen(true)}
                 onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
                 onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
                 onOpenHistory={() => setIsHistoryModalOpen(true)}
                 optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
+                onOpenAdmin={() => { setMobileMenuOpen(false); setAdminOpen(true); }}
               />
 
               {/* Paired with the feed itself: it exists exactly while the panel does. */}
@@ -360,7 +338,6 @@ export default function App() {
             alerts={alerts}
             selectedAlert={selectedAlert}
             onSelectAlert={handleSelectAlert}
-            onToggleAlertStatus={handleToggleAlertStatus}
             mapSettings={mapSettings}
             onUpdateMapSettings={handleUpdateMapSettings}
             isAddingPinMode={isAddingPinMode}
@@ -403,20 +380,14 @@ export default function App() {
       <EmergencyHotlinesModal
         isOpen={isHotlinesModalOpen}
         onClose={() => setIsHotlinesModalOpen(false)}
-      />
-
-      {/* Live Stream URL Link Modal */}
-      <LiveStreamModal
-        isOpen={isLiveModalOpen}
-        onClose={() => setIsLiveModalOpen(false)}
-        currentLiveUrl={liveStreamUrl}
-        onSaveLiveUrl={(url) => setLiveStreamUrl(url)}
+        contacts={operations.emergencyContacts}
       />
 
       {/* Evacuation Centers Directory Modal */}
       <EvacuationCentersModal
         isOpen={isEvacuationModalOpen}
         onClose={() => setIsEvacuationModalOpen(false)}
+        centers={operations.evacuationCenters}
       />
 
       {/* Live Updates / Activity Feed Modal */}
@@ -428,12 +399,10 @@ export default function App() {
           setIsUpdatesModalOpen(false);
           handleOpenReportModal();
         }}
-        onOpenLiveModal={() => {
-          setIsUpdatesModalOpen(false);
-          setIsLiveModalOpen(true);
-        }}
         hasLiveUrl={!!liveStreamUrl}
       />
+
+      {reportNotice && <div role="status" className="fixed bottom-5 right-5 z-[200] max-w-sm rounded-xl bg-emerald-800 px-4 py-3 text-xs font-semibold text-white shadow-lg">{reportNotice}</div>}
 
       {/* Resolved / Cleared Hazards Modal */}
       <ResolvedModal
@@ -443,6 +412,19 @@ export default function App() {
         onFilterToResolved={handleFilterToResolved}
         onSelectAlert={handleSelectAlert}
       />
+
+      {/* Secret-door admin workspace (mounted only after unlock) */}
+      {adminOpen && <React.Suspense fallback={null}><AdminWorkspace
+        embedded
+        gateUnlocked
+        onExit={() => {
+          setAdminOpen(false);
+          // Back on the hazard map, laptop/desktop shows the feed open again.
+          if (isDesktopFeedViewport()) setMobileMenuOpen(true);
+          // Leaving the workspace ends this browser's admin session.
+          if (!isDemoMode()) lockAdmin();
+        }}
+      /></React.Suspense>}
 
       {/* Full Incident History Modal */}
       <HistoryModal

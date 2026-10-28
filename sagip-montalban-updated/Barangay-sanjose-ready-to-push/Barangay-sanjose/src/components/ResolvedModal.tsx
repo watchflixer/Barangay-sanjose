@@ -111,8 +111,8 @@ export const ResolvedModal: React.FC<ResolvedModalProps> = ({
                       className="w-16 h-12 object-cover rounded-lg border border-slate-200"
                     />
                     <div className="text-[11px] text-slate-500">
-                      <p className="font-medium text-slate-700">Clearing & Verification Photo Attached</p>
-                      <p>Verified by Brgy. San Jose Ops Center</p>
+                      <p className="font-medium text-slate-700">Photo Attached</p>
+                      <p>Published by the barangay administrator</p>
                     </div>
                   </div>
                 )}

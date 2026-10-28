@@ -23,6 +23,8 @@ export interface HazardAlert {
   reporterEmail?: string;
   updatesCount?: number;
   lastUpdated?: string;
+  /** Admin choice: show the reporter's name on the public map popup. */
+  showReporterName?: boolean;
 }
 
 export interface SitioLocation {

@@ -28,6 +28,149 @@ npm run build     # production build sa dist/
 Ang Pixel 7 redirect ay nasa `vite.config.ts` (plugin na `pixel7-on-demand`), kaya pareho
 ang behavior sa dev at preview server.
 
+## Secret admin door (search bar)
+
+Walang admin link sa public menu. Para makapasok:
+
+1. Buksan ang **Incident Feeds** panel (hazard map).
+2. I-type sa **search bar** ang `admin`.
+3. Lalabas ang isang maliit na **Admin sign in** card sa lugar ng listahan.
+4. Sa ngayon: **Email:** `admin` · **Password:** `admin`.
+5. Kapag tama ang dalawa, bubukas ang buong admin workspace sa ibabaw ng app
+   (may **Back to site** at sign-out sa itaas).
+
+Detalye:
+
+- Case-insensitive ang secret word; i-clear ang search o pindutin ang × para
+  bumalik sa incidents. Hindi lumalabas ang gate kapag ordinaryong salita
+  (hal. `flood`) ang hinahanap.
+- Ang session ay tumatagal ng 8 oras sa browser tab na iyon. Kapag binuksan
+  mong muli ang `admin` sa search, may **Buksan ang admin workspace** /
+  **Mag-sign out** na lalabas.
+- 5 maling subok = 30 segundong paghihintay.
+- Puwedeng palitan ang default credentials sa build environment:
+
+  ```env
+  VITE_ADMIN_EMAIL=admin@barangaysanjose.gov.ph
+  VITE_ADMIN_PASSWORD=mas-mahabang-passphrase
+  ```
+
+**Mahalagang paalala:** ang gate na ito ay nasa browser, kaya hindi ito
+kasing-tibay ng tunay na authentication. Ito ay isang convenience door para sa
+app na ito — ang tunay na proteksyon ng shared data ay ang **Supabase admin
+account + row-level security** (tingnan sa ibaba). Huwag gamitin ang
+`admin/admin` sa isang pampublikong deployment na may live na database.
+
+## Admin dashboard (HazardSync Admin)
+
+Ang public site ay may kasamang **admin workspace** para kontrolin kung ano ang
+lumalabas sa hazard street map at sa mga directory: incidents, evacuation
+centers, emergency hotlines, Help Center pins, at live broadcast link.
+
+| URL | Ano ang lalabas |
+| --- | --- |
+| `/admin.html` | Admin dashboard |
+| `/` o `/index.html` | Public site (walang binago) |
+
+```bash
+npm run dev          # public app + admin.html
+npm run dev:admin    # pareho, pero "/" ay admin dashboard (preview mode)
+npm run build        # dist/index.html + dist/admin.html
+npm run test:admin   # map-visibility rules (4 tests)
+```
+
+### Ano ang kayang kontrolin
+
+- **Overview** — bilang ng incidents, pending review, active, resolved; live
+  preview ng mapa at mga layer switch.
+- **Incidents & reports** — gumawa, mag-edit, mag-publish, mag-hide, at
+  mag-delete ng incidents (title, type, severity, status, street, sitio,
+  coordinates, description, photo). Puwedeng pumili ng lokasyon sa embedded
+  na mapa. Ang community reports ay pumapasok bilang **Pending review** —
+  hindi sila lumalabas sa public map hanggang ma-publish ng admin.
+  May **REPORTER** column sa listahan, at sa editor ay may
+  *"Sino ang nag-report"* card: **pangalan, email, cellphone, kung kailan
+  nag-report** (eksaktong oras + *"x minuto / oras / araw ang nakalipas"*).
+  May switch ding **"Ipakita ang pangalan ng nag-report sa public map"** —
+  ang email at cellphone ay hindi kailanman ipinapakita sa public site.
+- **History** — activity log ng lahat ng admin action: reported, added,
+  updated, published, hidden, deleted, resolved, directory, settings — kasama
+  ang **sino** ang gumawa, **kailan**, at **ano** ang binago. May search at
+  filter, at naka-group kada araw (Ngayong araw / Kahapon / petsa).
+- **Hazard street map** — per-layer switch (Flooding, Fire, Power, Road,
+  Water, Streetlight), resolved incidents on/off, at ang automatic PAGASA pin
+  on/off. Naka-preview dito ang totoong pins.
+- **Evacuation centers / Emergency hotlines** — idagdag, i-edit, i-delete.
+  Ito ang lumalabas sa public directory sa loob ng app.
+- **Help center** — pamahalaan ang `help_places` pins (Supabase ang source).
+- **Settings** — resolved/PAGASA switches, live broadcast link, data
+  connection, at demo reset.
+
+### Demo mode vs. shared data
+
+Kung walang `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`, **Demo mode** ang
+admin: naka-label na sample data, at ang mga pagbabago ay nananatili lang sa
+browser (`localStorage`). Para maging shared sa lahat ng bisita, i-setup ang
+Supabase:
+
+1. Sa Supabase Dashboard → SQL Editor, patakbuhin ang
+   `supabase/admin_operations.sql` (safe i-re-run). Kasama na ang
+   `hazard_reports`, `site_content`, admin membership, public view, at ang
+   `submit_community_hazard()` RPC.
+2. Authentication → Users → **Add user**: gumawa ng email + password para sa
+   bawat admin. Pagkatapos, i-grant ang access:
+
+   ```sql
+   insert into public.hazardsync_admins (user_id)
+   select id from auth.users where email = 'ADMIN_EMAIL'
+   on conflict do nothing;
+   ```
+
+3. Ilagay ang project URL at **public anon key** sa `.env.local`
+   (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`), o sa GitHub repo
+   Secrets (parehong pangalan) para sa Pages build.
+4. I-redeploy. `/admin.html` ay magpapakita na ng login; ang mga account na
+   wala sa `hazardsync_admins` ay tatanggihan.
+
+### Paano gumagana ang map visibility
+
+Isang rule lang ang sinusunod ng public map (`src/admin/visibility.ts`):
+
+```
+published  AND  layer enabled  AND  (not resolved OR resolved switch on)
+```
+
+- `visibility = 'pending'` — galing sa community report, hinihintay ang review.
+- `published` — nasa public map (kung naka-on ang layer).
+- `hidden` — nire-review o tinanggal pansamantala, wala sa public map.
+
+Ang public app ay nagre-refresh tuwing 30s, pagbalik ng focus, at kapag
+nagbago ang admin sa parehong browser. Kapag biglang hindi maabot ang
+Supabase, **walang sample data na ipinapakita** — may amber na abiso sa itaas
+ng feed at walang pins, para hindi mapagkamalang live ang demo.
+
+### Security notes
+
+- Ang browser ay gumagamit lang ng **public anon key**. Walang service-role key
+  sa Vite o sa admin UI.
+- Ang RLS ay nagbibigay ng writes sa `hazard_reports`, `site_content`,
+  `help_places` sa authenticated users na nasa `hazardsync_admins` lang.
+- Ang public reads ng incidents ay dumadaan sa `published_hazards` view, na
+  hindi kasama ang `reporterEmail` at `contactNumber`.
+- Ang `submit_community_hazard()` RPC ay validation-on-server: fixed ang
+  `visibility='pending'` at `status='active'`, may coordinate bounds, photo
+  format/size check, at 5-minute duplicate guard.
+- Ang popup HTML ng Leaflet ay ine-escape bago i-render, at image URLs ay
+  limitado sa `data:image/*` o http(s).
+
+### Tests
+
+```bash
+npm run lint
+npm run test:admin
+npm run build
+```
+
 ## Weather (Panahon project)
 
 Ang Weather button ay nagbubukas ng `weather.html` na nag-e-embed ng **buong

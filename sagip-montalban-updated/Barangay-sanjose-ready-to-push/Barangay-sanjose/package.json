@@ -24,10 +24,13 @@
     "test:desktop-rail": "tsx --test tests/desktop-rail.test.ts",
     "test:weather-nav": "tsx --test tests/weather-mode-nav.test.ts",
     "test:weather-zoom": "tsx --test tests/weather-zoom-lock.test.ts",
-    "test:city-density": "tsx --test tests/city-density.test.ts"
+    "test:city-density": "tsx --test tests/city-density.test.ts",
+    "dev:admin": "vite --mode admin --port=3000 --host=0.0.0.0",
+    "test:admin": "tsx --test tests/admin-operations.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/leaflet": "^1.9.22",
     "@vitejs/plugin-react": "^5.0.4",

@@ -52,12 +52,26 @@ function pixel7OnDemand(): Plugin {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
   return {
     // Relative base so the built site works on GitHub Pages project paths
     // (https://<user>.github.io/<repo>/) as well as at a domain root.
     base: './',
-    plugins: [pixel7OnDemand(), react(), tailwindcss()],
+    plugins: [
+      // A dedicated preview can open the admin dashboard at the preview root
+      // without changing the public site's normal root URL.
+      ...(mode === 'admin' ? [{
+        name: 'admin-preview-root',
+        configureServer(server: import('vite').ViteDevServer) {
+          server.middlewares.use((req, res, next) => {
+            if ((req.method === 'GET' || req.method === 'HEAD') && req.url?.split('?')[0] === '/') {
+              res.statusCode = 302; res.setHeader('Location', '/admin.html'); res.end(); return;
+            }
+            next();
+          });
+        },
+      }] : []),
+      pixel7OnDemand(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -77,6 +91,7 @@ export default defineConfig(() => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
+          admin: path.resolve(__dirname, 'admin.html'),
           // The complete Panahon project from the Drive folder, embedded by the Weather view.
           weather: path.resolve(__dirname, 'weather.html'),
         },

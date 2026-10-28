@@ -28,7 +28,7 @@ import suburbanBridgeClearingImg from '../assets/images/suburban_bridge_clearing
 interface AddHazardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddAlert: (newAlert: Omit<HazardAlert, 'id' | 'timeReported'>) => void;
+  onAddAlert: (newAlert: Omit<HazardAlert, 'id' | 'timeReported'>) => Promise<void>;
   selectedCoordinates: [number, number] | null;
   onEnablePickCoordinateMode: () => void;
 }
@@ -93,6 +93,8 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
   // Photo verification state
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -123,8 +125,8 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 15 * 1024 * 1024) {
-      setPhotoError('Image size should be less than 15MB');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 8 * 1024 * 1024) {
+      setPhotoError('Please choose a JPG, PNG or WebP image under 8 MB.');
       return;
     }
 
@@ -154,20 +156,18 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             if (ctx) {
               ctx.drawImage(img, 0, 0, width, height);
               const compressedData = canvas.toDataURL('image/jpeg', 0.72);
+              if (compressedData.length > 1500000) { setPhotoError('The photo is too large after compression. Please choose a smaller image.'); return; }
               setPhotoUrl(compressedData);
               setPhotoError(null);
             } else {
-              setPhotoUrl(rawData);
-              setPhotoError(null);
+              setPhotoError('Could not process this photo. Please choose another image.');
             }
           } catch {
-            setPhotoUrl(rawData);
-            setPhotoError(null);
+            setPhotoError('Could not process this photo. Please choose another image.');
           }
         };
         img.onerror = () => {
-          setPhotoUrl(rawData);
-          setPhotoError(null);
+          setPhotoError('Could not read this image. Please choose another photo.');
         };
         img.src = rawData;
       }
@@ -175,7 +175,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !streetName.trim() || !reportedBy.trim() || !contactNumber.trim() || !reporterEmail.trim()) return;
 
@@ -185,7 +185,10 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
       return;
     }
 
-    onAddAlert({
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+    await onAddAlert({
       type,
       title: title.trim(),
       streetName: streetName.trim(),
@@ -211,6 +214,11 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
     setReportedBy('');
     setContactNumber('');
     setReporterEmail('');
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Hindi naipadala ang report. Pakisubukang muli.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -219,7 +227,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
           <div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">Pin Verified Hazard Incident</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-900">Submit Hazard Report</h2>
             <p className="text-[11px] text-slate-500 font-medium">Barangay San Jose, Rodriguez, Rizal</p>
           </div>
           <button
@@ -232,6 +240,8 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto custom-scrollbar">
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">Your report is sent to the barangay admin for review. It will appear on the map only after publication.</p>
+          {submitError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">{submitError}</p>}
           {/* Hazard Type Selector */}
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5">
@@ -353,15 +363,15 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                 <Camera className="w-3.5 h-3.5 text-rose-500" />
-                <span>Photo Required / Photo Verification *</span>
+                <span>Photo Required *</span>
               </label>
               <span className="text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                Anti-Fake Report
+                For admin review
               </span>
             </div>
 
             <p className="text-[11px] text-slate-500 leading-snug">
-              Upload an actual photo from the site to confirm the real hazard in Barangay San Jose.
+              Upload an actual photo from the site to help the barangay review your report.
             </p>
 
             {photoUrl ? (
@@ -392,11 +402,11 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 >
                   <Upload className="w-6 h-6 text-slate-400 mx-auto mb-1" />
                   <p className="text-xs font-bold text-slate-700">Click to upload camera photo or image file</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">PNG, JPG, JPEG up to 8MB</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">PNG, JPG or WebP up to 8MB</p>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
@@ -573,10 +583,11 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md shadow-xs transition-all cursor-pointer"
+              disabled={submitting}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md shadow-xs transition-all cursor-pointer disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Publish Verified Hazard Pin</span>
+              <span>{submitting ? 'Sending…' : 'Submit for admin review'}</span>
             </button>
           </div>
         </form>

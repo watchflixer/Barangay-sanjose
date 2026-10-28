@@ -5,6 +5,8 @@ import {
   HazardStatus 
 } from '../types';
 import { WaterLevelLiveBanner } from './WaterLevelLiveBanner';
+import { AdminGate } from '../admin/AdminGate';
+import { isSecretQuery } from '../admin/gate';
 import { OptionsMenu } from './OptionsMenu';
 import { ReportButton } from './ReportButton';
 import { 
@@ -32,7 +34,6 @@ interface SidebarProps {
   alerts: HazardAlert[];
   selectedAlert: HazardAlert | null;
   onSelectAlert: (alert: HazardAlert) => void;
-  onToggleAlertStatus: (id: string) => void;
   onOpenReportModal: () => void;
   onOpenHotlinesModal: () => void;
   activeFilterType: HazardType | 'all';
@@ -50,13 +51,14 @@ interface SidebarProps {
   onOpenHistory?: () => void;
   /** Flood Prone / Traffic map open — greys out the ⊕ at ●●● buttons (all devices). */
   optionsDisabled?: boolean;
+  /** Opens the admin workspace once the hidden sign-in card succeeds. */
+  onOpenAdmin?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   alerts,
   selectedAlert,
   onSelectAlert,
-  onToggleAlertStatus,
   onOpenReportModal,
   onOpenHotlinesModal,
   activeFilterType,
@@ -72,11 +74,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenResolvedCleared = () => {},
   onOpenHistory = () => {},
   optionsDisabled = false,
+  onOpenAdmin = () => {},
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  // Typing the secret word in this search box is the only way in.
+  const secretMode = isSecretQuery(searchQuery);
 
   // Filter alerts by search and active filters
-  const filteredAlerts = alerts.filter((alert) => {
+  const filteredAlerts = secretMode ? [] : alerts.filter((alert) => {
     const matchesSearch =
       searchQuery === '' ||
       alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -149,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </div>
             <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#5f6368]">
-              <span className="truncate">Verified reports · Barangay San Jose</span>
+              <span className="truncate">Published reports · Barangay San Jose</span>
             </p>
           </div>
 
@@ -163,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <OptionsMenu
               className="hidden portrait:inline-flex"
               anchor="row"
-              disabled
+              disabled={optionsDisabled}
               onOpenUpdates={onOpenUpdates}
               onOpenEvacuationCenters={onOpenEvacuationCenters}
               onOpenResolvedCleared={onOpenResolvedCleared}
@@ -269,11 +274,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         liveUrl={liveUrl}
         onOpenEditModal={onOpenLiveModal}
         onRemoveLive={onRemoveLive}
+        editable={false}
       />
 
       {/* Alert Cards List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar bg-slate-50/30 lg:bg-white">
-        {filteredAlerts.length === 0 ? (
+        {secretMode ? (
+          <AdminGate
+            onClose={() => setSearchQuery('')}
+            onUnlocked={() => {
+              setSearchQuery('');
+              onOpenAdmin();
+            }}
+          />
+        ) : filteredAlerts.length === 0 ? (
           <div className="py-12 text-center space-y-3">
             <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
               <ShieldCheck className="w-5 h-5 text-emerald-600" />
@@ -390,21 +404,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span>{alert.timeReported}</span>
                   </div>
 
-                  <button
-                    id={`btn-card-toggle-${alert.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleAlertStatus(alert.id);
-                    }}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-semibold transition-colors ${
-                      isResolved
-                        ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        : 'bg-[#1a73e8] text-white hover:bg-blue-700'
-                    }`}
-                  >
-                    <CheckCircle2 className="h-3 w-3" />
-                    {isResolved ? 'Reopen' : 'Resolve'}
-                  </button>
+                  <span className="text-[10px] font-medium text-slate-400">Barangay update</span>
                 </div>
               </div>
             );
@@ -427,9 +427,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <button
             type="button"
-            disabled
-            aria-label="Hotlines temporarily unavailable"
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-red-600 px-3 text-[10px] font-bold text-white shadow-sm cursor-not-allowed"
+            onClick={onOpenHotlinesModal}
+            aria-label="Open emergency hotlines"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-red-600 px-3 text-[10px] font-bold text-white shadow-sm cursor-pointer"
           >
             <PhoneCall className="h-3.5 w-3.5" />
             <span>Hotlines</span>

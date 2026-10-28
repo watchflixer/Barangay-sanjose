@@ -47,6 +47,20 @@ import {
   LightbulbOff
 } from 'lucide-react';
 
+// Leaflet popup templates are HTML, not React nodes. Reports are untrusted
+// until reviewed, so escape their content and reject dangerous image schemes.
+const escapePopup = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, char => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[char] || char));
+const safePopupPhoto = (value?: string) => {
+  if (!value) return '';
+  if (/^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(value)) return value;
+  try {
+    const url = new URL(value, window.location.href);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+  } catch { return ''; }
+};
+
 /**
  * STREET HAZARD MAP — starting zoom.
  *
@@ -82,7 +96,6 @@ interface MapViewerProps {
   alerts: HazardAlert[];
   selectedAlert: HazardAlert | null;
   onSelectAlert: (alert: HazardAlert | null) => void;
-  onToggleAlertStatus: (id: string) => void;
   mapSettings: MapSettings;
   onUpdateMapSettings: (settings: Partial<MapSettings>) => void;
   isAddingPinMode: boolean;
@@ -104,7 +117,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   alerts,
   selectedAlert,
   onSelectAlert,
-  onToggleAlertStatus,
   mapSettings,
   onUpdateMapSettings,
   isAddingPinMode,
@@ -733,6 +745,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     });
 
     visibleAlerts.forEach((alert) => {
+      const popupId = alert.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const photoUrl = safePopupPhoto(alert.photoUrl);
       // Configure icon badge appearance based on hazard type
       let iconSymbol = '⚠️';
       let bgColor = 'bg-amber-500';
@@ -777,7 +791,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       // HTML template for the custom Leaflet Pin
       const customPinHtml = `
-        <div class="hazard-pin-container" id="map-pin-${alert.id}">
+        <div class="hazard-pin-container" id="map-pin-${popupId}">
           ${!isResolved && (alert.severity === 'critical' || alert.severity === 'high') ? `<div class="hazard-pulse-ring ${ringColor}"></div>` : ''}
           <div class="hazard-pin-icon ${isResolved ? 'bg-slate-500 opacity-80' : bgColor}">
             <span>${iconSymbol}</span>
@@ -795,7 +809,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       const marker = new L.Marker(alert.coordinates, {
         icon: customIcon,
-        title: `${labelText}: ${alert.streetName}`,
+        title: `${labelText}: ${escapePopup(alert.streetName)}`,
       });
 
       // Status pill styling
@@ -814,11 +828,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 text-slate-700">Low</span>';
 
       // Rich HTML Popup with Photo Proof
-      const photoHtml = alert.photoUrl
+      const photoHtml = photoUrl
         ? `<div class="relative w-full h-20 rounded-md overflow-hidden border border-slate-200 bg-slate-100 mt-1">
-            <img src="${alert.photoUrl}" alt="${alert.title}" class="w-full h-full object-cover" />
+            <img src="${escapePopup(photoUrl)}" alt="${escapePopup(alert.title)}" class="w-full h-full object-cover" />
             <div class="absolute bottom-1 right-1 bg-black/70 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-              📸 Verified Photo
+              📸 Photo attached
             </div>
           </div>`
         : '';
@@ -834,7 +848,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <span class="text-xl">${iconSymbol}</span>
               <div>
                 <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">${labelText}</div>
-                <div class="font-bold text-slate-900 text-xs leading-snug">${alert.title}</div>
+                <div class="font-bold text-slate-900 text-xs leading-snug">${escapePopup(alert.title)}</div>
               </div>
             </div>
           </div>
@@ -854,37 +868,32 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
             <div class="flex items-start justify-between pt-0.5">
               <span class="text-slate-400 font-medium text-[11px] shrink-0">Street:</span>
-              <span class="font-semibold text-right text-slate-800 text-[11px]">${alert.streetName}</span>
+              <span class="font-semibold text-right text-slate-800 text-[11px]">${escapePopup(alert.streetName)}</span>
             </div>
 
             <div class="flex items-center justify-between">
               <span class="text-slate-400 font-medium text-[11px]">Reported:</span>
-              <span class="text-slate-600 font-mono text-[10px]">${alert.timeReported}</span>
+              <span class="text-slate-600 font-mono text-[10px]">${escapePopup(alert.timeReported)}</span>
             </div>
           </div>
 
           <!-- Description -->
           <div class="p-1.5 bg-slate-50 rounded text-[10px] text-slate-600 leading-snug border border-slate-200">
-            <span id="popup-desc-short-${alert.id}">${shortDescription}</span>
-            <span id="popup-desc-full-${alert.id}" style="display:none">${alert.description}</span>
-            ${hasMoreDescription ? `<button id="btn-popup-more-${alert.id}" class="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700">See more</button>` : ''}
+            <span id="popup-desc-short-${popupId}">${escapePopup(shortDescription)}</span>
+            <span id="popup-desc-full-${popupId}" style="display:none">${escapePopup(alert.description)}</span>
+            ${hasMoreDescription ? `<button id="btn-popup-more-${popupId}" class="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700">See more</button>` : ''}
           </div>
 
           ${alert.evacuationCenter ? `
             <div class="text-[10px] bg-emerald-50 text-emerald-800 p-1.5 rounded border border-emerald-200">
-              <strong>Evacuation Center:</strong> ${alert.evacuationCenter}
+              <strong>Evacuation Center:</strong> ${escapePopup(alert.evacuationCenter)}
             </div>
           ` : ''}
 
           <!-- Footer Actions -->
           <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span class="text-[10px] text-slate-400 truncate max-w-[120px]">By: ${alert.reportedBy}</span>
-            <button
-              id="btn-popup-toggle-${alert.id}"
-              class="px-2.5 py-1 text-xs font-semibold rounded ${isResolved ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs'} transition-colors cursor-pointer"
-            >
-              ${isResolved ? 'Re-open Alert' : 'Mark Resolved'}
-            </button>
+            <span class="text-[10px] text-slate-400 truncate max-w-[120px]">${alert.showReporterName ? `By: ${escapePopup(alert.reportedBy)}` : 'Barangay update'}</span>
+            <span class="text-[10px] text-slate-400">Barangay update</span>
           </div>
         </div>
       `;
@@ -909,19 +918,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         mapInstanceRef.current?.panBy([0, -500], { animate: false });
         // Attach click listener to the button inside popup
         setTimeout(() => {
-          const btn = document.getElementById(`btn-popup-toggle-${alert.id}`);
-          if (btn) {
-            btn.onclick = (e) => {
-              e.stopPropagation();
-              onToggleAlertStatus(alert.id);
-            };
-          }
-          const more = document.getElementById(`btn-popup-more-${alert.id}`);
+          const more = document.getElementById(`btn-popup-more-${popupId}`);
           if (more) {
             more.onclick = (e) => {
               e.stopPropagation();
-              const shortText = document.getElementById(`popup-desc-short-${alert.id}`);
-              const fullText = document.getElementById(`popup-desc-full-${alert.id}`);
+              const shortText = document.getElementById(`popup-desc-short-${popupId}`);
+              const fullText = document.getElementById(`popup-desc-full-${popupId}`);
               if (shortText && fullText) {
                 shortText.style.display = 'none';
                 fullText.style.display = 'inline';

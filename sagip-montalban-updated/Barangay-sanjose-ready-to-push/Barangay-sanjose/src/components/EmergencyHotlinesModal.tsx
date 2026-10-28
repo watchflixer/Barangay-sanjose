@@ -12,15 +12,18 @@ import {
   Check 
 } from 'lucide-react';
 import { EMERGENCY_CONTACTS } from '../data/geoData';
+import type { EmergencyContact } from '../types';
 
 interface EmergencyHotlinesModalProps {
   isOpen: boolean;
   onClose: () => void;
+  contacts?: EmergencyContact[];
 }
 
 export const EmergencyHotlinesModal: React.FC<EmergencyHotlinesModalProps> = ({
   isOpen,
   onClose,
+  contacts = EMERGENCY_CONTACTS,
 }) => {
   const [copiedNum, setCopiedNum] = React.useState<string | null>(null);
 
@@ -85,7 +88,12 @@ export const EmergencyHotlinesModal: React.FC<EmergencyHotlinesModalProps> = ({
             </a>
           </div>
 
-          {EMERGENCY_CONTACTS.map((contact, idx) => (
+          {contacts.length === 0 && (
+            <p className="text-center text-xs text-slate-500 py-6">
+              No hotlines have been published yet. For immediate emergencies, call 911.
+            </p>
+          )}
+          {contacts.map((contact, idx) => (
             <div
               key={idx}
               className="p-3 bg-slate-50 hover:bg-white rounded-lg border border-slate-200 transition-all space-y-2"

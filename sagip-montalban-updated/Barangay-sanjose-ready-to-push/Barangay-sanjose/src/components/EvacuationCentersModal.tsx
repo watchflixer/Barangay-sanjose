@@ -1,111 +1,20 @@
 import React from 'react';
 import { X, Building2, MapPin, Users, Phone, CheckCircle, AlertTriangle, ExternalLink, Shield } from 'lucide-react';
 
-export interface EvacuationCenter {
-  id: string;
-  name: string;
-  sitio: string;
-  address: string;
-  capacityFamilies: number;
-  currentFamilies: number;
-  status: 'Open' | 'Standby' | 'Full';
-  contactPerson: string;
-  contactNumber: string;
-  coordinates: [number, number];
-  amenities: string[];
-}
-
-export const SAN_JOSE_EVACUATION_CENTERS: EvacuationCenter[] = [
-  {
-    id: 'evac-1',
-    name: 'Kasiglahan Village Elementary School',
-    sitio: 'Kasiglahan Village (1K1)',
-    address: 'Phase 1K1, Kasiglahan Village, San Jose, Rodriguez, Rizal',
-    capacityFamilies: 450,
-    currentFamilies: 0,
-    status: 'Standby',
-    contactPerson: 'Principal / Brgy. Evac Officer Reyes',
-    contactNumber: '0917-890-7265',
-    coordinates: [14.7458, 121.1362],
-    amenities: ['Generator Back-up', 'Community Kitchen', 'Medical Station', 'Clean Water Tank']
-  },
-  {
-    id: 'evac-2',
-    name: 'San Jose National High School Evacuation Center',
-    sitio: 'Litex / Tagumpay Area',
-    address: 'National Highway, Brgy. San Jose, Rodriguez, Rizal',
-    capacityFamilies: 600,
-    currentFamilies: 0,
-    status: 'Standby',
-    contactPerson: 'MDRRMO Focal Santos',
-    contactNumber: '(02) 8997-1800',
-    coordinates: [14.7335, 121.1095],
-    amenities: ['Multi-Room Classrooms', 'WASH Facilities', 'Security Post', 'Solar Lights']
-  },
-  {
-    id: 'evac-3',
-    name: 'Kasiglahan Phase 1K2 Multi-Purpose Covered Court',
-    sitio: 'Kasiglahan Village (1K2)',
-    address: 'Phase 1K2 Covered Gym, San Jose, Rodriguez, Rizal',
-    capacityFamilies: 250,
-    currentFamilies: 18,
-    status: 'Open',
-    contactPerson: 'Sitio Leader Hernandez',
-    contactNumber: '0920-955-7372',
-    coordinates: [14.7485, 121.1390],
-    amenities: ['Elevated Flooring', 'Relief Distribution Point', 'First Aid Station']
-  },
-  {
-    id: 'evac-4',
-    name: 'Tagumpay Multi-Purpose Evacuation Hall',
-    sitio: 'Sitio Tagumpay Resettlement',
-    address: 'Tagumpay Main Ave, San Jose, Rodriguez, Rizal',
-    capacityFamilies: 300,
-    currentFamilies: 0,
-    status: 'Standby',
-    contactPerson: 'Kagawad on Disaster Preparedness',
-    contactNumber: '(02) 8997-1823',
-    coordinates: [14.7555, 121.1215],
-    amenities: ['Emergency Power', 'Restrooms', 'CCTV Monitoring']
-  },
-  {
-    id: 'evac-5',
-    name: 'Amityville Covered Court & Disaster Facility',
-    sitio: 'Amityville Subdivision',
-    address: 'Main Entrance Court, Amityville, San Jose, Rodriguez, Rizal',
-    capacityFamilies: 180,
-    currentFamilies: 0,
-    status: 'Standby',
-    contactPerson: 'HOA Disaster Committee',
-    contactNumber: '0966-248-1890',
-    coordinates: [14.7380, 121.1270],
-    amenities: ['Clean Drinking Water', 'Covered Arena', 'Radio Comms Base']
-  },
-  {
-    id: 'evac-6',
-    name: 'Suburban Multi-Purpose Gymnasium',
-    sitio: 'Suburban San Jose',
-    address: 'Phase 2 Gym, Suburban, San Jose, Rodriguez, Rizal',
-    capacityFamilies: 200,
-    currentFamilies: 0,
-    status: 'Standby',
-    contactPerson: 'Brgy. San Jose Sub-OpCen',
-    contactNumber: '(02) 8941-1191',
-    coordinates: [14.7290, 121.1180],
-    amenities: ['Elevated Bleachers', 'Backup Power', 'Kitchen Area']
-  }
-];
+import { SAN_JOSE_EVACUATION_CENTERS, type EvacuationCenter } from '../data/evacuationCenters';
 
 interface EvacuationCentersModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectCoordinates?: (coords: [number, number], name: string) => void;
+  centers?: EvacuationCenter[];
 }
 
 export const EvacuationCentersModal: React.FC<EvacuationCentersModalProps> = ({
   isOpen,
   onClose,
   onSelectCoordinates,
+  centers = SAN_JOSE_EVACUATION_CENTERS,
 }) => {
   if (!isOpen) return null;
 
@@ -121,7 +30,7 @@ export const EvacuationCentersModal: React.FC<EvacuationCentersModalProps> = ({
             <div>
               <h2 className="text-base font-bold tracking-tight">Evacuation Centers in San Jose</h2>
               <p className="text-xs text-slate-300">
-                Official designated safe facilities of Barangay San Jose and MDRRMO
+                Facilities listed by the barangay administrator
               </p>
             </div>
           </div>
@@ -137,21 +46,26 @@ export const EvacuationCentersModal: React.FC<EvacuationCentersModalProps> = ({
         <div className="px-5 py-2.5 bg-blue-50 border-b border-blue-100 flex items-center justify-between text-xs text-blue-900 shrink-0">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-blue-600" />
-            <span className="font-semibold">Total Capacity: 1,980 Families</span>
+            <span className="font-semibold">Total Capacity: {centers.reduce((total, center) => total + center.capacityFamilies, 0).toLocaleString()} Families</span>
           </div>
           <div className="flex items-center gap-3 text-[11px]">
             <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> 1 Open / Active
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span> {centers.filter(center => center.status === 'Open').length} Open / Active
             </span>
             <span className="inline-flex items-center gap-1 font-medium text-blue-700">
-              <span className="w-2 h-2 rounded-full bg-blue-500"></span> 5 Standby / Ready
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span> {centers.filter(center => center.status === 'Standby').length} Standby / Ready
             </span>
           </div>
         </div>
 
         {/* List of Evacuation Centers */}
         <div className="p-5 overflow-y-auto space-y-3.5 flex-1 divide-y divide-slate-100">
-          {SAN_JOSE_EVACUATION_CENTERS.map((center) => (
+          {centers.length === 0 && (
+            <p className="text-center text-xs text-slate-500 py-8">
+              No evacuation centers have been published yet. For immediate emergencies, call 911.
+            </p>
+          )}
+          {centers.map((center) => (
             <div key={center.id} className="pt-3.5 first:pt-0">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div className="space-y-1.5 flex-1">
@@ -218,7 +132,7 @@ export const EvacuationCentersModal: React.FC<EvacuationCentersModalProps> = ({
 
         {/* Footer */}
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 shrink-0">
-          <span>For urgent evacuation assistance: Call <strong>MDRRMO 911</strong> or <strong>(02) 8997-1800</strong></span>
+          <span>For immediate emergencies, call <strong>911</strong>.</span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition-colors cursor-pointer"

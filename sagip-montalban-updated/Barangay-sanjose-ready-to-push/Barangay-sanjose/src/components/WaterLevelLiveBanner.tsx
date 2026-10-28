@@ -12,12 +12,14 @@ interface WaterLevelLiveBannerProps {
   liveUrl: string;
   onOpenEditModal: () => void;
   onRemoveLive: () => void;
+  editable?: boolean;
 }
 
 export const WaterLevelLiveBanner: React.FC<WaterLevelLiveBannerProps> = ({
   liveUrl,
   onOpenEditModal,
   onRemoveLive,
+  editable = true,
 }) => {
   const [liveTimestamp, setLiveTimestamp] = useState<string>('');
 
@@ -105,7 +107,7 @@ export const WaterLevelLiveBanner: React.FC<WaterLevelLiveBannerProps> = ({
         </div>
 
         {/* Header Action Tools */}
-        <div className="flex items-center gap-1 shrink-0">
+        {editable && <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={onOpenEditModal}
             className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
@@ -120,7 +122,7 @@ export const WaterLevelLiveBanner: React.FC<WaterLevelLiveBannerProps> = ({
           >
             <X className="w-3.5 h-3.5" />
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* Embedded Real Video Player Frame */}
@@ -138,7 +140,7 @@ export const WaterLevelLiveBanner: React.FC<WaterLevelLiveBannerProps> = ({
       <div className="px-3 py-1.5 bg-slate-950/90 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
         <div className="flex items-center gap-1 text-slate-400">
           <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
-          <span className="text-[10px]">Verified LGU Stream</span>
+          <span className="text-[10px]">Barangay broadcast</span>
         </div>
 
         <a

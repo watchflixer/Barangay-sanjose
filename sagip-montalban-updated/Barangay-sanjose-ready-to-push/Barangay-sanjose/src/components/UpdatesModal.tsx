@@ -37,7 +37,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
             <div>
               <h2 className="text-base font-bold tracking-tight">Latest Updates & Situational Report</h2>
               <p className="text-xs text-slate-300">
-                Official reports from Barangay San Jose BDRRMO and Rodriguez MDRRMO
+                Published incident reports for Barangay San Jose
               </p>
             </div>
           </div>
@@ -51,19 +51,8 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
 
         {/* Live Water Level & Weather Bulletin */}
         <div className="p-5 space-y-4 overflow-y-auto flex-1">
-          {/* Official Advisory Banner */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs space-y-2">
-            <div className="flex items-center gap-2 text-amber-900 font-bold">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <span>BDRRMO Weather & Flood Advisory (Barangay San Jose)</span>
-            </div>
-            <p className="text-slate-700 leading-relaxed">
-              The water level in the <strong>Rodriguez River and Wawa corridor</strong> is currently <strong>Normal to Moderate</strong>. Barangay tanod and rescue personnel continue to patrol low-lying areas such as Kasiglahan Village (1K1 & 1K2) and Tagumpay.
-            </p>
-            <div className="flex items-center justify-between pt-1 text-[11px] text-amber-800 font-medium border-t border-amber-200/60">
-              <span>Water Level: <strong>Normal (Green Level)</strong></span>
-              <span>Updated: <strong>Current Time</strong></span>
-            </div>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-900">
+            These are the incidents published by the barangay administrator. For official weather and flood advisories, check PAGASA and local authorities.
           </div>
 
           {/* Quick Stats Grid */}
@@ -116,7 +105,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
 
         {/* Footer */}
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs shrink-0">
-          <span className="text-slate-500">MDRRMO Rodriguez Hotlines: <strong>(02) 8997-1800</strong></span>
+          <span className="text-slate-500">For immediate emergencies, call <strong>911</strong></span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition-colors cursor-pointer"
