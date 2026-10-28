@@ -1,3 +1,4 @@
+import { escapeHtml, safeImageUrl } from '../lib/html';
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 /*
@@ -79,6 +80,7 @@ const hazardMinZoom = () => (isSmallPortraitViewport() ? 11 : 13);
 const hazardZoomSnap = () => (isSmallPortraitViewport() ? 0.5 : 1);
 
 interface MapViewerProps {
+  canManage?: boolean;
   alerts: HazardAlert[];
   selectedAlert: HazardAlert | null;
   onSelectAlert: (alert: HazardAlert | null) => void;
@@ -105,6 +107,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   selectedAlert,
   onSelectAlert,
   onToggleAlertStatus,
+  canManage = false,
   mapSettings,
   onUpdateMapSettings,
   isAddingPinMode,
@@ -816,7 +819,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       // Rich HTML Popup with Photo Proof
       const photoHtml = alert.photoUrl
         ? `<div class="relative w-full h-20 rounded-md overflow-hidden border border-slate-200 bg-slate-100 mt-1">
-            <img src="${alert.photoUrl}" alt="${alert.title}" class="w-full h-full object-cover" />
+            <img src="${safeImageUrl(alert.photoUrl)}" alt="${escapeHtml(alert.title)}" class="w-full h-full object-cover" />
             <div class="absolute bottom-1 right-1 bg-black/70 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
               📸 Verified Photo
             </div>
@@ -834,7 +837,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <span class="text-xl">${iconSymbol}</span>
               <div>
                 <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">${labelText}</div>
-                <div class="font-bold text-slate-900 text-xs leading-snug">${alert.title}</div>
+                <div class="font-bold text-slate-900 text-xs leading-snug">${escapeHtml(alert.title)}</div>
               </div>
             </div>
           </div>
@@ -854,37 +857,37 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
             <div class="flex items-start justify-between pt-0.5">
               <span class="text-slate-400 font-medium text-[11px] shrink-0">Street:</span>
-              <span class="font-semibold text-right text-slate-800 text-[11px]">${alert.streetName}</span>
+              <span class="font-semibold text-right text-slate-800 text-[11px]">${escapeHtml(alert.streetName)}</span>
             </div>
 
             <div class="flex items-center justify-between">
               <span class="text-slate-400 font-medium text-[11px]">Reported:</span>
-              <span class="text-slate-600 font-mono text-[10px]">${alert.timeReported}</span>
+              <span class="text-slate-600 font-mono text-[10px]">${escapeHtml(alert.timeReported)}</span>
             </div>
           </div>
 
           <!-- Description -->
           <div class="p-1.5 bg-slate-50 rounded text-[10px] text-slate-600 leading-snug border border-slate-200">
-            <span id="popup-desc-short-${alert.id}">${shortDescription}</span>
-            <span id="popup-desc-full-${alert.id}" style="display:none">${alert.description}</span>
-            ${hasMoreDescription ? `<button id="btn-popup-more-${alert.id}" class="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700">See more</button>` : ''}
+            <span id="popup-desc-short-${escapeHtml(alert.id)}">${escapeHtml(shortDescription)}</span>
+            <span id="popup-desc-full-${escapeHtml(alert.id)}" style="display:none">${escapeHtml(alert.description)}</span>
+            ${hasMoreDescription ? `<button id="btn-popup-more-${escapeHtml(alert.id)}" class="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700">See more</button>` : ''}
           </div>
 
           ${alert.evacuationCenter ? `
             <div class="text-[10px] bg-emerald-50 text-emerald-800 p-1.5 rounded border border-emerald-200">
-              <strong>Evacuation Center:</strong> ${alert.evacuationCenter}
+              <strong>Evacuation Center:</strong> ${escapeHtml(alert.evacuationCenter)}
             </div>
           ` : ''}
 
           <!-- Footer Actions -->
           <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span class="text-[10px] text-slate-400 truncate max-w-[120px]">By: ${alert.reportedBy}</span>
-            <button
-              id="btn-popup-toggle-${alert.id}"
+            <span class="text-[10px] text-slate-400 truncate max-w-[120px]">By: ${escapeHtml(alert.reportedBy)}</span>
+            ${canManage ? `<button
+              id="btn-popup-toggle-${escapeHtml(alert.id)}"
               class="px-2.5 py-1 text-xs font-semibold rounded ${isResolved ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs'} transition-colors cursor-pointer"
             >
               ${isResolved ? 'Re-open Alert' : 'Mark Resolved'}
-            </button>
+            </button>` : ''}
           </div>
         </div>
       `;
@@ -939,7 +942,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       markersLayerRef.current?.addLayer(marker);
       activePopupsRef.current[alert.id] = marker;
     });
-  }, [alerts, mapSettings.activeFilterType, mapSettings.activeFilterStatus]);
+  }, [alerts, mapSettings.activeFilterType, mapSettings.activeFilterStatus, canManage, onToggleAlertStatus]);
 
   // 7. Auto-fly to selected alert from sidebar
   useEffect(() => {

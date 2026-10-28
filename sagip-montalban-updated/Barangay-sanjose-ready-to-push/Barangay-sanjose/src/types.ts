@@ -4,6 +4,8 @@ export type HazardSeverity = 'critical' | 'high' | 'moderate' | 'low';
 
 export type HazardStatus = 'active' | 'monitoring' | 'resolved';
 
+export type ReviewStatus = 'pending' | 'accepted' | 'declined';
+
 export interface HazardAlert {
   id: string;
   type: HazardType;
@@ -12,6 +14,13 @@ export interface HazardAlert {
   sitio: string;
   coordinates: [number, number]; // [lat, lng]
   timeReported: string;
+  reviewStatus?: ReviewStatus; // Missing on legacy/live records means accepted.
+  source?: 'community' | 'admin';
+  reviewedAt?: string;
+  declineReason?: string;
+  reportedAt?: string; // ISO timestamp; legacy/demo reports may not have one
+  showReporter?: boolean; // Public name only; email/phone remain admin-only
+  deletedAt?: string; // Archived reports stay available to admin history
   status: HazardStatus;
   severity: HazardSeverity;
   description: string;
@@ -52,3 +61,21 @@ export interface EmergencyContact {
   type: 'rescue' | 'fire' | 'police' | 'barangay' | 'utility';
   icon: string;
 }
+
+export type HazardDraft = Pick<
+  HazardAlert,
+  | 'type'
+  | 'title'
+  | 'streetName'
+  | 'sitio'
+  | 'coordinates'
+  | 'status'
+  | 'severity'
+  | 'description'
+  | 'reportedBy'
+  | 'photoUrl'
+  | 'affectedHouseholds'
+  | 'evacuationCenter'
+  | 'contactNumber'
+  | 'reporterEmail'
+>;

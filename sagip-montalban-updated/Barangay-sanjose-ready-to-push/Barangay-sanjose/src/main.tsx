@@ -1,5 +1,6 @@
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
+import { startVisitTracking } from './lib/visits';
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
@@ -19,12 +20,7 @@ import 'leaflet/dist/leaflet.css';
 {
   const root = document.documentElement;
   const markKeyboard = (event: KeyboardEvent) => {
-    if (
-      event.key === 'Tab' ||
-      event.key.startsWith('Arrow') ||
-      event.key === 'Enter' ||
-      event.key === ' '
-    ) {
+    if (event.key === 'Tab' || event.key.startsWith('Arrow') || event.key === 'Enter' || event.key === ' ') {
       root.classList.add('kb-nav');
     }
   };
@@ -32,6 +28,8 @@ import 'leaflet/dist/leaflet.css';
   window.addEventListener('keydown', markKeyboard, true);
   window.addEventListener('pointerdown', markPointer, true);
 }
+
+void startVisitTracking();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

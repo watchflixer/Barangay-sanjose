@@ -1,7 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Navbar } from './components/Navbar';
 import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
+import { AdminPortal } from './components/AdminPortal';
+import {
+  AdminChange,
+  ReportStore,
+  saveReportStore,
+  readReportStore,
+  publicReports,
+  changeReport,
+  createHazardReport,
+  appendHazardReport,
+} from './lib/admin';
 import { MapViewer } from './components/MapViewer';
 import { AddHazardModal } from './components/AddHazardModal';
 import { EmergencyHotlinesModal } from './components/EmergencyHotlinesModal';
@@ -12,43 +23,38 @@ import { UpdatesModal } from './components/UpdatesModal';
 import { ResolvedModal } from './components/ResolvedModal';
 import { HistoryModal } from './components/HistoryModal';
 import { LocationPickerModal } from './components/LocationPickerModal';
-import { HazardAlert, MapSettings, HazardType, HazardStatus } from './types';
+import { HazardAlert, HazardDraft, MapSettings, HazardType, HazardStatus } from './types';
 import { INITIAL_HAZARDS, SAN_JOSE_POLYGON_COORDS } from './data/geoData';
 import { useFloodStatus } from './hooks/useFloodStatus';
 import { classifyFloodLevel, SAN_JOSE_BRIDGE_COORDS, AUTO_FLOOD_ALERT_ID } from './lib/flood';
 import { readRefreshView } from './lib/refreshView';
 
 export default function App() {
-  const [alerts, setAlerts] = useState<HazardAlert[]>(() => {
-    try {
-      const saved = localStorage.getItem('san-jose-alerts');
-      return saved ? JSON.parse(saved) as HazardAlert[] : INITIAL_HAZARDS;
-    } catch {
-      return INITIAL_HAZARDS;
-    }
-  });
-  const [selectedAlert, setSelectedAlert] = useState<HazardAlert | null>(null);
+  const [reportStore, setReportStore] = useState<ReportStore>(() =>
+    readReportStore(localStorage, INITIAL_HAZARDS),
+  );
+  const [storageError, setStorageError] = useState('');
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  // Deliberately in-memory: refresh/logout always requires login again.
+  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+  const alerts = useMemo(() => publicReports(reportStore.alerts), [reportStore.alerts]);
+  const setAlerts = (update: (previous: HazardAlert[]) => HazardAlert[]) =>
+    setReportStore((previous) => ({ ...previous, alerts: update(previous.alerts) }));
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const selectedAlert = alerts.find((a) => a.id === selectedAlertId) || null;
+  const setSelectedAlert = (alert: HazardAlert | null) => setSelectedAlertId(alert?.id || null);
 
-  // Keep community reports available after refresh or accidental tab close safely
   useEffect(() => {
-    try {
-      localStorage.setItem('san-jose-alerts', JSON.stringify(alerts));
-    } catch (err) {
-      console.warn('LocalStorage quota or storage error caught, recovering:', err);
-      try {
-        // If quota exceeded, strip out bulky photo data from user reports so alerts remain intact
-        const trimmed = alerts.map((a) => {
-          if (a.photoUrl && a.photoUrl.startsWith('data:image')) {
-            return { ...a, photoUrl: undefined };
-          }
-          return a;
-        });
-        localStorage.setItem('san-jose-alerts', JSON.stringify(trimmed));
-      } catch {
-        // Silently prevent app crash if browser storage is completely blocked
-      }
-    }
-  }, [alerts]);
+    setStorageError(saveReportStore(localStorage, reportStore));
+  }, [reportStore]);
+
+  const handleAdminChange = useCallback(
+    (id: string, change: AdminChange) => {
+      if (!adminAuthenticated) return;
+      setReportStore((previous) => changeReport(previous, id, change));
+    },
+    [adminAuthenticated],
+  );
 
   // Modals state
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -71,9 +77,11 @@ export default function App() {
     window.matchMedia('(orientation: landscape) and (min-width: 480px)').matches;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(isDesktopFeedViewport);
   const [recenterCount, setRecenterCount] = useState(0);
-  
+
   // STRICT USER DIRECTIVE: Default to NO live stream unless user explicitly provides/pastes a URL
-  const [liveStreamUrl, setLiveStreamUrl] = useState<string>(() => localStorage.getItem('san-jose-live-url') || '');
+  const [liveStreamUrl, setLiveStreamUrl] = useState<string>(
+    () => localStorage.getItem('san-jose-live-url') || '',
+  );
 
   useEffect(() => {
     if (liveStreamUrl) localStorage.setItem('san-jose-live-url', liveStreamUrl);
@@ -82,7 +90,7 @@ export default function App() {
 
   // Map and GIS settings
   const [mapSettings, setMapSettings] = useState<MapSettings>({
-    maskOpacity: 0.30, // Default 30% blackout for surrounding areas (San Mateo, Macabud, Burgos, QC)
+    maskOpacity: 0.3, // Default 30% blackout for surrounding areas (San Mateo, Macabud, Burgos, QC)
     maskColor: '#000000',
     tileLayer: 'streets',
     showBoundaryStroke: true,
@@ -110,6 +118,7 @@ export default function App() {
       setIsUpdatesModalOpen(false);
       setIsResolvedModalOpen(false);
       setIsHistoryModalOpen(false);
+      setIsAdminOpen(false);
       setIsLocationPickerOpen(false);
       setIsAddingPinMode(false);
     };
@@ -132,6 +141,7 @@ export default function App() {
       if (level === 'watch' || level === 'alarm' || level === 'critical') {
         const severity = level === 'critical' ? 'critical' : level === 'alarm' ? 'high' : 'moderate';
         const autoAlert: HazardAlert = {
+          ...prev.find((a) => a.id === AUTO_FLOOD_ALERT_ID),
           id: AUTO_FLOOD_ALERT_ID,
           type: 'flood',
           title: `${level.toUpperCase()} \u2014 ${displayName} Water Level (Live PAGASA)`,
@@ -163,7 +173,8 @@ export default function App() {
         return [autoAlert, ...withoutAuto];
       }
 
-      return withoutAuto;
+      // A removed live marker stays archived even after the gauge returns to normal.
+      return prev.filter((a) => a.id !== AUTO_FLOOD_ALERT_ID || a.deletedAt);
     });
   }, [floodStatus.data]);
 
@@ -174,30 +185,35 @@ export default function App() {
     }
   };
 
-  const handleToggleAlertStatus = (id: string) => {
-    setAlerts((prev) =>
-      prev.map((alert) => {
-        if (alert.id === id) {
-          const newStatus: HazardStatus = alert.status === 'resolved' ? 'active' : 'resolved';
-          return {
-            ...alert,
-            status: newStatus,
-            lastUpdated: 'Just now',
-          };
-        }
-        return alert;
-      })
+  const handleToggleAlertStatus = useCallback(
+    (id: string) => {
+      if (!adminAuthenticated) return;
+      setReportStore((previous) => {
+        const alert = previous.alerts.find((a) => a.id === id);
+        return alert
+          ? changeReport(previous, id, {
+              type: 'status',
+              value: alert.status === 'resolved' ? 'active' : 'resolved',
+            })
+          : previous;
+      });
+    },
+    [adminAuthenticated],
+  );
+
+  const [submissionNotice, setSubmissionNotice] = useState('');
+  const handleAddAlert = (draft: HazardDraft) => {
+    const report = createHazardReport(draft, 'community');
+    setReportStore((previous) => appendHazardReport(previous, report));
+    setSubmissionNotice(
+      'Report submitted for admin review. It will appear on the map only after acceptance.',
     );
   };
-
-  const handleAddAlert = (newAlertData: Omit<HazardAlert, 'id' | 'timeReported'>) => {
-    const newAlert: HazardAlert = {
-      ...newAlertData,
-      id: `hz-${Date.now().toString().slice(-4)}`,
-      timeReported: 'Just now (Live Report)',
-    };
-    setAlerts((prev) => [newAlert, ...prev]);
-    setSelectedAlert(newAlert);
+  const handleAdminCreate = (draft: HazardDraft): HazardAlert | undefined => {
+    if (!adminAuthenticated) return undefined;
+    const report = createHazardReport(draft, 'admin');
+    setReportStore((previous) => appendHazardReport(previous, report));
+    return report;
   };
 
   const handleMapClickCoordinate = (coords: [number, number]) => {
@@ -261,6 +277,44 @@ export default function App() {
     // h-full resolves against the 100dvh html height fix in index.css — the
     // app always fits the phone screen with no cut-off or extra scrolling.
     <div className="flex flex-col h-full w-screen overflow-hidden bg-slate-100 font-['Plus_Jakarta_Sans',sans-serif]">
+      <AdminPortal
+        isOpen={isAdminOpen}
+        authenticated={adminAuthenticated}
+        onLogin={() => setAdminAuthenticated(true)}
+        onLogout={() => {
+          setAdminAuthenticated(false);
+          setIsAdminOpen(false);
+        }}
+        onClose={() => setIsAdminOpen(false)}
+        alerts={reportStore.alerts}
+        history={reportStore.history}
+        onChange={handleAdminChange}
+        onCreate={handleAdminCreate}
+        storageError={storageError}
+      />
+      {storageError && (
+        <div
+          role="alert"
+          className="fixed bottom-4 left-4 right-4 z-[2100] rounded-xl bg-red-700 p-3 text-sm text-white"
+        >
+          {storageError}
+        </div>
+      )}
+      {submissionNotice && (
+        <div
+          role="status"
+          className="fixed bottom-4 left-4 right-4 z-[1900] flex items-center justify-between gap-3 rounded-xl bg-slate-900 p-4 text-sm text-white shadow-xl"
+        >
+          {submissionNotice}
+          <button
+            type="button"
+            aria-label="Dismiss report confirmation"
+            onClick={() => setSubmissionNotice('')}
+          >
+            ×
+          </button>
+        </div>
+      )}
       {/* Top Navbar */}
       <Navbar
         alerts={alerts}
@@ -302,6 +356,8 @@ export default function App() {
               {/* On mobile portrait the Sidebar also carries the ●●● options menu
                   (the Navbar hides its own copy of that button there). */}
               <Sidebar
+                onOpenAdmin={() => setIsAdminOpen(true)}
+                canManage={adminAuthenticated}
                 alerts={alerts}
                 selectedAlert={selectedAlert}
                 onSelectAlert={handleSelectAlert}
@@ -324,23 +380,25 @@ export default function App() {
               />
 
               {/* Paired with the feed itself: it exists exactly while the panel does. */}
-              {!isReportModalOpen && !isLocationPickerOpen && <button
-                id="btn-mobile-sidebar-toggle-arrow"
-                onClick={() => setMobileMenuOpen((prev) => !prev)}
-                title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
-                aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
-                className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none"
-              >
-                <svg
-                  viewBox="0 0 70 140"
-                  className={`w-3 h-5 transition-transform duration-300 ${
-                    mobileMenuOpen ? 'rotate-180' : 'rotate-0'
-                  }`}
-                  fill="#000000"
+              {!isReportModalOpen && !isLocationPickerOpen && (
+                <button
+                  id="btn-mobile-sidebar-toggle-arrow"
+                  onClick={() => setMobileMenuOpen((prev) => !prev)}
+                  title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+                  aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+                  className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none"
                 >
-                  <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
-              </svg>
-            </button>}
+                  <svg
+                    viewBox="0 0 70 140"
+                    className={`w-3 h-5 transition-transform duration-300 ${
+                      mobileMenuOpen ? 'rotate-180' : 'rotate-0'
+                    }`}
+                    fill="#000000"
+                  >
+                    <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -357,6 +415,7 @@ export default function App() {
         {/* Center/Right Leaflet Map Viewport */}
         <main className="relative min-w-0 w-full flex-1 h-full">
           <MapViewer
+            canManage={adminAuthenticated}
             alerts={alerts}
             selectedAlert={selectedAlert}
             onSelectAlert={handleSelectAlert}
@@ -400,10 +459,7 @@ export default function App() {
       />
 
       {/* Emergency Hotlines Directory Modal */}
-      <EmergencyHotlinesModal
-        isOpen={isHotlinesModalOpen}
-        onClose={() => setIsHotlinesModalOpen(false)}
-      />
+      <EmergencyHotlinesModal isOpen={isHotlinesModalOpen} onClose={() => setIsHotlinesModalOpen(false)} />
 
       {/* Live Stream URL Link Modal */}
       <LiveStreamModal

@@ -4,6 +4,7 @@ import {
   HazardType, 
   HazardStatus 
 } from '../types';
+import { isAdminSearch } from '../lib/admin';
 import { WaterLevelLiveBanner } from './WaterLevelLiveBanner';
 import { OptionsMenu } from './OptionsMenu';
 import { ReportButton } from './ReportButton';
@@ -29,6 +30,8 @@ import {
 } from 'lucide-react';
 
 interface SidebarProps {
+  onOpenAdmin?: () => void;
+  canManage?: boolean;
   alerts: HazardAlert[];
   selectedAlert: HazardAlert | null;
   onSelectAlert: (alert: HazardAlert) => void;
@@ -72,6 +75,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenResolvedCleared = () => {},
   onOpenHistory = () => {},
   optionsDisabled = false,
+  onOpenAdmin,
+  canManage = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -178,7 +183,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             id="input-hazard-search"
             type="search"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              if (isAdminSearch(e.target.value)) { setSearchQuery(''); onOpenAdmin?.(); }
+              else setSearchQuery(e.target.value);
+            }}
             placeholder="Search street, sitio, or incident"
             aria-label="Search incident feeds"
             className="min-w-0 flex-1 bg-transparent text-[12px] text-[#1f1f1f] outline-none placeholder:text-[#5f6368]"
@@ -383,6 +391,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
 
+                <p className="mb-2 break-words text-[10px] text-slate-500">Reported by: {alert.reportedBy}</p>
                 {/* Footer info: time & action */}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
                   <div className="flex items-center gap-1 font-mono text-[10px]">
@@ -390,7 +399,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span>{alert.timeReported}</span>
                   </div>
 
-                  <button
+                  {canManage && <button
                     id={`btn-card-toggle-${alert.id}`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -404,7 +413,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <CheckCircle2 className="h-3 w-3" />
                     {isResolved ? 'Reopen' : 'Resolve'}
-                  </button>
+                  </button>}
                 </div>
               </div>
             );
