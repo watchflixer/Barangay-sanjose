@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
   FULL_DENSITY_OFFSET,
+  OVERVIEW_VISIBLE_LIMIT,
   revealOffset,
   tierOf,
   visibleCitiesAtZoom,
@@ -14,9 +15,10 @@ import {
  * Guard for progressive marker density on the Panahon map.
  *
  * The map used to reveal markers in three hard jumps, so the far view was
- * already crowded. Now every city has its own reveal threshold: a handful of
- * anchors at the overview, then more and more as you zoom in — the same list
- * feeds all four modes (weather / temperature / wind / rain).
+ * already crowded. Now the far view keeps exactly six anchors and every other
+ * city has its own reveal threshold, so the pills build up gradually as you
+ * zoom in — the same list feeds all four modes (weather / temperature / wind /
+ * rain).
  */
 const CITIES: DensityCity[] = [
   ...Array.from({ length: 7 }, (_, index) => ({ id: `anchor-${index}`, minZoom: 5 })),
@@ -28,15 +30,48 @@ const CITIES: DensityCity[] = [
 const OVERVIEW = 4.4;
 const countAt = (offset: number) => visibleCitiesAtZoom(CITIES, OVERVIEW + offset, OVERVIEW).length;
 
-test('the far view shows only a handful of anchors', () => {
-  const far = countAt(0);
-  assert.ok(far >= 7, `the overview must still show the anchors, got ${far}`);
-  assert.ok(far <= 14, `the overview must stay sparse, got ${far} of ${CITIES.length}`);
-  // Every tier-5 anchor must be there, whatever the hash order says.
-  const visibleIds = new Set(visibleCitiesAtZoom(CITIES, OVERVIEW, OVERVIEW).map((city) => city.id));
-  CITIES.filter((city) => tierOf(city) === 5).forEach((city) => {
-    assert.ok(visibleIds.has(city.id), `anchor ${city.id} must be visible at the overview`);
-  });
+test('the far view shows exactly six anchors and nothing else', () => {
+  const far = visibleCitiesAtZoom(CITIES, OVERVIEW, OVERVIEW);
+  assert.equal(far.length, OVERVIEW_VISIBLE_LIMIT, `expected ${OVERVIEW_VISIBLE_LIMIT} markers at the overview`);
+  assert.equal(far.length, 6);
+
+  // Those six are the curated anchors, in source order — not a hash lottery.
+  const anchors = CITIES.filter((city) => tierOf(city) === 5).map((city) => city.id);
+  assert.deepEqual(far.map((city) => city.id), anchors.slice(0, OVERVIEW_VISIBLE_LIMIT));
+
+  // A spread of zooms just above the overview must not dump the whole tier in.
+  assert.ok(visibleCitiesAtZoom(CITIES, OVERVIEW + 0.1, OVERVIEW).length <= OVERVIEW_VISIBLE_LIMIT + 1);
+});
+
+test('the real city table also shows exactly six at the far view', () => {
+  // Parsed from the shipped table, so this fails if someone reorders it.
+  const table = readFileSync(
+    fileURLToPath(new URL('../weather-source/src/services/openMeteoService.ts', import.meta.url)),
+    'utf8'
+  );
+  const cities: DensityCity[] = [...table.matchAll(/id: '([^']+)'[^}]*?minZoom: (\d+)/g)].map((match) => ({
+    id: match[1],
+    minZoom: Number(match[2])
+  }));
+  assert.ok(cities.length > 40, `expected the full city table, parsed ${cities.length}`);
+
+  const far = visibleCitiesAtZoom(cities, 4.4, 4.4);
+  assert.equal(far.length, 6, `expected 6 visible at the far view, got ${far.length}`);
+  assert.deepEqual(far.map((city) => city.id), [
+    'manila',
+    'baguio',
+    'cebu',
+    'davao',
+    'puerto-princesa',
+    'cagayan-de-oro'
+  ]);
+
+  // And it climbs steadily from there.
+  const ramp = [0, 0.4, 0.8, 1.2, 1.6, 2.0].map((offset) => visibleCitiesAtZoom(cities, 4.4 + offset, 4.4).length);
+  for (let index = 1; index < ramp.length; index += 1) {
+    assert.ok(ramp[index] > ramp[index - 1], `density must climb: ${ramp.join(', ')}`);
+  }
+  assert.equal(ramp[ramp.length - 1], cities.length, 'every city must be visible at the end of the ramp');
 });
 
 test('markers only ever appear as you zoom in, never in one lump', () => {
