@@ -35,6 +35,45 @@ const PH_BOUNDS = L.latLngBounds(PH_SOUTH_WEST, PH_NORTH_EAST);
 const VIEW_LAT_OFFSET = -2.0;
 const PH_CENTER = L.latLng(PH_BOUNDS.getCenter().lat + VIEW_LAT_OFFSET, PH_BOUNDS.getCenter().lng);
 
+// WIDER LOCKED OVERVIEW ON LAPTOPS / DESKTOPS
+// ------------------------------------------
+// The lock below fits the Philippines edge-to-edge, so on a laptop/desktop the
+// archipelago touches all four sides and there is no room for the surrounding
+// seas, Borneo, Taiwan or the PAR box around storm tracks.
+//
+// `OVERVIEW_ZOOM_OUT` pulls the lock that many zoom levels further out on wide
+// screens. The threshold is the same 640px used by the weather mode nav, i.e.
+// above every portrait phone (iPhone 16 Pro Max = 440px CSS), so Android/Apple
+// portrait phones keep the exact original camera — identical minZoom, identical
+// bounds, identical starting view.
+const WIDE_VIEW_QUERY = '(min-width: 640px)';
+/** Zoom levels the laptop/desktop overview is pulled back past the PH fit. */
+const OVERVIEW_ZOOM_OUT = 1.0;
+/** Hard floor so a wide, short window cannot zoom out into a world view. */
+const WIDE_OVERVIEW_MIN_ZOOM = 3.6;
+/** Portrait-phone overview floor — the original, unchanged value. */
+const PHONE_OVERVIEW_MIN_ZOOM = 4.6;
+/** Pan lock padding, unchanged on phones and roomier on wide screens. */
+const PHONE_LOCK_PADDING = 0.08;
+const WIDE_LOCK_PADDING = 0.5;
+
+/** True above every portrait phone; screenshots assume no browser chrome. */
+const isWideViewport = (): boolean =>
+  typeof window !== 'undefined' && window.matchMedia(WIDE_VIEW_QUERY).matches;
+
+/** The locked overview zoom for a given "fit the Philippines" zoom. */
+const overviewZoomFor = (fitZoom: number): number =>
+  isWideViewport()
+    ? Math.max(WIDE_OVERVIEW_MIN_ZOOM, fitZoom - OVERVIEW_ZOOM_OUT)
+    : Math.max(PHONE_OVERVIEW_MIN_ZOOM, fitZoom);
+
+/** The pan lock, shifted with the camera like the original code did. */
+const overviewLockBounds = (): L.LatLngBounds =>
+  L.latLngBounds(
+    [PH_SOUTH_WEST.lat + VIEW_LAT_OFFSET, PH_SOUTH_WEST.lng],
+    [PH_NORTH_EAST.lat + VIEW_LAT_OFFSET, PH_NORTH_EAST.lng]
+  ).pad(isWideViewport() ? WIDE_LOCK_PADDING : PHONE_LOCK_PADDING);
+
 // SLOW LOCATE FLIGHT — Panahon runs in its own document, so it keeps a copy of
 // the host app's canonical locate camera (src/lib/locateCamera.ts): zoom 16,
 // never faster than 1.6s, one zoom level per ~0.53s, capped at 2.6s, with
@@ -142,37 +181,47 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       attributionControl: false
     });
 
-    // Compute the exact zoom where the entire Philippines with extra margin fits inside container
-    const initialFitZoom = Math.floor(map.getBoundsZoom(PH_BOUNDS, false, L.point(16, 16)) * 10) / 10;
-    const baseZoom = Math.max(4.6, initialFitZoom);
+    // FIXED / LOCKED overview. The user can still zoom IN freely, but cannot
+    // zoom out past this frame. On laptop/desktop the frame sits
+    // `OVERVIEW_ZOOM_OUT` levels further out; portrait phones keep the original.
+    const applyOverviewLock = (animate: boolean) => {
+      const fitZoom = Math.floor(map.getBoundsZoom(PH_BOUNDS, false, L.point(16, 16)) * 10) / 10;
+      const nextZoom = overviewZoomFor(fitZoom);
 
-    // FIXED / LOCKED: Set minZoom to the exact overview so the user CANNOT zoom out beyond this view!
-    map.setMinZoom(baseZoom);
-    map.setView(PH_CENTER, baseZoom);
-    setCurrentZoom(baseZoom);
-    setMinZoomLevel(baseZoom);
+      map.setMinZoom(nextZoom);
+      setMinZoomLevel(nextZoom);
+      if (map.getZoom() < nextZoom) {
+        map.setView(PH_CENTER, nextZoom, { animate });
+        setCurrentZoom(nextZoom);
+      }
 
-    // Strictly lock panning within the Philippines boundary with padding
-    const lockBounds = L.latLngBounds(
-      [PH_SOUTH_WEST.lat + VIEW_LAT_OFFSET, PH_SOUTH_WEST.lng],
-      [PH_NORTH_EAST.lat + VIEW_LAT_OFFSET, PH_NORTH_EAST.lng]
-    ).pad(0.08);
-    map.setMaxBounds(lockBounds);
+      // The pan lock must be at least as large as the visible frame, otherwise
+      // Leaflet pins the camera to the bounds centre and panning dies. Grow it
+      // to cover whatever is currently on screen (wider overview = more ocean).
+      const lock = overviewLockBounds();
+      const visible = map.getBounds();
+      map.setMaxBounds(lock.contains(visible) ? lock : lock.extend(visible).pad(0.02));
+    };
+
+    applyOverviewLock(false);
     map.options.maxBoundsViscosity = 1.0;
 
-    // Handle container resize dynamically
+    // Handle container resize dynamically (and the phone->laptop rotation or
+    // window resize that crosses the 640px threshold).
+    let resizeFrame = 0;
     const handleResize = () => {
       if (!map) return;
-      const newCalc = Math.floor(map.getBoundsZoom(PH_BOUNDS, false, L.point(16, 16)) * 10) / 10;
-      const newBaseZoom = Math.max(4.6, newCalc);
-      map.setMinZoom(newBaseZoom);
-      setMinZoomLevel(newBaseZoom);
-      if (map.getZoom() < newBaseZoom) {
-        map.setView(PH_CENTER, newBaseZoom);
-        setCurrentZoom(newBaseZoom);
-      }
+      window.clearTimeout(resizeFrame);
+      resizeFrame = window.setTimeout(() => {
+        map.invalidateSize();
+        applyOverviewLock(false);
+      }, 120);
     };
     map.on('resize', handleResize);
+
+    const wideQuery = window.matchMedia(WIDE_VIEW_QUERY);
+    const handleWideChange = () => handleResize();
+    wideQuery.addEventListener('change', handleWideChange);
 
     // Esri World Dark Gray Basemap (supports native zoom up to 16, auto-upscales gracefully)
     const baseMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -213,6 +262,8 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     return () => {
       resizeObserver.disconnect();
+      window.clearTimeout(resizeFrame);
+      wideQuery.removeEventListener('change', handleWideChange);
       map.off('resize', handleResize);
       if (windEngineRef.current) {
         windEngineRef.current.destroy();
