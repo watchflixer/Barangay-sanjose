@@ -731,21 +731,46 @@
     #rt-layers2{width:44px;height:44px;top:-108px;border-radius:12px;}
     #rt-layers2 svg{width:20px;height:20px;}
 
-    /* --- top origin/destination card matches the sheet, A LITTLE
-           SHORTER: the two rows drop 48px → 40px and the side buttons column
-           follows, so the whole card is ~20px less tall. The dot rail is
-           re-fitted to the new 40px rows (blue dot centred on row 1 at 20,
-           red pin on row 2 at 60) and the three gray connectors are re-spaced
-           between them — they are inline `top` values in the markup, so they
-           need !important here. --- */
-    #rt-top{max-width:520px;padding:4px 4px 4px 14px;}
-    #rt-edit .r{height:40px;}
-    #rt-side{height:80px;}
-    #rt-edit .dc .b{top:10px;}
-    #rt-edit .dc .p{top:52px;}
-    #rt-edit .dc i:nth-of-type(1){top:36px!important;}
-    #rt-edit .dc i:nth-of-type(2){top:42px!important;}
-    #rt-edit .dc i:nth-of-type(3){top:48px!important;}
+    /* --- top origin/destination card matches the sheet but is kept SHORT:
+           the two rows drop 48px → 34px (and the card padding 6px → 3px), so
+           the whole card goes 108px → 74px tall. The side buttons column
+           follows at 68px. The dot rail is re-fitted to the new rows and the
+           three gray connectors are re-spaced between them — they are inline
+           `top` values in the markup, so they need !important here. --- */
+    #rt-top{max-width:520px;padding:3px 4px 3px 14px;}
+    #rt-edit .r{height:34px;}
+    #rt-side{height:68px;}
+    /* Dot rail re-fitted to the 34px rows. The dot rail starts BELOW the
+       card's 3px top padding, so the absolute offsets are measured from there:
+       row 1 centre = 3 + 17 = 20  -> blue dot (16px) top = 20 - 3 - 8  = 9
+       row 2 centre = 3 + 51 = 54  -> red pin (24px)  top = 54 - 3 - 12 = 39
+       The three 3px connectors sit evenly in the 20..54 gap. */
+    #rt-edit .dc .b{top:9px;}
+    #rt-edit .dc .p{top:39px;}
+    #rt-edit .dc i:nth-of-type(1){top:26px!important;}
+    #rt-edit .dc i:nth-of-type(2){top:34px!important;}
+    #rt-edit .dc i:nth-of-type(3){top:42px!important;}
+
+    /* ======================================================================
+       TRAFFIC LEGEND: WIDER ON LAPTOP / DESKTOP
+       ----------------------------------------------------------------------
+       The bottom-right traffic legend (Free flowing / Slow traffic / Heavy
+       congestion / Road closed) hugs its text at the phone's 150px min-width,
+       which reads cramped on a large map. From 641px up the card is given more
+       width so the rows breathe.
+
+       The card sits in `#legend-stack` (flex column, `align-items:flex-end`),
+       so it shrink-wraps its content — widening `min-width` is what actually
+       makes it wider. Content, colours, wording and the bottom-right position
+       are all untouched.
+
+       PHONE PORTRAIT IS UNTOUCHED: this lives in `min-width: 641px`, the exact
+       complement of the phone block `(orientation: portrait) and (max-width:
+       640px)` that only nudges `#legend-stack{bottom:56px}`. A portrait
+       Android/iPhone can never match this, so it keeps the 150px legend
+       pixel for pixel.
+       ====================================================================== */
+    #legend{min-width:160px;padding:11px 13px;}
   }
 </style>
 </head>
