@@ -209,3 +209,16 @@ test('a round chevron centred on the map edge toggles the feed', () => {
   assert.match(mapViewer, /aria-expanded=\{desktopFeedOpen\}/);
   assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
 });
+
+test('the street hazard map gets a Google-like surface on laptop/desktop', () => {
+  const block = css.slice(css.indexOf('THE STREET HAZARD MAP LOOKS LIKE GOOGLE MAPS'));
+
+  // Bright land under the tiles instead of the dark navy backdrop…
+  assert.match(block, /#leaflet-map-root\.leaflet-container \{[\s\S]*?background-color: #e8eaed !important;[\s\S]*?background-image: none !important;/);
+  // …and a light, desaturated street tint that leaves the other layers alone.
+  assert.match(block, /#leaflet-map-root \.leaflet-tile-pane \{[\s\S]*?filter: saturate\(0\.82\) brightness\(1\.04\) contrast\(0\.97\);/);
+
+  // It is a desktop-only override: the phone backdrop is still the dark one.
+  assert.ok(block.indexOf('@media (min-width: 1024px)') < block.indexOf('background-color: #e8eaed'));
+  assert.match(css, /\.leaflet-container \{\s*width: 100%;\s*height: 100%;\s*background-color: #0b0f19 !important;/);
+});

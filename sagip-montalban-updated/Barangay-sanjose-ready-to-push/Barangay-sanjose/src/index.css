@@ -1587,3 +1587,27 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     display: none;
   }
 }
+
+/* ==========================================================================
+   LAPTOP / DESKTOP: THE STREET HAZARD MAP LOOKS LIKE GOOGLE MAPS
+   --------------------------------------------------------------------------
+   On wide screens the GIS map drops the dark navy backdrop + dotted grid and
+   the heavy raw-OSM colouring: the empty land under the tiles turns the same
+   warm grey Google uses (#e8eaed) and the street tiles get a light, desaturated
+   tint so labels and roads read cleanly.
+
+   MOBILE / TABLET UNTOUCHED: both rules live inside `@media (min-width:
+   1024px)`, so Android/iPhone portrait keeps the dark backdrop it has today.
+   ========================================================================== */
+@media (min-width: 1024px) {
+  #leaflet-map-root.leaflet-container {
+    background-color: #e8eaed !important;
+    background-image: none !important;
+  }
+
+  /* Street tiles only — the dark / weather / traffic basemaps keep their own
+     looks, and the hazard markers, mask and polygon live in other panes. */
+  #leaflet-map-root .leaflet-tile-pane {
+    filter: saturate(0.82) brightness(1.04) contrast(0.97);
+  }
+}
