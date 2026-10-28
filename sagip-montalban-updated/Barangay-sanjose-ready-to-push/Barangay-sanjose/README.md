@@ -34,16 +34,17 @@ Walang admin link sa public menu. Para makapasok:
 
 1. Buksan ang **Incident Feeds** panel (hazard map).
 2. I-type sa **search bar** ang `admin`.
-3. Lalabas ang isang maliit na **Admin sign in** card sa lugar ng listahan.
+3. Bubukas ang **Admin login** screen sa ibabaw ng site (hindi na maliit na
+   card — buong sign-in page na may brand panel sa kaliwa).
 4. Sa ngayon: **Email:** `admin` · **Password:** `admin`.
 5. Kapag tama ang dalawa, bubukas ang buong admin workspace sa ibabaw ng app
    (may **Back to site** at sign-out sa itaas).
 
 Detalye:
 
-- Case-insensitive ang secret word; i-clear ang search o pindutin ang × para
-  bumalik sa incidents. Hindi lumalabas ang gate kapag ordinaryong salita
-  (hal. `flood`) ang hinahanap.
+- Case-insensitive ang secret word; i-clear ang search, pindutin ang × o ang
+  **Esc** para bumalik sa incidents. Hindi lumalabas ang gate kapag
+  ordinaryong salita (hal. `flood`) ang hinahanap.
 - Ang session ay tumatagal ng 8 oras sa browser tab na iyon. Kapag binuksan
   mong muli ang `admin` sa search, may **Buksan ang admin workspace** /
   **Mag-sign out** na lalabas.

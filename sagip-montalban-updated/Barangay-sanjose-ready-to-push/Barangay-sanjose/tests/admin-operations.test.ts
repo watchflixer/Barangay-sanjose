@@ -89,7 +89,7 @@ test('the default admin/admin pair unlocks and can be signed out again', () => {
 
 test('reporter timestamps read as "x minuto / oras / araw ang nakalipas"', () => {
   const now = Date.parse('2026-10-29T12:00:00Z');
-  assert.equal(relativeTime(new Date(now - 30_000).toISOString(), now), 'Ilang segundo lang ang nakalipas');
+  assert.equal(relativeTime(new Date(now - 30_000).toISOString(), now), 'Ngayon lang');
   assert.equal(relativeTime(new Date(now - 12 * 60_000).toISOString(), now), '12 minuto ang nakalipas');
   assert.equal(relativeTime(new Date(now - 5 * 3_600_000).toISOString(), now), '5 oras ang nakalipas');
   assert.equal(relativeTime(new Date(now - 3 * 86_400_000).toISOString(), now), '3 araw ang nakalipas');

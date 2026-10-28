@@ -48,7 +48,7 @@ export function IncidentTable({ hazards, map, onEdit, onVisibility, onDelete, bu
   onVisibility: (hazard: ManagedHazard) => void; onDelete?: (hazard: ManagedHazard) => void; busy?: boolean; compact?: boolean;
 }) {
   if (!hazards.length) return <div className="empty-state"><div className="empty-icon"><CheckCircle2 size={22} /></div><strong>No incidents to show</strong><span>New reports and incidents will appear here.</span></div>;
-  return <div className="table-scroll"><table className={`data-table ${compact ? 'compact-table' : ''}`}>
+  return <div className="table-scroll"><table className={`data-table incident-table ${compact ? 'compact-table' : ''}`}>
     <thead><tr><th>INCIDENT</th><th>LOCATION</th><th>REPORTER</th><th>STATUS</th><th>MAP DISPLAY</th><th aria-label="Actions" /></tr></thead>
     <tbody>{hazards.map(hazard => {
       const displayed = hazard.visibility === 'published' && map.types[hazard.type] && (map.showResolved || hazard.status !== 'resolved');

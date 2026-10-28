@@ -4,8 +4,9 @@ export function relativeTime(value?: string, now = Date.now()): string {
   const time = new Date(value).getTime();
   if (!Number.isFinite(time)) return 'Walang timestamp';
   const seconds = Math.max(0, Math.round((now - time) / 1000));
-  if (seconds < 60) return 'Ilang segundo lang ang nakalipas';
+  if (seconds < 60) return 'Ngayon lang';
   const minutes = Math.round(seconds / 60);
+  if (minutes < 2) return '1 minuto ang nakalipas';
   if (minutes < 60) return `${minutes} minuto ang nakalipas`;
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours} oras ang nakalipas`;
