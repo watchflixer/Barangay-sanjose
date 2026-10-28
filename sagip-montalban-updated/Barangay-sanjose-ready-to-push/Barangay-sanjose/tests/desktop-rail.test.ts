@@ -207,23 +207,14 @@ test('the map camera keeps the barangay visible beside the floating card', () =>
   assert.match(mapViewer, /const viewCenter = React\.useCallback/);
   assert.match(mapViewer, /map\.project\(SAN_JOSE_CENTER, zoom\)\.subtract\(L\.point\(inset \/ 2, 0\)\)/);
   // …recentring and overlay exits use it…
-  assert.match(mapViewer, /const targetZoom = fitZoomFor\(mapInstanceRef\.current, desktopFeedInset\(desktopFeedOpen\)\);/);
+  assert.match(mapViewer, /flyTo\(viewCenter\(mapInstanceRef\.current, 13\), 13/);
   assert.match(mapViewer, /map\.setView\(viewCenter\(map, 13\), 13, \{ animate: false \}\)/);
   // …it re-applies when the rail toggles the feed or the window resizes…
-  assert.match(mapViewer, /const zoom = fitZoomFor\(map, inset\);\s*\n\s*map\.setView\(viewCenter\(map, zoom, inset\), zoom, \{ animate: false \}\);/);
-  assert.match(mapViewer, /\}, \[desktopFeedOpen, viewCenter, fitZoomFor\]\);/);
+  assert.match(mapViewer, /map\.panTo\(viewCenter\(map, map\.getZoom\(\)\), \{ animate: false \}\)/);
+  assert.match(mapViewer, /\}, \[desktopFeedOpen, viewCenter\]\);/);
 
   // …the parent passes the open state, and phones bail out before touching the
   // camera (no matchMedia match => no pan).
   assert.match(app, /desktopFeedOpen=\{desktopFeedOpen\}/);
   assert.match(mapViewer, /if \(!window\.matchMedia\('\(min-width: 1024px\)'\)\.matches\) return;/);
-});
-
-test('the map zooms out one step when the card leaves too little room', () => {
-  // The whole barangay must stay visible beside the card, so the camera drops
-  // from zoom 13 to 12 when the free area is too small…
-  assert.match(mapViewer, /const fitZoomFor = React\.useCallback/);
-  assert.match(mapViewer, /return boundsWidth > freeWidth \|\| boundsHeight > freeHeight \? base - 1 : base;/);
-  // …and the zoom floor follows the card (12 open, 13 closed).
-  assert.match(mapViewer, /map\.setMinZoom\(inset > 0 \? 12 : 13\);/);
 });
