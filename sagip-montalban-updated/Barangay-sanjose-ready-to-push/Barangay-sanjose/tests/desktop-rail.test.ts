@@ -22,7 +22,6 @@ const app = read('../src/App.tsx');
 const rail = read('../src/components/DesktopRail.tsx');
 const navbar = read('../src/components/Navbar.tsx');
 const sidebar = read('../src/components/Sidebar.tsx');
-const mapViewer = read('../src/components/MapViewer.tsx');
 
 /** The rail section of index.css (everything after the section banner). */
 const railSection = css.slice(css.indexOf('DESKTOP / LAPTOP LEFT RAIL'));
@@ -98,27 +97,22 @@ test('the top navbar exists for phones but is hidden on laptop/desktop', () => {
   assert.equal(displayRules.length, 1, 'navbar display must be driven by exactly one desktop rule');
 });
 
-test('the feed card floats over the map and nothing paints behind it', () => {
+test('only the incident feeds card is visible on desktop (no wrapper background)', () => {
   assert.match(app, /id="app-sidebar-panel"/);
   assert.match(app, /className="app-feed-inner"/);
 
-  const card = css.slice(css.indexOf('THE INCIDENT FEEDS CARD FLOATS OVER THE MAP'));
+  const card = css.slice(css.indexOf('THE INCIDENT FEEDS CARD IS THE ONLY CARD'));
 
-  // The wrapper is out of the flow, transparent, and lets map clicks through.
-  assert.match(card, /#app-sidebar-panel \{[\s\S]*?position: absolute;[\s\S]*?left: 92px;[\s\S]*?width: 25rem;[\s\S]*?background: none;[\s\S]*?border: 0;[\s\S]*?box-shadow: none;[\s\S]*?pointer-events: none;/);
-  assert.doesNotMatch(card, /#app-sidebar-panel \{[\s\S]{0,500}?background: #ffffff/);
+  // The wrapper paints nothing: no background, border, radius or shadow.
+  assert.match(card, /#app-sidebar-panel \{[\s\S]*?background: none;[\s\S]*?border: 0;[\s\S]*?box-shadow: none;[\s\S]*?overflow: visible;/);
+  assert.doesNotMatch(card, /#app-sidebar-panel \{[\s\S]{0,400}?background: #ffffff/);
 
-  // Only the feed is a card, and it is the thing you can click.
-  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?pointer-events: auto;[\s\S]*?border: 1px solid #e6e8eb;[\s\S]*?border-radius: 24px;[\s\S]*?box-shadow:/);
-
-  // Map controls step aside for the card, and come back when it is hidden.
-  assert.match(app, /data-feed-open=\{desktopFeedOpen \? 'true' : 'false'\}/);
-  assert.match(card, /#map-control-stack \{\s*left: calc\(25rem \+ 1\.5rem\);\s*\}/);
-  assert.match(card, /\[data-feed-open='false'\] #map-control-stack \{\s*left: 1rem;\s*\}/);
-  assert.match(mapViewer, /id="map-control-stack"/);
+  // The card look lives on the feed itself.
+  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border: 1px solid #e6e8eb;[\s\S]*?border-radius: 24px;[\s\S]*?box-shadow: 0 1px 2px rgba\(60, 64, 67, 0\.3\)/);
+  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?overflow: hidden;/);
 
   // Everything is behind the desktop media query.
-  assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('position: absolute;'));
+  assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('background: none;'));
 });
 
 test('the feed has no floating ‹ tab on desktop', () => {
@@ -133,6 +127,7 @@ test('the feed has no floating ‹ tab on desktop', () => {
 });
 
 test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => {
+  const mapViewer = read('../src/components/MapViewer.tsx');
   assert.match(mapViewer, /id="map-coord-badge"/);
 
   // Hidden from 1024px up…
