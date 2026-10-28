@@ -286,7 +286,7 @@ export default function App() {
           <div
             id="app-sidebar-panel"
             className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:w-[25rem] lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 app-feed-outer ${
-              mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+              mobileMenuOpen ? 'translate-x-0 is-feed-open' : '-translate-x-full'
             }`}
           >
             {/* The feed sits inside the outer card as an inner card. */}

@@ -42,6 +42,7 @@ import {
   LocateFixed,
   Plus,
   Minus,
+  ChevronRight,
   Radio,
   LightbulbOff
 } from 'lucide-react';
@@ -1269,6 +1270,39 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               <Minus className={`h-4 w-4 ${showWeather ? 'text-black' : 'text-slate-700'}`} strokeWidth={showWeather ? 3 : 2} />
             </button>
           </div>
+        )}
+
+        {/* Round chevron below the zoom-out button — the one control that opens
+            and closes the incident feeds on laptop/desktop (the panel is
+            display:none there until this is pressed; see index.css). It points
+            right while closed and flips to point left while open.
+
+            HAZARD MAP ONLY: this stack is already hidden on the flood-prone,
+            traffic and weather maps (`hidden` above), and the extra
+            `!showWeather` guard keeps it off the weather card too.
+
+            PHONE PORTRAIT UNTOUCHED: `hidden lg:flex` means it does not exist
+            below 1024px, so Android/iPhone portrait keeps its own `‹` handle
+            and never gains this button. */}
+        {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && !showWeather && onOpenMobileMenu && (
+          <button
+            type="button"
+            id="btn-desktop-feed-toggle"
+            onClick={onOpenMobileMenu}
+            title={isMobileMenuOpen ? 'Hide incident feeds' : 'Show incident feeds'}
+            aria-label={isMobileMenuOpen ? 'Hide incident feeds' : 'Show incident feeds'}
+            aria-expanded={isMobileMenuOpen}
+            /* `self-center` centres it under the zoom pair (it is narrower than
+               the stack, so without it the button sits left-aligned).
+               `mt-16` sits it below the controls — 64px plus the stack's own
+               6px gap = 70px of air below the minus button. */
+            className="hidden lg:flex self-center mt-16 h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm transition-all hover:bg-slate-50 active:scale-90"
+          >
+            <ChevronRight
+              className={`h-4 w-4 transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-180' : 'rotate-0'}`}
+              strokeWidth={2.5}
+            />
+          </button>
         )}
       </div>
 
