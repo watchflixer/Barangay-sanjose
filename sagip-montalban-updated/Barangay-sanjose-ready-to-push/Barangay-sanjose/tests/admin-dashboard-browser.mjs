@@ -71,6 +71,9 @@ try {
     );
     await page.addInitScript(
       ({ key, initial }) => {
+        try {
+          localStorage.setItem('hazardsync:visits-offline', '1');
+        } catch {}
         if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(initial));
       },
       { key, initial },

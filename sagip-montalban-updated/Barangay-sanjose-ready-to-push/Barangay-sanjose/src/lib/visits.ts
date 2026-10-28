@@ -1,4 +1,14 @@
-// Realtime page-load monitoring. Counts are stored per browser; this is not a server-wide analytics total.
+import {
+  addSharedVisit,
+  currentPageLoadId,
+  getVisitClient,
+  readVisitConfig,
+  SITE_VISITS_EVENT,
+  shouldCountVisit,
+} from './siteVisits';
+
+// Page-load tracking. Uses the shared Supabase counter when configured and
+// falls back to a clearly labelled per-browser count when it is not.
 export const VISIT_BASELINE = 5000;
 export const VISIT_KEY = 'san-jose-local-visits-v1';
 export const VISIT_EVENT = 'san-jose-visits-updated';
@@ -44,27 +54,34 @@ export function recordLocalVisit(
     return { ...readVisits(storage), error: 'Visits cannot be persisted in this browser.' };
   }
 }
-let started: Promise<VisitReading> | undefined;
-export function startVisitTracking(): Promise<VisitReading> {
-  if (!started) {
-    const record = () => {
-      let result: VisitReading;
-      try {
-        result = recordLocalVisit(localStorage);
-      } catch {
-        result = {
-          total: VISIT_BASELINE,
-          additional: 0,
-          error: 'Visits cannot be persisted in this browser.',
-        };
-      }
-      window.dispatchEvent(new CustomEvent(VISIT_EVENT, { detail: result }));
-      return result;
-    };
-    // Serialize simultaneous page loads across same-origin tabs where supported.
-    started = navigator.locks
-      ? navigator.locks.request(VISIT_KEY, record).catch(record)
-      : Promise.resolve(record());
-  }
+let started: Promise<void> | undefined;
+/** Counts exactly one visit for this document load, shared when Supabase is reachable. */
+export function startVisitTracking(): Promise<void> {
+  if (!started) started = countPageVisit();
   return started;
+}
+
+function recordLocalPageVisit(): VisitReading {
+  let result: VisitReading;
+  try {
+    result = recordLocalVisit(localStorage);
+  } catch {
+    result = { total: VISIT_BASELINE, additional: 0, error: 'Visits cannot be persisted in this browser.' };
+  }
+  window.dispatchEvent(new CustomEvent(VISIT_EVENT, { detail: result }));
+  return result;
+}
+
+async function countPageVisit(): Promise<void> {
+  const config = readVisitConfig();
+  if (config && shouldCountVisit()) {
+    try {
+      const snapshot = await addSharedVisit(await getVisitClient(config), currentPageLoadId());
+      window.dispatchEvent(new CustomEvent(SITE_VISITS_EVENT, { detail: snapshot }));
+      return;
+    } catch {
+      /* Offline or blocked: keep a local count instead of failing the page. */
+    }
+  }
+  recordLocalPageVisit();
 }
