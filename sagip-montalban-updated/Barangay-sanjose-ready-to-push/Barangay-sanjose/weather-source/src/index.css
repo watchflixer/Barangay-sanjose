@@ -389,11 +389,11 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
      corner      16px → 10px   (top / left)
      gaps        6px  → 4px
 
-   Scoped to <=360px portrait only: every other phone, every tablet and every
-   landscape/desktop width keeps the current stack, including the
+   Scoped to <=344px portrait only (320-class phones). Every Android phone is
+   >= 360 CSS px, so all of them keep the Pixel 7 stack, including the
    `min-width: 640px` dock above.
    ========================================================================== */
-@media (orientation: portrait) and (max-width: 360px) {
+@media (orientation: portrait) and (max-width: 344px) {
   .ph-map-controls {
     top: 10px;
     left: 10px;
@@ -426,7 +426,7 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
    icon size as Recenter / Layers / Locate. The pair simply stacks, 4px apart,
    exactly like two of the buttons above.
    -------------------------------------------------------------------------- */
-@media (orientation: portrait) and (max-width: 360px) {
+@media (orientation: portrait) and (max-width: 344px) {
   .ph-map-controls {
     top: 10px;
     left: 10px;

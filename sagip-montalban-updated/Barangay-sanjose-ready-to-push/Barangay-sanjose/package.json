@@ -33,7 +33,9 @@
     "test:admin:moderation": "tsx --import ./tests/image-stub.mjs --test tests/admin-moderation.test.ts",
     "test:admin:moderation:browser": "node tests/admin-moderation-browser.mjs",
     "test:visits": "tsx --import ./tests/image-stub.mjs --test tests/site-visits.test.ts",
+    "test:android-parity": "tsx --import ./tests/image-stub.mjs --test tests/android-parity.test.ts",
     "test:visits:browser": "node tests/site-visits-browser.mjs",
+    "test:android-parity:browser": "node tests/android-pixel7-parity.mjs",
     "test:public-report:browser": "node tests/public-report-browser.mjs"
   },
   "dependencies": {

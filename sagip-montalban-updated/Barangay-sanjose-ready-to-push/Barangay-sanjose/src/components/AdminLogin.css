@@ -99,7 +99,7 @@
   .sj-login-main { padding-left: 30px; padding-right: 30px; }
   .sj-login-desktop-break { display: none; }
 }
-@media (max-width: 359px) {
+@media (max-width: 344px) {
   .sj-login-main { padding-left: 20px; padding-right: 20px; }
   .sj-login-brand-caption { max-width: 150px; font-size: 6px; letter-spacing: .8px; }
   .sj-login-story { padding-left: 20px; }

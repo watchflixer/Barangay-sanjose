@@ -548,8 +548,8 @@
     #rt-fare .fare-foot{padding:7px 10px 9px;}
   }
 
-  /* Extra-small phones (iPhone SE / 320px Androids) — tighten further */
-  @media (orientation: portrait) and (max-width: 360px){
+  /* 320-class phones only (<=344px) — Android 360+ keeps the Pixel 7 sizing */
+  @media (orientation: portrait) and (max-width: 344px){
     #rt-top{left:16px;right:16px;}
     #rt-title{font-size:17px;}
     #rt-time,#rt-dist{font-size:17px;}
@@ -776,11 +776,11 @@
   /* ----------------------------------------------------------------------
      iPhone 5 / 5s / SE (1st gen) PORTRAIT — 320 x 568 · compact map controls
      Recenter / Layers / Show-your-location (plus the zoom pair on Traffic)
-     step down one size so the narrow 320px canvas stays clear. Scoped to this
-     portrait width only — every other device keeps the 34px buttons, 16px
-     icons and the 16px corner offset.
+     step down one size so the narrow 320px canvas stays clear. Scoped to
+     <=344px portrait only — every Android phone (>=360) keeps the 34px
+     buttons, 16px icons and the 16px corner offset.
      ---------------------------------------------------------------------- */
-  @media (orientation: portrait) and (max-width: 360px){
+  @media (orientation: portrait) and (max-width: 344px){
     #host-map-controls{top:10px;left:10px;gap:4px;}
     .host-map-control{width:26px;height:26px;padding:5px;border-radius:5px;}
     .host-map-control svg{width:13px;height:13px;}
