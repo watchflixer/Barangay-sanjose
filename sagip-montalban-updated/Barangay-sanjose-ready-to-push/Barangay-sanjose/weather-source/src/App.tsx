@@ -243,8 +243,11 @@ export default function App() {
           />
         </div>
 
-        {/* Floating Bottom Overlays (Timeline Scrubber + Legend Card) */}
-        <div className="absolute bottom-4 left-3 right-3 z-[1000] flex flex-col gap-1.5 pointer-events-none">
+        {/* Floating Bottom Overlays (Timeline Scrubber + Legend Card).
+            Laptop/desktop only: capped to the same compact width as the mode
+            bar and centred (left+right are both set, so `lg:mx-auto` splits
+            the leftover space). Portrait classes are untouched. */}
+        <div className="absolute bottom-4 left-3 right-3 z-[1000] flex flex-col gap-1.5 pointer-events-none lg:max-w-[26rem] lg:mx-auto">
           <div className="pointer-events-auto">
             <PlaybackControls
               mode={currentMode}

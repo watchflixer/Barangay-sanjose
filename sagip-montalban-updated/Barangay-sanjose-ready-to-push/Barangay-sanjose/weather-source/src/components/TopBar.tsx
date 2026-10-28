@@ -17,8 +17,12 @@ export const TopBar: React.FC<TopBarProps> = ({ currentMode, onSelectMode }) => 
   return (
     <header className="absolute top-10 sm:top-3 left-3 right-3 z-[1000] flex flex-col gap-2 pointer-events-none select-none">
       {/* Mode Navigation Bar (Weather | Temperature | Wind | Rain) */}
+      {/* Laptop/desktop only: the bar keeps its phone width and is capped to a
+          compact centred pill. Every width utility is `lg:`-prefixed so the
+          Android/iPhone portrait layouts only ever see the original full-width
+          classes above the breakpoint. */}
       <nav
-        className="w-[calc(100%-12px)] mx-auto bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl p-1 shadow-xl flex items-center justify-between gap-1 pointer-events-auto"
+        className="w-[calc(100%-12px)] mx-auto bg-white/95 backdrop-blur-md border border-slate-200 rounded-xl p-1 shadow-xl flex items-center justify-between gap-1 pointer-events-auto lg:max-w-[26rem]"
         aria-label="Weather modes"
       >
         {modes.map((mode) => {
