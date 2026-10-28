@@ -1,0 +1,160 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Guard for the Panahon mode bar (Weather | Temperature | Wind | Rain).
+ *
+ * The bar was shrunk for laptop/desktop only. The Android/iPhone portrait
+ * layout must stay exactly as it was, which means:
+ *   – every `.ph-mode-*` rule lives inside `@media (min-width: 1024px)`,
+ *   – no phone breakpoint (`max-width`, `portrait`) ever mentions it,
+ *   – the base markup keeps its original Tailwind sizing,
+ *   – the new classes are purely additive (no utility was removed).
+ */
+const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8');
+
+const css = read('../weather-source/src/index.css');
+const topBar = read('../weather-source/src/components/TopBar.tsx');
+
+/** Comments out of the way so the brace walker never treats them as rules. */
+const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+
+
+/**
+ * Walk the CSS and return every rule that mentions `needle`, along with the
+ * media gates that wrap it. Brace-aware, so a rule appended after the media
+ * query is NOT mistaken for one inside it.
+ */
+function rulesMentioning(source: string, needle: string) {
+  const found: { selector: string; gates: string[] }[] = [];
+  const stack: string[] = [];
+  let buffer = '';
+  let index = 0;
+  while (index < source.length) {
+    const char = source[index];
+    if (char === '{') {
+      const head = buffer.trim();
+      buffer = '';
+      if (head.startsWith('@')) {
+        stack.push(head);
+        index += 1;
+        continue;
+      }
+      const close = source.indexOf('}', index);
+      found.push({ selector: head, gates: [...stack] });
+      index = close === -1 ? source.length : close + 1;
+      continue;
+    }
+    if (char === '}') {
+      stack.pop();
+      buffer = '';
+      index += 1;
+      continue;
+    }
+    buffer += char;
+    index += 1;
+  }
+  return found.filter((rule) => rule.selector.includes(needle));
+}
+
+/** True when a rule only ever matches at >= 1024px wide viewports. */
+function isDesktopOnly(gates: string[]) {
+  return gates.some((gate) => {
+    const mins = [...gate.matchAll(/min-width:\s*([\d.]+)(px|rem|em)/g)]
+      .map(([, value, unit]) => Number(value) * (unit === 'px' ? 1 : 16));
+    const maxs = [...gate.matchAll(/max-width:\s*([\d.]+)(px|rem|em)/g)]
+      .map(([, value, unit]) => Number(value) * (unit === 'px' ? 1 : 16));
+    if (maxs.length > 0 && Math.max(...maxs) < 1024) return false;
+    return mins.length > 0 && Math.min(...mins) >= 1024;
+  });
+}
+
+test('every mode-nav rule is gated at the 1024px laptop/desktop breakpoint', () => {
+  const rules = rulesMentioning(cssWithoutComments, 'ph-mode-');
+  assert.ok(rules.length >= 4, `expected the nav/button rules, found ${rules.length}`);
+
+  const leaked = rules.filter((rule) => !isDesktopOnly(rule.gates));
+  assert.deepEqual(
+    leaked.map((rule) => rule.selector),
+    [],
+    'these .ph-mode-* rules would also apply on phones'
+  );
+
+  const selectors = rules.map((rule) => rule.selector);
+  for (const selector of ['.ph-mode-nav', '.ph-mode-nav .ph-mode-btn', '.ph-mode-nav .ph-mode-btn--active:hover']) {
+    assert.ok(selectors.includes(selector), `expected "${selector}" inside the 1024px query`);
+  }
+});
+
+test('the mode nav is never mentioned by a phone-width breakpoint', () => {
+  // No max-width / portrait query may reference the new classes.
+  for (const block of css.matchAll(/@media[^{]*\{/g)) {
+    const header = block[0];
+    const isPhone = /max-width|portrait/.test(header);
+    if (!isPhone) continue;
+    const start = (block.index ?? 0) + header.length;
+    // Scan the block body with a brace counter so nested rules stay accurate.
+    let depth = 1;
+    let end = start;
+    while (end < css.length && depth > 0) {
+      if (css[end] === '{') depth += 1;
+      if (css[end] === '}') depth -= 1;
+      end += 1;
+    }
+    assert.doesNotMatch(css.slice(start, end), /ph-mode/, `phone breakpoint "${header.trim()}" must not touch the mode nav`);
+  }
+});
+
+/**
+ * Utility tokens are assembled from fragments on purpose: this file lives in
+ * the repo, and Tailwind v4 scans every file for candidates. Keeping the
+ * tokens split means the guard cannot change the generated CSS bundle.
+ */
+const join = (...parts: string[]) => parts.join('');
+const NAV_WIDTH = join('w-[calc(100%', '-12px)]');
+const NAV_PADDING = join('p-', '1.5');
+const NAV_RADIUS = join('rounded-', '2xl');
+const NAV_GAP = join('gap-', '1');
+const NAV_JUSTIFY = join('justify-', 'between');
+const BUTTON_PADDING = join('py-', '1.5');
+const BUTTON_PADDING_X = join('px-', '0.5');
+const BUTTON_TYPE = join('text-', 'sm');
+const BUTTON_TYPE_WIDE = join('sm:text-', 'base');
+const ACTIVE_STYLE = join('ph-mode-btn--active bg-', 'black text-white shadow-md');
+
+test('the base markup keeps its original Tailwind sizing', () => {
+  const navClass = /<nav\s+className="([^"]+)"/.exec(topBar)?.[1] ?? '';
+  for (const [label, token] of [
+    ['phone width', NAV_WIDTH],
+    ['phone padding', NAV_PADDING],
+    ['phone radius', NAV_RADIUS],
+    ['phone gap', NAV_GAP],
+    ['phone justification', NAV_JUSTIFY],
+    ['phone shadow', join('shadow-', '2xl')],
+  ]) {
+    assert.ok(navClass.split(' ').includes(token), `the nav lost its ${label} utility (${token})`);
+  }
+
+  const buttonClass = /ph-mode-btn ([^`]+)/.exec(topBar)?.[1] ?? '';
+  for (const [label, token] of [
+    ['phone vertical padding', BUTTON_PADDING],
+    ['phone horizontal padding', BUTTON_PADDING_X],
+    ['phone type scale', BUTTON_TYPE],
+    ['wide-screen type scale', BUTTON_TYPE_WIDE],
+  ]) {
+    assert.ok(buttonClass.split(' ').includes(token), `the buttons lost their ${label} utility (${token})`);
+  }
+});
+
+test('the new classes are additive only', () => {
+  const navClass = /<nav\s+className="([^"]+)"/.exec(topBar)?.[1] ?? '';
+  assert.ok(navClass.split(' ').includes('ph-mode-nav'), 'the nav needs its ph-mode-nav hook');
+  // Nothing was removed from the original utility list.
+  for (const token of ['mx-auto', 'flex', 'items-center', 'backdrop-blur-md', 'border']) {
+    assert.ok(navClass.split(' ').includes(token), `the nav lost its "${token}" utility`);
+  }
+  assert.ok(topBar.includes(ACTIVE_STYLE), 'the active pill must keep its original look');
+  assert.ok(topBar.includes(join("'text-black hover:bg-", "slate-100'")), 'inactive hover must stay unchanged');
+});

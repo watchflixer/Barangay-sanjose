@@ -21,7 +21,8 @@
     "test:tap-artifacts": "tsx --test tests/tap-artifacts.test.ts",
     "test:location": "tsx --test tests/location-all-views.test.ts",
     "test:locate-camera": "tsx --test tests/locate-camera-parity.test.ts",
-    "test:desktop-rail": "tsx --test tests/desktop-rail.test.ts"
+    "test:desktop-rail": "tsx --test tests/desktop-rail.test.ts",
+    "test:weather-nav": "tsx --test tests/weather-mode-nav.test.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
