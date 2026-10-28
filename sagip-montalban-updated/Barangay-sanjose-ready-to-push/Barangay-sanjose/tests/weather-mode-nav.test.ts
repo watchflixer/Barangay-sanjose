@@ -238,3 +238,36 @@ test('the weather control buttons keep the 34x34 Flood Prone footprint', () => {
   assert.ok(recenter.split(' ').includes(join('p-', '2')), 'recenter must keep p-2');
   assert.match(map, /<RefreshCw className=\{`h-4 w-4/, 'recenter icon must stay 16px (h-4 w-4)');
 });
+
+/**
+ * City pills used to spill outside their own rounded background: Leaflet gives
+ * every marker a fixed box (120x28, or 90x42 for temperature/storm) while the
+ * pill inside is `whitespace-nowrap`, so "Puerto Princesa" overflowed.
+ *
+ * The card now grows to fit the whole label, but only above the 640px gate —
+ * portrait phones keep the original fixed boxes.
+ */
+test('city pills grow to fit their label above the phone gate', () => {
+  const rules = rulesMentioning(cssWithoutComments, 'custom-city-pin-container');
+  assert.ok(rules.length >= 1, 'expected a rule for the city pin container');
+
+  const leaked = rules.filter((rule) => !isDesktopOnly(rule.gates));
+  assert.deepEqual(leaked.map((rule) => rule.selector), [], 'the wider pill would also hit phones');
+
+  const container = rules.find((rule) => rule.selector.trim() === '.custom-city-pin-container');
+  assert.ok(container, 'expected the container rule');
+  assert.match(container.declarations, /display:\s*flex/);
+  assert.match(container.declarations, /justify-content:\s*center/);
+  assert.match(container.declarations, /overflow:\s*visible/);
+
+  const pill = rules.find((rule) => rule.selector.includes('> .city-marker-pin'));
+  assert.ok(pill, 'expected the pill rule');
+  assert.match(pill.declarations, /width:\s*max-content/);
+  // The hover scale lives on .city-marker-pin:hover; a transform here would
+  // override it at equal specificity.
+  assert.doesNotMatch(pill.declarations, /transform:/);
+
+  // The marker HTML really is a single-line pill, so max-content fits the text.
+  const map = read('../weather-source/src/components/WeatherMap.tsx');
+  assert.match(map, /city-marker-pin flex items-center gap-1\.5[^`]*whitespace-nowrap/);
+});

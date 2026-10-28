@@ -335,3 +335,33 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
     left: 16px;
   }
 }
+
+/* ==========================================================================
+   WEATHER CITY PIN WIDTH
+   --------------------------------------------------------------------------
+   Leaflet gives every marker a fixed box (`iconSize: [120, 28]`, or
+   `[90, 42]` in the temperature/storm layouts). The pill inside it is
+   `whitespace-nowrap`, so a long name like "Puerto Princesa" spilled outside
+   its own rounded background.
+
+   NOT-PHONE-PORTRAIT ONLY, same 640px gate as the rest of the weather tweaks:
+   above it the container centres a `max-content` pill, so the card simply
+   grows to fit the whole label while staying centred on the city point.
+   Below 640px the original fixed boxes are untouched.
+   ========================================================================== */
+@media (min-width: 640px) {
+  .custom-city-pin-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .custom-city-pin-container > .city-marker-pin {
+    width: max-content;
+    max-width: none;
+    flex: 0 0 auto;
+    /* No transform here on purpose: `.city-marker-pin:hover` owns the hover
+       scale, and adding a transform would override it at equal specificity. */
+  }
+}
