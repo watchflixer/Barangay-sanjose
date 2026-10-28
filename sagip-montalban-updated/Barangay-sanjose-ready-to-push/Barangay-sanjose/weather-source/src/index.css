@@ -194,23 +194,23 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
    ========================================================================== */
 @media (min-width: 640px) {
   .ph-mode-nav {
-    width: min(22.5rem, calc(100% - 2rem));
+    /* Second size step: 22.5rem/35px -> 27rem/42px. Narrow windows still cap
+       at `calc(100% - 2rem)`, so the bar can never touch the map edges. */
+    width: min(27rem, calc(100% - 2rem));
     margin-inline: auto;
-    /* Vertical rhythm gives the bar a ~35px height (was ~28px); the width is
-       unchanged so the labels keep the same breathing room. */
-    padding: 3px;
+    padding: 4px;
     gap: 2px;
-    border-radius: 10px;
+    border-radius: 11px;
     box-shadow:
       0 8px 18px -12px rgba(2, 6, 23, 0.55),
       0 1px 4px -2px rgba(2, 6, 23, 0.35);
   }
 
   .ph-mode-nav .ph-mode-btn {
-    padding: 5px 4px;
+    padding: 7px 8px;
     border-radius: 8px;
-    font-size: 12px;
-    line-height: 17px;
+    font-size: 13px;
+    line-height: 18px;
     letter-spacing: -0.01em;
   }
 
