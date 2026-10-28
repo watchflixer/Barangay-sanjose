@@ -168,7 +168,7 @@ test('the new classes are additive only', () => {
  * rule as the mode nav: the compact laptop/desktop treatment lives behind the
  * 640px gate, so portrait phones keep their original cards.
  */
-test('the bottom overlay shrink is gated above portrait phones too', () => {
+test('the compact bottom overlays are gated above portrait phones too', () => {
   const hooks = ['ph-playback', 'ph-legend'];
   for (const hook of hooks) {
     const rules = rulesMentioning(cssWithoutComments, hook);
@@ -184,11 +184,15 @@ test('the bottom overlays keep their original phone markup', () => {
 
   // Additive hooks only — the original utilities must all still be there.
   const playbackRoot = /<div className="([^"]*ph-playback [^"]*)"/.exec(playback)?.[1].split(' ') ?? [];
-  for (const token of ['bg-white', 'rounded-2xl', 'p-2.5', 'shadow-2xl', 'gap-3']) {
+  const legendRoot = /<div className="([^"]*ph-legend [^"]*)"/.exec(legend)?.[1].split(' ') ?? [];
+
+  const WHITE = join('bg-', 'white');
+  const RADIUS = join('rounded-', '2xl');
+  const SHADOW = join('shadow-', '2xl');
+  for (const token of [WHITE, RADIUS, join('p-', '2.5'), SHADOW, join('gap-', '3')]) {
     assert.ok(playbackRoot.includes(token), `playback card lost its "${token}" utility`);
   }
-  const legendRoot = /<div className="([^"]*ph-legend [^"]*)"/.exec(legend)?.[1].split(' ') ?? [];
-  for (const token of ['bg-white', 'rounded-2xl', 'p-3', 'shadow-2xl']) {
+  for (const token of [WHITE, RADIUS, join('p-', '3'), SHADOW]) {
     assert.ok(legendRoot.includes(token), `legend card lost its "${token}" utility`);
   }
 });
