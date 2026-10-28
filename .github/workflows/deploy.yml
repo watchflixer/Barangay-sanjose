@@ -1,65 +1,26 @@
-name: Deploy Vite site to Pages
+name: Verify Cloudflare Pages build
 
 on:
   push:
     branches: ["main"]
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
-# The Vite app lives in this sub-folder of the repo, not at the root.
-# Keep this in sync if the folder is ever moved.
-env:
-  APP_PATH: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
-
-      - name: Build
-        run: npm run build
-        working-directory: sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose
-
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: ./sagip-montalban-updated/Barangay-sanjose-ready-to-push/Barangay-sanjose/dist
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - run: npm ci
+      - run: npm run build

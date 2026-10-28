@@ -72,11 +72,8 @@ create table if not exists public.app_secrets (
   id text primary key,
   secret_hash text not null
 );
--- Admin password hash. Change it with:
---   update public.app_secrets set secret_hash = encode(sha256(convert_to('new-password','UTF8')),'hex') where id = 'admin';
-insert into public.app_secrets (id, secret_hash)
-values ('admin', encode(sha256(convert_to('admin','UTF8')),'hex'))
-on conflict (id) do nothing;
+-- No default password: set a unique secret in the database before using admin.
+-- See the deployment guide for setup and existing-installation instructions.
 
 alter table public.hazard_reports enable row level security;
 alter table public.report_events enable row level security;
@@ -92,8 +89,12 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-  if p_password is null or encode(sha256(convert_to(p_password,'UTF8')),'hex')
-     <> (select secret_hash from public.app_secrets where id = 'admin') then
+  if p_password is null or not exists (
+    select 1 from public.app_secrets
+    where id = 'admin'
+      and secret_hash <> encode(sha256(convert_to('admin','UTF8')),'hex')
+      and secret_hash = encode(sha256(convert_to(p_password,'UTF8')),'hex')
+  ) then
     raise exception 'Invalid admin password' using errcode = '28000';
   end if;
 end;

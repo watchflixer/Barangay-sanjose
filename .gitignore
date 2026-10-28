@@ -7,7 +7,8 @@ server.js
 
 # Local env files (see .env.example)
 .env
-.env.local
+.env.*
+!.env.example
 
 # Logs & misc
 *.log
