@@ -1380,8 +1380,9 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 /* ==========================================================================
    DESKTOP / LAPTOP LEFT RAIL (Google-Maps-style)
    --------------------------------------------------------------------------
-   The narrow icon strip on the far left: hamburger, Ask Maps, Saved, Recents
-   and Get app.
+   The narrow icon strip on the far left: Ask Maps, Saved, Recents and Get
+   app. (The hamburger was removed — it had nothing left to toggle once the
+   incident feed became permanently docked.)
 
    LAPTOP + DESKTOP ONLY. The base state is `display: none`, and every visual
    rule below sits inside `@media (min-width: 1024px)`, so Android/iPhone

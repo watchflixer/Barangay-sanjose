@@ -69,8 +69,12 @@ test('the rail is mounted on the desktop layout and is purely visual', () => {
   const wired = rail.match(/onClick=\{[^}]*\}/g) ?? [];
   assert.equal(wired.length, 0, 'the rail must stay purely visual');
   assert.doesNotMatch(rail, /onToggleFeed|feedOpen/);
+  // The hamburger is gone for good: it had nothing left to open or close.
+  assert.doesNotMatch(rail, /\bMenu\b/, 'the rail hamburger must not come back');
+  assert.doesNotMatch(rail, /aria-label="Menu"/);
+  assert.doesNotMatch(rail, /desktop-rail__item[^>]*id=/);
   // The items the design calls for.
-  for (const label of ['Menu', 'Ask Maps', 'Saved', 'Recents', 'Get app']) {
+  for (const label of ['Ask Maps', 'Saved', 'Recents', 'Get app']) {
     assert.ok(rail.includes(label), `missing rail item: ${label}`);
   }
   // The location thumbnail chip was removed on request — it must not come back
@@ -177,6 +181,11 @@ test('the incident feed is permanently docked on laptop/desktop', () => {
   // The panel is always in the layout, docked next to the rail.
   assert.match(app, /lg:w-\[25rem\]/);
   assert.match(app, /lg:relative/);
+
+  // The rail hamburger — the last thing that could hide it — is removed too,
+  // and the rail is mounted with no props at all.
+  assert.doesNotMatch(rail, /\bMenu\b/);
+  assert.match(app, /<DesktopRail \/>/);
 
   // Phones keep their own drawer logic untouched.
   assert.match(app, /mobileMenuOpen \? 'translate-x-0' : '-translate-x-full'/);

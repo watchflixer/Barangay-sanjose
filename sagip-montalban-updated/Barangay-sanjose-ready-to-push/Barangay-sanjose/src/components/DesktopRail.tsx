@@ -1,12 +1,13 @@
 import React from 'react';
-import { Bookmark, History, Menu, Search, Smartphone, Sparkles } from 'lucide-react';
+import { Bookmark, History, Search, Smartphone, Sparkles } from 'lucide-react';
 
 /**
  * DESKTOP / LAPTOP RAIL — Google-Maps-style icon rail on the far left.
  *
- * Visual only (no handlers): the narrow strip with the hamburger, "Ask Maps",
- * "Saved", "Recents" and "Get app" at the bottom. The incident feed card
- * next to it is permanently docked, so nothing here opens or closes it.
+ * Visual only (no handlers): the narrow strip with "Ask Maps", "Saved",
+ * "Recents" and "Get app" at the bottom. The incident feed card next to it
+ * is permanently docked — it has no X, no `‹` tab and no hamburger — so
+ * nothing anywhere in the app can hide it on laptop/desktop.
  *
  * IMPORTANT: this renders ONLY on laptop/desktop widths. Every rule lives in
  * index.css behind `@media (min-width: 1024px)` and the base state is
@@ -15,15 +16,6 @@ import { Bookmark, History, Menu, Search, Smartphone, Sparkles } from 'lucide-re
  */
 export const DesktopRail: React.FC = () => (
   <nav className="desktop-rail" aria-label="Map shortcuts">
-    {/* Hamburger — same spot as Google Maps' rail menu. The incident feed
-        panel beside it is permanently docked (no X, no `‹` tab, no toggle),
-        so this is a static rail item like the rest. */}
-    <button type="button" className="desktop-rail__item" aria-label="Menu" title="Menu">
-      <span className="desktop-rail__icon">
-        <Menu className="h-5 w-5" strokeWidth={2} />
-      </span>
-    </button>
-
     {/* Active item, exactly like Google Maps' highlighted "Ask Maps" */}
     <button
       type="button"
