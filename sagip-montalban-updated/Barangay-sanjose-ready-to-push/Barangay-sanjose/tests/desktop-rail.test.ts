@@ -113,8 +113,8 @@ test('the feed card floats over the map and nothing paints behind it', () => {
 
   // Map controls step aside for the card, and come back when it is hidden.
   assert.match(app, /data-feed-open=\{desktopFeedOpen \? 'true' : 'false'\}/);
-  assert.match(card, /#map-control-stack \{\s*left: calc\(25rem \+ 1\.5rem\);\s*\}/);
-  assert.match(card, /\[data-feed-open='false'\] #map-control-stack \{\s*left: 1rem;\s*\}/);
+  assert.match(card, /#map-control-stack,\s*\n\s*#feed-toggle-round-wrap \{\s*left: calc\(25rem \+ 1\.5rem\);\s*\}/);
+  assert.match(card, /\[data-feed-open='false'\] #map-control-stack,\s*\n\s*\[data-feed-open='false'\] #feed-toggle-round-wrap \{\s*left: 1rem;\s*\}/);
   assert.match(mapViewer, /id="map-control-stack"/);
 
   // Everything is behind the desktop media query.
@@ -187,18 +187,19 @@ test('the feed surfaces share the rail white on laptop/desktop', () => {
   assert.doesNotMatch(sidebar, /\blg:bg-\[#f6f8fc\]\b/);
 });
 
-test('a round chevron under the zoom pair collapses the feed on desktop', () => {
-  // The button lives at the bottom of the map control stack…
+test('a round chevron pinned to the bottom of the map toggles the feed', () => {
+  // The button lives in its own bottom-anchored wrapper, not in the stack.
+  assert.match(mapViewer, /id="feed-toggle-round-wrap" className="absolute bottom-5 z-40 hidden lg:flex"/);
   assert.match(mapViewer, /id="btn-toggle-feed-round"/);
-  assert.match(mapViewer, /className="hidden lg:flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/);
+  assert.match(mapViewer, /className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/);
   assert.match(mapViewer, /<ChevronRight/);
-  // …sits after the zoom pair…
-  const stack = mapViewer.slice(mapViewer.indexOf('id="map-control-stack"'));
-  assert.ok(stack.indexOf('id="btn-zoom-out"') < stack.indexOf('id="btn-toggle-feed-round"'));
-  // …is desktop-only…
-  assert.match(mapViewer, /hidden lg:flex h-9 w-9/);
-  // …and toggles the floating card.
+  // It is no longer inside the control stack…
+  const stack = mapViewer.slice(mapViewer.indexOf('id="map-control-stack"'), mapViewer.indexOf('id="feed-toggle-round-wrap"'));
+  assert.doesNotMatch(stack, /btn-toggle-feed-round/);
+  // …desktop-only, and wired to the same state as the rail.
   assert.match(mapViewer, /onClick=\{\(\) => onToggleFeed\?\.\(\)\}/);
   assert.match(mapViewer, /aria-expanded=\{desktopFeedOpen\}/);
   assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
+  // It follows the card's left offset, and resets when the feed is closed.
+  assert.match(css, /#map-control-stack,\s*\n\s*#feed-toggle-round-wrap \{\s*left: calc\(25rem \+ 1\.5rem\);\s*\}/);
 });

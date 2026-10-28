@@ -1562,12 +1562,14 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   }
 
   /* ---- keep the map's left-hand controls clickable -------------------- */
-  #map-control-stack {
+  #map-control-stack,
+  #feed-toggle-round-wrap {
     left: calc(25rem + 1.5rem);
   }
 
   /* …and put them back when the feed is collapsed from the rail. */
-  [data-feed-open='false'] #map-control-stack {
+  [data-feed-open='false'] #map-control-stack,
+  [data-feed-open='false'] #feed-toggle-round-wrap {
     left: 1rem;
   }
 }
