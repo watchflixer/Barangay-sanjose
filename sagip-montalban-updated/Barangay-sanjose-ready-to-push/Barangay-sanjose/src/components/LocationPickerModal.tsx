@@ -5,6 +5,40 @@ import { SAN_JOSE_CENTER } from '../data/geoData';
 import { TILE_SERVERS } from '../data/tileServers';
 import { mountTileLayer } from '../lib/tileLayer';
 
+/**
+ * The dropped pin is an inline SVG DivIcon on purpose.
+ *
+ * Leaflet's built-in `new L.Marker()` icon is a pair of PNG files that the
+ * library locates at runtime by sniffing `url(images/marker-icon.png)` out of
+ * leaflet.css. Vite hashes that asset (`marker-icon-a1b2c3.png`) and adds a
+ * relative base, so the sniffing fails and the marker renders as an empty
+ * white box — in production builds only, which is exactly how this bug
+ * shipped. Drawing the pin with SVG removes the image lookup entirely, so the
+ * pin looks identical in dev, preview and the GitHub Pages sub-path build.
+ */
+const PICKER_PIN_HTML = `
+  <span class="picker-pin-ring"></span>
+  <svg class="picker-pin-svg" viewBox="0 0 32 42" aria-hidden="true" focusable="false">
+    <path
+      d="M16 40.4c-.8-.8-13.6-13.4-13.6-23.1A13.6 13.6 0 0 1 16 3.7a13.6 13.6 0 0 1 13.6 13.6c0 9.7-12.8 22.3-13.6 23.1Z"
+      fill="currentColor"
+      stroke="#ffffff"
+      stroke-width="2.6"
+      stroke-linejoin="round"
+    />
+    <circle cx="16" cy="17.2" r="5.1" fill="#ffffff" />
+  </svg>
+`;
+
+const createPickerPin = () =>
+  new L.DivIcon({
+    className: 'picker-pin',
+    html: PICKER_PIN_HTML,
+    iconSize: [32, 42],
+    iconAnchor: [16, 40],
+    popupAnchor: [0, -38],
+  });
+
 interface LocationPickerModalProps {
   isOpen: boolean;
   initialCoordinates: [number, number] | null;
@@ -38,7 +72,12 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     });
     mountTileLayer(map, TILE_SERVERS.streets);
 
-    const marker = new L.Marker(coordinates).addTo(map);
+    const marker = new L.Marker(coordinates, {
+      icon: createPickerPin(),
+      keyboard: false,
+      title: 'Selected hazard location',
+      alt: 'Selected hazard location',
+    }).addTo(map);
     map.on('click', (event) => {
       const nextCoordinates: [number, number] = [
         Number(event.latlng.lat.toFixed(5)),

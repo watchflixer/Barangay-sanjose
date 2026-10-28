@@ -72,11 +72,17 @@ test('escaped text never becomes markup', () => {
   assert.equal(safeImageUrl('data:image/png;base64,AAA'), 'data:image/png;base64,AAA');
 });
 
-test('the database row keeps contacts for admins only and falls back to bundled photos', () => {
+test('the database row keeps contacts for admins only and never invents a photo', () => {
   const publicReport = reportFromRow(row);
   assert.equal(publicReport.contactNumber, undefined);
   assert.equal(publicReport.reporterEmail, undefined);
-  assert.ok(publicReport.photoUrl, 'seeded incidents reuse the bundled photo');
+  // Photos live in the database now: no row photo means no photo, never a
+  // bundled placeholder, so the admin and the public see the same evidence.
+  assert.equal(publicReport.photoUrl, '');
+  assert.equal(
+    reportFromRow({ ...row, photo_url: 'https://cdn.example/hz-001.jpg' }).photoUrl,
+    'https://cdn.example/hz-001.jpg',
+  );
   assert.equal(publicReport.lastUpdated, '2026-10-28T10:00:00.000Z');
   assert.deepEqual(publicReport.coordinates, [14.7468, 121.1378]);
 
