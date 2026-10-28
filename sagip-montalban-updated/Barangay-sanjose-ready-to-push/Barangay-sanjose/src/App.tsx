@@ -61,10 +61,14 @@ export default function App() {
   const [isAddingPinMode, setIsAddingPinMode] = useState(false);
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  // Laptop/desktop: the incident feed is PERMANENTLY docked next to the rail —
-  // it has no X, no `‹` tab and no menu toggle, so it cannot be hidden there.
-  // Phones keep the slide-in drawer above, because screen space is finite.
+  // Laptop/desktop (>=1024px): the incident feed starts OPEN, docked next to the
+  // rail as the floating card, and the round chevron under zoom-out closes it.
+  // Phones (<1024px) start exactly as before — drawer shut, opened by its own
+  // `‹` handle — because this check is the JS twin of the CSS media query and
+  // is false at portrait phone widths.
+  const isDesktopFeedViewport = () =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(isDesktopFeedViewport);
   const [recenterCount, setRecenterCount] = useState(0);
   
   // STRICT USER DIRECTIVE: Default to NO live stream unless user explicitly provides/pastes a URL
@@ -223,8 +227,11 @@ export default function App() {
 
   // Leaving the hazard map unmounts the feed, so forget the phone drawer state
   // too: coming back should start with the map, not a stale open drawer.
+  // Back ON the hazard map, laptop/desktop shows the feed open again (that is
+  // its resting state); phones keep starting from the map.
   useEffect(() => {
     if (!incidentFeedsVisible) setMobileMenuOpen(false);
+    else if (isDesktopFeedViewport()) setMobileMenuOpen(true);
   }, [incidentFeedsVisible]);
 
   const resolvedAlerts = alerts.filter((a) => a.status === 'resolved');

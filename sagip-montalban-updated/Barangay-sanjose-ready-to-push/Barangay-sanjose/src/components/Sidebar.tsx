@@ -133,8 +133,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      /* Desktop/laptop: index.css keeps this panel closed until the round
-         chevron under zoom-out opens it (it then shows as the floating card).
+      /* Desktop/laptop: this panel is open on load as the floating card, and
+         the round chevron below zoom-out closes/reopens it (see index.css).
          Phones keep the plain drawer styling and behaviour. */
       className="flex h-full w-full min-h-0 shrink-0 flex-col overflow-hidden bg-white lg:w-full lg:border-0 lg:shadow-none"
     >

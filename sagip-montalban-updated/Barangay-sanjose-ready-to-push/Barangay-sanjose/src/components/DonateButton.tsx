@@ -47,10 +47,34 @@ const COPY_LABEL_BLOCKED = 'Copy blocked: number selected, press Ctrl+C';
 
 interface DonateButtonProps {
   className?: string;
+  /**
+   * Controlled open state. Pass `open` + `onOpenChange` to drive the SAME
+   * dialog from somewhere else — the desktop rail's Donate item does exactly
+   * that, so laptop/desktop gets the identical card the phone build shows.
+   * Left undefined, the component stays self-managed, exactly as before.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Render only the dialog, without the navbar trigger button. */
+  showTrigger?: boolean;
 }
 
-export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) => {
-  const [open, setOpen] = useState(false);
+export const DonateButton: React.FC<DonateButtonProps> = ({
+  className = '',
+  open: openProp,
+  onOpenChange,
+  showTrigger = true,
+}) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  // Uncontrolled by default (navbar); controlled when `open` is supplied
+  // (desktop rail), so there is still ONE dialog implementation and one state
+  // per instance — nothing about the phone behaviour changes.
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (!isControlled) setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [copyLabel, setCopyLabel] = useState(COPY_LABEL_DEFAULT);
   const [qrFailed, setQrFailed] = useState(false);
   // Naka-lock na height ng card habang bukas ito (collapsed height). Hindi na
@@ -182,15 +206,17 @@ export const DonateButton: React.FC<DonateButtonProps> = ({ className = '' }) =>
 
   return (
     <>
-      <button
-        id="btn-donate"
-        type="button"
-        aria-haspopup="dialog"
-        onClick={() => setOpen(true)}
-        className={`inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 ${className}`}
-      >
-        Donate
-      </button>
+      {showTrigger && (
+        <button
+          id="btn-donate"
+          type="button"
+          aria-haspopup="dialog"
+          onClick={() => setOpen(true)}
+          className={`inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 ${className}`}
+        >
+          Donate
+        </button>
+      )}
 
       {/* Portal sa document.body — hindi nakakulong sa <header> (z-30) na
           stacking context ng Navbar, kaya hindi na natatakpan ng Flood

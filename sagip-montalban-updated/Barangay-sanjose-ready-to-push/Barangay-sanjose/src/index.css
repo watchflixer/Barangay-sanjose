@@ -1518,34 +1518,35 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: THE INCIDENT FEED PANEL IS CLOSED BY DEFAULT
+   LAPTOP / DESKTOP: THE INCIDENT FEED PANEL IS OPEN ON LOAD
    --------------------------------------------------------------------------
    The whole Incident Feeds panel — the floating card AND everything inside it
    (header, "＋" button, search bar, category chips, STATUS row, every incident
-   card, and the STREETLIGHTS / Hotlines footer) — is closed on laptop/desktop.
-   The map runs edge to edge from the icon rail to the right of the window.
+   card, and the STREETLIGHTS / Hotlines footer) — is docked open as soon as the
+   hazard map appears on laptop/desktop. That is its resting state: the page
+   opens with the feed already there, exactly like the reference.
 
-   It is opened from ONE control: the round chevron button that sits below the
+   It is closed from ONE control: the round chevron button that sits below the
    zoom-out button (`#btn-desktop-feed-toggle` in MapViewer.tsx, rendered on the
    hazard map only). That button flips `mobileMenuOpen`, which adds
-   `.is-feed-open` to this node:
+   `.is-feed-open` to this node — and App.tsx seeds that state from
+   `matchMedia('(min-width: 1024px)')`, so on desktop it starts TRUE:
 
-     #app-sidebar-panel              → display:none          (closed)
-     #app-sidebar-panel.is-feed-open → the floating card     (open)
+     #app-sidebar-panel              → display:none          (closed by hand)
+     #app-sidebar-panel.is-feed-open → the floating card     (open, default)
 
-   So the panel is hidden until asked for, and when it is asked for it comes
-   back looking exactly like the reference: the rounded white card floating
-   8px off the rail, the top and the bottom — 24px radius, hairline, soft
-   shadow — with the feed (header, "＋", search, chips, STATUS row, incident
+   Opened, the panel looks exactly like the reference: the rounded white card
+   floating 8px off the rail, the top and the bottom — 24px radius, hairline,
+   soft shadow — with the feed (header, "＋", search, chips, STATUS row, incident
    cards, STREETLIGHTS / Hotlines footer) filling it edge to edge.
 
    `main` is flex-1 and the map's ResizeObserver calls invalidateSize(), so the
    map re-fits itself on both open and close with no JS change.
 
-   MOBILE PORTRAIT IS UNTOUCHED: every rule here only exists from 1024px up.
-   Phones keep their full-height slide-in drawer, their own `‹` handle, and the
-   backdrop exactly as before — `.is-feed-open` is simply never used there
-   (the base `translate-x-0` / `-translate-x-full` pair still drives them).
+   MOBILE PORTRAIT IS UNTOUCHED: every rule here only exists from 1024px up,
+   and the JS seed above is the same 1024px test — so it is FALSE on phones and
+   they still start with the drawer shut, opened by their own `‹` handle, with
+   the backdrop exactly as before.
    ========================================================================== */
 /* Full height at EVERY width: on phones this wrapper just passes the drawer's
    height through to the feed, exactly as before. */
@@ -1555,7 +1556,7 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 @media (min-width: 1024px) {
-  /* ---- closed by default ---------------------------------------------- */
+  /* ---- closed only when the chevron has been pressed ------------------ */
   #app-sidebar-panel {
     display: none;
   }
