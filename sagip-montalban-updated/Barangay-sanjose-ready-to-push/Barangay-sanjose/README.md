@@ -39,6 +39,46 @@ weather entrypoint; inayos din ang na-export na Cloudflare script tag sa
 May hiwalay pa ring lumang `src/weather-app/` sa repo, pero hindi iyon ang
 ginagamit ng Weather button.
 
+### Desktop/laptop-only changes (STANDING RULE)
+
+**Lahat ng pagbabago sa lapad/posisyon/ayos ng Weather view ay dapat nasa
+`@media (min-width: 640px)` lang — walang gagalawin sa Android/iPhone
+portrait view.**
+
+640px ang gate dahil ito ang Tailwind `sm` breakpoint at mas malaki pa rin sa
+pinakamalaking portrait phone (iPhone 16 Pro Max = 440px CSS). Kapag mas
+mataas ang kailangan (hal. tunay na `lg`/`xl`), itaas ang numero — pero **huwag
+kailanman** maglagay ng rule sa labas ng media query.
+
+Paano ito ginagawa:
+
+- Markup: magdagdag lang ng **hook class** (`ph-mode-nav`, `ph-playback`,
+  `ph-legend`, `ph-map-controls`, `ph-ctrl--*`, `ph-overlays`, o
+  `custom-city-pin-container`). **Huwag** tanggalin o palitan ang orihinal na
+  Tailwind utilities — dagdag lang.
+- CSS: lahat ng bagong rule sa `weather-source/src/index.css`, sa loob ng
+  `@media (min-width: 640px)`. Walang rule sa labas.
+- JS na may visual effect: i-branch sa `isWideViewport()` (tingnan ang
+  `WeatherMap.tsx`), at panatilihin ang orihinal na path para sa phone.
+- Kung order lang ang babaguhin, gamitin ang flex `order` sa loob ng media
+  query — **huwag** ilipat ang DOM, dahil magbabago rin ang phone order.
+
+May tatlong guard test na pumipigil dito — pumapasa lang kung bawat
+`ph-*` rule ay nasa loob ng media query at wala sa `max-width`/`portrait`
+block:
+
+```bash
+npm run test:weather-nav     # 10 tests
+npm run test:city-density    # 10 tests
+npm run test:weather-zoom    #  5 tests
+```
+
+Isang bitag: ang Tailwind v4 ay nagsa-scan ng **lahat** ng file, kasama ang
+`tests/` at kahit ang README na ito. Kapag may literal na pangalan ng utility
+sa prose o sa test, gagawa ito ng dagdag na CSS rule sa `main-*.css` at
+magbabago ang build hash. Buuin ang mga token mula sa fragments sa loob ng
+test, at huwag isulat nang buo ang mga utility name sa dokumentasyon.
+
 ## Fare Estimate (Traffic map → 🎫 button)
 
 Nasa `public/rizal_traffic_map.html` (`FARE_RATES` + `getRealtimeFares()`). **Auto-compute** —
