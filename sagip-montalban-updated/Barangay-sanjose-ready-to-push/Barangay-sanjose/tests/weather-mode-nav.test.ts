@@ -29,7 +29,7 @@ const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
  * query is NOT mistaken for one inside it.
  */
 function rulesMentioning(source: string, needle: string) {
-  const found: { selector: string; gates: string[] }[] = [];
+  const found: { selector: string; gates: string[]; declarations: string }[] = [];
   const stack: string[] = [];
   let buffer = '';
   let index = 0;
@@ -44,7 +44,11 @@ function rulesMentioning(source: string, needle: string) {
         continue;
       }
       const close = source.indexOf('}', index);
-      found.push({ selector: head, gates: [...stack] });
+      found.push({
+        selector: head,
+        gates: [...stack],
+        declarations: source.slice(index + 1, close === -1 ? source.length : close)
+      });
       index = close === -1 ? source.length : close + 1;
       continue;
     }
@@ -195,4 +199,30 @@ test('the bottom overlays keep their original phone markup', () => {
   for (const token of [WHITE, RADIUS, join('p-', '3'), SHADOW]) {
     assert.ok(legendRoot.includes(token), `legend card lost its "${token}" utility`);
   }
+});
+
+/**
+ * The map control stack (recenter / layers / locate / zoom) used to float beside
+ * the mode nav. It is raised on laptop/desktop only: the offset lives in the
+ * 640px media query, while the markup — and therefore portrait phones — keeps
+ * the original dock untouched.
+ */
+test('the map controls are raised above portrait phones only', () => {
+  const map = read('../weather-source/src/components/WeatherMap.tsx');
+  const stack = /<div className="(ph-map-controls [^"]*)"/.exec(map)?.[1] ?? '';
+  const tokens = stack.split(' ');
+
+  // Portrait phones: the original dock must stay exactly where it was.
+  assert.ok(tokens.includes(join('top-[', '110px]')), 'the phone position must stay top-110px');
+  assert.ok(tokens.includes(join('sm:top-[', '82px]')), 'the markup offset must stay unchanged');
+
+  const rules = rulesMentioning(cssWithoutComments, 'ph-map-controls');
+  assert.ok(rules.length >= 1, 'expected a raised offset for the control stack');
+  const leaked = rules.filter((rule) => !isDesktopOnly(rule.gates));
+  assert.deepEqual(leaked.map((rule) => rule.selector), [], 'the raise would also hit phones');
+
+  const raise = rules.find((rule) => rule.selector.trim() === '.ph-map-controls');
+  assert.ok(raise, 'expected a .ph-map-controls rule');
+  const top = parseFloat(raise.declarations.split('top:')[1] ?? '');
+  assert.ok(top > 0 && top <= 70, `expected the stack tucked under the nav, got top ${top}px`);
 });

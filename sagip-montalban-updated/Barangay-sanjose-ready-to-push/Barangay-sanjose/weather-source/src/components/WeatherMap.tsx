@@ -744,8 +744,12 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     <div className="relative w-full h-full bg-[#0c0f14] overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full" />
 
-      {/* The weather page owns these map controls, just like the other map layers. */}
-      <div className="absolute left-4 top-[110px] z-[1050] flex flex-col gap-1.5 sm:top-[82px]">
+      {/* The weather page owns these map controls, just like the other map
+          layers. `ph-map-controls` is a hook only: the laptop/desktop raise
+          lives behind @media (min-width: 640px) in index.css, so the stack
+          tucks under the mode nav there while portrait phones keep this exact
+          top-[110px] / sm:top-[82px] dock. */}
+      <div className="ph-map-controls absolute left-4 top-[110px] z-[1050] flex flex-col gap-1.5 sm:top-[82px]">
         <button
           type="button"
           onClick={handleRecenter}

@@ -316,3 +316,20 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
     margin-top: 4px;
   }
 }
+
+/* ==========================================================================
+   WEATHER MAP CONTROL STACK (recenter / layers / locate / zoom)
+   --------------------------------------------------------------------------
+   NOT-PHONE-PORTRAIT ONLY, same 640px gate as everything else. On portrait
+   phones the stack keeps the markup's own `top-[110px]` dock — this block
+   simply never matches there.
+
+   Above 640px the stack used to start at 82px, which left it floating beside
+   the mode nav. The nav now ends at ~54px, so the stack tucks up to 62px and
+   the map stays clean underneath it.
+   ========================================================================== */
+@media (min-width: 640px) {
+  .ph-map-controls {
+    top: 62px;
+  }
+}
