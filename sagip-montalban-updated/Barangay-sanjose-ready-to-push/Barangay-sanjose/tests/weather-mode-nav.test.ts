@@ -202,12 +202,11 @@ test('the bottom overlays keep their original phone markup', () => {
 });
 
 /**
- * The map control stack (recenter / layers / locate / zoom) used to float beside
- * the mode nav. It is raised on laptop/desktop only: the offset lives in the
- * 640px media query, while the markup — and therefore portrait phones — keeps
- * the original dock untouched.
+ * The map control stack (recenter / layers / locate / zoom) mirrors the Flood
+ * Prone map: top:16px / left:16px with a 6px gap and 34x34 buttons. The offset
+ * lives in the 640px media query, so portrait phones keep their own dock.
  */
-test('the map controls are raised above portrait phones only', () => {
+test('the map controls match the Flood Prone position on laptop/desktop only', () => {
   const map = read('../weather-source/src/components/WeatherMap.tsx');
   const stack = /<div className="(ph-map-controls [^"]*)"/.exec(map)?.[1] ?? '';
   const tokens = stack.split(' ');
@@ -215,14 +214,27 @@ test('the map controls are raised above portrait phones only', () => {
   // Portrait phones: the original dock must stay exactly where it was.
   assert.ok(tokens.includes(join('top-[', '110px]')), 'the phone position must stay top-110px');
   assert.ok(tokens.includes(join('sm:top-[', '82px]')), 'the markup offset must stay unchanged');
+  assert.ok(tokens.includes(join('gap-', '1.5')), 'the 6px gap already matches Flood Prone');
 
   const rules = rulesMentioning(cssWithoutComments, 'ph-map-controls');
-  assert.ok(rules.length >= 1, 'expected a raised offset for the control stack');
+  assert.ok(rules.length >= 1, 'expected the Flood Prone offset for the control stack');
   const leaked = rules.filter((rule) => !isDesktopOnly(rule.gates));
-  assert.deepEqual(leaked.map((rule) => rule.selector), [], 'the raise would also hit phones');
+  assert.deepEqual(leaked.map((rule) => rule.selector), [], 'the position would also hit phones');
 
-  const raise = rules.find((rule) => rule.selector.trim() === '.ph-map-controls');
-  assert.ok(raise, 'expected a .ph-map-controls rule');
-  const top = parseFloat(raise.declarations.split('top:')[1] ?? '');
-  assert.ok(top > 0 && top <= 70, `expected the stack tucked under the nav, got top ${top}px`);
+  const rule = rules.find((item) => item.selector.trim() === '.ph-map-controls');
+  assert.ok(rule, 'expected a .ph-map-controls rule');
+
+  // Flood Prone uses exactly top:16px / left:16px.
+  const top = parseFloat(rule.declarations.split('top:')[1] ?? '');
+  const left = parseFloat(rule.declarations.split('left:')[1] ?? '');
+  assert.equal(top, 16, `expected the Flood Prone top offset, got ${top}px`);
+  assert.equal(left, 16, `expected the Flood Prone left offset, got ${left}px`);
+});
+
+test('the weather control buttons keep the 34x34 Flood Prone footprint', () => {
+  const map = read('../weather-source/src/components/WeatherMap.tsx');
+  // p-2 (8px) + a 16px icon + 1px border on each side = 34px, same as Flood Prone.
+  const recenter = /onClick=\{handleRecenter\}[\s\S]{0,400}?className="([^"]+)"/.exec(map)?.[1] ?? '';
+  assert.ok(recenter.split(' ').includes(join('p-', '2')), 'recenter must keep p-2');
+  assert.match(map, /<RefreshCw className=\{`h-4 w-4/, 'recenter icon must stay 16px (h-4 w-4)');
 });

@@ -324,12 +324,14 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
    phones the stack keeps the markup's own `top-[110px]` dock — this block
    simply never matches there.
 
-   Above 640px the stack used to start at 82px, which left it floating beside
-   the mode nav. The nav now ends at ~54px, so the stack tucks up to 62px and
-   the map stays clean underneath it.
+   Above 640px the stack now sits exactly where the Flood Prone map puts its
+   own controls — top:16px / left:16px with a 6px gap (the buttons are already
+   the same 34x34). The mode nav is centered, so the top-left corner is free
+   and the two never touch.
    ========================================================================== */
 @media (min-width: 640px) {
   .ph-map-controls {
-    top: 62px;
+    top: 16px;
+    left: 16px;
   }
 }
