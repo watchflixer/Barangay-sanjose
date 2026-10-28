@@ -55,7 +55,7 @@ test('no phone breakpoint touches the rail', () => {
   }
 });
 
-test('the rail is mounted on the desktop layout, with only the feed toggle wired', () => {
+test('the rail is mounted on the desktop layout and is purely visual', () => {
   // Mounted once, at the top of the workspace row (left of the incident feed).
   assert.match(app, /<DesktopRail/);
   assert.ok(
@@ -64,10 +64,11 @@ test('the rail is mounted on the desktop layout, with only the feed toggle wired
   );
   // No Tailwind visibility utilities that would leak it into small screens.
   assert.doesNotMatch(rail, /className="[^"]*\b(?:flex|block|grid)\b[^"]*"/, 'the rail must not opt into a display utility');
-  // The only wired control is the hamburger, which toggles the feed panel.
+  // Nothing on the rail is wired: the incident feed is permanently docked, so
+  // there is no panel to open or close from here.
   const wired = rail.match(/onClick=\{[^}]*\}/g) ?? [];
-  assert.equal(wired.length, 1, 'only the hamburger may be wired');
-  assert.match(wired[0], /onToggleFeed/);
+  assert.equal(wired.length, 0, 'the rail must stay purely visual');
+  assert.doesNotMatch(rail, /onToggleFeed|feedOpen/);
   // The items the design calls for.
   for (const label of ['Menu', 'Ask Maps', 'Saved', 'Recents', 'Get app']) {
     assert.ok(rail.includes(label), `missing rail item: ${label}`);
@@ -124,8 +125,9 @@ test('the ‹ collapse tab is removed and stays gone', () => {
   assert.doesNotMatch(app, /<ChevronLeft/);
   assert.doesNotMatch(css, /app-feed-collapse/);
 
-  // The rail still toggles the feed.
-  assert.match(rail, /onToggleFeed\?\.\(\)/);
+  // Nothing toggles the feed any more — it is permanently docked.
+  assert.doesNotMatch(rail, /onToggleFeed|feedOpen/);
+  assert.doesNotMatch(sidebar, /onCloseDesktop/);
 
   // The inner wrapper keeps full height at every width, so phones are unchanged.
   assert.match(css, /\.app-feed-inner \{\s*height: 100%;\s*min-height: 0;\s*\}/);
@@ -157,25 +159,28 @@ test('the incident feed keeps a wide desktop panel (~400px)', () => {
   assert.doesNotMatch(sidebar, /lg:w-72/);
 });
 
-test('the feed header X is removed; the rail alone opens and closes the feed', () => {
-  // The header X (and its onCloseDesktop prop) was removed on request along
-  // with the ‹ tab — it must not come back anywhere.
+test('the incident feed is permanently docked on laptop/desktop', () => {
+  // The header X and its onCloseDesktop prop were removed on request, along
+  // with the ‹ tab — the feed cannot be hidden from the UI any more.
   assert.doesNotMatch(sidebar, /btn-close-incident-feeds/);
   assert.doesNotMatch(sidebar, /onCloseDesktop/);
   assert.doesNotMatch(app, /onCloseDesktop/);
   assert.doesNotMatch(app, /btn-close-incident-feeds/);
 
-  // App still tracks the open state, applied with an `lg:` utility only…
-  assert.match(app, /const \[desktopFeedOpen, setDesktopFeedOpen\] = useState\(true\)/);
-  assert.match(app, /desktopFeedOpen \? '' : 'lg:hidden'/);
+  // No open/closed state is left for the desktop panel…
+  assert.doesNotMatch(app, /desktopFeedOpen/);
+  assert.doesNotMatch(app, /'lg:hidden'/);
+  // …and the rail no longer has a feed toggle.
+  assert.doesNotMatch(app, /onToggleFeed/);
+  assert.doesNotMatch(rail, /onToggleFeed|feedOpen/);
 
-  // …and the rail's hamburger is the one control that toggles it.
-  assert.match(rail, /onToggleFeed\?\.\(\)/);
-  assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
+  // The panel is always in the layout, docked next to the rail.
+  assert.match(app, /lg:w-\[25rem\]/);
+  assert.match(app, /lg:relative/);
 
   // Phones keep their own drawer logic untouched.
   assert.match(app, /mobileMenuOpen \? 'translate-x-0' : '-translate-x-full'/);
-  assert.doesNotMatch(sidebar, /lg:inline-flex[^"]*text-\[#5f6368\][^"]*rounded-full[^"]*hover:bg-\[#e8eaed\]/);
+  assert.match(app, /id="btn-mobile-sidebar-toggle-arrow"/);
 });
 
 test('the feed surfaces share the rail white on laptop/desktop', () => {
