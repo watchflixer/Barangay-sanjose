@@ -133,8 +133,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <aside
-      /* Desktop/laptop: the panel is the INNER card (rounded, own hairline) —
-         its looks come from index.css. Phones keep the plain drawer styling. */
+      /* Desktop/laptop: index.css keeps this panel closed until the round
+         chevron under zoom-out opens it (it then shows as the floating card).
+         Phones keep the plain drawer styling and behaviour. */
       className="flex h-full w-full min-h-0 shrink-0 flex-col overflow-hidden bg-white lg:w-full lg:border-0 lg:shadow-none"
     >
       {/* Compact header, search, and filters styled after the supplied screenshots. */}

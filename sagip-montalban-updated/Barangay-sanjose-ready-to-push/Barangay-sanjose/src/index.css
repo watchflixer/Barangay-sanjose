@@ -1518,18 +1518,34 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 /* ==========================================================================
-   LAPTOP / DESKTOP: THE INCIDENT FEED IS ONE FLOATING CARD
+   LAPTOP / DESKTOP: THE INCIDENT FEED PANEL IS CLOSED BY DEFAULT
    --------------------------------------------------------------------------
-   Google-Maps geometry: the feed floats as ONE white card — 8px gap from the
-   rail, the top and the bottom, 24px radius, hairline and a soft shadow. The
-   feed content fills it edge to edge (no second card inside). The card is
-   closed from the feed header's ✕ or the rail's ☰ and re-opened from the rail.
+   The whole Incident Feeds panel — the floating card AND everything inside it
+   (header, "＋" button, search bar, category chips, STATUS row, every incident
+   card, and the STREETLIGHTS / Hotlines footer) — is closed on laptop/desktop.
+   The map runs edge to edge from the icon rail to the right of the window.
 
-     #app-sidebar-panel           → the card itself (this rule)
-     #app-sidebar-panel …> aside  → clipped to the card's rounded corners
+   It is opened from ONE control: the round chevron button that sits below the
+   zoom-out button (`#btn-desktop-feed-toggle` in MapViewer.tsx, rendered on the
+   hazard map only). That button flips `mobileMenuOpen`, which adds
+   `.is-feed-open` to this node:
 
-   MOBILE PORTRAIT IS UNTOUCHED: every rule is inside `@media (min-width:
-   1024px)`, so phones keep the flat, full-height slide-in drawer.
+     #app-sidebar-panel              → display:none          (closed)
+     #app-sidebar-panel.is-feed-open → the floating card     (open)
+
+   So the panel is hidden until asked for, and when it is asked for it comes
+   back looking exactly like the reference: the rounded white card floating
+   8px off the rail, the top and the bottom — 24px radius, hairline, soft
+   shadow — with the feed (header, "＋", search, chips, STATUS row, incident
+   cards, STREETLIGHTS / Hotlines footer) filling it edge to edge.
+
+   `main` is flex-1 and the map's ResizeObserver calls invalidateSize(), so the
+   map re-fits itself on both open and close with no JS change.
+
+   MOBILE PORTRAIT IS UNTOUCHED: every rule here only exists from 1024px up.
+   Phones keep their full-height slide-in drawer, their own `‹` handle, and the
+   backdrop exactly as before — `.is-feed-open` is simply never used there
+   (the base `translate-x-0` / `-translate-x-full` pair still drives them).
    ========================================================================== */
 /* Full height at EVERY width: on phones this wrapper just passes the drawer's
    height through to the feed, exactly as before. */
@@ -1539,8 +1555,16 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 @media (min-width: 1024px) {
-  /* ---- the one and only card ----------------------------------------- */
+  /* ---- closed by default ---------------------------------------------- */
   #app-sidebar-panel {
+    display: none;
+  }
+
+  /* ---- opened from the round chevron below zoom-out --------------------
+     Opened, the panel is the ORIGINAL floating card: 8px gaps, 24px radius,
+     a hairline and a soft shadow, with the feed filling it edge to edge. */
+  #app-sidebar-panel.is-feed-open {
+    display: block;
     position: relative;
     margin: 8px 10px 8px 8px;
     height: calc(100% - 16px);
@@ -1549,13 +1573,11 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     border: 1px solid #e6e8eb;
     border-radius: 24px;
     box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
-    /* `clip` keeps the rounded shape, so rows and the header strip are cut to
-       the card's corners. */
     overflow: clip;
   }
 
-  /* The feed fills the card; the card owns the border, radius and shadow. */
-  #app-sidebar-panel > .app-feed-inner > aside {
+  /* The feed fills the card, clipped to its rounded corners. */
+  #app-sidebar-panel.is-feed-open > .app-feed-inner > aside {
     border: 0;
     border-radius: 23px;
     box-shadow: none;
