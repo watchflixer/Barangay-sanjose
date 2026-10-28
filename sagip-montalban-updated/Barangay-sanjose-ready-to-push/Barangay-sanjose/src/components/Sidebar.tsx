@@ -25,8 +25,7 @@ import {
   PhoneCall,
   ShieldCheck,
   Camera,
-  Image as ImageIcon,
-  X
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -44,8 +43,6 @@ interface SidebarProps {
   onOpenLiveModal?: () => void;
   onRemoveLive?: () => void;
   onClose?: () => void;
-  /** Closes the desktop/laptop feed panel (the X in the header). */
-  onCloseDesktop?: () => void;
   /** ●●● options menu — lives in this header on mobile portrait. */
   onOpenUpdates?: () => void;
   onOpenEvacuationCenters?: () => void;
@@ -70,7 +67,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenLiveModal = () => {},
   onRemoveLive = () => {},
   onClose,
-  onCloseDesktop,
   onOpenUpdates = () => {},
   onOpenEvacuationCenters = () => {},
   onOpenResolvedCleared = () => {},
@@ -157,18 +153,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
-            {/* Desktop/laptop only: closes the feed so the map gets full width.
-                The rail's ☰ brings it back. Hidden on phones/tablets. */}
-            <button
-              type="button"
-              id="btn-close-incident-feeds"
-              onClick={() => onCloseDesktop?.()}
-              aria-label="Close incident feeds"
-              title="Close incident feeds"
-              className="hidden lg:inline-flex h-8 w-8 items-center justify-center rounded-full text-[#5f6368] transition-colors hover:bg-[#e8eaed] active:scale-95"
-            >
-              <X className="h-5 w-5" strokeWidth={2} />
-            </button>
             <ReportButton
               id="btn-report-hazard-mobile"
               className="hidden portrait:inline-flex"

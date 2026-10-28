@@ -55,7 +55,7 @@ test('no phone breakpoint touches the rail', () => {
   }
 });
 
-test('the rail is mounted on the desktop layout, with only the feed toggle wired', () => {
+test('the rail is mounted on the desktop layout and is purely visual', () => {
   // Mounted once, at the top of the workspace row (left of the incident feed).
   assert.match(app, /<DesktopRail/);
   assert.ok(
@@ -64,10 +64,20 @@ test('the rail is mounted on the desktop layout, with only the feed toggle wired
   );
   // No Tailwind visibility utilities that would leak it into small screens.
   assert.doesNotMatch(rail, /className="[^"]*\b(?:flex|block|grid)\b[^"]*"/, 'the rail must not opt into a display utility');
-  // The only wired control is the hamburger, which toggles the feed panel.
+  // Nothing on the rail is wired: the incident feed is permanently docked, so
+  // there is no panel to open or close from here.
   const wired = rail.match(/onClick=\{[^}]*\}/g) ?? [];
-  assert.equal(wired.length, 1, 'only the hamburger may be wired');
-  assert.match(wired[0], /onToggleFeed/);
+  assert.equal(wired.length, 0, 'the rail must stay purely visual');
+  assert.doesNotMatch(rail, /onToggleFeed|feedOpen/);
+  // The hamburger is back on request — but DECORATIVE: a span, not a
+  // button, with no handler and hidden from assistive tech.
+  assert.match(rail, /<Menu className=/);
+  assert.match(rail, /desktop-rail__item--static/);
+  assert.match(rail, /aria-hidden="true"/);
+  const hamburger = rail.slice(rail.indexOf('Hamburger'), rail.indexOf('Active item'));
+  assert.doesNotMatch(hamburger, /<button/, 'the hamburger must not be a button');
+  assert.doesNotMatch(hamburger, /onClick|aria-label|tabIndex/, 'the hamburger must stay unwired');
+  assert.match(hamburger, /<span className="desktop-rail__item desktop-rail__item--static"/);
   // The items the design calls for.
   for (const label of ['Menu', 'Ask Maps', 'Saved', 'Recents', 'Get app']) {
     assert.ok(rail.includes(label), `missing rail item: ${label}`);
@@ -115,24 +125,31 @@ test('the incident feed is ONE floating card on desktop', () => {
   assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('margin: 8px 10px 8px 8px;'));
 });
 
-test('the ‹ tab collapses the feed and exists only on laptop/desktop', () => {
-  // Markup: a real button wired to the open state.
-  assert.match(app, /id="btn-collapse-incident-feeds"/);
-  assert.match(app, /onClick=\{\(\) => setDesktopFeedOpen\(false\)\}/);
-  assert.match(app, /className="app-feed-collapse"/);
+test('the ‹ collapse tab is removed and stays gone', () => {
+  // The tab that used to hang off the card's map-side edge was removed on
+  // request — the feed is opened/closed from the rail's ☰ instead.
+  // Nothing may bring the markup, the icon or the styles back.
+  assert.doesNotMatch(app, /btn-collapse-incident-feeds/);
+  assert.doesNotMatch(app, /app-feed-collapse/);
+  assert.doesNotMatch(app, /<ChevronLeft/);
+  assert.doesNotMatch(css, /app-feed-collapse/);
 
-  // CSS: hidden by default, shown only from 1024px, sitting on the card edge.
-  assert.match(css, /\.app-feed-collapse \{\s*display: none;\s*\}/);
-  const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
-  // Exactly the reference tab: flat left edge on the card, rounded right
-  // corners, hairline outline, light grey fill, thin chevron.
-  assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -14px;[\s\S]*?width: 26px;[\s\S]*?height: 74px;[\s\S]*?border-radius: 0 16px 16px 0;[\s\S]*?background: #f8f9fa;/);
-  assert.match(card, /border-left: 0;/);
-  assert.match(app, /<ChevronLeft className="h-\[22px\] w-\[22px\]" strokeWidth=\{1\.8\} \/>/);
-  assert.match(card, /@media \(min-width: 1024px\) \{\s*\.app-feed-collapse \{\s*display: flex;\s*\}/);
+  // Nothing toggles the feed any more — it is permanently docked.
+  assert.doesNotMatch(rail, /onToggleFeed|feedOpen/);
+  assert.doesNotMatch(sidebar, /onCloseDesktop/);
 
   // The inner wrapper keeps full height at every width, so phones are unchanged.
   assert.match(css, /\.app-feed-inner \{\s*height: 100%;\s*min-height: 0;\s*\}/);
+});
+
+test('the decorative hamburger has no hover or pointer feedback', () => {
+  // It looks like the other rail items but must not feel clickable.
+  assert.match(css, /\.desktop-rail__item--static \{\s*cursor: default;\s*\}/);
+  assert.match(css, /\.desktop-rail__item--static:hover \.desktop-rail__icon \{\s*background: transparent;\s*\}/);
+  // The style lives behind the laptop/desktop media query, like the rest.
+  const railSectionEnd = css.indexOf('NO COORDINATE BADGE ON THE MAP');
+  const statics = css.indexOf('.desktop-rail__item--static');
+  assert.ok(css.indexOf('@media (min-width: 1024px)') < statics && statics < railSectionEnd);
 });
 
 test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => {
@@ -161,24 +178,54 @@ test('the incident feed keeps a wide desktop panel (~400px)', () => {
   assert.doesNotMatch(sidebar, /lg:w-72/);
 });
 
-test('the incident feed can be closed on desktop and re-opened from the rail', () => {
-  // Close button lives in the feed header and is desktop-only.
-  assert.match(sidebar, /id="btn-close-incident-feeds"/);
-  assert.match(sidebar, /className="hidden lg:inline-flex[^"]*"/);
-  assert.match(sidebar, /onClick=\{\(\) => onCloseDesktop\?\.\(\)\}/);
+test('the incident feed is docked on the hazard map and nowhere else', () => {
+  // The header X and its onCloseDesktop prop were removed on request, along
+  // with the ‹ tab — the feed cannot be hidden by hand any more.
+  assert.doesNotMatch(sidebar, /btn-close-incident-feeds/);
+  assert.doesNotMatch(sidebar, /onCloseDesktop/);
+  assert.doesNotMatch(app, /onCloseDesktop/);
+  assert.doesNotMatch(app, /desktopFeedOpen/);
 
-  // App tracks the open state, applies it with an `lg:` utility only…
-  assert.match(app, /const \[desktopFeedOpen, setDesktopFeedOpen\] = useState\(true\)/);
-  assert.match(app, /desktopFeedOpen \? '' : 'lg:hidden'/);
-  assert.match(app, /onCloseDesktop=\{\(\) => setDesktopFeedOpen\(false\)\}/);
+  // It is mounted ONLY on the hazard map: Traffic, Flood Prone, Help Center
+  // and Weather replace the map, so the whole panel is conditional on that.
+  assert.match(app, /const alternateMapOpen = floodProneOpen \|\| trafficOpen \|\| helpCenterOpen \|\| weatherOpen;/);
+  assert.match(app, /const incidentFeedsVisible = !alternateMapOpen;/);
+  assert.match(app, /\{incidentFeedsVisible && \(\s*<div\s*\n\s*id="app-sidebar-panel"/);
+  // Nothing may mount it unconditionally again.
+  assert.equal((app.match(/id="app-sidebar-panel"/g) ?? []).length, 1);
 
-  // …and the rail's hamburger brings it back.
-  assert.match(rail, /onToggleFeed\?\.\(\)/);
-  assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
+  // Its phone arrow lives inside that panel, so it exists exactly where the
+  // panel does — and no longer hides itself on the satellite/dark/light layers.
+  const panel = app.slice(app.indexOf('{incidentFeedsVisible && ('), app.indexOf('{/* Backdrop for Mobile Sidebar */}'));
+  assert.match(panel, /id="btn-mobile-sidebar-toggle-arrow"/);
+  assert.doesNotMatch(panel, /tileLayer === 'streets'/);
 
-  // Phones keep their own drawer logic: the close button never shows there and
-  // the panel is never lg:hidden by default.
-  assert.doesNotMatch(sidebar, /btn-close-incident-feeds[\s\S]{0,400}?\bportrait:inline-flex\b/);
+  // Leaving the hazard map drops the phone drawer state with it.
+  assert.match(app, /if \(!incidentFeedsVisible\) setMobileMenuOpen\(false\);/);
+  assert.match(app, /\{mobileMenuOpen && incidentFeedsVisible && \(/);
+
+  // The panel is always docked while it is on screen, next to the rail.
+  assert.match(app, /lg:w-\[25rem\]/);
+  assert.match(app, /lg:relative/);
+  assert.match(rail, /desktop-rail__item--static/);
+
+  // Phones keep their own drawer logic untouched.
+  assert.match(app, /mobileMenuOpen \? 'translate-x-0' : '-translate-x-full'/);
+});
+
+test('the navbar takes over ●●● and Report when the feed is not there', () => {
+  // Those two buttons normally live in the feed header on phones, so the
+  // navbar hides its copies — but only while the feed is actually mounted.
+  assert.match(app, /feedsVisible=\{incidentFeedsVisible\}/);
+  assert.match(navbar, /feedsVisible\?: boolean;/);
+  assert.match(navbar, /feedsVisible = true/);
+  assert.match(navbar, /className=\{`shrink-0 \$\{feedsVisible \? 'portrait:hidden' : ''\}`\}/);
+  assert.match(navbar, /className=\{feedsVisible \? 'portrait:hidden' : ''\}/);
+  // Neither button is hidden on portrait by a fixed class any more.
+  const options = navbar.slice(navbar.indexOf('<OptionsMenu'), navbar.indexOf('<OptionsMenu') + 400);
+  assert.doesNotMatch(options, /className="[^"]*portrait:hidden/);
+  const report = navbar.slice(navbar.indexOf('id="btn-report-hazard"'), navbar.indexOf('id="btn-report-hazard"') + 400);
+  assert.doesNotMatch(report, /className="[^"]*portrait:hidden/);
 });
 
 test('the feed surfaces share the rail white on laptop/desktop', () => {
