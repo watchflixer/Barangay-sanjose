@@ -178,3 +178,45 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
 }
+
+/* ==========================================================================
+   WEATHER MODE NAV (Weather | Temperature | Wind | Rain)
+   --------------------------------------------------------------------------
+   LAPTOP / DESKTOP ONLY. On portrait phones the bar keeps its original
+   full-width `w-[calc(100%-12px)]`, `p-1.5`, `rounded-2xl` and
+   `text-sm`/`sm:text-base` sizing — none of that is touched here.
+
+   On laptop/desktop the bar was stretching edge-to-edge, which made it look
+   like a giant slab. Behind `@media (min-width: 1024px)` (the same breakpoint
+   the rest of the app treats as laptop/desktop) it becomes a compact,
+   centered segmented control: narrower, shorter, tighter type.
+   ========================================================================== */
+@media (min-width: 1024px) {
+  .ph-mode-nav {
+    width: min(28rem, calc(100% - 2rem));
+    margin-inline: auto;
+    padding: 3px;
+    gap: 3px;
+    border-radius: 12px;
+    box-shadow:
+      0 10px 24px -14px rgba(2, 6, 23, 0.55),
+      0 2px 6px -3px rgba(2, 6, 23, 0.35);
+  }
+
+  .ph-mode-nav .ph-mode-btn {
+    padding: 4px 10px;
+    border-radius: 9px;
+    font-size: 13px;
+    line-height: 18px;
+    letter-spacing: 0.01em;
+  }
+
+  /* Keep the hover feedback consistent at the smaller size. */
+  .ph-mode-nav .ph-mode-btn:hover {
+    background-color: #f1f5f9;
+  }
+
+  .ph-mode-nav .ph-mode-btn--active:hover {
+    background-color: #000;
+  }
+}
