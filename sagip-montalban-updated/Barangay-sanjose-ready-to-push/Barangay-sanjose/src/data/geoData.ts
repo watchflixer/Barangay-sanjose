@@ -1,11 +1,4 @@
 import { HazardAlert, SitioLocation, EmergencyContact } from '../types';
-import kasiglahanFloodImg from '../assets/images/kasiglahan_flood_rizal_1788211116468.jpg';
-import litexFireImg from '../assets/images/litex_transformer_fire_1788211132714.jpg';
-import sanJoseDownedPowerImg from '../assets/images/sanjose_downed_powerline_1788211148418.jpg';
-import tagumpayStreetlightsImg from '../assets/images/tagumpay_dark_streetlights_1788211165673.jpg';
-import eastwoodPipeLeakImg from '../assets/images/eastwood_pipe_leak_1788211180390.jpg';
-import suburbanBridgeClearingImg from '../assets/images/suburban_bridge_clearing_1788211195809.jpg';
-import amityvilleDrainageImg from '../assets/images/amityville_drainage_cleared_1788211212112.jpg';
 
 /**
  * Official Geographic Boundary of Barangay San Jose, Rodriguez (Montalban), Rizal, Philippines
@@ -127,18 +120,6 @@ export const SAN_JOSE_SITIOS: SitioLocation[] = [
 /**
  * Pre-seeded Active Hazard Alerts in Barangay San Jose
  */
-/** Stable photos for the seeded barangay incidents. The database only stores
- * ids for these rows, so a rebuild cannot break their images. */
-export const BASELINE_PHOTOS: Record<string, string> = {
-  'hz-001': kasiglahanFloodImg,
-  'hz-002': litexFireImg,
-  'hz-003': sanJoseDownedPowerImg,
-  'hz-007': tagumpayStreetlightsImg,
-  'hz-004': eastwoodPipeLeakImg,
-  'hz-005': suburbanBridgeClearingImg,
-  'hz-006': amityvilleDrainageImg,
-};
-
 export const INITIAL_HAZARDS: HazardAlert[] = [
   {
     id: 'hz-001',
@@ -152,7 +133,7 @@ export const INITIAL_HAZARDS: HazardAlert[] = [
     severity: 'high',
     description: 'Rodriguez river water level is currently 0.8m below dike threshold due to upstream runoff from Sierra Madre. Barangay rescue boats on standby at Block 47.',
     reportedBy: 'BDRRMC San Jose River Monitoring Unit',
-    photoUrl: kasiglahanFloodImg,
+    photoUrl: '',
     affectedHouseholds: 'Approx. 120 households',
     evacuationCenter: 'Kasiglahan Village Elementary School Gym',
     contactNumber: '(02) 8997-1823',
@@ -171,7 +152,7 @@ export const INITIAL_HAZARDS: HazardAlert[] = [
     severity: 'moderate',
     description: 'BFP Rodriguez Engine 3 responded to a sparking transformer near commercial stalls. Fire is declared under control. Lane temporarily cordoned off.',
     reportedBy: 'BFP Rodriguez Fire Substation',
-    photoUrl: litexFireImg,
+    photoUrl: '',
     affectedHouseholds: '15 commercial stalls',
     contactNumber: '(02) 8948-2211',
     updatesCount: 2,
@@ -189,7 +170,7 @@ export const INITIAL_HAZARDS: HazardAlert[] = [
     severity: 'high',
     description: 'Fallen acacia branch snapped primary 34.5kV distribution cable. Meralco line crew truck #409 is actively splicing wires. Est. power restoration: 17:00 PST.',
     reportedBy: 'Brgy Tanod Sector 6 Dispatch',
-    photoUrl: sanJoseDownedPowerImg,
+    photoUrl: '',
     affectedHouseholds: 'Est. 450 households in San Jose Proper',
     contactNumber: '16211 (Meralco Hotline)',
     updatesCount: 3,
@@ -207,7 +188,7 @@ export const INITIAL_HAZARDS: HazardAlert[] = [
     severity: 'moderate',
     description: 'Six consecutive LED streetlamp fixtures are non-operational along the curve, causing zero visibility for tricycles and pedestrians at night. Reported to Barangay Electrical Engineering unit for ballast replacement.',
     reportedBy: 'Tagumpay Purok Leader & TODA Association',
-    photoUrl: tagumpayStreetlightsImg,
+    photoUrl: '',
     affectedHouseholds: 'Key commuter & pedestrian path',
     contactNumber: '(02) 8997-1823',
     updatesCount: 2,
@@ -225,7 +206,7 @@ export const INITIAL_HAZARDS: HazardAlert[] = [
     severity: 'moderate',
     description: 'Manila Water emergency maintenance on broken 200mm distribution main. Low pressure to zero water supply experienced in Phases 1 to 3. Water tankers en route.',
     reportedBy: 'Manila Water Montalban Operations',
-    photoUrl: eastwoodPipeLeakImg,
+    photoUrl: '',
     affectedHouseholds: 'Eastwood Greenview Phases 1-3',
     contactNumber: '1627 (Manila Water)',
     updatesCount: 5,
@@ -243,7 +224,7 @@ export const INITIAL_HAZARDS: HazardAlert[] = [
     severity: 'low',
     description: 'Road clearing and desilting operations along bridge approach. Heavy vehicles are advised to take alternate bypass route through Amityville.',
     reportedBy: 'Rodriguez Municipal Engineering Office',
-    photoUrl: suburbanBridgeClearingImg,
+    photoUrl: '',
     contactNumber: '(02) 8997-1800',
     updatesCount: 1,
     lastUpdated: '1 hour ago'
@@ -260,7 +241,7 @@ export const INITIAL_HAZARDS: HazardAlert[] = [
     severity: 'low',
     description: 'Clogged culvert caused temporary gutter-deep water during morning downpour. Barangay clearing team successfully unclogged drainage. Street is passable to all vehicles.',
     reportedBy: 'Amityville HOA Security Patrol',
-    photoUrl: amityvilleDrainageImg,
+    photoUrl: '',
     updatesCount: 3,
     lastUpdated: '1 hour ago'
   }

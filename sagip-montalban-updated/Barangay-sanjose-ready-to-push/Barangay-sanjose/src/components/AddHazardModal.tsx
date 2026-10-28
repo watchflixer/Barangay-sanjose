@@ -19,12 +19,6 @@ import {
 import { HazardAlert, HazardDraft, HazardType, HazardSeverity } from '../types';
 import { reportDraftError } from '../lib/reportsApi';
 import { INITIAL_HAZARDS, SAN_JOSE_SITIOS } from '../data/geoData';
-import kasiglahanFloodImg from '../assets/images/kasiglahan_flood_rizal_1788211116468.jpg';
-import litexFireImg from '../assets/images/litex_transformer_fire_1788211132714.jpg';
-import sanJoseDownedPowerImg from '../assets/images/sanjose_downed_powerline_1788211148418.jpg';
-import tagumpayStreetlightsImg from '../assets/images/tagumpay_dark_streetlights_1788211165673.jpg';
-import eastwoodPipeLeakImg from '../assets/images/eastwood_pipe_leak_1788211180390.jpg';
-import suburbanBridgeClearingImg from '../assets/images/suburban_bridge_clearing_1788211195809.jpg';
 
 interface AddHazardModalProps {
   isOpen: boolean;
@@ -46,33 +40,6 @@ const COMMON_STREETS = [
   'Sitio Balite Bypass Road',
   'Metro Montana Valley St',
 ];
-
-const PRESET_SAMPLE_PHOTOS: Record<HazardType, { label: string; url: string }> = {
-  flood: {
-    label: 'Kasiglahan 1K1 Riverside Flood Photo',
-    url: kasiglahanFloodImg,
-  },
-  fire: {
-    label: 'Litex Market Pole Transformer Fire Photo',
-    url: litexFireImg,
-  },
-  power: {
-    label: 'J.P. Rizal Snapped Cable / Downed Post Photo',
-    url: sanJoseDownedPowerImg,
-  },
-  streetlight: {
-    label: 'Tagumpay Village Dark Unlit Corridor Photo',
-    url: tagumpayStreetlightsImg,
-  },
-  water: {
-    label: 'Eastwood Blvd Manila Water Pipe Leak Photo',
-    url: eastwoodPipeLeakImg,
-  },
-  road: {
-    label: 'Sub-Urban Bridge Road Obstruction Photo',
-    url: suburbanBridgeClearingImg,
-  },
-};
 
 export const AddHazardModal: React.FC<AddHazardModalProps> = ({
   isOpen,
@@ -265,9 +232,6 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('fire');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
-                    setPhotoUrl(PRESET_SAMPLE_PHOTOS.fire.url);
-                  }
                 }}
                 className={`p-2.5 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   type === 'fire'
@@ -283,9 +247,6 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('flood');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
-                    setPhotoUrl(PRESET_SAMPLE_PHOTOS.flood.url);
-                  }
                 }}
                 className={`p-2.5 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   type === 'flood'
@@ -301,9 +262,6 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('power');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
-                    setPhotoUrl(PRESET_SAMPLE_PHOTOS.power.url);
-                  }
                 }}
                 className={`p-2.5 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   type === 'power'
@@ -319,9 +277,6 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('streetlight');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
-                    setPhotoUrl(PRESET_SAMPLE_PHOTOS.streetlight.url);
-                  }
                 }}
                 className={`p-2.5 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   type === 'streetlight'
@@ -337,9 +292,6 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('water');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
-                    setPhotoUrl(PRESET_SAMPLE_PHOTOS.water.url);
-                  }
                 }}
                 className={`p-2.5 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   type === 'water'
@@ -355,9 +307,6 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
                 type="button"
                 onClick={() => {
                   setType('road');
-                  if (photoUrl && Object.values(PRESET_SAMPLE_PHOTOS).some((p) => p.url === photoUrl)) {
-                    setPhotoUrl(PRESET_SAMPLE_PHOTOS.road.url);
-                  }
                 }}
                 className={`p-2.5 rounded-lg border text-xs font-bold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                   type === 'road'

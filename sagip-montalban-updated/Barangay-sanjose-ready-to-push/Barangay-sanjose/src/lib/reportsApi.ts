@@ -8,7 +8,6 @@ import type {
   ReviewStatus,
 } from '../types';
 import type { AdminChange, ReportAction } from './admin';
-import { BASELINE_PHOTOS } from '../data/geoData';
 import { getVisitClient, readDataBackend } from './siteVisits';
 
 export const HAZARD_TYPES: HazardType[] = ['fire', 'flood', 'power', 'streetlight', 'water', 'road'];
@@ -85,7 +84,7 @@ export function reportFromRow(row: Row, admin = false): HazardAlert {
     severity: (text(row.severity) ?? 'high') as HazardSeverity,
     description: text(row.description) ?? '',
     reportedBy: text(row.reported_by) ?? 'Anonymous reporter',
-    photoUrl: text(row.photo_url) || BASELINE_PHOTOS[id],
+    photoUrl: text(row.photo_url),
     affectedHouseholds: text(row.affected_households),
     evacuationCenter: text(row.evacuation_center),
     contactNumber: admin ? text(row.contact_number) : undefined,
