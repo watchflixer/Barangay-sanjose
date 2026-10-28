@@ -23,6 +23,7 @@ const rail = read('../src/components/DesktopRail.tsx');
 const navbar = read('../src/components/Navbar.tsx');
 const sidebar = read('../src/components/Sidebar.tsx');
 const mapViewer = read('../src/components/MapViewer.tsx');
+const weatherCard = read('../src/components/PagasaFloodStatus.tsx');
 
 /** The rail section of index.css (everything after the section banner). */
 const railSection = css.slice(css.indexOf('DESKTOP / LAPTOP LEFT RAIL'));
@@ -185,4 +186,14 @@ test('the feed surfaces share the rail white on laptop/desktop', () => {
 
   // Phones keep their tinted strips: the tints are still the base colour.
   assert.doesNotMatch(sidebar, /\blg:bg-\[#f6f8fc\]\b/);
+});
+
+test('the weather card sits lower on laptop/desktop only', () => {
+  // The card is identifiable…
+  assert.match(weatherCard, /id="weather-status-card"/);
+  // …it keeps its phone position as the base class…
+  assert.match(weatherCard, /className="absolute top-20 right-4 /);
+  // …and drops lower inside the desktop query.
+  const block = css.slice(css.indexOf('THE WEATHER CARD SITS LOWER'));
+  assert.match(block, /@media \(min-width: 1024px\) \{\s*#weather-status-card \{\s*top: 10rem;\s*\}\s*\}/);
 });
