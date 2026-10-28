@@ -1589,15 +1589,14 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 /* ==========================================================================
    LAPTOP / DESKTOP: THE WEATHER CARD SITS LOWER
    --------------------------------------------------------------------------
-   On laptop/desktop the small weather card moves all the way down to the bottom
-   right corner of the map.
+   On laptop/desktop the small weather card drops further down the map, clear of
+   the top area.
 
    MOBILE / TABLET UNTOUCHED: this override only exists from 1024px up, so
    Android/iPhone portrait keeps its `top-20` position exactly as before.
    ========================================================================== */
 @media (min-width: 1024px) {
   #weather-status-card {
-    top: auto;
-    bottom: 1rem;
+    top: 10rem;
   }
 }
