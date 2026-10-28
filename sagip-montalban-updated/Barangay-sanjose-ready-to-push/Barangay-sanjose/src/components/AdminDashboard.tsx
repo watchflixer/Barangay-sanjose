@@ -3,6 +3,7 @@ import {
   Activity,
   Plus,
   Inbox,
+  Flag,
   Archive,
   ArrowDownUp,
   ArrowLeft,
@@ -37,8 +38,11 @@ import {
   Construction,
 } from 'lucide-react';
 import { AdminIncidentForm } from './AdminIncidentForm';
+import { AdminResolveRequests } from './AdminResolveRequests';
+import { AdminFeedVisibility } from './AdminFeedVisibility';
 import { VisitsMonitor } from './VisitsMonitor';
 import type { HazardDraft, HazardAlert, HazardStatus, HazardType } from '../types';
+import { TYPE_LABELS, type ResolveFlag } from '../lib/reportsApi';
 import { AdminChange, ReportAction, reportAge, reportDate } from '../lib/admin';
 import {
   filterAdminReports,
@@ -52,11 +56,16 @@ import './AdminDashboard.css';
 interface Props {
   alerts: HazardAlert[];
   history: ReportAction[];
-  onChange: (id: string, change: AdminChange) => void;
+  flags: ResolveFlag[];
+  hiddenTypes: HazardType[];
+  onChange: (id: string, change: AdminChange) => Promise<void> | void;
   onClose: () => void;
   onLogout: () => void;
-  storageError: string;
-  onCreate: (draft: HazardDraft) => HazardAlert | undefined;
+  syncError: string;
+  loading?: boolean;
+  onCreate: (draft: HazardDraft) => Promise<HazardAlert | undefined> | HazardAlert | undefined;
+  onReviewFlag: (id: string, decision: 'accepted' | 'ignored') => Promise<void> | void;
+  onSetHiddenTypes: (types: HazardType[]) => Promise<void> | void;
 }
 type Confirmation = { report: HazardAlert; type: 'delete' | 'visibility' | 'decline' };
 const typeIcons = {
@@ -204,13 +213,18 @@ function ConfirmAction({
 export function AdminDashboard({
   alerts,
   history,
+  flags,
+  hiddenTypes,
   onChange,
   onClose,
   onLogout,
-  storageError,
+  syncError,
+  loading = false,
   onCreate,
+  onReviewFlag,
+  onSetHiddenTypes,
 }: Props) {
-  const [tab, setTab] = useState<'reports' | 'history' | 'create'>('reports');
+  const [tab, setTab] = useState<'reports' | 'history' | 'create' | 'flags'>('reports');
   const [scope, setScope] = useState<ReportScope>('current');
   const [status, setStatus] = useState<StatusFilter>('all');
   const [query, setQuery] = useState('');
@@ -231,18 +245,21 @@ export function AdminDashboard({
       (historyReport === 'all' || event.reportId === historyReport) &&
       (historyActor === 'all' || event.actor === historyActor),
   );
+  const pendingFlags = flags.filter((flag) => flag.status === 'pending').length;
   const currentPage =
     tab === 'create'
       ? 'Add incident'
-      : tab === 'history'
-        ? 'History'
-        : scope === 'archived'
-          ? 'Archive'
-          : scope === 'pending'
-            ? 'Pending review'
-            : scope === 'declined'
-              ? 'Declined reports'
-              : 'Reports';
+      : tab === 'flags'
+        ? 'Resolve requests'
+        : tab === 'history'
+          ? 'History'
+          : scope === 'archived'
+            ? 'Archive'
+            : scope === 'pending'
+              ? 'Pending review'
+              : scope === 'declined'
+                ? 'Declined reports'
+                : 'Reports';
 
   useEffect(() => {
     if (tab === 'create')
@@ -261,31 +278,39 @@ export function AdminDashboard({
   }, [notice]);
 
   const change = (id: string, update: AdminChange) => {
-    onChange(id, update);
-    requestAnimationFrame(() => {
-      if (document.activeElement === document.body)
-        (main.current?.querySelector<HTMLElement>('input, button, select') || main.current)?.focus({
-          preventScroll: true,
-        });
-    });
-    setNotice(
-      update.type === 'review'
-        ? update.value === 'accepted'
-          ? 'Report accepted and published.'
-          : 'Report declined. It remains off the public map.'
-        : update.type === 'delete'
-          ? 'Incident moved to archive.'
-          : update.type === 'restore'
-            ? 'Incident restored. Its review state is unchanged.'
-            : update.type === 'status'
-              ? 'Incident status updated.'
-              : update.value
-                ? 'Reporter name is now public.'
-                : 'Reporter name is now hidden.',
-    );
+    const finishFocus = () =>
+      requestAnimationFrame(() => {
+        if (document.activeElement === document.body)
+          (main.current?.querySelector<HTMLElement>('input, button, select') || main.current)?.focus({
+            preventScroll: true,
+          });
+      });
+    Promise.resolve(onChange(id, update))
+      .then(() => {
+        finishFocus();
+        setNotice(
+          update.type === 'review'
+            ? update.value === 'accepted'
+              ? 'Report accepted and published.'
+              : 'Report declined. It remains off the public map.'
+            : update.type === 'delete'
+              ? 'Incident moved to archive.'
+              : update.type === 'restore'
+                ? 'Incident restored. Its review state is unchanged.'
+                : update.type === 'status'
+                  ? 'Incident status updated.'
+                  : update.value
+                    ? 'Reporter name is now public.'
+                    : 'Reporter name is now hidden.',
+        );
+      })
+      .catch((cause: unknown) => {
+        finishFocus();
+        setNotice(cause instanceof Error ? cause.message : 'The server could not save that change.');
+      });
   };
-  const navigate = (destination: 'reports' | 'history' | 'archive' | 'pending' | 'declined') => {
-    setTab(destination === 'history' ? 'history' : 'reports');
+  const navigate = (destination: 'reports' | 'history' | 'archive' | 'pending' | 'declined' | 'flags') => {
+    setTab(destination === 'history' ? 'history' : destination === 'flags' ? 'flags' : 'reports');
     setScope(
       destination === 'archive'
         ? 'archived'
@@ -335,6 +360,20 @@ export function AdminDashboard({
           <b>{counts[queue]}</b>
         </button>
       ))}
+      <button
+        type="button"
+        className={`sj-admin-nav-item ${tab === 'flags' ? 'is-active' : ''}`}
+        aria-current={tab === 'flags' ? 'page' : undefined}
+        aria-label={`Resolve requests (${pendingFlags})`}
+        onClick={() => navigate('flags')}
+      >
+        <Flag size={18} />
+        <span className="sj-admin-nav-long">Resolve requests</span>
+        <span className="sj-admin-nav-short" aria-hidden="true">
+          Resolves
+        </span>
+        <b>{pendingFlags}</b>
+      </button>
       <button
         type="button"
         className={`sj-admin-nav-item ${tab === 'history' ? 'is-active' : ''}`}
@@ -390,9 +429,9 @@ export function AdminDashboard({
         <div className="sj-admin-sidebar-bottom">
           <span>
             <Monitor size={15} />
-            Local workspace
+            Shared workspace
           </span>
-          <p>Saved in this browser</p>
+          <p>Live for every visitor</p>
         </div>
       </aside>
 
@@ -433,131 +472,179 @@ export function AdminDashboard({
             <div>
               <p className="sj-admin-eyebrow">BARANGAY SAN JOSE · RODRIGUEZ, RIZAL</p>
               <h3>
-                {tab === 'history'
-                  ? 'Every action, in one place.'
-                  : scope === 'archived'
-                    ? 'Out of sight. Not out of reach.'
-                    : 'A clearer view of your community.'}
+                {tab === 'flags'
+                  ? 'Resolve requests, reviewed fairly.'
+                  : tab === 'history'
+                    ? 'Every action, in one place.'
+                    : scope === 'archived'
+                      ? 'Out of sight. Not out of reach.'
+                      : 'A clearer view of your community.'}
               </h3>
               <p>
-                {tab === 'history'
-                  ? 'Follow report submissions and the decisions made along the way.'
-                  : scope === 'archived'
-                    ? 'Review removed incidents and bring them back whenever needed.'
-                    : 'Review reports, care for your community, and keep everyone informed.'}
+                {tab === 'flags'
+                  ? 'Residents can ask for an incident to be closed. Accept the request or ignore it here.'
+                  : tab === 'history'
+                    ? 'Follow report submissions and the decisions made along the way.'
+                    : scope === 'archived'
+                      ? 'Review removed incidents and bring them back whenever needed.'
+                      : 'Review reports, care for your community, and keep everyone informed.'}
               </p>
             </div>
-            <button
-              type="button"
-              className="sj-admin-button sj-admin-button-primary"
-              onClick={() => {
-                setTab('create');
-                main.current?.scrollTo({ top: 0 });
-              }}
-            >
-              <Plus size={17} />
-              Add incident
-            </button>
+            {tab !== 'flags' && (
+              <button
+                type="button"
+                className="sj-admin-button sj-admin-button-primary"
+                onClick={() => {
+                  setTab('create');
+                  main.current?.scrollTo({ top: 0 });
+                }}
+              >
+                <Plus size={17} />
+                Add incident
+              </button>
+            )}
           </div>
         )}
 
         <div className="sj-admin-workspace-note">
           <Info size={16} />
           <p>
-            <strong>Workspace storage.</strong> Reports, decisions and history are saved in this browser.
-            Connect a shared database to sync them across devices and administrators.
+            <strong>Shared workspace.</strong> Reports, moderation decisions and category visibility are saved
+            on the barangay server, so every visitor sees the same live map.
           </p>
         </div>
-        {storageError && (
+        {syncError && (
           <p className="sj-admin-storage-error" role="alert">
-            {storageError}
+            {syncError}
           </p>
         )}
 
-        <VisitsMonitor />
-        <div className="sj-admin-review-summary">
-          <Inbox size={18} />
-          <div>
-            <strong>
-              {counts.pending} {counts.pending === 1 ? 'report awaits' : 'reports await'} your review
-            </strong>
-            <p>Community submissions stay off the public map until accepted. {counts.declined} declined.</p>
-          </div>
-          <button
-            type="button"
-            className="sj-admin-button sj-admin-button-quiet"
-            onClick={() => navigate('pending')}
-          >
-            Review queue
-            <ArrowRight size={14} />
-          </button>
-        </div>
-        <section className="sj-admin-stats" aria-label="Incident overview">
-          {(
-            [
-              {
-                key: 'all',
-                title: 'Total reports',
-                count: counts.total,
-                Icon: FileText,
-                tone: 'blue',
-                hint: 'Currently on the website',
-              },
-              {
-                key: 'active',
-                title: 'Active incidents',
-                count: counts.active,
-                Icon: CircleAlert,
-                tone: 'red',
-                hint: 'Open community reports',
-              },
-              {
-                key: 'monitoring',
-                title: 'Monitoring',
-                count: counts.monitoring,
-                Icon: Activity,
-                tone: 'amber',
-                hint: 'Being monitored',
-              },
-              {
-                key: 'resolved',
-                title: 'Resolved',
-                count: counts.resolved,
-                Icon: CheckCheck,
-                tone: 'green',
-                hint: 'Marked as resolved',
-              },
-            ] as const
-          ).map((item) => (
-            <button
-              type="button"
-              key={item.key}
-              className={`sj-admin-stat ${tab === 'reports' && scope === 'current' && status === item.key ? 'is-selected' : ''}`}
-              aria-label={`Filter ${item.title}: ${item.count}`}
-              aria-pressed={tab === 'reports' && scope === 'current' && status === item.key}
-              onClick={() => {
-                setTab('reports');
-                setScope('current');
-                setStatus(item.key);
-                setQuery('');
-              }}
-            >
-              <span className="sj-admin-stat-label">
-                {item.title}
-                <span className={`sj-admin-stat-icon is-${item.tone}`}>
-                  <item.Icon size={18} />
-                </span>
-              </span>
-              <strong>{item.count.toString().padStart(2, '0')}</strong>
-              <span className="sj-admin-stat-hint">
-                {item.hint}
-                <ArrowRight size={13} />
-              </span>
-            </button>
-          ))}
-        </section>
+        {tab !== 'flags' && (
+          <>
+            <VisitsMonitor />
+            <div className="sj-admin-review-summary">
+              <Inbox size={18} />
+              <div>
+                <strong>
+                  {counts.pending} {counts.pending === 1 ? 'report awaits' : 'reports await'} your review
+                </strong>
+                <p>
+                  Community submissions stay off the public map until accepted. {counts.declined} declined.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="sj-admin-button sj-admin-button-quiet"
+                onClick={() => navigate('pending')}
+              >
+                Review queue
+                <ArrowRight size={14} />
+              </button>
+            </div>
+            <section className="sj-admin-stats" aria-label="Incident overview">
+              {(
+                [
+                  {
+                    key: 'all',
+                    title: 'Total reports',
+                    count: counts.total,
+                    Icon: FileText,
+                    tone: 'blue',
+                    hint: 'Currently on the website',
+                  },
+                  {
+                    key: 'active',
+                    title: 'Active incidents',
+                    count: counts.active,
+                    Icon: CircleAlert,
+                    tone: 'red',
+                    hint: 'Open community reports',
+                  },
+                  {
+                    key: 'monitoring',
+                    title: 'Monitoring',
+                    count: counts.monitoring,
+                    Icon: Activity,
+                    tone: 'amber',
+                    hint: 'Being monitored',
+                  },
+                  {
+                    key: 'resolved',
+                    title: 'Resolved',
+                    count: counts.resolved,
+                    Icon: CheckCheck,
+                    tone: 'green',
+                    hint: 'Marked as resolved',
+                  },
+                ] as const
+              ).map((item) => (
+                <button
+                  type="button"
+                  key={item.key}
+                  className={`sj-admin-stat ${tab === 'reports' && scope === 'current' && status === item.key ? 'is-selected' : ''}`}
+                  aria-label={`Filter ${item.title}: ${item.count}`}
+                  aria-pressed={tab === 'reports' && scope === 'current' && status === item.key}
+                  onClick={() => {
+                    setTab('reports');
+                    setScope('current');
+                    setStatus(item.key);
+                    setQuery('');
+                  }}
+                >
+                  <span className="sj-admin-stat-label">
+                    {item.title}
+                    <span className={`sj-admin-stat-icon is-${item.tone}`}>
+                      <item.Icon size={18} />
+                    </span>
+                  </span>
+                  <strong>{item.count.toString().padStart(2, '0')}</strong>
+                  <span className="sj-admin-stat-hint">
+                    {item.hint}
+                    <ArrowRight size={13} />
+                  </span>
+                </button>
+              ))}
+            </section>
 
-        {tab === 'create' ? (
+            <AdminFeedVisibility
+              hiddenTypes={hiddenTypes}
+              onToggle={(type) => {
+                const next = hiddenTypes.includes(type)
+                  ? hiddenTypes.filter((value) => value !== type)
+                  : [...hiddenTypes, type];
+                Promise.resolve(onSetHiddenTypes(next))
+                  .then(() =>
+                    setNotice(
+                      next.includes(type)
+                        ? `${TYPE_LABELS[type]} hidden from public feeds.`
+                        : `${TYPE_LABELS[type]} visible in public feeds again.`,
+                    ),
+                  )
+                  .catch((cause: unknown) =>
+                    setNotice(cause instanceof Error ? cause.message : 'Could not update the feeds.'),
+                  );
+              }}
+            />
+          </>
+        )}
+        {tab === 'flags' ? (
+          <AdminResolveRequests
+            flags={flags}
+            onDecision={(id, decision) => {
+              Promise.resolve(onReviewFlag(id, decision))
+                .then(() =>
+                  setNotice(
+                    decision === 'accepted'
+                      ? 'Resolve request accepted. The incident is now resolved.'
+                      : 'Resolve request ignored. The incident stays on the map.',
+                  ),
+                )
+                .catch((cause: unknown) =>
+                  setNotice(cause instanceof Error ? cause.message : 'Could not update that request.'),
+                );
+            }}
+          />
+        ) : tab === 'create' ? (
           <AdminIncidentForm
             onCreate={onCreate}
             onCancel={() => navigate('reports')}
@@ -1033,25 +1120,38 @@ export function AdminDashboard({
                   <option value="all">Everyone</option>
                   <option value="admin">Admin</option>
                   <option value="reporter">Reporter</option>
+                  <option value="public">Residents</option>
                 </select>
               </label>
             </div>
             <div className="sj-admin-history-note">
               <Info size={14} />
               <span>
-                History starts with new submissions and actions after this feature was installed. Earlier
-                activity is not reconstructed.
+                Every submission, moderation decision and resolve request is recorded on the barangay server,
+                so the trail is the same for every administrator.
               </span>
             </div>
             <div className="sj-admin-timeline">
               {events.map((event) => (
                 <article key={event.id} className="sj-admin-event">
                   <span className={`sj-admin-event-icon ${event.actor === 'reporter' ? 'is-reporter' : ''}`}>
-                    {event.actor === 'reporter' ? <UserRound size={16} /> : <History size={16} />}
+                    {event.actor === 'admin' ? (
+                      <History size={16} />
+                    ) : event.actor === 'reporter' ? (
+                      <UserRound size={16} />
+                    ) : (
+                      <Flag size={16} />
+                    )}
                   </span>
                   <div>
                     <div className="sj-admin-event-meta">
-                      <span>{event.actor === 'admin' ? 'ADMIN ACTION' : 'REPORT SUBMITTED'}</span>
+                      <span>
+                        {event.actor === 'admin'
+                          ? 'ADMIN ACTION'
+                          : event.actor === 'public'
+                            ? 'RESIDENT REQUEST'
+                            : 'REPORT SUBMITTED'}
+                      </span>
                       <time dateTime={event.at}>{reportDate(event.at)}</time>
                     </div>
                     <h4>{event.action}</h4>

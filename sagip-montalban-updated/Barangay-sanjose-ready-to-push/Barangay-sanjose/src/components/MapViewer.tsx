@@ -18,7 +18,7 @@ import { mountTileLayer, type TileMount } from '../lib/tileLayer';
 import { flyToUserLocation } from '../lib/locateCamera';
 import { WeatherView } from './WeatherView';
 import { HelpCenterView } from './HelpCenterView';
-import { HazardAlert, MapSettings } from '../types';
+import { HazardAlert, MapSettings, HazardType } from '../types';
 import {
   SAN_JOSE_POLYGON_COORDS,
   SAN_JOSE_CENTER,
@@ -80,11 +80,13 @@ const hazardMinZoom = () => (isSmallPortraitViewport() ? 11 : 13);
 const hazardZoomSnap = () => (isSmallPortraitViewport() ? 0.5 : 1);
 
 interface MapViewerProps {
-  canManage?: boolean;
   alerts: HazardAlert[];
+  /** Categories the admin hid from public incident feeds. */
+  hiddenTypes?: HazardType[];
   selectedAlert: HazardAlert | null;
   onSelectAlert: (alert: HazardAlert | null) => void;
-  onToggleAlertStatus: (id: string) => void;
+  /** Residents ask an admin to close an incident; they cannot resolve it directly. */
+  onRequestResolved: (alert: HazardAlert) => void;
   mapSettings: MapSettings;
   onUpdateMapSettings: (settings: Partial<MapSettings>) => void;
   isAddingPinMode: boolean;
@@ -104,10 +106,10 @@ interface MapViewerProps {
 
 export const MapViewer: React.FC<MapViewerProps> = ({
   alerts,
+  hiddenTypes = [],
   selectedAlert,
   onSelectAlert,
-  onToggleAlertStatus,
-  canManage = false,
+  onRequestResolved,
   mapSettings,
   onUpdateMapSettings,
   isAddingPinMode,
@@ -882,11 +884,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           <!-- Footer Actions -->
           <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
             <span class="text-[10px] text-slate-400 truncate max-w-[120px]">By: ${escapeHtml(alert.reportedBy)}</span>
-            ${canManage ? `<button
-              id="btn-popup-toggle-${escapeHtml(alert.id)}"
-              class="px-2.5 py-1 text-xs font-semibold rounded ${isResolved ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs'} transition-colors cursor-pointer"
+            ${!isResolved ? `<button
+              id="btn-popup-resolve-${escapeHtml(alert.id)}"
+              ${alert.pendingResolveFlags ? 'disabled' : ''}
+              title="${alert.pendingResolveFlags ? 'A resolve request is already waiting for admin review.' : 'Ask the barangay admin to mark this incident resolved.'}"
+              class="px-2.5 py-1 text-xs font-semibold rounded ${alert.pendingResolveFlags ? 'bg-slate-100 text-slate-500' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs'} transition-colors cursor-pointer disabled:cursor-default"
             >
-              ${isResolved ? 'Re-open Alert' : 'Mark Resolved'}
+              ${alert.pendingResolveFlags ? 'Request pending' : 'Flag as resolved'}
             </button>` : ''}
           </div>
         </div>
@@ -912,11 +916,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         mapInstanceRef.current?.panBy([0, -500], { animate: false });
         // Attach click listener to the button inside popup
         setTimeout(() => {
-          const btn = document.getElementById(`btn-popup-toggle-${alert.id}`);
-          if (btn) {
-            btn.onclick = (e) => {
+          const resolveButton = document.getElementById(`btn-popup-resolve-${alert.id}`);
+          if (resolveButton) {
+            resolveButton.onclick = (e) => {
               e.stopPropagation();
-              onToggleAlertStatus(alert.id);
+              onRequestResolved(alert);
             };
           }
           const more = document.getElementById(`btn-popup-more-${alert.id}`);
@@ -942,7 +946,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       markersLayerRef.current?.addLayer(marker);
       activePopupsRef.current[alert.id] = marker;
     });
-  }, [alerts, mapSettings.activeFilterType, mapSettings.activeFilterStatus, canManage, onToggleAlertStatus]);
+  }, [alerts, hiddenTypes, mapSettings.activeFilterType, mapSettings.activeFilterStatus, onRequestResolved]);
 
   // 7. Auto-fly to selected alert from sidebar
   useEffect(() => {

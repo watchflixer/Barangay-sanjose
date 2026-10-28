@@ -15,6 +15,7 @@ export interface HazardAlert {
   coordinates: [number, number]; // [lat, lng]
   timeReported: string;
   reviewStatus?: ReviewStatus; // Missing on legacy/live records means accepted.
+  pendingResolveFlags?: number;
   source?: 'community' | 'admin';
   reviewedAt?: string;
   declineReason?: string;

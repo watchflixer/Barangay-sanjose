@@ -36,6 +36,20 @@ export interface VisitRow {
 }
 
 const clean = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+
+/** Public backend credentials shared by visits and hazard reports. */
+export function readDataBackend(
+  env: { url?: string; key?: string } = {
+    url: import.meta.env?.VITE_SITE_VISITS_SUPABASE_URL as string | undefined,
+    key: import.meta.env?.VITE_SITE_VISITS_SUPABASE_ANON_KEY as string | undefined,
+  },
+) {
+  const url = withoutSlash(clean(env.url));
+  const key = clean(env.key);
+  return url && key
+    ? { url, key }
+    : { url: DEFAULT_SUPABASE_URL, key: DEFAULT_SUPABASE_ANON_KEY };
+}
 const withoutSlash = (value: string) => value.replace(/\/+$/, '');
 
 function parseRuntimeConfig(storage: Pick<Storage, 'getItem'>): { url: string; key: string } | null {

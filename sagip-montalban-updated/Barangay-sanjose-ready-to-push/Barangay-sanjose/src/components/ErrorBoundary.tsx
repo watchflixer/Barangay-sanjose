@@ -38,6 +38,9 @@ export class ErrorBoundary extends Component<Props, State> {
     try {
       localStorage.removeItem('san-jose-alerts');
       localStorage.removeItem('san-jose-live-url');
+      localStorage.removeItem('san-jose-report-store-v1');
+      localStorage.removeItem('san-jose-public-feed-v1');
+      localStorage.removeItem('san-jose-admin-bundle-v1');
     } catch {
       // ignore
     }

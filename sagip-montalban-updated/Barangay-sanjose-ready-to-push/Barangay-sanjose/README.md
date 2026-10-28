@@ -191,8 +191,9 @@ services are mocked because this sandbox blocks live Overpass/tile requests.
 1. Open **Hazard Map / Streets** and **Incident Feeds** (on a phone, use the feed arrow).
 2. Type exactly `Admin` in the incident search. Case and surrounding spaces are ignored;
    searches such as `Admin street` remain ordinary searches.
-3. Sign in with **Email: `admin`** and **Password: `admin`**. The Email field accepts
-   this admin username, not an email address. Refresh or Logout clears the in-memory login.
+3. Sign in with **Email: `admin`** and **Password: `admin`**. The Email field accepts this
+   admin username, not an email address. The password is verified by the database
+   (`admin_login`); Refresh or Logout clears the in-memory login.
 4. In the admin panel you can:
    - search reports by incident, reporter name, email, cellphone, location or report ID;
    - read full report/reporter details as text, with Philippine date/time and elapsed age;
@@ -201,34 +202,49 @@ services are mocked because this sandbox blocks live Overpass/tile requests.
    - remove incidents from every public incident view, inspect the archive, and restore them;
    - accept or decline incoming reports, with an optional decline reason, from the
      **Pending review** and **Declined** queues;
+   - review resident **resolve requests** and accept (closes the incident) or ignore them;
+   - hide an entire hazard category (fire, flood, no power, streetlights, water, road) from
+     the public map and incident feed, and bring it back with one tap;
    - create and publish an official incident from **Add incident**, including severity,
      initial status, description, sitio preset/custom coordinates and optional contacts;
-   - inspect all action history or the history for one report, including removed reports.
+   - inspect the shared action history, filtered by report or author.
 
-### Dashboard layout and controls
+### Everything is shared, nothing is browser-only
 
-The Material-inspired workspace has sidebar navigation on desktop and compact top
-navigation on phones. Overview cards show real counts (excluding archived reports)
-and act as status filters. Search, status chips, archive scope and newest/oldest/severity
-sorting work together; reports without dates sort last rather than receiving invented
-timestamps. Select a report to open its text-only details, reporter contacts, Philippine
-time/elapsed age, name visibility and management controls. On smaller screens, selecting
-a report brings its detail section into view; **Back to incident list** returns to the
-selected row. The contact fields remain outside all public incident displays.
+Reports, moderation decisions, category visibility and the audit trail live in the Supabase
+project `hazardsync-map-data` (see `supabase/shared_hazard_reports.sql`). Any admin on any
+device changes the same data, and every visitor sees the result — realtime updates on open
+pages, a 45-second poll as the fallback, and a last-synced snapshot so the map still opens
+when the network drops. The snapshot is a cache only: it is overwritten by the next
+successful fetch and is never a source of truth.
 
-New community submissions are **pending** and stay off public cards, popups and the map
-until an admin accepts them. Resolving, hiding a name or archiving never publishes a
-pending report. Declining keeps its details and history available for reconsideration;
-accepting later clears the decline reason. Admin-created incidents are accepted and
-published immediately, with their reporter name hidden by default. Use **Add incident →
-Sitio preset** to place the pin, then adjust street, description and coordinates.
+The database enforces the rules, not the UI:
 
-The **Realtime visits** monitor is backed by the Supabase project
-`hazardsync-map-data`. It starts at **5,000** and each page load calls the
-`increment_site_visit` RPC, so the total is shared by every visitor on every device.
-The admin dashboard subscribes to Postgres changes and refreshes instantly; a 15-second
-poll is the fallback when realtime is unavailable. Each browser sends a per-load ID, so
-a retried request cannot double-count. Counts page loads, not unique people.
+- `public_feed()` returns only **accepted**, non-archived incidents that are not in a hidden
+  category. Pending community reports never reach a public view.
+- `submit_report(payload, p_load_id)` stores a new report as `pending`. It rejects missing
+  photos, a non-Gmail Google account, an invalid Philippine mobile number and blank names,
+  and rate-limits each connection to 10 reports per hour.
+- `flag_resolved(p_report_id, p_note)` records a **resolve request**; it never changes a
+  report. Only `admin_review_flag(p_password, p_flag_id, 'accepted'|'ignored')` decides it.
+- `admin_change` covers status, name visibility, archive/restore and review decisions;
+  `admin_create`, `admin_set_hidden_types` and `admin_review_flag` cover the rest.
+- Reporter email and cellphone are never returned by `public_feed()`; only `admin_bundle`
+  (password-gated) exposes them.
+
+### Reporting requirements
+
+The public report form requires a **photo**, **full name**, **Philippine cellphone number**
+and a **Google (Gmail) account**. The form pre-checks them with `reportDraftError()` for
+instant feedback and the database re-validates the same rules. Reporter contacts stay
+admin-only; the full name is hidden on public cards unless an admin turns it on with the
+reporter's consent.
+
+The **Realtime visits** monitor is backed by the same project. It starts at **5,000** and
+each page load calls the `increment_site_visit` RPC, so the total is shared by every visitor
+on every device. The admin dashboard subscribes to Postgres changes and refreshes instantly;
+a 15-second poll is the fallback when realtime is unavailable. Each browser sends a
+per-load ID, so a retried request cannot double-count. Counts page loads, not unique people.
 
 Setup already applied to that project (see `supabase/realtime_site_visits.sql`):
 
@@ -238,53 +254,29 @@ Setup already applied to that project (see `supabase/realtime_site_visits.sql`):
   only write path; it is granted to `anon` and deduplicates retries.
 - The table is added to the `supabase_realtime` publication.
 
-The publishable/anon key in `src/lib/siteVisits.ts` is a public browser credential. The
-counter deliberately uses its own credentials: the Help Center's `VITE_SUPABASE_*`
-variables point at a different project and are ignored here. To point the counter
-elsewhere, set `VITE_SITE_VISITS_SUPABASE_URL` and `VITE_SITE_VISITS_SUPABASE_ANON_KEY`.
-Setting `hazardsync:visits-offline=1` in localStorage disables shared counting and falls
-back to a per-browser count (used by the browser tests so automation never inflates the
-public total).
+The publishable/anon key in `src/lib/siteVisits.ts` is a public browser credential used for
+both the counter and the hazard feed. The Help Center's `VITE_SUPABASE_*` variables point at
+a different project and are ignored here. To point the counter elsewhere, set
+`VITE_SITE_VISITS_SUPABASE_URL` and `VITE_SITE_VISITS_SUPABASE_ANON_KEY`. Setting
+`hazardsync:visits-offline=1` in localStorage disables shared counting and falls back to a
+per-browser count (used by the browser tests so automation never inflates the public total).
 
-Anyone can still increase a page-load counter by calling the public RPC repeatedly; if
-you need abuse-resistant numbers, add a server-side rate limit or move the increment
-into an edge function.
+Anyone can still increase a page-load counter by calling the public RPC repeatedly; if you
+need abuse-resistant numbers, add a server-side rate limit or move the increment into an
+edge function.
 
-Removing an incident or publishing a reporter name opens an accessible confirmation
-before any change is made. Cancel/Escape leaves both the report and history unchanged.
-Name hiding is immediate. The archive retains all reporter details and supports restore.
-The History view filters by report and author and can reopen an incident, including an
-archived one. Toasts announce actions; storage failures remain clearly visible.
+Removing an incident or publishing a reporter name opens an accessible confirmation before
+any change is made. Cancel/Escape leaves both the report and history unchanged. Name hiding
+is immediate. The archive retains all reporter details and supports restore. The History
+view filters by report and author and can reopen an incident, including an archived one.
+Toasts announce actions and server errors stay visible instead of failing silently.
 
-**Architecture and security limits:** this build is a frontend application, not a
-server-backed CMS for all website content. The search trigger is an entry shortcut,
-**not access security**. The `admin/admin` credential pair lives in public client code,
-so anyone can bypass browser-only state; replace it with server-side authentication
-before treating this as a secured admin system.
-No real personal information should be entered here. Email and phone are omitted from
-public display objects but remain in this browser's storage, accessible to scripts and
-anyone using the device. Public-name visibility is a display preference, not a privacy
-boundary; obtain the reporter's consent before publishing their name.
-
-Reports, archives and action history are saved together under localStorage key
-`san-jose-report-store-v1`. Existing `san-jose-alerts` records migrate automatically;
-only after saving successfully is the legacy copy removed. Changes apply to this browser
-and origin only, do not sync between users/devices/tabs, and are lost if site data is
-cleared. There is no cross-device report inbox yet. If storage is full, text/history
-are saved without inline photos where possible and a warning is displayed. A total
-storage failure also shows a warning. New user reports have ISO timestamps and unique
-IDs; older/sample reports show their original time label and explicitly state when an
-exact date is unavailable. History begins with new submissions/actions after this
-feature is installed; it does not fabricate past events. Automatic PAGASA markers still
-follow live readings, but removed live markers retain their archive flag on updates.
-The visits counter is stored separately under `san-jose-local-visits-v1`, starts at
-5,000, and increments per page load; opening the dashboard does not add a visit, and
-clearing site data resets it. To share reports and visits across devices, replace the
-browser store with a server API and database.
-
-For a real public deployment, use a shared database with server-enforced authorization,
-private reporter records, real admin authentication, consent/retention controls and a
-server-managed audit log. GitHub Pages by itself cannot provide those protections.
+**Security limits:** row access is closed to `anon`/`authenticated`; every write goes through
+a `security definer` RPC, and admin RPCs prove the caller with `admin_login`'s password
+check against a SHA-256 hash in `app_secrets` — not a secret in the bundle. It is still a
+single shared password with no sessions, rate limiting or per-admin accounts. Treat public
+deployment as needing real authentication (Supabase Auth, per-admin accounts, audit
+attribution) before it becomes sensitive infrastructure.
 
 Tests:
 
@@ -292,22 +284,26 @@ Tests:
 npm run lint
 npm run build
 npm run test:admin
-# With Chromium installed (or BROWSER_PATH set to its executable), against npm run dev:
-npm run test:admin:browser
 # Login layout, show/hide password, errors, keyboard navigation, five screen sizes:
 npm run test:admin:login
 # Overview counts, combined filters, sorting, selections, confirmations, archive/history:
 npm run test:admin:dashboard
-npm run test:admin:dashboard:browser
-# Accept/decline, admin publishing, removal, visits baseline and two viewport flows:
+# Accept/decline, reconsideration, audit trail, shared visits baseline:
 npm run test:admin:moderation
-npm run test:admin:moderation:browser
 # Shared Supabase visit counter: config, parsing, dedupe and live dashboard refresh:
 npm run test:visits
-npm run test:visits:browser
-# TEST_BASE_URL can target a different running dev/preview server.
 ```
 
-The browser test exercises desktop (1280px) and phone (390px): legacy migration, normal
-search, hidden login, invalid credentials, reporter details, name visibility, status,
-archive/restore, persistence, logout, history, safe popup rendering and new submissions.
+Browser tests need Chromium (`BROWSER_PATH`) and a running `npm run dev` server. They route
+`guxzibsrfyfiuqsgcgyt.supabase.co` to `tests/supabase-mock.mjs`, an in-memory replay of the
+RPC contract, because this sandbox cannot reach Supabase:
+
+```bash
+npm run test:admin:browser          # hidden entry, server-checked login, shared workspace
+npm run test:admin:login            # login UX at 1280/768/390/320/844×390
+npm run test:admin:dashboard:browser # pending review, resolve requests, hiding a category, archive/restore
+npm run test:admin:moderation:browser # decline, audit trail, reconsideration
+npm run test:visits:browser         # one increment per page load, live dashboard refresh
+npm run test:public-report:browser  # required photo/Gmail/mobile, pending publish gate, resolve request
+# TEST_BASE_URL can target a different running dev/preview server.
+```

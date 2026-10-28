@@ -1,50 +1,28 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright-core';
+import { baseReport, createBackend } from './supabase-mock.mjs';
 
 // The sandbox cannot reach Supabase, so this browser test mocks the two REST
 // endpoints the monitor uses. It proves that every page load increments the
 // shared counter and that an open dashboard picks up new visits without reload.
 const base = process.env.TEST_BASE_URL || 'http://localhost:3000';
-const supabase = 'https://guxzibsrfyfiuqsgcgyt.supabase.co';
+const backend = createBackend([baseReport('hz-001', { title: 'Kasiglahan riverside flooding' })]);
+let increments = 0;
+const countIncrement = () => {
+  const seen = backend.state.calls.filter((call) => call.name === 'increment_site_visit').length;
+  increments = seen;
+};
+
 const browser = await chromium.launch({
   executablePath: process.env.BROWSER_PATH,
   args: ['--no-sandbox', '--disable-dev-shm-usage'],
 });
-let total = 5000;
-let increments = 0;
-const routeSupabase = async (context) => {
-  await context.route(`${supabase}/**`, async (route) => {
-    const url = new URL(route.request().url());
-    const cors = {
-      'access-control-allow-origin': '*',
-      'access-control-allow-headers': '*',
-      'access-control-allow-methods': 'GET, POST, OPTIONS',
-      'content-type': 'application/json',
-    };
-    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-    if (url.pathname === '/rest/v1/rpc/increment_site_visit') {
-      increments += 1;
-      total += 1;
-      return route.fulfill({ status: 200, headers: cors, body: JSON.stringify(total) });
-    }
-    if (url.pathname === '/rest/v1/site_visits') {
-      return route.fulfill({
-        status: 200,
-        headers: cors,
-        body: JSON.stringify([{ total, updated_at: new Date().toISOString() }]),
-      });
-    }
-    // Realtime websocket is unavailable in this sandbox: the poll fallback covers it.
-    return route.abort();
-  });
-};
-
 try {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 900 },
     reducedMotion: 'reduce',
   });
-  await routeSupabase(context);
+  await backend.install(context);
   await context.addInitScript(() => {
     try {
       localStorage.removeItem('hazardsync:visits-offline');
@@ -64,14 +42,17 @@ try {
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   const portal = page.getByRole('dialog', { name: 'Incident administration' });
   const visits = portal.getByTestId('visits-total');
-  await visits.getByText('5,001', { exact: true }).waitFor();
+  await visits.getByText('5,001', { exact: true }).waitFor({ timeout: 20000 });
+  countIncrement();
   assert.equal(await portal.getByText('Live · all visitors', { exact: true }).count(), 1);
   assert.equal(increments, 1);
 
   // A visitor in another tab: one more increment, and the open dashboard updates.
   const visitor = await context.newPage();
   await visitor.goto(base);
-  await visitor.waitForTimeout(600);
+  await visitor.locator('#alert-card-hz-001').waitFor();
+  await visitor.waitForTimeout(800);
+  countIncrement();
   assert.equal(increments, 2);
   await visits.getByText('5,002', { exact: true }).waitFor({ timeout: 20000 });
   await visitor.close();

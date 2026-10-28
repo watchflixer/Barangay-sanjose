@@ -1,80 +1,134 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { validateHazardDraft } from '../src/lib/admin';
 import {
-  appendHazardReport,
-  changeReport,
-  createHazardReport,
-  publicReports,
-  validateHazardDraft,
-} from '../src/lib/admin';
+  changeReportRemote,
+  createReportRemote,
+  reviewFlagRemote,
+  setHiddenTypesRemote,
+  submitResolveFlag,
+} from '../src/lib/reportsApi';
 import { filterAdminReports, reportCounts } from '../src/lib/adminDashboard';
 import { readVisits, recordLocalVisit, VISIT_KEY } from '../src/lib/visits';
-import type { HazardDraft } from '../src/types';
+import type { HazardAlert, HazardDraft } from '../src/types';
+
 const draft: HazardDraft = {
-  title: 'Demo flood',
   type: 'flood',
-  streetName: 'Demo street',
-  sitio: 'San Jose',
+  title: 'Riverside flooding',
+  streetName: 'Riverside Drive',
+  sitio: 'Kasiglahan',
   coordinates: [14.743, 121.133],
   status: 'active',
   severity: 'high',
-  description: 'Test incident',
-  reportedBy: 'Demo reporter',
-  reporterEmail: 'demo@example.test',
-  contactNumber: '09000000000',
+  description: 'Knee-deep water near the bridge.',
+  reportedBy: 'Barangay administrator',
+  reporterEmail: '',
+  contactNumber: '',
+  photoUrl: '',
 };
 
-test('community reports remain private until accepted; resolving cannot bypass review', () => {
-  const report = createHazardReport(draft, 'community');
-  let store = appendHazardReport({ alerts: [], history: [] }, report);
-  assert.equal(report.reviewStatus, 'pending');
-  assert.equal(publicReports(store.alerts).length, 0);
-  store = changeReport(store, report.id, { type: 'status', value: 'resolved' });
-  assert.equal(publicReports(store.alerts).length, 0);
-  store = changeReport(store, report.id, { type: 'review', value: 'accepted' });
-  assert.equal(publicReports(store.alerts).length, 1);
-  assert.equal(publicReports(store.alerts)[0].reporterEmail, undefined);
-  assert.equal(store.history[0].action, 'Report accepted and published');
-  assert.equal(changeReport(store, report.id, { type: 'review', value: 'accepted' }), store);
-});
-test('decline retains reporter details and reason; reconsideration clears reason and publishes', () => {
-  const report = createHazardReport(draft, 'community');
-  let store = appendHazardReport({ alerts: [], history: [] }, report);
-  store = changeReport(store, report.id, { type: 'review', value: 'declined', reason: ' Duplicate report ' });
-  assert.equal(publicReports(store.alerts).length, 0);
-  assert.equal(store.alerts[0].reporterEmail, draft.reporterEmail);
-  assert.equal(store.alerts[0].declineReason, 'Duplicate report');
-  assert.match(store.history[0].action, /Duplicate report/);
-  store = changeReport(store, report.id, { type: 'delete' });
-  assert.equal(changeReport(store, report.id, { type: 'review', value: 'accepted' }), store);
-  store = changeReport(store, report.id, { type: 'restore' });
-  assert.equal(publicReports(store.alerts).length, 0); // Restore does not imply acceptance.
-  store = changeReport(store, report.id, { type: 'review', value: 'accepted' });
-  assert.equal(store.alerts[0].declineReason, undefined);
-  assert.equal(publicReports(store.alerts).length, 1);
-});
-test('admin creation publishes directly with validated fields and admin history', () => {
-  const report = createHazardReport(
-    { ...draft, reportedBy: '', reporterEmail: '', contactNumber: '' },
-    'admin',
+interface Call {
+  name: string;
+  args: Record<string, unknown>;
+}
+const recorder = (data: unknown = null) => {
+  const calls: Call[] = [];
+  const client = {
+    rpc: async (name: string, args: Record<string, unknown>) => {
+      calls.push({ name, args });
+      return { data, error: null };
+    },
+  };
+  return { calls, client };
+};
+
+test('every moderation action is sent to the shared server, never to localStorage', async () => {
+  const { calls, client } = recorder();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const api = client as any;
+  await changeReportRemote(api, 'admin', 'hz-001', { type: 'status', value: 'resolved' });
+  await changeReportRemote(api, 'admin', 'hz-001', { type: 'visibility', value: true });
+  await changeReportRemote(api, 'admin', 'hz-001', { type: 'delete' });
+  await changeReportRemote(api, 'admin', 'hz-001', { type: 'restore' });
+  await changeReportRemote(api, 'admin', 'hz-002', {
+    type: 'review',
+    value: 'declined',
+    reason: ' Duplicate report ',
+  });
+
+  assert.deepEqual(
+    calls.map((call) => [call.name, call.args.p_id, call.args.p_change]),
+    [
+      ['admin_change', 'hz-001', { type: 'status', value: 'resolved' }],
+      ['admin_change', 'hz-001', { type: 'visibility', value: true }],
+      ['admin_change', 'hz-001', { type: 'delete' }],
+      ['admin_change', 'hz-001', { type: 'restore' }],
+      ['admin_change', 'hz-002', { type: 'review', value: 'declined', reason: 'Duplicate report' }],
+    ],
   );
-  const store = appendHazardReport({ alerts: [], history: [] }, report);
-  assert.equal(report.reviewStatus, 'accepted');
-  assert.equal(report.reportedBy, 'Barangay administrator');
-  assert.equal(publicReports(store.alerts).length, 1);
-  assert.equal(store.history[0].actor, 'admin');
-  assert.equal(store.history[0].action, 'Admin incident created and published');
-  assert.equal(report.showReporter, false);
-  assert.ok(validateHazardDraft({ ...draft, title: '  ' }));
-  assert.throws(() => createHazardReport({ ...draft, coordinates: [NaN, 181] }, 'admin'));
+  assert.ok(calls.every((call) => call.args.p_password === 'admin'));
+});
+
+test('guest resolve requests wait for an admin decision', async () => {
+  const { calls, client } = recorder();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await submitResolveFlag(client as any, 'hz-001', '  Street is dry now  ');
+  assert.equal(calls[0].name, 'flag_resolved');
+  assert.deepEqual(calls[0].args, { p_report_id: 'hz-001', p_note: 'Street is dry now' });
+
+  const review = recorder();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await reviewFlagRemote(review.client as any, 'admin', 'flag-1', 'accepted');
+  assert.deepEqual(review.calls[0].args, {
+    p_password: 'admin',
+    p_flag_id: 'flag-1',
+    p_decision: 'accepted',
+  });
+});
+
+test('hiding a category persists every type and returns to the public feed', async () => {
+  const { calls, client } = recorder(['fire', 'power']);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hidden = await setHiddenTypesRemote(client as any, 'admin', ['fire', 'power']);
+  assert.deepEqual(hidden, ['fire', 'power']);
+  assert.deepEqual(calls[0].args, { p_password: 'admin', p_types: ['fire', 'power'] });
+});
+
+test('admin-created incidents publish immediately without resident contact fields', async () => {
+  const { calls, client } = recorder({ id: 'hz-new' });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const created = await createReportRemote(client as any, 'admin', draft);
+  assert.equal(created.id, 'hz-new');
+  assert.equal(created.reviewStatus, 'accepted');
+  assert.equal(created.source, 'admin');
+  assert.equal(calls[0].name, 'admin_create');
+  const payload = calls[0].args.payload as Record<string, unknown>;
+  assert.equal(payload.contact_number, '');
+  assert.equal(payload.reporter_email, '');
   assert.equal(validateHazardDraft(draft), '');
 });
+
 test('legacy incidents stay published; queues and totals exclude unpublished reports', () => {
-  const legacy = { ...createHazardReport(draft, 'admin'), reviewStatus: undefined };
-  const pending = createHazardReport(draft, 'community');
-  const declined = { ...createHazardReport(draft, 'community'), reviewStatus: 'declined' as const };
-  const archived = { ...createHazardReport(draft, 'community'), deletedAt: '2026-10-29T10:00:00Z' };
+  const make = (id: string, changes: Partial<HazardAlert> = {}): HazardAlert => ({
+    id,
+    title: `Report ${id}`,
+    type: 'flood',
+    streetName: 'Riverside Street',
+    sitio: 'San Jose',
+    coordinates: [14.74, 121.13],
+    timeReported: 'Just now',
+    status: 'active',
+    severity: 'high',
+    description: 'Text-only description',
+    reportedBy: 'Maria Santos',
+    ...changes,
+  });
+  const legacy = make('legacy');
+  const pending = make('pending', { reviewStatus: 'pending', source: 'community' });
+  const declined = make('declined', { reviewStatus: 'declined', source: 'community' });
+  const archived = make('archived', { deletedAt: '2026-10-29T10:00:00Z' });
   const alerts = [legacy, pending, declined, archived];
+
   assert.deepEqual(reportCounts(alerts), {
     total: 1,
     active: 1,
@@ -91,10 +145,11 @@ test('legacy incidents stay published; queues and totals exclude unpublished rep
     ['archived', archived.id],
   ] as const)
     assert.deepEqual(
-      filterAdminReports(alerts, scope, 'all', '', 'newest').map((a) => a.id),
+      filterAdminReports(alerts, scope, 'all', '', 'newest').map((alert) => alert.id),
       [id],
     );
 });
+
 test('visits initialize at exactly 5,000 and increase only on subsequent recorded page loads', () => {
   const map = new Map<string, string>();
   const storage = {
