@@ -190,7 +190,11 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
       map.setMinZoom(nextZoom);
       setMinZoomLevel(nextZoom);
-      if (map.getZoom() < nextZoom) {
+
+      // `getZoom()` is undefined until the first setView, so `undefined < n`
+      // (false) would silently skip the initial camera. Check finiteness too.
+      const current = map.getZoom();
+      if (!Number.isFinite(current) || current < nextZoom) {
         map.setView(PH_CENTER, nextZoom, { animate });
         setCurrentZoom(nextZoom);
       }
@@ -251,9 +255,14 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       windEngine.start();
     }
 
-    // Track zoom events for progressive Level of Detail (LOD)
+    // Track zoom events for progressive Level of Detail (LOD). Re-tighten the
+    // pan lock on every zoom too, so zooming back in does not leave the camera
+    // free to roam the whole ocean it explored while zoomed out.
     map.on('zoomend', () => {
       setCurrentZoom(map.getZoom());
+      const lock = overviewLockBounds();
+      const visible = map.getBounds();
+      map.setMaxBounds(lock.contains(visible) ? lock : lock.extend(visible).pad(0.02));
     });
 
     mapInstanceRef.current = map;
