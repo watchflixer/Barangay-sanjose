@@ -1272,10 +1272,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           </div>
         )}
 
-        {/* Round chevron below the zoom-out button — the one control that opens
-            and closes the incident feeds on laptop/desktop (the panel is
-            display:none there until this is pressed; see index.css). It points
-            right while closed and flips to point left while open.
+        {/* Round chevron below the zoom-out button — the one control that hides
+            and brings back the incident feeds on laptop/desktop (the feed is
+            open on load there; see index.css + the matchMedia seed in App.tsx).
+            It points left while the feed is open and flips right when closed.
 
             HAZARD MAP ONLY: this stack is already hidden on the flood-prone,
             traffic and weather maps (`hidden` above), and the extra
