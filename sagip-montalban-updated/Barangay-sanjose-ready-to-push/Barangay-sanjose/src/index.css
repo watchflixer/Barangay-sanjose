@@ -1510,12 +1510,11 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
    --------------------------------------------------------------------------
    Google-Maps geometry: the feed floats as ONE white card — 8px gap from the
    rail, the top and the bottom, 24px radius, hairline and a soft shadow. The
-   feed content fills it edge to edge (no second card inside), and a `‹` pill
-   tab on the map-side edge collapses the whole card (the rail's ☰ reopens it).
+   feed content fills it edge to edge (no second card inside). The rail's ☰ is
+   what shows/hides the whole card.
 
      #app-sidebar-panel           → the card itself (this rule)
      #app-sidebar-panel …> aside  → clipped to the card's rounded corners
-     .app-feed-collapse           → the `‹` tab
 
    MOBILE PORTRAIT IS UNTOUCHED: every rule is inside `@media (min-width:
    1024px)`, so phones keep the flat, full-height slide-in drawer.
@@ -1538,10 +1537,8 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     border: 1px solid #e6e8eb;
     border-radius: 24px;
     box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
-    /* `clip` keeps the rounded shape (so rows and the header strip are cut to
-       it) while still letting the `‹` tab hang outside the card edge. */
-    overflow: clip;
-    overflow-clip-margin: 26px;
+    /* Keeps the rounded shape: rows and the header strip are cut to it. */
+    overflow: hidden;
   }
 
   /* The feed fills the card; the card owns the border, radius and shadow. */
@@ -1552,47 +1549,6 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     overflow: hidden;
   }
 
-  /* ---- the `‹` collapse tab -------------------------------------------
-     Copied from the reference: a flat-edged tab that hangs off the panel's
-     map-side edge, vertically centred, with rounded right corners, a hairline
-     outline and a thin grey chevron. No pill/radius on the left side — that
-     edge is flush with the card. */
-  .app-feed-collapse {
-    position: absolute;
-    top: 50%;
-    right: -14px;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 26px;
-    height: 74px;
-    border: 1px solid #e8eaed;
-    border-left: 0;
-    border-radius: 0 16px 16px 0;
-    background: #f8f9fa;
-    color: #5f6368;
-    box-shadow: 2px 0 4px rgba(60, 64, 67, 0.18);
-    cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
-    z-index: 2;
-  }
-
-  .app-feed-collapse:hover {
-    background: #f1f3f4;
-    color: #202124;
-  }
-}
-
-/* The tab only exists on laptop/desktop. */
-.app-feed-collapse {
-  display: none;
-}
-
-@media (min-width: 1024px) {
-  .app-feed-collapse {
-    display: flex;
-  }
 }
 
 /* ==========================================================================

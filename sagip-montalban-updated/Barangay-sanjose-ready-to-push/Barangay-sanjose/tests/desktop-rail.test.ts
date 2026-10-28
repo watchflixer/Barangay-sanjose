@@ -115,24 +115,15 @@ test('the incident feed is ONE floating card on desktop', () => {
   assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('margin: 8px 10px 8px 8px;'));
 });
 
-test('the ‹ tab collapses the feed and exists only on laptop/desktop', () => {
-  // Markup: a real button wired to the open state.
-  assert.match(app, /id="btn-collapse-incident-feeds"/);
-  assert.match(app, /onClick=\{\(\) => setDesktopFeedOpen\(false\)\}/);
-  assert.match(app, /className="app-feed-collapse"/);
-
-  // CSS: hidden by default, shown only from 1024px, sitting on the card edge.
-  assert.match(css, /\.app-feed-collapse \{\s*display: none;\s*\}/);
-  const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
-  // Exactly the reference tab: flat left edge on the card, rounded right
-  // corners, hairline outline, light grey fill, thin chevron.
-  assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -14px;[\s\S]*?width: 26px;[\s\S]*?height: 74px;[\s\S]*?border-radius: 0 16px 16px 0;[\s\S]*?background: #f8f9fa;/);
-  assert.match(card, /border-left: 0;/);
-  assert.match(app, /<ChevronLeft className="h-\[22px\] w-\[22px\]" strokeWidth=\{1\.8\} \/>/);
-  assert.match(card, /@media \(min-width: 1024px\) \{\s*\.app-feed-collapse \{\s*display: flex;\s*\}/);
-
-  // The inner wrapper keeps full height at every width, so phones are unchanged.
-  assert.match(css, /\.app-feed-inner \{\s*height: 100%;\s*min-height: 0;\s*\}/);
+test('the feed has no floating ‹ tab on desktop', () => {
+  // The tab was removed on request; the rail is the only feed control.
+  assert.doesNotMatch(app, /btn-collapse-incident-feeds/);
+  assert.doesNotMatch(app, /app-feed-collapse/);
+  assert.doesNotMatch(app, /ChevronLeft/);
+  assert.doesNotMatch(css, /\.app-feed-collapse/);
+  assert.doesNotMatch(css, /overflow-clip-margin/);
+  // The card still clips its content to the rounded corners.
+  assert.match(css, /#app-sidebar-panel \{[\s\S]*?border-radius: 24px;[\s\S]*?overflow: hidden;/);
 });
 
 test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => {
@@ -161,20 +152,15 @@ test('the incident feed keeps a wide desktop panel (~400px)', () => {
   assert.doesNotMatch(sidebar, /lg:w-72/);
 });
 
-test('the ‹ tab is the only close control, and the rail brings the feed back', () => {
-  // The ✕ in the header is gone for good — the ‹ tab closes the panel and the
-  // rail's ☰ reopens it, exactly like the reference.
+test('the rail is the only way to show/hide the feed on desktop', () => {
+  // No ✕ and no ‹ tab: the rail's ☰ toggles the panel.
   assert.doesNotMatch(sidebar, /btn-close-incident-feeds/);
   assert.doesNotMatch(sidebar, /onCloseDesktop/);
   assert.doesNotMatch(app, /onCloseDesktop/);
-  assert.match(app, /id="btn-collapse-incident-feeds"/);
-  assert.match(app, /onClick=\{\(\) => setDesktopFeedOpen\(false\)\}/);
+  assert.doesNotMatch(app, /btn-collapse-incident-feeds/);
 
-  // App tracks the open state and applies it with an `lg:` utility only…
   assert.match(app, /const \[desktopFeedOpen, setDesktopFeedOpen\] = useState\(true\)/);
   assert.match(app, /desktopFeedOpen \? '' : 'lg:hidden'/);
-
-  // …and the rail's hamburger brings it back.
   assert.match(rail, /onToggleFeed\?\.\(\)/);
   assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
 });
