@@ -182,16 +182,17 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
 /* ==========================================================================
    WEATHER MODE NAV (Weather | Temperature | Wind | Rain)
    --------------------------------------------------------------------------
-   LAPTOP / DESKTOP ONLY. On portrait phones the bar keeps its original
+   NOT-PHONE-PORTRAIT ONLY. On portrait phones the bar keeps its original
    full-width `w-[calc(100%-12px)]`, `p-1.5`, `rounded-2xl` and
    `text-sm`/`sm:text-base` sizing — none of that is touched here.
 
-   On laptop/desktop the bar was stretching edge-to-edge, which made it look
-   like a giant slab. Behind `@media (min-width: 1024px)` (the same breakpoint
-   the rest of the app treats as laptop/desktop) it becomes a compact,
-   centered segmented control: narrower, shorter, tighter type.
+   The bar used to stretch edge-to-edge, which made it look like a giant slab.
+   It becomes a compact, centered segmented control above 640px, i.e. on every
+   laptop/desktop window — including the ~900-1000px wide ones that a 1024px
+   gate used to miss. 640px is Tailwind's `sm` breakpoint and is well above the
+   widest portrait phone (iPhone 16 Pro Max = 440px CSS), so phones are safe.
    ========================================================================== */
-@media (min-width: 1024px) {
+@media (min-width: 640px) {
   .ph-mode-nav {
     width: min(22.5rem, calc(100% - 2rem));
     margin-inline: auto;

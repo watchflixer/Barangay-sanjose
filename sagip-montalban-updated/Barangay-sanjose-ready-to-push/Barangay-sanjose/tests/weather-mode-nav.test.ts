@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
  *
  * The bar was shrunk for laptop/desktop only. The Android/iPhone portrait
  * layout must stay exactly as it was, which means:
- *   – every `.ph-mode-*` rule lives inside `@media (min-width: 1024px)`,
+ *   – every `.ph-mode-*` rule lives inside `@media (min-width: 640px)` — above
+ *     every portrait phone (iPhone 16 Pro Max is 440px CSS),
  *   – no phone breakpoint (`max-width`, `portrait`) ever mentions it,
  *   – the base markup keeps its original Tailwind sizing,
  *   – the new classes are purely additive (no utility was removed).
@@ -59,19 +60,22 @@ function rulesMentioning(source: string, needle: string) {
   return found.filter((rule) => rule.selector.includes(needle));
 }
 
-/** True when a rule only ever matches at >= 1024px wide viewports. */
+/** Widest portrait phone in CSS px is ~440 (iPhone 16 Pro Max); 640 is safe. */
+const PHONE_SAFE_GATE = 640;
+
+/** True when a rule only ever matches on viewports wider than a portrait phone. */
 function isDesktopOnly(gates: string[]) {
   return gates.some((gate) => {
     const mins = [...gate.matchAll(/min-width:\s*([\d.]+)(px|rem|em)/g)]
       .map(([, value, unit]) => Number(value) * (unit === 'px' ? 1 : 16));
     const maxs = [...gate.matchAll(/max-width:\s*([\d.]+)(px|rem|em)/g)]
       .map(([, value, unit]) => Number(value) * (unit === 'px' ? 1 : 16));
-    if (maxs.length > 0 && Math.max(...maxs) < 1024) return false;
-    return mins.length > 0 && Math.min(...mins) >= 1024;
+    if (maxs.length > 0 && Math.max(...maxs) < PHONE_SAFE_GATE) return false;
+    return mins.length > 0 && Math.min(...mins) >= PHONE_SAFE_GATE;
   });
 }
 
-test('every mode-nav rule is gated at the 1024px laptop/desktop breakpoint', () => {
+test('every mode-nav rule is gated above portrait-phone width', () => {
   const rules = rulesMentioning(cssWithoutComments, 'ph-mode-');
   assert.ok(rules.length >= 4, `expected the nav/button rules, found ${rules.length}`);
 
@@ -84,7 +88,7 @@ test('every mode-nav rule is gated at the 1024px laptop/desktop breakpoint', () 
 
   const selectors = rules.map((rule) => rule.selector);
   for (const selector of ['.ph-mode-nav', '.ph-mode-nav .ph-mode-btn', '.ph-mode-nav .ph-mode-btn--active:hover']) {
-    assert.ok(selectors.includes(selector), `expected "${selector}" inside the 1024px query`);
+    assert.ok(selectors.includes(selector), `expected "${selector}" inside the laptop/desktop query`);
   }
 });
 
