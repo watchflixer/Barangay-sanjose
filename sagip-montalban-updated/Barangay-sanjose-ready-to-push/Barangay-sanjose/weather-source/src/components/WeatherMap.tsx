@@ -42,20 +42,24 @@ const PH_CENTER = L.latLng(PH_BOUNDS.getCenter().lat + VIEW_LAT_OFFSET, PH_BOUND
 // seas, Borneo, Taiwan or the PAR box around storm tracks.
 //
 // `OVERVIEW_ZOOM_OUT` pulls the lock that many zoom levels further out on wide
-// screens. The threshold is the same 640px used by the weather mode nav, i.e.
-// above every portrait phone (iPhone 16 Pro Max = 440px CSS), so Android/Apple
-// portrait phones keep the exact original camera — identical minZoom, identical
-// bounds, identical starting view.
+// screens. It started at a full level (1.0) and was dialled back to 0.6, which
+// keeps a comfortable margin of sea around the archipelago without shrinking
+// the Philippines too much.
+//
+// The threshold is the same 640px used by the weather mode nav, i.e. above every
+// portrait phone (iPhone 16 Pro Max = 440px CSS), so Android/Apple portrait
+// phones keep the exact original camera — identical minZoom, identical bounds,
+// identical starting view.
 const WIDE_VIEW_QUERY = '(min-width: 640px)';
 /** Zoom levels the laptop/desktop overview is pulled back past the PH fit. */
-const OVERVIEW_ZOOM_OUT = 1.0;
+const OVERVIEW_ZOOM_OUT = 0.6;
 /** Hard floor so a wide, short window cannot zoom out into a world view. */
 const WIDE_OVERVIEW_MIN_ZOOM = 3.6;
 /** Portrait-phone overview floor — the original, unchanged value. */
 const PHONE_OVERVIEW_MIN_ZOOM = 4.6;
 /** Pan lock padding, unchanged on phones and roomier on wide screens. */
 const PHONE_LOCK_PADDING = 0.08;
-const WIDE_LOCK_PADDING = 0.5;
+const WIDE_LOCK_PADDING = 0.32;
 
 /** True above every portrait phone; screenshots assume no browser chrome. */
 const isWideViewport = (): boolean =>

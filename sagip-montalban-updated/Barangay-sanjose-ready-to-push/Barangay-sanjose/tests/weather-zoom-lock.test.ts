@@ -46,9 +46,12 @@ test('portrait phones keep the original lock constants', () => {
   );
 });
 
-test('laptop/desktop is pulled at least one zoom level further out', () => {
+test('laptop/desktop is pulled a sensible amount further out', () => {
   const out = numberFor('OVERVIEW_ZOOM_OUT');
-  assert.ok(out >= 1, `expected at least 1 zoom level of extra overview, got ${out}`);
+  // Enough to see the seas and neighbours, small enough that the archipelago
+  // still dominates the frame (the tune has been 0.6 since the first pass).
+  assert.ok(out >= 0.4, `expected at least 0.4 zoom levels of extra overview, got ${out}`);
+  assert.ok(out <= 1.2, `expected at most 1.2 zoom levels of extra overview, got ${out}`);
   const floor = numberFor('WIDE_OVERVIEW_MIN_ZOOM');
   assert.ok(floor > 2, 'the wide floor must stay above the basemap minZoom so tiles never go blank');
 });
