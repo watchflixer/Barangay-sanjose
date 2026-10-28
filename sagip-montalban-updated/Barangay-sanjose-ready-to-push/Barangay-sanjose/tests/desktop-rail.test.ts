@@ -186,3 +186,19 @@ test('the feed surfaces share the rail white on laptop/desktop', () => {
   // Phones keep their tinted strips: the tints are still the base colour.
   assert.doesNotMatch(sidebar, /\blg:bg-\[#f6f8fc\]\b/);
 });
+
+test('a round chevron under the zoom pair collapses the feed on desktop', () => {
+  // The button lives at the bottom of the map control stack…
+  assert.match(mapViewer, /id="btn-toggle-feed-round"/);
+  assert.match(mapViewer, /className="hidden lg:flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white/);
+  assert.match(mapViewer, /<ChevronRight/);
+  // …sits after the zoom pair…
+  const stack = mapViewer.slice(mapViewer.indexOf('id="map-control-stack"'));
+  assert.ok(stack.indexOf('id="btn-zoom-out"') < stack.indexOf('id="btn-toggle-feed-round"'));
+  // …is desktop-only…
+  assert.match(mapViewer, /hidden lg:flex h-9 w-9/);
+  // …and toggles the floating card.
+  assert.match(mapViewer, /onClick=\{\(\) => onToggleFeed\?\.\(\)\}/);
+  assert.match(mapViewer, /aria-expanded=\{desktopFeedOpen\}/);
+  assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
+});

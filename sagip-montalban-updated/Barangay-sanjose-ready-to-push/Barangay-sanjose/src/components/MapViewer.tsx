@@ -42,6 +42,7 @@ import {
   LocateFixed,
   Plus,
   Minus,
+  ChevronRight,
   Radio,
   LightbulbOff
 } from 'lucide-react';
@@ -66,6 +67,13 @@ interface MapViewerProps {
   onHelpCenterChange?: (isOpen: boolean) => void;
   /** Lets the parent app know the Weather view is open (for navbar gating). */
   onWeatherChange?: (isOpen: boolean) => void;
+  /**
+   * Laptop/desktop only: whether the floating incident-feeds card is open.
+   * Drives the round chevron button under the zoom pair.
+   */
+  desktopFeedOpen?: boolean;
+  /** Shows/hides the floating feed card from that same round button. */
+  onToggleFeed?: () => void;
 }
 
 export const MapViewer: React.FC<MapViewerProps> = ({
@@ -84,6 +92,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   onTrafficChange,
   onHelpCenterChange,
   onWeatherChange,
+  desktopFeedOpen = false,
+  onToggleFeed,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -1270,6 +1280,24 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             </button>
           </div>
         )}
+
+        {/* Laptop/desktop only: round chevron under the zoom pair that collapses
+            the floating incident-feeds card (and brings it back). */}
+        <button
+          id="btn-toggle-feed-round"
+          type="button"
+          onClick={() => onToggleFeed?.()}
+          title={desktopFeedOpen ? 'Hide incident feeds' : 'Show incident feeds'}
+          aria-label={desktopFeedOpen ? 'Hide incident feeds' : 'Show incident feeds'}
+          aria-controls="app-sidebar-panel"
+          aria-expanded={desktopFeedOpen}
+          className="hidden lg:flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 active:scale-95"
+        >
+          <ChevronRight
+            className={`h-4 w-4 transition-transform ${desktopFeedOpen ? '' : 'rotate-180'}`}
+            strokeWidth={2.5}
+          />
+        </button>
       </div>
 
       {locationMessage && !isMobileMenuOpen && (
