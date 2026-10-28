@@ -61,13 +61,14 @@ export default function App() {
   const [isAddingPinMode, setIsAddingPinMode] = useState(false);
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
-  // Laptop/desktop (>=1024px): the incident feed starts OPEN, docked next to the
-  // rail as the floating card, and the round chevron under zoom-out closes it.
-  // Phones (<1024px) start exactly as before — drawer shut, opened by its own
-  // `‹` handle — because this check is the JS twin of the CSS media query and
-  // is false at portrait phone widths.
+  // "Desktop layout" is now LANDSCAPE from 480px up (see the DEVICE PROFILES
+  // block in index.css): the feed starts OPEN, docked next to the rail, and
+  // the round chevron under zoom-out closes it. Every PORTRAIT view — phone or
+  // tablet — starts with the drawer shut, opened by its own `‹` handle.
+  // This is the JS twin of those media queries, so it must match them exactly.
   const isDesktopFeedViewport = () =>
-    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches;
+    typeof window !== 'undefined' &&
+    window.matchMedia('(orientation: landscape) and (min-width: 480px)').matches;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(isDesktopFeedViewport);
   const [recenterCount, setRecenterCount] = useState(0);
   
@@ -347,6 +348,7 @@ export default function App() {
         {/* Backdrop for Mobile Sidebar */}
         {mobileMenuOpen && incidentFeedsVisible && (
           <div
+            id="app-feed-backdrop"
             aria-hidden="true"
             className="pointer-events-none fixed inset-x-0 top-16 max-sm:portrait:top-13 bottom-0 z-[65] bg-slate-900/50 backdrop-blur-xs lg:hidden"
           />
