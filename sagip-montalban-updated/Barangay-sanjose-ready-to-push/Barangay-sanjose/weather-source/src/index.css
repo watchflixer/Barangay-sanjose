@@ -178,3 +178,201 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.35);
 }
+
+/* ==========================================================================
+   WEATHER MODE NAV (Weather | Temperature | Wind | Rain)
+   --------------------------------------------------------------------------
+   NOT-PHONE-PORTRAIT ONLY. On portrait phones the bar keeps its original
+   full-width `w-[calc(100%-12px)]`, `p-1.5`, `rounded-2xl` and
+   `text-sm`/`sm:text-base` sizing — none of that is touched here.
+
+   The bar used to stretch edge-to-edge, which made it look like a giant slab.
+   It becomes a compact, centered segmented control above 640px, i.e. on every
+   laptop/desktop window — including the ~900-1000px wide ones that a 1024px
+   gate used to miss. 640px is Tailwind's `sm` breakpoint and is well above the
+   widest portrait phone (iPhone 16 Pro Max = 440px CSS), so phones are safe.
+   ========================================================================== */
+@media (min-width: 640px) {
+  .ph-mode-nav {
+    /* Second size step: 22.5rem/35px -> 27rem/42px. Narrow windows still cap
+       at `calc(100% - 2rem)`, so the bar can never touch the map edges. */
+    width: min(27rem, calc(100% - 2rem));
+    margin-inline: auto;
+    padding: 4px;
+    gap: 2px;
+    border-radius: 11px;
+    box-shadow:
+      0 8px 18px -12px rgba(2, 6, 23, 0.55),
+      0 1px 4px -2px rgba(2, 6, 23, 0.35);
+  }
+
+  .ph-mode-nav .ph-mode-btn {
+    padding: 7px 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    letter-spacing: -0.01em;
+  }
+
+  /* Keep the hover feedback consistent at the smaller size. */
+  .ph-mode-nav .ph-mode-btn:hover {
+    background-color: #f1f5f9;
+  }
+
+  .ph-mode-nav .ph-mode-btn--active:hover {
+    background-color: #000;
+  }
+}
+
+/* ==========================================================================
+   WEATHER BOTTOM OVERLAYS (timeline scrubber + legend card)
+   --------------------------------------------------------------------------
+   NOT-PHONE-PORTRAIT ONLY, same 640px gate as the mode nav: on portrait
+   phones both cards keep their original full-width, p-2.5 / p-3,
+   rounded-2xl and 11px/10px type — none of that is touched here.
+
+   Above 640px the two cards were spanning the whole map, which buried a lot
+   of the Philippines. They become compact, centered cards: narrower, shorter,
+   smaller controls and calmer type.
+   ========================================================================== */
+@media (min-width: 640px) {
+  .ph-playback {
+    width: min(34rem, 100%);
+    margin-inline: auto;
+    /* Slightly taller than the first pass: padding 6px -> 9px and the play
+       button 28px -> 30px. Width is unchanged, so the scrubber keeps its
+       length and the labels keep their breathing room. */
+    padding: 9px 12px;
+    gap: 10px;
+    border-radius: 12px;
+    box-shadow:
+      0 12px 26px -18px rgba(2, 6, 23, 0.6),
+      0 2px 8px -4px rgba(2, 6, 23, 0.35);
+  }
+
+  /* 40px -> 28px circular play/pause control */
+  .ph-playback .ph-playback__button {
+    width: 30px;
+    height: 30px;
+  }
+
+  .ph-playback .ph-playback__button svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .ph-playback .ph-playback__meta {
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .ph-playback .ph-playback__count {
+    font-size: 9px;
+  }
+
+  /* The scrubber thumb is sized globally; keep it compact but grabbable. */
+  .ph-playback input[type="range"].panahon-monochrome-range::-webkit-slider-thumb {
+    width: 11px;
+    height: 11px;
+    margin-top: -5px;
+  }
+
+  .ph-playback input[type="range"].panahon-monochrome-range::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+  }
+
+  .ph-playback .ph-playback__reset {
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .ph-playback .ph-playback__reset svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .ph-legend {
+    width: min(26rem, 100%);
+    margin-inline: auto;
+    padding: 6px 10px 7px;
+    border-radius: 12px;
+    box-shadow:
+      0 12px 26px -18px rgba(2, 6, 23, 0.6),
+      0 2px 8px -4px rgba(2, 6, 23, 0.35);
+  }
+
+  .ph-legend .ph-legend__title {
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .ph-legend .ph-legend__bar {
+    height: 5px;
+  }
+
+  .ph-legend .ph-legend__labels {
+    font-size: 9px;
+    margin-top: 4px;
+  }
+}
+
+/* ==========================================================================
+   WEATHER MAP CONTROL STACK (recenter / layers / locate / zoom)
+   --------------------------------------------------------------------------
+   NOT-PHONE-PORTRAIT ONLY, same 640px gate as everything else. On portrait
+   phones the stack keeps the markup's own `top-[110px]` dock — this block
+   simply never matches there.
+
+   Above 640px the stack now sits exactly where the Flood Prone map puts its
+   own controls — top:16px / left:16px with a 6px gap (the buttons are already
+   the same 34x34). The mode nav is centered, so the top-left corner is free
+   and the two never touch.
+   ========================================================================== */
+@media (min-width: 640px) {
+  .ph-map-controls {
+    top: 16px;
+    left: 16px;
+  }
+
+  /* Button order: the Layers button and "Show your location" swap places, so
+     the weather basemap reads Recenter, Locate, Layers, Zoom. Done with flex
+     `order` instead of moving markup: portrait phones keep the DOM order
+     (and therefore their original stack) because none of this applies below
+     640px. The layers menu still opens to the right of whichever slot the
+     button occupies, since it is positioned inside the button's own wrapper. */
+  .ph-map-controls .ph-ctrl--recenter { order: 1; }
+  .ph-map-controls .ph-ctrl--locate { order: 2; }
+  .ph-map-controls .ph-ctrl--layers { order: 3; }
+  .ph-map-controls .ph-ctrl--zoom { order: 4; }
+}
+
+/* ==========================================================================
+   WEATHER CITY PIN WIDTH
+   --------------------------------------------------------------------------
+   Leaflet gives every marker a fixed box (`iconSize: [120, 28]`, or
+   `[90, 42]` in the temperature/storm layouts). The pill inside it is
+   `whitespace-nowrap`, so a long name like "Puerto Princesa" spilled outside
+   its own rounded background.
+
+   NOT-PHONE-PORTRAIT ONLY, same 640px gate as the rest of the weather tweaks:
+   above it the container centres a `max-content` pill, so the card simply
+   grows to fit the whole label while staying centred on the city point.
+   Below 640px the original fixed boxes are untouched.
+   ========================================================================== */
+@media (min-width: 640px) {
+  .custom-city-pin-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .custom-city-pin-container > .city-marker-pin {
+    width: max-content;
+    max-width: none;
+    flex: 0 0 auto;
+    /* No transform here on purpose: `.city-marker-pin:hover` owns the hover
+       scale, and adding a transform would override it at equal specificity. */
+  }
+}

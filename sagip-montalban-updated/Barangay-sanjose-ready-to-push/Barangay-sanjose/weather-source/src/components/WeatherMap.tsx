@@ -6,6 +6,7 @@ import { getOwmTileUrl } from '../services/openWeatherService';
 import { getRainViewerTileUrl } from '../services/rainViewerService';
 import { getWeatherConditionInfo } from '../services/openMeteoService';
 import { WindCloudEngine } from '../services/windCloudEngine';
+import { visibleCitiesAtZoom } from '../services/cityDensity';
 
 interface WeatherMapProps {
   mode: WeatherMode;
@@ -34,6 +35,49 @@ const PH_BOUNDS = L.latLngBounds(PH_SOUTH_WEST, PH_NORTH_EAST);
 // higher on screen. Shift the lock bounds too, so Leaflet will not snap it back.
 const VIEW_LAT_OFFSET = -2.0;
 const PH_CENTER = L.latLng(PH_BOUNDS.getCenter().lat + VIEW_LAT_OFFSET, PH_BOUNDS.getCenter().lng);
+
+// WIDER LOCKED OVERVIEW ON LAPTOPS / DESKTOPS
+// ------------------------------------------
+// The lock below fits the Philippines edge-to-edge, so on a laptop/desktop the
+// archipelago touches all four sides and there is no room for the surrounding
+// seas, Borneo, Taiwan or the PAR box around storm tracks.
+//
+// `OVERVIEW_ZOOM_OUT` pulls the lock that many zoom levels further out on wide
+// screens. It started at a full level (1.0) and was dialled back to 0.6, which
+// keeps a comfortable margin of sea around the archipelago without shrinking
+// the Philippines too much.
+//
+// The threshold is the same 640px used by the weather mode nav, i.e. above every
+// portrait phone (iPhone 16 Pro Max = 440px CSS), so Android/Apple portrait
+// phones keep the exact original camera — identical minZoom, identical bounds,
+// identical starting view.
+const WIDE_VIEW_QUERY = '(min-width: 640px)';
+/** Zoom levels the laptop/desktop overview is pulled back past the PH fit. */
+const OVERVIEW_ZOOM_OUT = 0.6;
+/** Hard floor so a wide, short window cannot zoom out into a world view. */
+const WIDE_OVERVIEW_MIN_ZOOM = 3.6;
+/** Portrait-phone overview floor — the original, unchanged value. */
+const PHONE_OVERVIEW_MIN_ZOOM = 4.6;
+/** Pan lock padding, unchanged on phones and roomier on wide screens. */
+const PHONE_LOCK_PADDING = 0.08;
+const WIDE_LOCK_PADDING = 0.32;
+
+/** True above every portrait phone; screenshots assume no browser chrome. */
+const isWideViewport = (): boolean =>
+  typeof window !== 'undefined' && window.matchMedia(WIDE_VIEW_QUERY).matches;
+
+/** The locked overview zoom for a given "fit the Philippines" zoom. */
+const overviewZoomFor = (fitZoom: number): number =>
+  isWideViewport()
+    ? Math.max(WIDE_OVERVIEW_MIN_ZOOM, fitZoom - OVERVIEW_ZOOM_OUT)
+    : Math.max(PHONE_OVERVIEW_MIN_ZOOM, fitZoom);
+
+/** The pan lock, shifted with the camera like the original code did. */
+const overviewLockBounds = (): L.LatLngBounds =>
+  L.latLngBounds(
+    [PH_SOUTH_WEST.lat + VIEW_LAT_OFFSET, PH_SOUTH_WEST.lng],
+    [PH_NORTH_EAST.lat + VIEW_LAT_OFFSET, PH_NORTH_EAST.lng]
+  ).pad(isWideViewport() ? WIDE_LOCK_PADDING : PHONE_LOCK_PADDING);
 
 // SLOW LOCATE FLIGHT — Panahon runs in its own document, so it keeps a copy of
 // the host app's canonical locate camera (src/lib/locateCamera.ts): zoom 16,
@@ -142,37 +186,60 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       attributionControl: false
     });
 
-    // Compute the exact zoom where the entire Philippines with extra margin fits inside container
-    const initialFitZoom = Math.floor(map.getBoundsZoom(PH_BOUNDS, false, L.point(16, 16)) * 10) / 10;
-    const baseZoom = Math.max(4.6, initialFitZoom);
+    // FIXED / LOCKED overview. The user can still zoom IN freely, but cannot
+    // zoom out past this frame. On laptop/desktop the frame sits
+    // `OVERVIEW_ZOOM_OUT` levels further out; portrait phones keep the original.
+    const applyOverviewLock = (animate: boolean) => {
+      // Before layout (an iframe that is still 0x0) Leaflet's bounds zoom is
+      // Infinity/NaN, which would push the camera to nonsense zooms and hide
+      // markers. Wait for a real size; the resize handler re-applies this.
+      const size = map.getSize();
+      if (!size || size.x <= 0 || size.y <= 0) return;
 
-    // FIXED / LOCKED: Set minZoom to the exact overview so the user CANNOT zoom out beyond this view!
-    map.setMinZoom(baseZoom);
-    map.setView(PH_CENTER, baseZoom);
-    setCurrentZoom(baseZoom);
-    setMinZoomLevel(baseZoom);
+      const rawFit = Math.floor(map.getBoundsZoom(PH_BOUNDS, false, L.point(16, 16)) * 10) / 10;
+      if (!Number.isFinite(rawFit)) return;
+      const fitZoom = rawFit;
 
-    // Strictly lock panning within the Philippines boundary with padding
-    const lockBounds = L.latLngBounds(
-      [PH_SOUTH_WEST.lat + VIEW_LAT_OFFSET, PH_SOUTH_WEST.lng],
-      [PH_NORTH_EAST.lat + VIEW_LAT_OFFSET, PH_NORTH_EAST.lng]
-    ).pad(0.08);
-    map.setMaxBounds(lockBounds);
+      const nextZoom = overviewZoomFor(fitZoom);
+
+      map.setMinZoom(nextZoom);
+      setMinZoomLevel(nextZoom);
+
+      // `getZoom()` is undefined until the first setView, so `undefined < n`
+      // (false) would silently skip the initial camera. Check finiteness too.
+      const current = map.getZoom();
+      if (!Number.isFinite(current) || current < nextZoom) {
+        map.setView(PH_CENTER, nextZoom, { animate });
+        setCurrentZoom(nextZoom);
+      }
+
+      // The pan lock must be at least as large as the visible frame, otherwise
+      // Leaflet pins the camera to the bounds centre and panning dies. Grow it
+      // to cover whatever is currently on screen (wider overview = more ocean).
+      const lock = overviewLockBounds();
+      const visible = map.getBounds();
+      map.setMaxBounds(lock.contains(visible) ? lock : lock.extend(visible).pad(0.02));
+    };
+
+    applyOverviewLock(false);
     map.options.maxBoundsViscosity = 1.0;
 
-    // Handle container resize dynamically
+    // Handle container resize dynamically (and the phone->laptop rotation or
+    // window resize that crosses the 640px threshold).
+    let resizeFrame = 0;
     const handleResize = () => {
       if (!map) return;
-      const newCalc = Math.floor(map.getBoundsZoom(PH_BOUNDS, false, L.point(16, 16)) * 10) / 10;
-      const newBaseZoom = Math.max(4.6, newCalc);
-      map.setMinZoom(newBaseZoom);
-      setMinZoomLevel(newBaseZoom);
-      if (map.getZoom() < newBaseZoom) {
-        map.setView(PH_CENTER, newBaseZoom);
-        setCurrentZoom(newBaseZoom);
-      }
+      window.clearTimeout(resizeFrame);
+      resizeFrame = window.setTimeout(() => {
+        map.invalidateSize();
+        applyOverviewLock(false);
+      }, 120);
     };
     map.on('resize', handleResize);
+
+    const wideQuery = window.matchMedia(WIDE_VIEW_QUERY);
+    const handleWideChange = () => handleResize();
+    wideQuery.addEventListener('change', handleWideChange);
 
     // Esri World Dark Gray Basemap (supports native zoom up to 16, auto-upscales gracefully)
     const baseMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -202,9 +269,17 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       windEngine.start();
     }
 
-    // Track zoom events for progressive Level of Detail (LOD)
+    // Track zoom events for progressive Level of Detail (LOD). Re-tighten the
+    // pan lock on every zoom too, so zooming back in does not leave the camera
+    // free to roam the whole ocean it explored while zoomed out.
     map.on('zoomend', () => {
-      setCurrentZoom(map.getZoom());
+      // `getZoom()` is undefined until the first setView; storing that would
+      // make the density maths NaN and hide every marker (NaN >= 0 is false).
+      const zoom = map.getZoom();
+      if (Number.isFinite(zoom)) setCurrentZoom(zoom);
+      const lock = overviewLockBounds();
+      const visible = map.getBounds();
+      map.setMaxBounds(lock.contains(visible) ? lock : lock.extend(visible).pad(0.02));
     });
 
     mapInstanceRef.current = map;
@@ -213,6 +288,8 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     return () => {
       resizeObserver.disconnect();
+      window.clearTimeout(resizeFrame);
+      wideQuery.removeEventListener('change', handleWideChange);
       map.off('resize', handleResize);
       if (windEngineRef.current) {
         windEngineRef.current.destroy();
@@ -481,6 +558,14 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
   // Discrete Level-of-Detail tier to avoid re-rendering DOM markers during smooth zoom transitions
   const currentTier = currentZoom <= minZoomLevel + 0.55 ? 1 : currentZoom <= minZoomLevel + 1.25 ? 2 : 3;
 
+  // Progressive density step: zoom quantised to 0.05 so the marker layer is
+  // rebuilt only when a city can actually appear or disappear, not on every
+  // intermediate zoom frame. Falls back to the locked overview, because a
+  // non-finite zoom would filter every city out.
+  const densityZoom = Number.isFinite(currentZoom) && Number.isFinite(minZoomLevel)
+    ? Math.round(currentZoom * 20) / 20
+    : minZoomLevel;
+
   // Update Markers with Progressive Level-of-Detail (LOD) based on Zoom Level
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -489,26 +574,33 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     markersGroup.clearLayers();
 
-    // Adaptive Level-of-Detail relative to the locked overview zoom:
-    // Tier 1: The 16 major regional anchors from user's screenshot
-    // Tier 2 (+0.55x): Adds 30+ key provincial centers
-    // Tier 3 (+1.25x): Adds all 50+ towns, islands & municipalities
+    // Progressive Level-of-Detail.
+    //
+    // Laptop/desktop (>= 640px) uses `visibleCitiesAtZoom`: ten markers at the
+    // locked overview (the six national anchors plus the biggest capitals),
+    // then a few more at a time as you zoom in. Every mode (weather /
+    // temperature / wind / rain) draws from the same list, so all four ramp
+    // together.
+    //
+    // Portrait phones keep the original three-step tiers untouched.
     const isBaseZoom = currentTier === 1;
     const isMediumZoom = currentTier === 2;
 
-    const visibleCities = cities.filter((city) => {
-      const cityTier = city.minZoom ?? 6;
-      if (cityTier <= 6) {
-        // Always show the 16 primary national & regional anchors on the locked overview
-        return true;
-      } else if (cityTier === 7) {
-        // Show provincial centers when zoomed in by at least 0.55x
-        return !isBaseZoom;
-      } else {
-        // Show all towns, municipalities and islands when zoomed in further
-        return !isBaseZoom && !isMediumZoom;
-      }
-    });
+    const visibleCities = isWideViewport()
+      ? visibleCitiesAtZoom(cities, densityZoom, minZoomLevel)
+      : cities.filter((city) => {
+          const cityTier = city.minZoom ?? 6;
+          if (cityTier <= 6) {
+            // Always show the primary national & regional anchors on the locked overview
+            return true;
+          } else if (cityTier === 7) {
+            // Show provincial centers when zoomed in by at least 0.55x
+            return !isBaseZoom;
+          } else {
+            // Show all towns, municipalities and islands when zoomed in further
+            return !isBaseZoom && !isMediumZoom;
+          }
+        });
 
     visibleCities.forEach((city) => {
       let temp = city.temperature;
@@ -661,7 +753,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
       markersGroup.addLayer(userMarker);
     }
-  }, [cities, mode, onSelectCity, timelineForecastHour, currentTier, userLocationCoords, userLocationCity]);
+  }, [cities, mode, onSelectCity, timelineForecastHour, currentTier, densityZoom, minZoomLevel, userLocationCoords, userLocationCity]);
 
   // Slowly fly in to the user's location when requested — same camera as the
   // hazard (Streets) map. It used to stop at zoom 10 over 1.5s, which felt like
@@ -680,19 +772,24 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
     <div className="relative w-full h-full bg-[#0c0f14] overflow-hidden">
       <div ref={mapContainerRef} className="w-full h-full" />
 
-      {/* The weather page owns these map controls, just like the other map layers. */}
-      <div className="absolute left-4 top-[110px] z-[1050] flex flex-col gap-1.5 sm:top-[82px]">
+      {/* The weather page owns these map controls, just like the other map
+          layers. `ph-map-controls` and the `ph-ctrl--*` hooks are markers only:
+          the laptop/desktop position and button order live behind
+          @media (min-width: 640px) in index.css, so portrait phones keep this
+          exact top-[110px] / sm:top-[82px] dock and this exact button order
+          (Recenter, Layers, Locate, Zoom). */}
+      <div className="ph-map-controls absolute left-4 top-[110px] z-[1050] flex flex-col gap-1.5 sm:top-[82px]">
         <button
           type="button"
           onClick={handleRecenter}
           title="Recenter"
           aria-label="Recenter"
-          className="cursor-pointer rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+          className="ph-ctrl ph-ctrl--recenter cursor-pointer rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
         >
           <RefreshCw className={`h-4 w-4 transition-transform ${isRecenterSpinning ? 'animate-fast-spin text-slate-900' : 'text-slate-700'}`} />
         </button>
 
-        <div className="relative">
+        <div className="ph-ctrl ph-ctrl--layers relative">
           <button
             ref={layersButtonRef}
             type="button"
@@ -766,12 +863,12 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
           onClick={onRequestLocation}
           title="Show your location"
           aria-label="Show your location"
-          className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+          className="ph-ctrl ph-ctrl--locate rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
         >
           <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
         </button>
 
-        <div className="flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs">
+        <div className="ph-ctrl ph-ctrl--zoom flex flex-col overflow-hidden rounded-none border border-slate-300 bg-white shadow-xs">
           <button
             type="button"
             onClick={handleZoomIn}

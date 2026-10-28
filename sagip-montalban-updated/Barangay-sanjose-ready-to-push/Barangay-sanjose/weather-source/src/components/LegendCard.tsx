@@ -46,18 +46,18 @@ export const LegendCard: React.FC<LegendCardProps> = ({ mode }) => {
   const config = getLegendConfig();
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-2xl select-none">
+    <div className="ph-legend bg-white border border-slate-200 rounded-2xl p-3 shadow-2xl select-none">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[11px] font-bold tracking-wider text-black uppercase">
+        <span className="ph-legend__title text-[11px] font-bold tracking-wider text-black uppercase">
           {config.title}
         </span>
       </div>
 
       {/* Progress Bar / Gradient Track */}
-      <div className={`w-full h-2 rounded-full ${config.gradientClass} ${mode === 'weather' ? '' : 'border border-slate-200'} shadow-inner`} />
+      <div className={`ph-legend__bar w-full h-2 rounded-full ${config.gradientClass} ${mode === 'weather' ? '' : 'border border-slate-200'} shadow-inner`} />
 
       {/* Scale Labels */}
-      <div className="flex items-center justify-between text-[10px] text-black mt-1.5 font-medium">
+      <div className="ph-legend__labels flex items-center justify-between text-[10px] text-black mt-1.5 font-medium">
         <span>{config.leftLabel}</span>
         <span>{config.midLabel}</span>
         <span>{config.rightLabel}</span>
