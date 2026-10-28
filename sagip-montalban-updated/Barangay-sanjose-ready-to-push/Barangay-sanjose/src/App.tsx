@@ -359,6 +359,7 @@ export default function App() {
             onTrafficChange={setTrafficOpen}
             onHelpCenterChange={setHelpCenterOpen}
             onWeatherChange={setWeatherOpen}
+            desktopFeedOpen={desktopFeedOpen}
           />
           {!alternateMapOpen && <PagasaFloodStatus />}
         </main>

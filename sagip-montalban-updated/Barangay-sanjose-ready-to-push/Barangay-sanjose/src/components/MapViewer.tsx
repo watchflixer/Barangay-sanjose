@@ -66,7 +66,27 @@ interface MapViewerProps {
   onHelpCenterChange?: (isOpen: boolean) => void;
   /** Lets the parent app know the Weather view is open (for navbar gating). */
   onWeatherChange?: (isOpen: boolean) => void;
+  /**
+   * Laptop/desktop only: whether the floating incident-feeds card is open.
+   * When it is, the camera is shifted right by half the card's width so the
+   * barangay stays fully visible beside the card instead of behind it.
+   */
+  desktopFeedOpen?: boolean;
 }
+
+/** Width the floating feed card covers on the map's left edge, in px:
+ *  84px rail + 8px gap + 400px card + 8px gap. */
+const DESKTOP_FEED_INSET = 500;
+
+/**
+ * How many pixels the desktop feed card eats from the map's left edge right
+ * now. Returns 0 on phones/tablets and whenever the feed is collapsed, so the
+ * camera behaves exactly as before there.
+ */
+const desktopFeedInset = (feedOpen: boolean): number => {
+  if (typeof window === 'undefined' || !feedOpen) return 0;
+  return window.matchMedia('(min-width: 1024px)').matches ? DESKTOP_FEED_INSET : 0;
+};
 
 export const MapViewer: React.FC<MapViewerProps> = ({
   alerts,
@@ -84,6 +104,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   onTrafficChange,
   onHelpCenterChange,
   onWeatherChange,
+  desktopFeedOpen = false,
 }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -98,6 +119,19 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   React.useEffect(() => {
     if (refreshView !== null) clearRefreshView();
   }, [refreshView]);
+
+  /**
+   * Camera centre that keeps Barangay San Jose centred in the *visible* part of
+   * the map. On laptop/desktop the floating feed card covers the left 500px, so
+   * the target is pushed east by half of that — the barangay then sits in the
+   * open space instead of behind the card. Phones/tablets get the plain centre.
+   */
+  const viewCenter = React.useCallback((map: L.Map | null, zoom: number): L.LatLngExpression => {
+    const inset = desktopFeedInset(desktopFeedOpen);
+    if (!map || inset <= 0) return SAN_JOSE_CENTER;
+    const shifted = map.project(SAN_JOSE_CENTER, zoom).subtract(L.point(inset / 2, 0));
+    return map.unproject(shifted, zoom);
+  }, [desktopFeedOpen]);
 
   const [mouseCoords, setMouseCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [showLayerMenu, setShowLayerMenu] = React.useState(false);
@@ -432,6 +466,26 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // 4b. Recompute map size when returning from Flood Prone mode.
   // While Flood Prone is active the real map is display:none, so Leaflet caches
   // a zero size and shows a blank map when the container becomes visible again.
+  // Laptop/desktop only: keep Barangay San Jose in the part of the map that is
+  // actually visible beside the floating incident-feeds card. Runs on mount, on
+  // every rail toggle and on window resize; phones/tablets never reach the
+  // matchMedia guard, so their camera is untouched.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const apply = () => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+      if (!window.matchMedia('(min-width: 1024px)').matches) return;
+      map.panTo(viewCenter(map, map.getZoom()), { animate: false });
+    };
+    const timer = window.setTimeout(apply, 150);
+    window.addEventListener('resize', apply);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('resize', apply);
+    };
+  }, [desktopFeedOpen, viewCenter]);
+
   useEffect(() => {
     if (showFloodProneBlank) return; // entering: container hidden, skip
     if (!mapInstanceRef.current) return;
@@ -440,7 +494,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     const t2 = setTimeout(() => {
       mapInstanceRef.current?.invalidateSize();
       // re-center as a safety net in case the view got stuck while hidden
-      mapInstanceRef.current?.setView(SAN_JOSE_CENTER, 13, { animate: false });
+      const map = mapInstanceRef.current;
+      if (map) map.setView(viewCenter(map, 13), 13, { animate: false });
     }, 250);
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [showFloodProneBlank]);
@@ -965,8 +1020,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       mapInstanceRef.current.setMaxBounds(new L.LatLngBounds(corner1, corner2));
     }
 
-    // Smooth fast recenter back to Barangay San Jose center
-    mapInstanceRef.current.flyTo(SAN_JOSE_CENTER, 13, {
+    // Smooth fast recenter back to Barangay San Jose center — shifted so the
+    // barangay lands in the space beside the floating feed card on desktop.
+    mapInstanceRef.current.flyTo(viewCenter(mapInstanceRef.current, 13), 13, {
       duration: 0.75,
       easeLinearity: 0.25,
     });
