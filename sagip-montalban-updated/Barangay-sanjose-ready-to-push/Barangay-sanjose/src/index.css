@@ -1508,12 +1508,12 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 /* ==========================================================================
    LAPTOP / DESKTOP: THE INCIDENT FEEDS CARD IS THE ONLY CARD
    --------------------------------------------------------------------------
-   Nothing is painted behind the feed: the wrapper is fully transparent AND
-   takes no gap, so the card sits flush against the rail, the top and the
-   bottom of the window. Only the feed itself is a card — 24px radius on its
-   map-side top corner, a hairline and a soft shadow to the right.
+   Only the feed itself looks like a card (24px radius, hairline, soft shadow).
+   The wrapper around it is invisible — `background: none`, no border, no
+   shadow — so nothing paints around the feed except the map. The rail's ☰ is
+   what shows/hides the panel.
 
-     #app-sidebar-panel           → transparent, gap-free wrapper
+     #app-sidebar-panel           → transparent wrapper (no background)
      #app-sidebar-panel …> aside  → the incident-feeds card
 
    MOBILE PORTRAIT IS UNTOUCHED: every rule is inside `@media (min-width:
@@ -1527,16 +1527,17 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
 }
 
 @media (min-width: 1024px) {
-  /* ---- invisible wrapper: no background, no gap ---------------------- */
+  /* ---- invisible wrapper: no background at all ----------------------- */
   #app-sidebar-panel {
     position: relative;
-    margin: 0;
-    height: 100%;
+    margin: 8px 10px 8px 8px;
+    height: calc(100% - 16px);
     padding: 0;
     background: none;
     border: 0;
     border-radius: 0;
     box-shadow: none;
+    /* the card itself clips its own content; the wrapper must let it breathe */
     overflow: visible;
   }
 
@@ -1544,9 +1545,8 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
   #app-sidebar-panel > .app-feed-inner > aside {
     height: 100%;
     border: 1px solid #e6e8eb;
-    border-left: 0;
-    border-radius: 0 24px 0 0;
-    box-shadow: 1px 0 4px rgba(60, 64, 67, 0.22);
+    border-radius: 24px;
+    box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
     overflow: hidden;
   }
 }
