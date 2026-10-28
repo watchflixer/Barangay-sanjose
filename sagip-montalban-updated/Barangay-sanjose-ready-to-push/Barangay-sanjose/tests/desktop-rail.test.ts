@@ -189,12 +189,7 @@ test('the feed surfaces share the rail white on laptop/desktop', () => {
 
 test('a round chevron pinned to the bottom of the map toggles the feed', () => {
   // The button lives in its own bottom-anchored wrapper, not in the stack.
-  assert.match(mapViewer, /id="feed-toggle-round-wrap"/);
-  // Pinned to the bottom edge: inline bottom + a CSS copy, so nothing drags it
-  // back up into the middle of the map.
-  assert.match(mapViewer, /style=\{\{ bottom: '12px' \}\}/);
-  assert.match(mapViewer, /className="absolute z-40 hidden lg:flex"/);
-  assert.match(css, /#feed-toggle-round-wrap \{\s*bottom: 12px;\s*\}/);
+  assert.match(mapViewer, /id="feed-toggle-round-wrap" className="absolute bottom-5 z-40 hidden lg:flex"/);
   assert.match(mapViewer, /id="btn-toggle-feed-round"/);
   assert.match(mapViewer, /className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/);
   assert.match(mapViewer, /<ChevronRight/);

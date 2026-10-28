@@ -1567,12 +1567,6 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     left: calc(25rem + 1.5rem);
   }
 
-  /* The round feed button is glued to the bottom edge of the map (the inline
-     style carries the same value, this is the belt-and-braces copy). */
-  #feed-toggle-round-wrap {
-    bottom: 12px;
-  }
-
   /* …and put them back when the feed is collapsed from the rail. */
   [data-feed-open='false'] #map-control-stack,
   [data-feed-open='false'] #feed-toggle-round-wrap {
