@@ -115,21 +115,18 @@ test('the incident feed is ONE floating card on desktop', () => {
   assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('margin: 8px 10px 8px 8px;'));
 });
 
-test('the ‹ tab collapses the feed and exists only on laptop/desktop', () => {
-  // Markup: a real button wired to the open state.
-  assert.match(app, /id="btn-collapse-incident-feeds"/);
-  assert.match(app, /onClick=\{\(\) => setDesktopFeedOpen\(false\)\}/);
-  assert.match(app, /className="app-feed-collapse"/);
+test('the ‹ collapse tab is removed and stays gone', () => {
+  // The tab that used to hang off the card's map-side edge was removed on
+  // request — the feed is closed from its header ✕ or the rail's ☰ instead.
+  // Nothing may bring the markup, the icon or the styles back.
+  assert.doesNotMatch(app, /btn-collapse-incident-feeds/);
+  assert.doesNotMatch(app, /app-feed-collapse/);
+  assert.doesNotMatch(app, /<ChevronLeft/);
+  assert.doesNotMatch(css, /app-feed-collapse/);
 
-  // CSS: hidden by default, shown only from 1024px, sitting on the card edge.
-  assert.match(css, /\.app-feed-collapse \{\s*display: none;\s*\}/);
-  const card = css.slice(css.indexOf('THE INCIDENT FEED IS ONE FLOATING CARD'));
-  // Exactly the reference tab: flat left edge on the card, rounded right
-  // corners, hairline outline, light grey fill, thin chevron.
-  assert.match(card, /\.app-feed-collapse \{[\s\S]*?right: -14px;[\s\S]*?width: 26px;[\s\S]*?height: 74px;[\s\S]*?border-radius: 0 16px 16px 0;[\s\S]*?background: #f8f9fa;/);
-  assert.match(card, /border-left: 0;/);
-  assert.match(app, /<ChevronLeft className="h-\[22px\] w-\[22px\]" strokeWidth=\{1\.8\} \/>/);
-  assert.match(card, /@media \(min-width: 1024px\) \{\s*\.app-feed-collapse \{\s*display: flex;\s*\}/);
+  // Closing from the header ✕ still works, and so does re-opening from the rail.
+  assert.match(app, /onCloseDesktop=\{\(\) => setDesktopFeedOpen\(false\)\}/);
+  assert.match(rail, /onToggleFeed\?\.\(\)/);
 
   // The inner wrapper keeps full height at every width, so phones are unchanged.
   assert.match(css, /\.app-feed-inner \{\s*height: 100%;\s*min-height: 0;\s*\}/);

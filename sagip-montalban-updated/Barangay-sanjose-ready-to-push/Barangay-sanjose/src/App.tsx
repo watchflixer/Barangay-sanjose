@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
@@ -282,19 +281,6 @@ export default function App() {
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          {/* Desktop/laptop: the `‹` tab on the card's map-side edge collapses
-              the feed (the rail's ☰ brings it back). Hidden on phones. */}
-          <button
-            type="button"
-            id="btn-collapse-incident-feeds"
-            onClick={() => setDesktopFeedOpen(false)}
-            aria-label="Hide incident feeds"
-            title="Hide incident feeds"
-            className="app-feed-collapse"
-          >
-            <ChevronLeft className="h-[22px] w-[22px]" strokeWidth={1.8} />
-          </button>
-
           {/* The feed sits inside the outer card as an inner card. */}
           <div className="app-feed-inner">
           {/* On mobile portrait the Sidebar also carries the ●●● options menu
