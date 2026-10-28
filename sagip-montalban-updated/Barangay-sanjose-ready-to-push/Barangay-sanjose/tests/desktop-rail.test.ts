@@ -187,19 +187,25 @@ test('the feed surfaces share the rail white on laptop/desktop', () => {
   assert.doesNotMatch(sidebar, /\blg:bg-\[#f6f8fc\]\b/);
 });
 
-test('a round chevron pinned to the bottom of the map toggles the feed', () => {
-  // The button lives in its own bottom-anchored wrapper, not in the stack.
-  assert.match(mapViewer, /id="feed-toggle-round-wrap" className="absolute bottom-5 z-40 hidden lg:flex"/);
+test('a round chevron centred on the map edge toggles the feed', () => {
+  // Vertically centred on the map's left edge, in its own wrapper.
+  assert.match(mapViewer, /id="feed-toggle-round-wrap"/);
+  assert.match(mapViewer, /className="absolute z-40 hidden lg:flex"/);
+  assert.match(mapViewer, /style=\{\{ top: '50%', transform: 'translateY\(-50%\)' \}\}/);
+
+  // Exactly the reference look: cream circle, no border, bold black chevron.
   assert.match(mapViewer, /id="btn-toggle-feed-round"/);
-  assert.match(mapViewer, /className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/);
-  assert.match(mapViewer, /<ChevronRight/);
-  // It is no longer inside the control stack…
+  assert.match(mapViewer, /className="flex h-11 w-11 items-center justify-center rounded-full border-0 bg-\[#fffdf0\] text-\[#1f1f1f\]/);
+  assert.match(mapViewer, /<ChevronRight[\s\S]{0,120}?strokeWidth=\{3\}/);
+
+  // It is not inside the control stack…
   const stack = mapViewer.slice(mapViewer.indexOf('id="map-control-stack"'), mapViewer.indexOf('id="feed-toggle-round-wrap"'));
   assert.doesNotMatch(stack, /btn-toggle-feed-round/);
-  // …desktop-only, and wired to the same state as the rail.
+  // …it follows the card's left offset…
+  assert.match(css, /#map-control-stack,\s*\n\s*#feed-toggle-round-wrap \{\s*left: calc\(25rem \+ 1\.5rem\);\s*\}/);
+  // …and it is desktop-only and wired to the same state as the rail.
+  assert.match(mapViewer, /hidden lg:flex/);
   assert.match(mapViewer, /onClick=\{\(\) => onToggleFeed\?\.\(\)\}/);
   assert.match(mapViewer, /aria-expanded=\{desktopFeedOpen\}/);
   assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
-  // It follows the card's left offset, and resets when the feed is closed.
-  assert.match(css, /#map-control-stack,\s*\n\s*#feed-toggle-round-wrap \{\s*left: calc\(25rem \+ 1\.5rem\);\s*\}/);
 });

@@ -1285,7 +1285,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       {/* Laptop/desktop only: round chevron pinned to the BOTTOM of the map —
           it collapses the floating incident-feeds card and brings it back. It
           follows the same left offset as the control stack above it. */}
-      <div id="feed-toggle-round-wrap" className="absolute bottom-5 z-40 hidden lg:flex">
+      {/* Laptop/desktop only: the reference's round chevron, vertically centred
+          on the map's left edge. Cream circle, no border, bold black arrow; it
+          collapses the floating incident-feeds card and brings it back. */}
+      <div
+        id="feed-toggle-round-wrap"
+        className="absolute z-40 hidden lg:flex"
+        style={{ top: '50%', transform: 'translateY(-50%)' }}
+      >
         <button
           id="btn-toggle-feed-round"
           type="button"
@@ -1294,11 +1301,11 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           aria-label={desktopFeedOpen ? 'Hide incident feeds' : 'Show incident feeds'}
           aria-controls="app-sidebar-panel"
           aria-expanded={desktopFeedOpen}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-md transition-colors hover:bg-slate-50 active:scale-95"
+          className="flex h-11 w-11 items-center justify-center rounded-full border-0 bg-[#fffdf0] text-[#1f1f1f] shadow-[0_2px_8px_rgba(0,0,0,0.35)] transition-transform hover:bg-white active:scale-95"
         >
           <ChevronRight
-            className={`h-4 w-4 transition-transform ${desktopFeedOpen ? '' : 'rotate-180'}`}
-            strokeWidth={2.5}
+            className={`h-5 w-5 transition-transform ${desktopFeedOpen ? '' : 'rotate-180'}`}
+            strokeWidth={3}
           />
         </button>
       </div>
