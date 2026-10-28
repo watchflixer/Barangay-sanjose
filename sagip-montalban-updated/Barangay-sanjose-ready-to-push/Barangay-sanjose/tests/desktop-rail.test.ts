@@ -117,15 +117,14 @@ test('the incident feed is ONE floating card on desktop', () => {
 
 test('the ‹ collapse tab is removed and stays gone', () => {
   // The tab that used to hang off the card's map-side edge was removed on
-  // request — the feed is closed from its header ✕ or the rail's ☰ instead.
+  // request — the feed is opened/closed from the rail's ☰ instead.
   // Nothing may bring the markup, the icon or the styles back.
   assert.doesNotMatch(app, /btn-collapse-incident-feeds/);
   assert.doesNotMatch(app, /app-feed-collapse/);
   assert.doesNotMatch(app, /<ChevronLeft/);
   assert.doesNotMatch(css, /app-feed-collapse/);
 
-  // Closing from the header ✕ still works, and so does re-opening from the rail.
-  assert.match(app, /onCloseDesktop=\{\(\) => setDesktopFeedOpen\(false\)\}/);
+  // The rail still toggles the feed.
   assert.match(rail, /onToggleFeed\?\.\(\)/);
 
   // The inner wrapper keeps full height at every width, so phones are unchanged.
@@ -158,24 +157,25 @@ test('the incident feed keeps a wide desktop panel (~400px)', () => {
   assert.doesNotMatch(sidebar, /lg:w-72/);
 });
 
-test('the incident feed can be closed on desktop and re-opened from the rail', () => {
-  // Close button lives in the feed header and is desktop-only.
-  assert.match(sidebar, /id="btn-close-incident-feeds"/);
-  assert.match(sidebar, /className="hidden lg:inline-flex[^"]*"/);
-  assert.match(sidebar, /onClick=\{\(\) => onCloseDesktop\?\.\(\)\}/);
+test('the feed header X is removed; the rail alone opens and closes the feed', () => {
+  // The header X (and its onCloseDesktop prop) was removed on request along
+  // with the ‹ tab — it must not come back anywhere.
+  assert.doesNotMatch(sidebar, /btn-close-incident-feeds/);
+  assert.doesNotMatch(sidebar, /onCloseDesktop/);
+  assert.doesNotMatch(app, /onCloseDesktop/);
+  assert.doesNotMatch(app, /btn-close-incident-feeds/);
 
-  // App tracks the open state, applies it with an `lg:` utility only…
+  // App still tracks the open state, applied with an `lg:` utility only…
   assert.match(app, /const \[desktopFeedOpen, setDesktopFeedOpen\] = useState\(true\)/);
   assert.match(app, /desktopFeedOpen \? '' : 'lg:hidden'/);
-  assert.match(app, /onCloseDesktop=\{\(\) => setDesktopFeedOpen\(false\)\}/);
 
-  // …and the rail's hamburger brings it back.
+  // …and the rail's hamburger is the one control that toggles it.
   assert.match(rail, /onToggleFeed\?\.\(\)/);
   assert.match(app, /onToggleFeed=\{\(\) => setDesktopFeedOpen\(\(open\) => !open\)\}/);
 
-  // Phones keep their own drawer logic: the close button never shows there and
-  // the panel is never lg:hidden by default.
-  assert.doesNotMatch(sidebar, /btn-close-incident-feeds[\s\S]{0,400}?\bportrait:inline-flex\b/);
+  // Phones keep their own drawer logic untouched.
+  assert.match(app, /mobileMenuOpen \? 'translate-x-0' : '-translate-x-full'/);
+  assert.doesNotMatch(sidebar, /lg:inline-flex[^"]*text-\[#5f6368\][^"]*rounded-full[^"]*hover:bg-\[#e8eaed\]/);
 });
 
 test('the feed surfaces share the rail white on laptop/desktop', () => {

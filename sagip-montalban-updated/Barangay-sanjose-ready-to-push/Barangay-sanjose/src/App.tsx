@@ -300,7 +300,6 @@ export default function App() {
             onOpenLiveModal={() => setIsLiveModalOpen(true)}
             onRemoveLive={() => setLiveStreamUrl('')}
             onClose={() => setMobileMenuOpen(false)}
-            onCloseDesktop={() => setDesktopFeedOpen(false)}
             onOpenUpdates={() => setIsUpdatesModalOpen(true)}
             onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
             onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
