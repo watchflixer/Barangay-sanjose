@@ -103,13 +103,13 @@ test('only the incident feeds card is visible on desktop (no wrapper background)
 
   const card = css.slice(css.indexOf('THE INCIDENT FEEDS CARD IS THE ONLY CARD'));
 
-  // The wrapper paints nothing: no background, border, radius or shadow.
-  assert.match(card, /#app-sidebar-panel \{[\s\S]*?background: none;[\s\S]*?border: 0;[\s\S]*?box-shadow: none;[\s\S]*?overflow: visible;/);
+  // The wrapper paints nothing and takes no gap, so nothing shows behind.
+  assert.match(card, /#app-sidebar-panel \{[\s\S]*?margin: 0;[\s\S]*?background: none;[\s\S]*?border: 0;[\s\S]*?box-shadow: none;[\s\S]*?overflow: visible;/);
   assert.doesNotMatch(card, /#app-sidebar-panel \{[\s\S]{0,400}?background: #ffffff/);
+  assert.doesNotMatch(card, /margin: 8px 10px 8px 8px/);
 
-  // The card look lives on the feed itself.
-  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border: 1px solid #e6e8eb;[\s\S]*?border-radius: 24px;[\s\S]*?box-shadow: 0 1px 2px rgba\(60, 64, 67, 0\.3\)/);
-  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?overflow: hidden;/);
+  // The card look lives on the feed itself, flush with the rail.
+  assert.match(card, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border: 1px solid #e6e8eb;[\s\S]*?border-left: 0;[\s\S]*?border-radius: 0 24px 0 0;[\s\S]*?box-shadow: 1px 0 4px rgba\(60, 64, 67, 0\.22\);[\s\S]*?overflow: hidden;/);
 
   // Everything is behind the desktop media query.
   assert.ok(card.indexOf('@media (min-width: 1024px)') < card.indexOf('background: none;'));
@@ -123,7 +123,7 @@ test('the feed has no floating ‹ tab on desktop', () => {
   assert.doesNotMatch(css, /\.app-feed-collapse/);
   assert.doesNotMatch(css, /overflow-clip-margin/);
   // The card still clips its content to the rounded corners.
-  assert.match(css, /#app-sidebar-panel \{[\s\S]*?border-radius: 24px;[\s\S]*?overflow: hidden;/);
+  assert.match(css, /#app-sidebar-panel > \.app-feed-inner > aside \{[\s\S]*?border-radius: 0 24px 0 0;[\s\S]*?overflow: hidden;/);
 });
 
 test('the bottom-left coordinate badge is hidden on laptop/desktop only', () => {
