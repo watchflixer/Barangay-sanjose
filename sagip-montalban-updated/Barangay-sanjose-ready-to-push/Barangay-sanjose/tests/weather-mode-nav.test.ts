@@ -162,3 +162,33 @@ test('the new classes are additive only', () => {
   assert.ok(topBar.includes(ACTIVE_STYLE), 'the active pill must keep its original look');
   assert.ok(topBar.includes(join("'text-black hover:bg-", "slate-100'")), 'inactive hover must stay unchanged');
 });
+
+/**
+ * The bottom overlays (timeline scrubber + legend card) follow the exact same
+ * rule as the mode nav: the compact laptop/desktop treatment lives behind the
+ * 640px gate, so portrait phones keep their original cards.
+ */
+test('the bottom overlay shrink is gated above portrait phones too', () => {
+  const hooks = ['ph-playback', 'ph-legend'];
+  for (const hook of hooks) {
+    const rules = rulesMentioning(cssWithoutComments, hook);
+    assert.ok(rules.length >= 2, `expected compact rules for ${hook}, found ${rules.length}`);
+    const leaked = rules.filter((rule) => !isDesktopOnly(rule.gates));
+    assert.deepEqual(leaked.map((rule) => rule.selector), [], `${hook} rules would also hit phones`);
+  }
+});
+
+test('the bottom overlays keep their original phone markup', () => {
+  const cards = ['../weather-source/src/components/PlaybackControls.tsx', '../weather-source/src/components/LegendCard.tsx'];
+  const [playback, legend] = cards.map(read);
+
+  // Additive hooks only — the original utilities must all still be there.
+  const playbackRoot = /<div className="([^"]*ph-playback [^"]*)"/.exec(playback)?.[1].split(' ') ?? [];
+  for (const token of ['bg-white', 'rounded-2xl', 'p-2.5', 'shadow-2xl', 'gap-3']) {
+    assert.ok(playbackRoot.includes(token), `playback card lost its "${token}" utility`);
+  }
+  const legendRoot = /<div className="([^"]*ph-legend [^"]*)"/.exec(legend)?.[1].split(' ') ?? [];
+  for (const token of ['bg-white', 'rounded-2xl', 'p-3', 'shadow-2xl']) {
+    assert.ok(legendRoot.includes(token), `legend card lost its "${token}" utility`);
+  }
+});

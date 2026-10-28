@@ -221,3 +221,93 @@ input[type="range"].panahon-monochrome-range::-moz-range-thumb {
     background-color: #000;
   }
 }
+
+/* ==========================================================================
+   WEATHER BOTTOM OVERLAYS (timeline scrubber + legend card)
+   --------------------------------------------------------------------------
+   NOT-PHONE-PORTRAIT ONLY, same 640px gate as the mode nav: on portrait
+   phones both cards keep their original full-width, p-2.5 / p-3,
+   rounded-2xl and 11px/10px type — none of that is touched here.
+
+   Above 640px the two cards were spanning the whole map, which buried a lot
+   of the Philippines. They become compact, centered cards: narrower, shorter,
+   smaller controls and calmer type.
+   ========================================================================== */
+@media (min-width: 640px) {
+  .ph-playback {
+    width: min(34rem, 100%);
+    margin-inline: auto;
+    padding: 6px 10px;
+    gap: 10px;
+    border-radius: 12px;
+    box-shadow:
+      0 12px 26px -18px rgba(2, 6, 23, 0.6),
+      0 2px 8px -4px rgba(2, 6, 23, 0.35);
+  }
+
+  /* 40px -> 28px circular play/pause control */
+  .ph-playback .ph-playback__button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .ph-playback .ph-playback__button svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .ph-playback .ph-playback__meta {
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+
+  .ph-playback .ph-playback__count {
+    font-size: 9px;
+  }
+
+  /* The scrubber thumb is sized globally; keep it compact but grabbable. */
+  .ph-playback input[type="range"].panahon-monochrome-range::-webkit-slider-thumb {
+    width: 11px;
+    height: 11px;
+    margin-top: -5px;
+  }
+
+  .ph-playback input[type="range"].panahon-monochrome-range::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+  }
+
+  .ph-playback .ph-playback__reset {
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .ph-playback .ph-playback__reset svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .ph-legend {
+    width: min(26rem, 100%);
+    margin-inline: auto;
+    padding: 6px 10px 7px;
+    border-radius: 12px;
+    box-shadow:
+      0 12px 26px -18px rgba(2, 6, 23, 0.6),
+      0 2px 8px -4px rgba(2, 6, 23, 0.35);
+  }
+
+  .ph-legend .ph-legend__title {
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .ph-legend .ph-legend__bar {
+    height: 5px;
+  }
+
+  .ph-legend .ph-legend__labels {
+    font-size: 9px;
+    margin-top: 4px;
+  }
+}
