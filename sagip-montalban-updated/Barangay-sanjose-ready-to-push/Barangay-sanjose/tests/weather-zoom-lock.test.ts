@@ -70,3 +70,87 @@ test('the overview lock re-applies on resize and on crossing the gate', () => {
   assert.match(source, /wideQuery\.removeEventListener\('change', handleWideChange\)/, 'the media listener must be cleaned up');
   assert.match(source, /window\.clearTimeout\(resizeFrame\)/, 'the resize timer must be cleaned up');
 });
+
+/**
+ * The tinted atmosphere layers (wind palette, thermal field) were SVG overlays
+ * pinned to a fixed geographic box — the wind one covered 95E..150E. On a wide
+ * screen the locked camera looks past 150E, and everything beyond it rendered
+ * with no colour at all: a hard vertical seam, measured at 101px on the user's
+ * 1365px screenshot.
+ *
+ * The box must now expand to swallow the visible viewport, so the tint reaches
+ * the screen edge at any window size. Portrait phones keep the fixed box.
+ */
+test('the wind atmosphere covers the whole viewport on wide screens', () => {
+  const margin = numberFor('ATMOSPHERE_VIEWPORT_MARGIN');
+  assert.ok(margin > 0 && margin < 1, `viewport margin ${margin} must be a sane fraction`);
+
+  // The helper must bail out for phones and return the untouched box.
+  const helper = /const fullBleedAtmosphereBounds = \(([\s\S]{0,700}?)\n\};/.exec(source);
+  assert.ok(helper, 'expected a fullBleedAtmosphereBounds helper');
+  const body = helper[1];
+  assert.match(body, /if \(!isWideViewport\(\)\) return bounds/,
+    'portrait phones must keep the original fixed box');
+  assert.match(body, /Number\.isFinite\(size\.x\)/,
+    'a 0x0 container must not produce a degenerate box');
+  assert.match(body, /bounds\.extend\(visible\.pad\(ATMOSPHERE_VIEWPORT_MARGIN\)\)/,
+    'the box must extend to the visible viewport');
+
+  // Both atmosphere overlays are created full-bleed and re-fitted on camera changes.
+  for (const box of ['regionalThermalBounds', 'stormOverlayBounds']) {
+    assert.match(
+      source,
+      new RegExp(`fullBleedAtmosphereBounds\\(map, ${box}\\)`),
+      `${box} must be passed through the full-bleed helper`
+    );
+    assert.match(
+      source,
+      new RegExp(`setBounds\\(fullBleedAtmosphereBounds\\(map, ${box}\\)\\)`),
+      `${box} must be re-fitted after a camera change`
+    );
+  }
+
+  assert.match(source, /map\.on\('resize', refitAtmosphere\)/, 'a resize must re-fit the tint');
+  assert.match(source, /map\.on\('zoomend', refitAtmosphere\)/, 'a zoom must re-fit the tint');
+  assert.match(source, /map\.on\('moveend', refitAtmosphere\)/, 'a pan must re-fit the tint');
+  // And the listeners must be released with the effect.
+  assert.match(source, /map\.off\('resize', refitAtmosphere\)/, 'listeners must be cleaned up');
+
+  // The old fixed box must no longer be handed to svgOverlay directly.
+  assert.doesNotMatch(
+    source,
+    /svgOverlay\([^)]*,\s*(stormOverlayBounds|regionalThermalBounds),/,
+    'an atmosphere overlay is still pinned to its fixed box'
+  );
+});
+
+/** Geometry of the user's screenshot: 1190px of map pane, 101px went uncoloured. */
+test('the extended wind box really covers a wide viewport', () => {
+  const MARGIN = numberFor('ATMOSPHERE_VIEWPORT_MARGIN');
+  const BOX = { west: 95, east: 150 };       // stormOverlayBounds longitudes
+  const pxPerDeg = 19.8;                      // measured off the screenshot
+  const vpWidth = 1190;
+  const vpLeftLng = 95;
+  const vpRightLng = vpLeftLng + vpWidth / pxPerDeg;
+
+  const coveredPx = (east: number) =>
+    (Math.min(east, vpRightLng) - Math.max(BOX.west, vpLeftLng)) * pxPerDeg;
+
+  // Before: the viewport reaches 155.1E but the tint stops at 150E.
+  assert.ok(coveredPx(BOX.east) < vpWidth, 'sanity: the old box should leave a gap');
+  assert.equal(Math.round(vpWidth - coveredPx(BOX.east)), 101, 'the gap should be the measured 101px');
+
+  // After: the box grows by the viewport span on each side.
+  const span = vpRightLng - vpLeftLng;
+  const west = Math.min(BOX.west, vpLeftLng - span * MARGIN);
+  const east = Math.max(BOX.east, vpRightLng + span * MARGIN);
+  assert.equal(Math.round(vpWidth - coveredPx(east)), 0, 'the tint must reach the right edge');
+  assert.ok(west <= vpLeftLng, 'the tint must reach the left edge');
+
+  // It keeps covering as the window grows, which is the point of "auto adjust".
+  for (const width of [875, 1190, 1920, 2560, 3440]) {
+    const right = vpLeftLng + width / (pxPerDeg * (width / 1190));
+    const grownEast = Math.max(BOX.east, right + (right - vpLeftLng) * MARGIN);
+    assert.ok(grownEast >= right, `a ${width}px window would still show a bare strip`);
+  }
+});

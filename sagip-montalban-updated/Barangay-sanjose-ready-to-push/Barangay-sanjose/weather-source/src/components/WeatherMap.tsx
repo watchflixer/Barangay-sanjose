@@ -79,6 +79,46 @@ const overviewLockBounds = (): L.LatLngBounds =>
     [PH_NORTH_EAST.lat + VIEW_LAT_OFFSET, PH_NORTH_EAST.lng]
   ).pad(isWideViewport() ? WIDE_LOCK_PADDING : PHONE_LOCK_PADDING);
 
+/**
+ * FULL-BLEED ATMOSPHERE
+ * ---------------------
+ * The tinted atmosphere layers (the wind palette and the thermal field) are SVG
+ * overlays pinned to a *fixed* geographic box — the wind one covers 95E..150E.
+ * On a wide screen the locked camera looks past that box, so everything beyond
+ * it rendered with no colour at all: a hard vertical seam near the right edge
+ * that was ~100px wide on a 1365px window (measured off the user's screenshot).
+ *
+ * The box now grows to swallow the whole viewport, plus a margin so the soft
+ * gradient still reaches the corners while panning. That keeps the tint at 100%
+ * of the map at any window size instead of a fixed number of degrees.
+ *
+ * Portrait phones keep the original fixed box: `isWideViewport()` is false
+ * there, so the function returns the box untouched.
+ */
+const ATMOSPHERE_VIEWPORT_MARGIN = 0.12;
+
+const fullBleedAtmosphereBounds = (
+  map: L.Map,
+  box: [[number, number], [number, number]]
+): L.LatLngBounds => {
+  const bounds = L.latLngBounds(box[0], box[1]);
+  if (!isWideViewport()) return bounds;
+
+  // Before the first setView the size is 0 and getBounds() is not usable.
+  const size = map.getSize();
+  if (!Number.isFinite(size.x) || !Number.isFinite(size.y) || size.x <= 0 || size.y <= 0) {
+    return bounds;
+  }
+
+  const visible = map.getBounds();
+  if (!visible || !Number.isFinite(visible.getSouth()) || !Number.isFinite(visible.getWest())) {
+    return bounds;
+  }
+
+  bounds.extend(visible.pad(ATMOSPHERE_VIEWPORT_MARGIN));
+  return bounds;
+};
+
 // SLOW LOCATE FLIGHT — Panahon runs in its own document, so it keeps a copy of
 // the host app's canonical locate camera (src/lib/locateCamera.ts): zoom 16,
 // never faster than 1.6s, one zoom level per ~0.53s, capped at 2.6s, with
@@ -346,6 +386,10 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
 
     dynamicGroup.clearLayers();
 
+    // Atmosphere layers re-fit themselves on every camera change so they always
+    // cover the full width, whatever the window size.
+    const atmosphereSyncs: Array<() => void> = [];
+
     if (mode === 'temperature') {
       // 1. If OpenWeatherMap API key exists, load official temperature layer
       const owmTempUrl = getOwmTileUrl('temp_new', owmKey);
@@ -358,7 +402,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       }
 
       // 2. Wide Southeast Asian & Philippine Tropical Warm Thermal Field (golden amber glow covering map)
-      const regionalThermalBounds: L.LatLngBoundsExpression = [
+      const regionalThermalBounds: [[number, number], [number, number]] = [
         [-10.0, 96.0],
         [35.0, 150.0]
       ];
@@ -390,12 +434,19 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         <ellipse cx="480" cy="480" rx="380" ry="420" fill="url(#regionalPhilippineCore)" filter="url(#regionalThermalBlur)"/>
       `;
 
-      const regionalOverlay = L.svgOverlay(regionalSvg, regionalThermalBounds, {
-        opacity: 0.70,
-        interactive: false,
-        zIndex: 6
-      });
+      const regionalOverlay = L.svgOverlay(
+        regionalSvg,
+        fullBleedAtmosphereBounds(map, regionalThermalBounds),
+        {
+          opacity: 0.70,
+          interactive: false,
+          zIndex: 6
+        }
+      );
       dynamicGroup.addLayer(regionalOverlay);
+      atmosphereSyncs.push(() =>
+        regionalOverlay.setBounds(fullBleedAtmosphereBounds(map, regionalThermalBounds))
+      );
 
       // 3. Local City Thermal Pockets (Cooler Cordillera mountain anomaly, e.g. Baguio)
       cities.forEach((city) => {
@@ -462,7 +513,7 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
       }
 
       // Atmospheric Wind Heatmap Layer matching video palette (Lime Green NW / Purple South)
-      const stormOverlayBounds: L.LatLngBoundsExpression = [
+      const stormOverlayBounds: [[number, number], [number, number]] = [
         [-10.0, 95.0],
         [32.0, 150.0]
       ];
@@ -495,12 +546,19 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         <ellipse cx="250" cy="300" rx="350" ry="300" fill="url(#nwHighWindLime)" filter="url(#stormBlur)"/>
         <ellipse cx="650" cy="750" rx="400" ry="350" fill="url(#southLowWindPurple)" filter="url(#stormBlur)"/>
       `;
-      const stormOverlay = L.svgOverlay(stormSvg, stormOverlayBounds, {
-        opacity: 0.65,
-        interactive: false,
-        zIndex: 6
-      });
+      const stormOverlay = L.svgOverlay(
+        stormSvg,
+        fullBleedAtmosphereBounds(map, stormOverlayBounds),
+        {
+          opacity: 0.65,
+          interactive: false,
+          zIndex: 6
+        }
+      );
       dynamicGroup.addLayer(stormOverlay);
+      atmosphereSyncs.push(() =>
+        stormOverlay.setBounds(fullBleedAtmosphereBounds(map, stormOverlayBounds))
+      );
 
       // Maritime wind vectors around Philippine waters
       const windHubs: [number, number, number, number, string][] = [
@@ -553,6 +611,24 @@ export const WeatherMap: React.FC<WeatherMapProps> = ({
         windEngineRef.current.stop();
       }
     }
+
+    if (atmosphereSyncs.length === 0) return;
+
+    // Re-fit on every camera change. `setBounds` only rewrites the overlay's
+    // own box (position + width/height), so this is cheap and does not rebuild
+    // the tint or drop any other layer.
+    const refitAtmosphere = () => {
+      for (let i = 0; i < atmosphereSyncs.length; i++) atmosphereSyncs[i]();
+    };
+    map.on('moveend', refitAtmosphere);
+    map.on('zoomend', refitAtmosphere);
+    map.on('resize', refitAtmosphere);
+
+    return () => {
+      map.off('moveend', refitAtmosphere);
+      map.off('zoomend', refitAtmosphere);
+      map.off('resize', refitAtmosphere);
+    };
   }, [mode, rainViewerHost, rainViewerFrames, currentFrameIndex, owmKey, cities, timelineForecastHour]);
 
   // Discrete Level-of-Detail tier to avoid re-rendering DOM markers during smooth zoom transitions
