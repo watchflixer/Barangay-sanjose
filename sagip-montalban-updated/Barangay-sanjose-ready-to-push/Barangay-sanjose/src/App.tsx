@@ -211,9 +211,21 @@ export default function App() {
   // Seed from the refresh snapshot so the Hazard Map's sidebar arrow is never
   // briefly rendered over Weather during a direct/reloaded Weather entry.
   const [weatherOpen, setWeatherOpen] = useState(() => readRefreshView() === 'weather');
-  // Alternate map modes replace the map content while keeping the shared
-  // incident drawer available above the active view.
+  // Alternate map modes replace the map content entirely — the hazard map's
+  // incident feed is NOT part of them (see incidentFeedsVisible below).
   const alternateMapOpen = floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen;
+
+  // THE INCIDENT FEED BELONGS TO THE HAZARD MAP ONLY.
+  // Traffic, Flood Prone, Help Center and Weather replace the map and carry
+  // their own UI, so the feed panel is not mounted there at all — no card, no
+  // list, no mobile arrow. Back on the hazard map it is always docked.
+  const incidentFeedsVisible = !alternateMapOpen;
+
+  // Leaving the hazard map unmounts the feed, so forget the phone drawer state
+  // too: coming back should start with the map, not a stale open drawer.
+  useEffect(() => {
+    if (!incidentFeedsVisible) setMobileMenuOpen(false);
+  }, [incidentFeedsVisible]);
 
   const resolvedAlerts = alerts.filter((a) => a.status === 'resolved');
 
@@ -259,6 +271,7 @@ export default function App() {
         onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
         onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
+        feedsVisible={incidentFeedsVisible}
       />
 
       {/* Main Workspace Layout */}
@@ -268,62 +281,64 @@ export default function App() {
             Android/iPhone portrait layout is untouched. */}
         <DesktopRail />
 
-        {/* Left Sidebar (Alerts Feed & GIS Controls) */}
-        <div
-          id="app-sidebar-panel"
-          className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:w-[25rem] lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 app-feed-outer ${
-            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-          }`}
-        >
-          {/* The feed sits inside the outer card as an inner card. */}
-          <div className="app-feed-inner">
-          {/* On mobile portrait the Sidebar also carries the ●●● options menu
-              (the Navbar hides its own copy of that button there). */}
-          <Sidebar
-            alerts={alerts}
-            selectedAlert={selectedAlert}
-            onSelectAlert={handleSelectAlert}
-            onToggleAlertStatus={handleToggleAlertStatus}
-            onOpenReportModal={handleOpenReportModal}
-            onOpenHotlinesModal={() => setIsHotlinesModalOpen(true)}
-            activeFilterType={mapSettings.activeFilterType}
-            setActiveFilterType={(type) => handleUpdateMapSettings({ activeFilterType: type })}
-            activeFilterStatus={mapSettings.activeFilterStatus}
-            setActiveFilterStatus={(status) => handleUpdateMapSettings({ activeFilterStatus: status })}
-            liveUrl={liveStreamUrl}
-            onOpenLiveModal={() => setIsLiveModalOpen(true)}
-            onRemoveLive={() => setLiveStreamUrl('')}
-            onClose={() => setMobileMenuOpen(false)}
-            onOpenUpdates={() => setIsUpdatesModalOpen(true)}
-            onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
-            onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
-            onOpenHistory={() => setIsHistoryModalOpen(true)}
-            optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
-          />
-
-          {/* The feed toggle belongs only to the main Hazard Map on the Streets layer. */}
-          {!alternateMapOpen && mapSettings.tileLayer === 'streets' && !isReportModalOpen && !isLocationPickerOpen && <button
-            id="btn-mobile-sidebar-toggle-arrow"
-            onClick={() => setMobileMenuOpen((prev) => !prev)}
-            title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
-            aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
-            className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none"
+        {/* Left Sidebar (Alerts Feed & GIS Controls) — HAZARD MAP ONLY. */}
+        {incidentFeedsVisible && (
+          <div
+            id="app-sidebar-panel"
+            className={`fixed top-16 max-sm:portrait:top-13 bottom-0 left-0 ${!isReportModalOpen && !isLocationPickerOpen ? 'z-[70]' : 'z-0'} w-80 sm:w-96 transform transition-transform duration-300 ease-in-out lg:w-[25rem] lg:relative lg:inset-y-0 lg:z-auto lg:h-full lg:min-h-0 lg:translate-x-0 app-feed-outer ${
+              mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+            }`}
           >
-            <svg
-              viewBox="0 0 70 140"
-              className={`w-3 h-5 transition-transform duration-300 ${
-                mobileMenuOpen ? 'rotate-180' : 'rotate-0'
-              }`}
-              fill="#000000"
-            >
-              <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
-            </svg>
-          </button>}
+            {/* The feed sits inside the outer card as an inner card. */}
+            <div className="app-feed-inner">
+              {/* On mobile portrait the Sidebar also carries the ●●● options menu
+                  (the Navbar hides its own copy of that button there). */}
+              <Sidebar
+                alerts={alerts}
+                selectedAlert={selectedAlert}
+                onSelectAlert={handleSelectAlert}
+                onToggleAlertStatus={handleToggleAlertStatus}
+                onOpenReportModal={handleOpenReportModal}
+                onOpenHotlinesModal={() => setIsHotlinesModalOpen(true)}
+                activeFilterType={mapSettings.activeFilterType}
+                setActiveFilterType={(type) => handleUpdateMapSettings({ activeFilterType: type })}
+                activeFilterStatus={mapSettings.activeFilterStatus}
+                setActiveFilterStatus={(status) => handleUpdateMapSettings({ activeFilterStatus: status })}
+                liveUrl={liveStreamUrl}
+                onOpenLiveModal={() => setIsLiveModalOpen(true)}
+                onRemoveLive={() => setLiveStreamUrl('')}
+                onClose={() => setMobileMenuOpen(false)}
+                onOpenUpdates={() => setIsUpdatesModalOpen(true)}
+                onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
+                onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
+                onOpenHistory={() => setIsHistoryModalOpen(true)}
+                optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
+              />
+
+              {/* Paired with the feed itself: it exists exactly while the panel does. */}
+              {!isReportModalOpen && !isLocationPickerOpen && <button
+                id="btn-mobile-sidebar-toggle-arrow"
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+                aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+                className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none"
+              >
+                <svg
+                  viewBox="0 0 70 140"
+                  className={`w-3 h-5 transition-transform duration-300 ${
+                    mobileMenuOpen ? 'rotate-180' : 'rotate-0'
+                  }`}
+                  fill="#000000"
+                >
+                  <path d="M 16 18 C 12 10, 21 5, 27 11 L 62 64 C 66 68, 66 72, 62 76 L 27 129 C 21 135, 12 130, 16 122 L 38 73 C 40 71, 40 69, 38 67 Z" />
+              </svg>
+            </button>}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Backdrop for Mobile Sidebar */}
-        {mobileMenuOpen && (
+        {mobileMenuOpen && incidentFeedsVisible && (
           <div
             aria-hidden="true"
             className="pointer-events-none fixed inset-x-0 top-16 max-sm:portrait:top-13 bottom-0 z-[65] bg-slate-900/50 backdrop-blur-xs lg:hidden"

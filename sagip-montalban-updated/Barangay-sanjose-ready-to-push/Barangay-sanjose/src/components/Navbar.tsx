@@ -28,6 +28,11 @@ interface NavbarProps {
   mobileMenuOpen: boolean;
   setMobileMenuOpen: (open: boolean) => void;
   hasLiveUrl?: boolean;
+  /** True on the hazard map — the feed header then carries ●●● and Report on
+   *  phones, so the navbar hides its own copies. False in Traffic / Flood
+   *  Prone / Help Center / Weather, where there is no feed header at all and
+   *  the navbar must show them instead. */
+  feedsVisible?: boolean;
   /** Flood Prone map is open — disables Report/●●● on ALL devices. */
   floodProneOpen?: boolean;
   /** Traffic map is open — also disables Report/●●● on ALL devices. */
@@ -51,6 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   mobileMenuOpen,
   setMobileMenuOpen,
   hasLiveUrl = false,
+  feedsVisible = true,
   floodProneOpen = false,
   trafficOpen = false,
   helpCenterOpen = false,
@@ -211,7 +217,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* ●●● options menu. On mobile portrait (Android/iPhone) it is
                 moved INSIDE the Incident Feeds header — see Sidebar.tsx. */}
             <OptionsMenu
-              className="shrink-0 portrait:hidden"
+              className={`shrink-0 ${feedsVisible ? 'portrait:hidden' : ''}`}
               disabled
               onOpenUpdates={onOpenUpdates}
               onOpenEvacuationCenters={onOpenEvacuationCenters}
@@ -224,7 +230,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Incident Feeds header sa tabi ng ⋮ (Sidebar.tsx). */}
             <ReportButton
               id="btn-report-hazard"
-              className="portrait:hidden"
+              className={feedsVisible ? 'portrait:hidden' : ''}
               disabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
               onClick={onOpenReportModal}
             />

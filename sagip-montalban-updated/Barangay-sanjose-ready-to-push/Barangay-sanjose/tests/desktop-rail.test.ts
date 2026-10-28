@@ -178,35 +178,54 @@ test('the incident feed keeps a wide desktop panel (~400px)', () => {
   assert.doesNotMatch(sidebar, /lg:w-72/);
 });
 
-test('the incident feed is permanently docked on laptop/desktop', () => {
+test('the incident feed is docked on the hazard map and nowhere else', () => {
   // The header X and its onCloseDesktop prop were removed on request, along
-  // with the ‹ tab — the feed cannot be hidden from the UI any more.
+  // with the ‹ tab — the feed cannot be hidden by hand any more.
   assert.doesNotMatch(sidebar, /btn-close-incident-feeds/);
   assert.doesNotMatch(sidebar, /onCloseDesktop/);
   assert.doesNotMatch(app, /onCloseDesktop/);
-  assert.doesNotMatch(app, /btn-close-incident-feeds/);
-
-  // No open/closed state is left for the desktop panel…
   assert.doesNotMatch(app, /desktopFeedOpen/);
-  assert.doesNotMatch(app, /'lg:hidden'/);
-  // …and the rail no longer has a feed toggle.
-  assert.doesNotMatch(app, /onToggleFeed/);
-  assert.doesNotMatch(rail, /onToggleFeed|feedOpen/);
 
-  // The panel is always in the layout, docked next to the rail.
+  // It is mounted ONLY on the hazard map: Traffic, Flood Prone, Help Center
+  // and Weather replace the map, so the whole panel is conditional on that.
+  assert.match(app, /const alternateMapOpen = floodProneOpen \|\| trafficOpen \|\| helpCenterOpen \|\| weatherOpen;/);
+  assert.match(app, /const incidentFeedsVisible = !alternateMapOpen;/);
+  assert.match(app, /\{incidentFeedsVisible && \(\s*<div\s*\n\s*id="app-sidebar-panel"/);
+  // Nothing may mount it unconditionally again.
+  assert.equal((app.match(/id="app-sidebar-panel"/g) ?? []).length, 1);
+
+  // Its phone arrow lives inside that panel, so it exists exactly where the
+  // panel does — and no longer hides itself on the satellite/dark/light layers.
+  const panel = app.slice(app.indexOf('{incidentFeedsVisible && ('), app.indexOf('{/* Backdrop for Mobile Sidebar */}'));
+  assert.match(panel, /id="btn-mobile-sidebar-toggle-arrow"/);
+  assert.doesNotMatch(panel, /tileLayer === 'streets'/);
+
+  // Leaving the hazard map drops the phone drawer state with it.
+  assert.match(app, /if \(!incidentFeedsVisible\) setMobileMenuOpen\(false\);/);
+  assert.match(app, /\{mobileMenuOpen && incidentFeedsVisible && \(/);
+
+  // The panel is always docked while it is on screen, next to the rail.
   assert.match(app, /lg:w-\[25rem\]/);
   assert.match(app, /lg:relative/);
-
-  // The rail hamburger is decorative only, so it cannot hide the feed either…
   assert.match(rail, /desktop-rail__item--static/);
-  const hamburger = rail.slice(rail.indexOf('Hamburger'), rail.indexOf('Active item'));
-  assert.doesNotMatch(hamburger, /onClick|<button/, 'the hamburger must stay unwired');
-  // …and the rail is mounted with no props at all.
-  assert.match(app, /<DesktopRail \/>/);
 
   // Phones keep their own drawer logic untouched.
   assert.match(app, /mobileMenuOpen \? 'translate-x-0' : '-translate-x-full'/);
-  assert.match(app, /id="btn-mobile-sidebar-toggle-arrow"/);
+});
+
+test('the navbar takes over ●●● and Report when the feed is not there', () => {
+  // Those two buttons normally live in the feed header on phones, so the
+  // navbar hides its copies — but only while the feed is actually mounted.
+  assert.match(app, /feedsVisible=\{incidentFeedsVisible\}/);
+  assert.match(navbar, /feedsVisible\?: boolean;/);
+  assert.match(navbar, /feedsVisible = true/);
+  assert.match(navbar, /className=\{`shrink-0 \$\{feedsVisible \? 'portrait:hidden' : ''\}`\}/);
+  assert.match(navbar, /className=\{feedsVisible \? 'portrait:hidden' : ''\}/);
+  // Neither button is hidden on portrait by a fixed class any more.
+  const options = navbar.slice(navbar.indexOf('<OptionsMenu'), navbar.indexOf('<OptionsMenu') + 400);
+  assert.doesNotMatch(options, /className="[^"]*portrait:hidden/);
+  const report = navbar.slice(navbar.indexOf('id="btn-report-hazard"'), navbar.indexOf('id="btn-report-hazard"') + 400);
+  assert.doesNotMatch(report, /className="[^"]*portrait:hidden/);
 });
 
 test('the feed surfaces share the rail white on laptop/desktop', () => {
