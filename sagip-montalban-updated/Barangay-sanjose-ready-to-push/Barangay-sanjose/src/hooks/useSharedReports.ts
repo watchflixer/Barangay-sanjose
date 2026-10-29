@@ -267,9 +267,10 @@ export function useAdminWorkspace(password: string | null) {
   return { ...state, refresh, change, create, setHiddenTypes, reviewFlag };
 }
 
-export async function verifyAdminPassword(password: string): Promise<boolean> {
+/** Email + password must both match the stored admin credential. */
+export async function verifyAdminCredential(email: string, password: string): Promise<boolean> {
   const client = await reportClient();
-  return loginAdmin(client, password);
+  return loginAdmin(client, email, password);
 }
 
 export type { ReportAction, ResolveFlag };

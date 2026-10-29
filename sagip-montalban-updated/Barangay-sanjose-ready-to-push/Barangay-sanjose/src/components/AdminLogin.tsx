@@ -20,7 +20,7 @@ export function AdminLogin({
   onLogin,
   onClose,
 }: {
-  onLogin: (password: string) => Promise<boolean>;
+  onLogin: (email: string, password: string) => Promise<boolean>;
   onClose: () => void;
 }) {
   const [email, setEmail] = useState('');
@@ -137,7 +137,7 @@ export function AdminLogin({
               event.preventDefault();
               if (checking) return;
               setChecking(true);
-              const ok = await onLogin(password).catch(() => false);
+              const ok = await onLogin(email.trim(), password).catch(() => false);
               setChecking(false);
               if (ok) {
                 setEmail('');

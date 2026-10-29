@@ -4,7 +4,8 @@ import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
 import { AdminPortal } from './components/AdminPortal';
 import type { AdminChange } from './lib/admin';
-import { useAdminWorkspace, usePublicFeed, verifyAdminPassword } from './hooks/useSharedReports';
+import { useAdminWorkspace, usePublicFeed, verifyAdminCredential } from './hooks/useSharedReports';
+import { buildAdminCredential } from './lib/reportsApi';
 import { ResolveRequestDialog } from './components/ResolveRequestDialog';
 import { MapViewer } from './components/MapViewer';
 import { AddHazardModal } from './components/AddHazardModal';
@@ -24,12 +25,12 @@ import { readRefreshView } from './lib/refreshView';
 
 export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  // The password is kept in memory only so admin RPCs can prove who is asking.
-  // Refresh or Logout clears it.
-  const [adminPassword, setAdminPassword] = useState<string | null>(null);
-  const adminAuthenticated = !!adminPassword;
+  // The `email:password` credential is kept in memory only so admin RPCs can
+  // prove who is asking. Refresh or Logout clears it.
+  const [adminCredential, setAdminCredential] = useState<string | null>(null);
+  const adminAuthenticated = !!adminCredential;
   const feed = usePublicFeed();
-  const workspace = useAdminWorkspace(adminPassword);
+  const workspace = useAdminWorkspace(adminCredential);
   // The PAGASA marker is generated live in the browser, not stored as a report.
   const [autoAlert, setAutoAlert] = useState<HazardAlert | null>(null);
   const alerts = useMemo(
@@ -42,10 +43,10 @@ export default function App() {
 
   const handleAdminChange = useCallback(
     async (id: string, change: AdminChange) => {
-      if (!adminPassword) throw new Error('Sign in again to continue.');
+      if (!adminCredential) throw new Error('Sign in again to continue.');
       await workspace.change(id, change);
     },
-    [adminPassword, workspace],
+    [adminCredential, workspace],
   );
 
   // Modals state
@@ -182,7 +183,7 @@ export default function App() {
     );
   };
   const handleAdminCreate = async (draft: HazardDraft) => {
-    if (!adminPassword) return undefined;
+    if (!adminCredential) return undefined;
     return workspace.create(draft);
   };
   const handleRequestResolved = (alert: HazardAlert) => {
@@ -268,13 +269,14 @@ export default function App() {
       <AdminPortal
         isOpen={isAdminOpen}
         authenticated={adminAuthenticated}
-        onLogin={async (password) => {
-          const ok = await verifyAdminPassword(password);
-          if (ok) setAdminPassword(password);
+        onLogin={async (email, password) => {
+          // Both fields must match the stored credential — the database checks the pair.
+          const ok = await verifyAdminCredential(email, password);
+          if (ok) setAdminCredential(buildAdminCredential(email, password));
           return ok;
         }}
         onLogout={() => {
-          setAdminPassword(null);
+          setAdminCredential(null);
           setIsAdminOpen(false);
         }}
         onClose={() => {

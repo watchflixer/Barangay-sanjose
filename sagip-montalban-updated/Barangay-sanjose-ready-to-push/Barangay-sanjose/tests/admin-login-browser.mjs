@@ -88,6 +88,13 @@ try {
     assert.equal(await email.inputValue(), '');
     assert.equal(await password.inputValue(), '');
     assert.equal(await password.getAttribute('type'), 'password');
+    // The right password with the wrong email must not sign in: the database
+    // checks the "email:password" pair, not the password alone.
+    await email.fill('intruder@example.com');
+    await password.fill('admin');
+    await portal.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await portal.getByRole('alert').waitFor();
+    assert.equal(await password.getAttribute('aria-invalid'), 'true');
     await email.fill('admin');
     await password.fill('admin');
     await portal.getByRole('button', { name: 'Sign in', exact: true }).click();

@@ -70,10 +70,15 @@ export function createBackend(reports = []) {
     };
   };
 
+  // The live database stores sha256(lower(email) + ':' + password) and receives
+  // the "email:password" pair as p_password. The mock mirrors the pair at the
+  // login gate; the bare legacy secret stays valid for direct-RPC unit tests.
+  const ADMIN_CREDENTIAL = 'admin:admin';
   const rpc = (name, args) => {
     const password = args?.p_password;
     const requireAdmin = () => {
-      if (password !== 'admin') throw new Error('Admin access is required.');
+      if (password !== ADMIN_CREDENTIAL && password !== 'admin')
+        throw new Error('Admin access is required.');
     };
     switch (name) {
       case 'public_feed': {
@@ -100,7 +105,7 @@ export function createBackend(reports = []) {
         };
       }
       case 'admin_login':
-        return password === 'admin';
+        return password === ADMIN_CREDENTIAL;
       case 'increment_site_visit':
         state.siteVisits += 1;
         return state.siteVisits;
