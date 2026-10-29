@@ -8,6 +8,7 @@ import {
   createReportRemote,
   fetchAdminBundle,
   fetchPublicFeed,
+  JWT_CREDENTIAL,
   loginAdmin,
   reportClient,
   reviewFlagRemote,
@@ -21,9 +22,13 @@ import {
   AdminSessionExpiredError,
   PROXY_CREDENTIAL,
   adminProxyEnabled,
+  getAdminAccessToken,
   proxyLogin,
+  proxyLoginWithToken,
   proxyLogout,
+  setAdminAccessToken,
 } from '../lib/adminProxy';
+import { signInWithPassword, signOutRemote, verifyTotp } from '../lib/adminMfa';
 
 const FEED_CACHE = 'san-jose-public-feed-v1';
 const ADMIN_CACHE = 'san-jose-admin-bundle-v1';
@@ -179,6 +184,12 @@ export function useAdminWorkspace(password: string | null, onExpired?: () => voi
   const clientRef = useRef<SupabaseClient | null>(null);
   const alive = useRef(true);
 
+  // A new credential means a new client: a cached one may still carry the
+  // previous session's access token, and a signed-out one must not be reused.
+  useEffect(() => {
+    clientRef.current = null;
+  }, [password]);
+
   const refresh = useCallback(async () => {
     if (!password) return;
     try {
@@ -294,32 +305,133 @@ export function useAdminWorkspace(password: string | null, onExpired?: () => voi
 
 export interface AdminSignInResult {
   ok: boolean;
-  /** Value the app keeps in memory: the proxy sentinel, or `email:password`. */
+  /** Value the app keeps in memory: a sentinel, or the legacy `email:password`. */
   credential: string | null;
   error?: string;
+  /** The password was right but the 6-digit code is still needed. */
+  mfaRequired?: boolean;
+}
+
+interface PendingMfa {
+  factorId: string;
+  challengeId: string;
+  pendingToken: string;
 }
 
 /**
- * Signs in through the Cloudflare Function when the site is deployed with it,
- * so the browser never stores (or transmits) the admin credential. Local dev
- * without Functions falls back to verifying against Supabase directly.
+ * The challenged-but-unverified session, held in memory for the few seconds
+ * between the password step and the code step. It is never persisted.
+ */
+let pendingMfa: PendingMfa | null = null;
+
+function discardPendingMfa(): void {
+  pendingMfa = null;
+}
+
+/**
+ * Turns a verified Supabase Auth session into an app credential.
+ *
+ * Behind the Pages Function the session cookie is what the app needs, so the
+ * token is sent once to /api/admin/login. Without the Function the token rides
+ * along on every request instead. Either way the token stays in memory.
+ */
+async function adoptAuthToken(accessToken: string): Promise<AdminSignInResult> {
+  setAdminAccessToken(accessToken);
+  if (await adminProxyEnabled()) {
+    const result = await proxyLoginWithToken();
+    if (result.ok) {
+      discardPendingMfa();
+      return { ok: true, credential: PROXY_CREDENTIAL };
+    }
+    setAdminAccessToken(null);
+    return {
+      ok: false,
+      credential: null,
+      error: result.error ?? 'The server could not start an admin session. Try again.',
+    };
+  }
+  discardPendingMfa();
+  return { ok: true, credential: JWT_CREDENTIAL };
+}
+
+/**
+ * Signs in.
+ *
+ * Step 1 of the new flow: Supabase Auth. When the account has an authenticator
+ * enrolled, the password alone is not enough and this returns
+ * `mfaRequired: true`; finish with `verifyAdminMfa()`.
+ *
+ * The legacy password still works during the transition, so a deployment that
+ * has not created the Auth user yet keeps working. It is tried only after
+ * Supabase Auth says the credentials are wrong — a missing second factor never
+ * falls back, which is what stops a password from skipping MFA.
  */
 export async function signInAdmin(email: string, password: string): Promise<AdminSignInResult> {
+  discardPendingMfa();
+
+  const attempt = await signInWithPassword(email, password);
+
+  if (attempt.mfaRequired && attempt.factorId && attempt.challengeId && attempt.pendingToken) {
+    pendingMfa = {
+      factorId: attempt.factorId,
+      challengeId: attempt.challengeId,
+      pendingToken: attempt.pendingToken,
+    };
+    return { ok: false, credential: null, mfaRequired: true };
+  }
+
+  if (attempt.session) {
+    return adoptAuthToken(attempt.session.accessToken);
+  }
+
+  // A rate limit or an outage is not a wrong password: report it as-is instead
+  // of quietly retrying against the legacy path.
+  if (attempt.error && !attempt.error.startsWith('That email or password')) {
+    return { ok: false, credential: null, error: attempt.error };
+  }
+
   if (await adminProxyEnabled()) {
     const result = await proxyLogin(email, password);
     return {
       ok: result.ok,
       credential: result.ok ? PROXY_CREDENTIAL : null,
-      error: result.error,
+      error: result.error ?? (result.ok ? undefined : attempt.error),
     };
   }
+
   const client = await reportClient();
   const ok = await loginAdmin(client, email, password);
-  return { ok, credential: ok ? buildAdminCredential(email, password) : null };
+  return { ok, credential: ok ? buildAdminCredential(email, password) : null, error: ok ? undefined : attempt.error };
+}
+
+/** Step 2: the 6-digit code. Produces the session the database will accept. */
+export async function verifyAdminMfa(code: string): Promise<AdminSignInResult> {
+  if (!pendingMfa) {
+    return {
+      ok: false,
+      credential: null,
+      error: 'Your sign-in expired. Enter your email and password again.',
+    };
+  }
+  const { factorId, challengeId, pendingToken } = pendingMfa;
+  const result = await verifyTotp(factorId, challengeId, code, pendingToken);
+  if (!result.session) {
+    return { ok: false, credential: null, error: result.error ?? 'That code is not valid.' };
+  }
+  return adoptAuthToken(result.session.accessToken);
+}
+
+/** True while a code is expected, so the UI can restore the right step. */
+export function adminMfaPending(): boolean {
+  return pendingMfa !== null;
 }
 
 /** Ends the session and removes every trace of admin data from this device. */
 export async function signOutAdmin(credential: string | null): Promise<void> {
+  discardPendingMfa();
+  const token = getAdminAccessToken();
+  setAdminAccessToken(null);
+  if (token) await signOutRemote(token);
   if (credential === PROXY_CREDENTIAL) await proxyLogout();
   clearAdminCache();
 }

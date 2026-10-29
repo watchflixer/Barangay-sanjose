@@ -29,6 +29,7 @@
     "test:admin:browser": "node tests/admin-browser.mjs",
     "test:admin:login": "node tests/admin-login-browser.mjs",
     "test:admin:proxy": "tsx --import ./tests/image-stub.mjs --test tests/admin-proxy.test.ts",
+    "test:admin:mfa": "tsx --import ./tests/image-stub.mjs --test tests/admin-mfa.test.ts",
     "test:edge-shield": "tsx --import ./tests/image-stub.mjs --test tests/edge-shield.test.ts",
     "test:admin:dashboard": "tsx --import ./tests/image-stub.mjs --test tests/admin-dashboard.test.ts",
     "test:admin:dashboard:browser": "node tests/admin-dashboard-browser.mjs",

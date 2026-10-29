@@ -9,7 +9,16 @@ import type {
 } from '../types';
 import type { AdminChange, ReportAction } from './admin';
 import { getVisitClient, readDataBackend } from './siteVisits';
-import { PROXY_CREDENTIAL, proxyRpc } from './adminProxy';
+import { PROXY_CREDENTIAL, getAdminAccessToken, proxyRpc } from './adminProxy';
+
+/**
+ * Sentinel credential for a Supabase Auth session.
+ *
+ * Unlike the legacy credential this is not a secret and is never sent as
+ * `p_password`: the request carries the access token instead and the database
+ * authorises it with `is_admin()` (allow-list + `aal2`).
+ */
+export const JWT_CREDENTIAL = '__supabase_jwt__';
 
 export const HAZARD_TYPES: HazardType[] = ['fire', 'flood', 'power', 'streetlight', 'water', 'road'];
 export const TYPE_LABELS: Record<HazardType, string> = {
@@ -57,7 +66,11 @@ export function readReportBackend() {
 }
 export function reportClient(): Promise<SupabaseClient> {
   const config = readReportBackend();
-  return getVisitClient({ ...config, origin: 'built-in' });
+  return getVisitClient({
+    ...config,
+    origin: 'built-in',
+    accessToken: getAdminAccessToken() ?? undefined,
+  });
 }
 
 function coordinates(row: Row): [number, number] {
@@ -161,6 +174,12 @@ async function adminRpc<T>(
   args: Record<string, unknown> = {},
 ): Promise<T> {
   if (auth === PROXY_CREDENTIAL) return proxyRpc<T>(rpc, args);
+  if (auth === JWT_CREDENTIAL) {
+    // No password at all: the client carries the admin's access token.
+    const { data, error } = await client.rpc(rpc, args);
+    if (error) raise(error);
+    return data as T;
+  }
   const { data, error } = await client.rpc(rpc, { p_password: auth, ...args });
   if (error) raise(error);
   return data as T;

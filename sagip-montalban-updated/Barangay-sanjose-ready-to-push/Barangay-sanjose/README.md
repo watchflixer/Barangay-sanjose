@@ -329,8 +329,8 @@ and localStorage never contain the email or the password.
 | Route | What it does |
 | --- | --- |
 | `GET /api/admin/session` | Reports `{ proxy, authenticated, expiresAt }` — never the credential. |
-| `POST /api/admin/login` | Compares email + password server-side (constant-time), then sets the cookie. |
-| `POST /api/admin/rpc` | Forwards an allow-listed RPC and injects `p_password` server-side. |
+| `POST /api/admin/login` | Accepts a Supabase Auth token **or** compares email + password server-side (constant-time), then sets the cookie. |
+| `POST /api/admin/rpc` | Forwards an allow-listed RPC with the signed-in admin's token, or injects `p_password` server-side. |
 | `POST /api/admin/logout` | Clears the cookie (`Max-Age=0`). |
 
 Properties of the session:
@@ -372,6 +372,67 @@ If the Functions are missing (for example a bare `vite preview` or a deploy with
 `functions/`), `/api/admin/session` answers `proxy: false` and the app falls back to direct
 Supabase sign-in — correct for local work, but in that mode the credential *is* visible in the
 Network tab. Check that `GET /api/admin/session` returns `proxy: true` on production.
+
+### Two-factor sign-in (Supabase Auth + TOTP)
+
+A password alone is a single point of failure. The admin account can additionally live in
+Supabase Auth with an authenticator app (Google Authenticator, Authy, 1Password…), and the
+database — not the browser — decides whether a session is good enough.
+
+**How a sign-in works**
+
+1. The form posts the email and password to Supabase Auth.
+2. If the account has a verified TOTP factor, GoTrue returns an `aal1` session and a challenge.
+   The app shows a 6-digit field.
+3. The code is verified, producing an `aal2` token. That token is what opens the admin session.
+4. Every admin RPC arrives at Postgres with `auth.jwt()` populated. `assert_admin()` accepts it
+   only when the email is on the `admin_users` allow-list **and** the token is `aal2`.
+
+**Why this cannot be bypassed from the browser**
+
+- The check lives in `is_admin()` inside Postgres. Deleting the login screen changes nothing.
+- A signed-in user who is not on the allow-list is rejected outright — there is **no password
+  fallthrough**, so holding the old password cannot skip the second factor.
+- However the request arrives, an `aal1` token cannot run an admin action once an authenticator
+  is enrolled.
+
+**Turning it on (one time, in the dashboard)**
+
+1. Supabase → **Authentication → Users → Add user**: email `idamgo549@gmail.com`, a strong
+   password, and tick *Auto Confirm User*.
+2. Supabase → **Authentication → Providers**: keep Email enabled; set *Confirm email* to taste.
+3. Run `supabase/admin_auth_mfa.sql` in the SQL Editor (already applied), then add the account
+   to the allow-list:
+   ```sql
+   insert into public.admin_users (email, display_name)
+   values ('idamgo549@gmail.com', 'Barangay Admin')
+   on conflict (email) do update set is_active = true;
+   ```
+4. Sign in at least once with the password, then **Authentication → Users → the user →
+   Factors → Add TOTP factor**, scan the QR code, and confirm the 6-digit code.
+5. From then on the login form asks for the code. Close the legacy door:
+   ```sql
+   update public.admin_settings set legacy_password_enabled = false where id = 1;
+   ```
+
+**Rolling back**
+
+```sql
+update public.admin_settings set legacy_password_enabled = true  where id = 1;  -- reopen the password
+update public.admin_settings set require_mfa = false            where id = 1;  -- stop demanding the code
+update public.admin_users  set is_active = false where email = 'idamgo549@gmail.com';  -- revoke the account
+```
+
+Revoking is immediate: the allow-list is read on every call, so there is no token to wait out.
+
+**What gets audited**
+
+`admin_audit` records every insert and update on `hazard_reports` and `resolve_flags` with the
+acting email (when a token was used), the action, the report id and the fields that changed.
+It is written by a `security definer` trigger, so a client cannot suppress a row.
+
+The legacy password, while enabled, runs without an identity — those rows carry
+`admin_email = null`. Turning the legacy switch off is what makes the trail attributable.
 
 ### What each layer does and does not cover
 

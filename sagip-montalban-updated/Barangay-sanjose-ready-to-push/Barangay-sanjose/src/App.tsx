@@ -4,7 +4,13 @@ import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
 import { AdminPortal } from './components/AdminPortal';
 import type { AdminChange } from './lib/admin';
-import { useAdminWorkspace, usePublicFeed, signInAdmin, signOutAdmin } from './hooks/useSharedReports';
+import {
+  useAdminWorkspace,
+  usePublicFeed,
+  signInAdmin,
+  signOutAdmin,
+  verifyAdminMfa,
+} from './hooks/useSharedReports';
 import { ResolveRequestDialog } from './components/ResolveRequestDialog';
 import { MapViewer } from './components/MapViewer';
 import { AddHazardModal } from './components/AddHazardModal';
@@ -274,11 +280,17 @@ export default function App() {
         isOpen={isAdminOpen}
         authenticated={adminAuthenticated}
         onLogin={async (email, password) => {
-          // Both fields are verified — by the Pages Function when deployed,
-          // otherwise by the database against the stored pair.
+          // Both fields are verified — by Supabase Auth first, then by the
+          // Pages Function or the database against the stored pair.
           const result = await signInAdmin(email, password);
           if (result.ok && result.credential) setAdminCredential(result.credential);
-          return result.ok;
+          return { ok: result.ok, error: result.error, mfaRequired: result.mfaRequired };
+        }}
+        onVerify={async (code) => {
+          // Second factor: the database refuses admin actions until this runs.
+          const result = await verifyAdminMfa(code);
+          if (result.ok && result.credential) setAdminCredential(result.credential);
+          return { ok: result.ok, error: result.error, mfaRequired: result.mfaRequired };
         }}
         onLogout={() => {
           const credential = adminCredential;
