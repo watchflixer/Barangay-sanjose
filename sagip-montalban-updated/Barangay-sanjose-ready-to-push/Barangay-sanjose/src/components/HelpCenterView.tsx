@@ -152,9 +152,8 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
   // One entry per selected filter: which Supabase table was read and what it
   // answered. Surfaced under "Why no pins?" so an empty filter is explainable.
   const [dbReport, setDbReport] = useState<CategoryFetchResult[]>([]);
-  // Credentials: the build ships them (Pages secrets), or the user pastes the
-  // public URL + anon key here once — it is kept in localStorage.
-  const [supabaseReady, setSupabaseReady] = useState(isSupabaseEnabled);
+  // Credentials: env override, a saved runtime override, or the built-in
+  // barangay directory project (see helpCenterService). No UI is needed.
   const [retryTick, setRetryTick] = useState(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>(SAN_JOSE_CENTER);
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
@@ -903,9 +902,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
               <div className="hc-sheet-empty">
                 {dbStatus === 'loading'
                   ? 'Loading pins from Supabase…'
-                  : supabaseReady
-                    ? 'No pins in Supabase for these filters yet. Add rows to the matching tables, or tap “Filter” above.'
-                    : 'Connect your Supabase project below to load pins.'}
+                  : dbStatus === 'idle'
+                    ? 'Pick a category to load pins from the barangay Supabase directory.'
+                    : 'No pins saved for these filters yet. Add rows in the Supabase Table Editor, then tap refresh.'}
               </div>
             )}
             {sortedPlaces.map(({ place, km }) => {

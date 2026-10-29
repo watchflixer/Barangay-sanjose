@@ -88,11 +88,10 @@ test('School filter always has curated pins; OSM school spam stays out', () => {
 test('an empty Supabase filter reports which table it read', async () => {
   const svc = await import('../src/services/helpCenterService');
   const signal = new AbortController().signal;
-  // Without credentials nothing is fetched, but the report still says so.
-  const disabled = await svc.fetchSupabaseCategory('school', signal, 'per-filter');
-  assert.equal(disabled.table, 'community_school');
-  assert.equal(disabled.status, 'disabled');
-  assert.deepEqual(disabled.places, []);
+  // With no env and no saved override the built-in directory project is used,
+  // so the Help Center never lands in a "not connected" dead end.
+  assert.equal(svc.getSupabaseConfig()?.url, svc.DEFAULT_HELP_SUPABASE_URL);
+  assert.ok(svc.getSupabaseConfig()?.key);
   // A missing table is reported as missing, not as a silent empty map.
   globalThis.fetch = async () => new Response('', { status: 404 });
   assert.equal(svc.setSupabaseConfig({ url: 'https://demo.supabase.co', key: 'anon-key' }) !== null, true);
@@ -108,16 +107,25 @@ test('an empty Supabase filter reports which table it read', async () => {
   svc.clearSupabaseConfig();
 });
 
-test('Supabase credentials resolve from env or a validated runtime override', async () => {
+test('Supabase credentials fall back to the built-in directory, and a valid override wins', async () => {
   const svc = await import('../src/services/helpCenterService');
-  // No env in tests, no stored config in Node: not connected, nothing fetched.
-  assert.equal(svc.isSupabaseEnabled(), false);
-  assert.equal(svc.getSupabaseConfig(), null);
-  assert.deepEqual(await svc.fetchSupabasePlaces('school', new AbortController().signal), []);
-  // Bad input is rejected instead of being stored.
+  // Nothing in env, nothing stored in Node: the built-in barangay directory
+  // project is the default, so the Help Center is connected out of the box.
+  assert.equal(svc.isSupabaseEnabled(), true);
+  assert.equal(svc.getSupabaseConfig()?.url, svc.DEFAULT_HELP_SUPABASE_URL);
+  assert.ok(svc.getSupabaseConfig()?.key);
+  // Bad input is rejected instead of being stored, and the default survives.
   assert.equal(svc.setSupabaseConfig({ url: 'not-a-url', key: 'x' }), null);
   assert.equal(svc.setSupabaseConfig({ url: 'https://demo.supabase.co', key: '' }), null);
-  assert.equal(svc.isSupabaseEnabled(), false);
+  assert.equal(svc.getSupabaseConfig()?.url, svc.DEFAULT_HELP_SUPABASE_URL);
+  // A valid runtime override takes precedence; clearing it restores the default.
+  assert.deepEqual(svc.setSupabaseConfig({ url: 'https://demo.supabase.co', key: 'anon-key' }), {
+    url: 'https://demo.supabase.co',
+    key: 'anon-key',
+  });
+  assert.equal(svc.getSupabaseConfig()?.url, 'https://demo.supabase.co');
+  svc.clearSupabaseConfig();
+  assert.equal(svc.getSupabaseConfig()?.url, svc.DEFAULT_HELP_SUPABASE_URL);
 });
 
 test('both Supabase layouts resolve to the right table and query', async () => {

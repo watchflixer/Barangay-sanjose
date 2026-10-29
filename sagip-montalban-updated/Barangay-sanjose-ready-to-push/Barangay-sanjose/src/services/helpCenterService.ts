@@ -45,11 +45,18 @@ export async function fetchOverpassElements(query: string, signal: AbortSignal):
 
 // Public browser credentials only. Never use a service_role key here.
 //
-// Resolution order: build-time env (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY,
-// which is how the Pages deploy ships them) and then a runtime override that
-// the Help Center can save in localStorage. The anon key is a public client
-// key by design, so storing it in the browser is safe; writes stay in the
-// Supabase dashboard.
+// Resolution order:
+//   1. build-time env — VITE_HELP_SUPABASE_URL / VITE_HELP_SUPABASE_ANON_KEY,
+//      or the older VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY;
+//   2. a runtime override saved in localStorage;
+//   3. the built-in barangay directory project below.
+//
+// Step 3 is why the Help Center works on a fresh deploy with no Pages
+// variables set: the directory lives in its own Supabase project (the one that
+// owns the per-filter `emergency_*`, `essentials_*`, … tables), which is a
+// different project from the hazard-map data. Both keys are public client keys
+// by design — RLS only allows SELECT of `is_active` rows — and all writes happen
+// in the Supabase dashboard.
 export interface SupabaseConfig {
   url: string;
   key: string;
@@ -57,9 +64,21 @@ export interface SupabaseConfig {
 
 export const SUPABASE_RUNTIME_KEY = 'hazardsync:supabase-config';
 
-const ENV_URL = (import.meta.env?.VITE_SUPABASE_URL as string | undefined)?.trim()
-  .replace(/\/+$/, '');
-const ENV_KEY = (import.meta.env?.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim();
+/** Barangay directory project (per-filter Help Center tables). */
+export const DEFAULT_HELP_SUPABASE_URL = 'https://hnwevhdyvhnavjltyxfy.supabase.co';
+export const DEFAULT_HELP_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhud2V2aGR5dmhuYXZqbHR5eGZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0Mzc0ODgsImV4cCI6MjEwMTAxMzQ4OH0.GH05aFaSALAmRTDsnPyLYuvplFPprZlrYhzvrV7F2D4';
+
+const ENV_URL = (
+  (import.meta.env?.VITE_HELP_SUPABASE_URL ?? import.meta.env?.VITE_SUPABASE_URL) as
+    | string
+    | undefined
+)?.trim().replace(/\/+$/, '');
+const ENV_KEY = (
+  (import.meta.env?.VITE_HELP_SUPABASE_ANON_KEY ?? import.meta.env?.VITE_SUPABASE_ANON_KEY) as
+    | string
+    | undefined
+)?.trim();
 
 const normalise = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
@@ -80,10 +99,11 @@ function readRuntimeConfig(): SupabaseConfig | null {
 
 let runtimeConfig: SupabaseConfig | null = readRuntimeConfig();
 
-/** The credentials in use right now, or null when Supabase is not set up. */
+/** The credentials in use right now. The built-in directory is the fallback. */
 export function getSupabaseConfig(): SupabaseConfig | null {
   if (ENV_URL && ENV_KEY) return { url: ENV_URL, key: ENV_KEY };
-  return runtimeConfig;
+  if (runtimeConfig) return runtimeConfig;
+  return { url: DEFAULT_HELP_SUPABASE_URL, key: DEFAULT_HELP_SUPABASE_ANON_KEY };
 }
 
 export function isSupabaseEnabled(): boolean {

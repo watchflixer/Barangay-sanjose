@@ -168,6 +168,24 @@ four modes, zoom, city forecasts, provider failures/recovery, absence of the rem
 Weather from the main app. Live API connectivity must also be checked in the
 deployed browser; it cannot be verified in a network-restricted test sandbox.
 
+### Help Center directory
+
+The Help Center reads **every** pin from Supabase; there is no built-in pin list client-side.
+Credentials resolve in this order:
+
+1. `VITE_HELP_SUPABASE_URL` / `VITE_HELP_SUPABASE_ANON_KEY` (or the older
+   `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`) at build time;
+2. a runtime override saved in `localStorage['hazardsync:supabase-config']`;
+3. the built-in barangay directory project in `src/services/helpCenterService.ts`
+   (`DEFAULT_HELP_SUPABASE_URL`).
+
+Step 3 means a fresh Pages deploy shows pins without any dashboard variables. That project
+holds the per-filter `emergency_*`, `essentials_*`, `travel_*`, `money_*` and `community_*`
+tables, all with RLS + public SELECT of `is_active` rows only. To seed a project from the
+curated list, run `supabase/help_places.sql` (tables) then `supabase/help_places_seed.sql`
+(122 starter places, safe to re-run). Point the app at a different project with the env vars
+above; never ship a service_role key.
+
 ### Help Center fixes and checks
 
 Help Center is enabled in the main, Weather, Traffic and Flood layer menus.
@@ -278,8 +296,9 @@ Setup already applied to that project (see `supabase/realtime_site_visits.sql`):
 - The table is added to the `supabase_realtime` publication.
 
 The publishable/anon key in `src/lib/siteVisits.ts` is a public browser credential used for
-both the counter and the hazard feed. The Help Center's `VITE_SUPABASE_*` variables point at
-a different project and are ignored here. To point the counter elsewhere, set
+both the counter and the hazard feed. The Help Center uses its own project instead — see
+"Help Center directory" above — and those variables are ignored here. To point the counter
+elsewhere, set
 `VITE_SITE_VISITS_SUPABASE_URL` and `VITE_SITE_VISITS_SUPABASE_ANON_KEY`. Setting
 `hazardsync:visits-offline=1` in localStorage disables shared counting and falls back to a
 per-browser count (used by the browser tests so automation never inflates the public total).
