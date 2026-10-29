@@ -24,6 +24,46 @@ Kung existing na ang Cloudflare project, siguraduhing **Git-integrated** ito at 
 - Ang admin login ay hinihingi ang **email + password**, at ang database ang nagpapatunay sa pares na `email:password` (SHA-256 hash sa `app_secrets`), kaya hindi sapat ang password lang. Gayunpaman, ito ay isang shared credential pa rin (hindi per-admin account) at simpleng SHA-256 hash ang gamit, at public ang login endpoint. Hindi ito sapat na proteksyon laban sa brute force; bago mag-store ng sensitibong personal data, gumamit ng Supabase Auth, role-based authorization at rate limiting, at ipa-review ang live policies. Ang pagtatago ng admin entry point ay hindi security.
 - Suriin ang deployed files at database policies; hindi na-audit o nababago ng gabay na ito ang Cloudflare/Supabase account o dati nang na-deploy na site.
 
+## Admin security (server-side sign-in)
+
+Ang admin email at password ay hindi na nakikita sa browser. Nasa **Cloudflare Pages
+Functions** (`functions/api/admin/*`) ang credential, at ang browser ay may **signed,
+HttpOnly cookie** lang (30 minuto):
+
+| Route | Ginagawa |
+| --- | --- |
+| `GET /api/admin/session` | `{ proxy, authenticated, expiresAt }` lang ang bumabalik. |
+| `POST /api/admin/login` | Dito nangyayari ang pag-compare ng email + password (constant-time). |
+| `POST /api/admin/rpc` | Allow-listed RPC lang, at ang Function ang naglalagay ng `p_password`. |
+| `POST /api/admin/logout` | Binubura ang cookie at ang cached admin data. |
+
+Kailangan i-set sa **Pages → Settings → Variables and Secrets** (production at preview),
+tapos **redeploy**:
+
+- `ADMIN_EMAIL` — Secret
+- `ADMIN_PASSWORD` — Secret
+- `SESSION_SECRET` — Secret, hindi bababa sa 32 characters (`openssl rand -base64 48`)
+
+Huwag gamitan ng `VITE_` prefix ang mga ito: ang `VITE_*` ay isinasama sa public JavaScript
+bundle sa build time, kaya doon lang makikita muli ang credential.
+
+Suriin pagkatapos ng deploy: dapat `{"proxy":true,...}` ang sagot ng
+`/api/admin/session`. Kapag `proxy:false`, ibig sabihin hindi naka-load ang Functions at
+bumalik ang app sa dating direct sign-in (makikita ulit ang credential sa Network tab).
+
+### Ano ang saklaw ng bawat layer
+
+| Layer | Saklaw | Limitasyon |
+| --- | --- | --- |
+| Cloudflare CDN | Mabilis na delivery ng static assets; `no-store` ang mga admin response kaya hindi naka-cache sa edge. | Delivery ito, hindi authorization. |
+| Cloudflare DDoS | Automatic L3/L4 mitigation at platform L7 protections. | Para sa target na L7 flood, gumawa ng WAF / rate-limiting rule sa dashboard. |
+| Admin login at data | Credential server-side; HttpOnly session; allow-list; binubura ang PII cache pag logout. | Kung mahulaan ang password, makakapasok pa rin — gumanit ng mahaba at random na password. |
+| `.env` | Ang non-`VITE_` secrets ay hindi pumapasok sa bundle (sinuri sa `dist/`). | Ang `VITE_*` ay public by design — huwag kailanman maglagay ng credential doon. |
+
+Ang pagtatago ng entry point (`admin` sa search box) ay **hindi** security control: nasa bundle
+ang salita at kayang buksan ng kahit sino ang DevTools. Ang credential, session at server-side
+checks ang tunay na proteksyon.
+
 Para sa local development at iba pang detalye, tingnan ang README sa app directory.
 
 ### Magtakda ng bagong admin password

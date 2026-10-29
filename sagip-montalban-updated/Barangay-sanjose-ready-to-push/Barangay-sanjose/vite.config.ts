@@ -1,7 +1,8 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, type Connect, type Plugin} from 'vite';
+import {pathToFileURL} from 'url';
+import {defineConfig, loadEnv, type Connect, type Plugin} from 'vite';
 
 /**
  * PIXEL 7 ON DEMAND
@@ -18,6 +19,75 @@ import {defineConfig, type Connect, type Plugin} from 'vite';
  *     in-app "Share" links keep working.
  */
 const PIXEL7_FLAG = 'pixel7';
+
+/**
+ * ADMIN FUNCTIONS IN DEV
+ * ----------------------
+ * In production, Cloudflare Pages runs `functions/api/admin/*` and the admin
+ * credential lives only in the Pages environment. `vite dev` has no Functions,
+ * so this middleware mounts the very same modules on the dev server. That keeps
+ * one implementation and lets the secure flow be tested before deploying.
+ *
+ * Without ADMIN_EMAIL / ADMIN_PASSWORD / SESSION_SECRET in the environment the
+ * handlers answer "not configured", the client detects it, and the app falls
+ * back to direct sign-in for local work.
+ */
+function adminFunctions(): Plugin {
+  const routes: Record<string, {file: string; method: 'GET' | 'POST'}> = {
+    '/api/admin/session': {file: 'functions/api/admin/session.js', method: 'GET'},
+    '/api/admin/login': {file: 'functions/api/admin/login.js', method: 'POST'},
+    '/api/admin/logout': {file: 'functions/api/admin/logout.js', method: 'POST'},
+    '/api/admin/rpc': {file: 'functions/api/admin/rpc.js', method: 'POST'},
+  };
+
+  return {
+    name: 'admin-functions',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const pathname = (req.url || '/').split('?')[0];
+        const route = routes[pathname];
+        if (!route) return next();
+
+        const env = {
+          ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+          ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
+          SESSION_SECRET: process.env.SESSION_SECRET,
+          ADMIN_SUPABASE_URL: process.env.ADMIN_SUPABASE_URL,
+          ADMIN_SUPABASE_ANON_KEY: process.env.ADMIN_SUPABASE_ANON_KEY,
+        };
+
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(Buffer.from(chunk as Buffer));
+          const body = chunks.length ? Buffer.concat(chunks) : undefined;
+          const request = new Request(`http://localhost${req.url}`, {
+            method: req.method,
+            headers: req.headers as Record<string, string>,
+            body: route.method === 'GET' || !body || body.length === 0 ? undefined : body,
+          });
+          const handlerName = route.method === 'GET' ? 'onRequestGet' : 'onRequestPost';
+          const module = await import(pathToFileURL(path.resolve(__dirname, route.file)).href);
+          const handler = module[handlerName];
+          if (typeof handler !== 'function') return next();
+          const response: Response = await handler({request, env});
+          res.statusCode = response.status;
+          response.headers.forEach((value, key) => {
+            if (key.toLowerCase() === 'set-cookie') return;
+            res.setHeader(key, value);
+          });
+          const cookie = response.headers.get('Set-Cookie');
+          if (cookie) res.setHeader('Set-Cookie', cookie);
+          res.end(Buffer.from(await response.arrayBuffer()));
+        } catch (error) {
+          res.statusCode = 500;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.end(JSON.stringify({ok: false, error: 'Admin function failed in dev.'}));
+          server.config.logger.error(`[admin-functions] ${(error as Error).message}`);
+        }
+      });
+    },
+  };
+}
 
 function pixel7OnDemand(): Plugin {
   const pixel7First: Connect.NextHandleFunction = (req, res, next) => {
@@ -52,12 +122,18 @@ function pixel7OnDemand(): Plugin {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({mode}) => {
+  // Non-VITE_ vars are read from .env.local for the dev Functions only; they are
+  // never exposed to the client bundle.
+  const env = loadEnv(mode, __dirname, '');
+  for (const key of ['ADMIN_EMAIL', 'ADMIN_PASSWORD', 'SESSION_SECRET', 'ADMIN_SUPABASE_URL', 'ADMIN_SUPABASE_ANON_KEY']) {
+    if (!process.env[key] && env[key]) process.env[key] = env[key];
+  }
   return {
     // Relative base so the built site works on GitHub Pages project paths
     // (https://<user>.github.io/<repo>/) as well as at a domain root.
     base: './',
-    plugins: [pixel7OnDemand(), react(), tailwindcss()],
+    plugins: [pixel7OnDemand(), adminFunctions(), react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
