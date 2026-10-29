@@ -188,20 +188,83 @@ export function retryAfterSeconds(ip) {
 
 /* ---------------------------------------------------------------- supabase */
 
+/** Reads `Authorization: Bearer <token>`; null when the header is absent or odd. */
+export function readBearer(request) {
+  const header = request.headers.get('Authorization') ?? '';
+  const match = /^Bearer\s+(\S+)$/i.exec(header.trim());
+  return match ? match[1] : null;
+}
+
+/** Reads a claim from a JWT we already trust. Never used to decide trust. */
+function readClaim(token, claim) {
+  try {
+    const segment = token.split('.')[1];
+    if (!segment) return null;
+    const padded = segment.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
+    const parsed = JSON.parse(binary);
+    return typeof parsed?.[claim] === 'string' ? parsed[claim] : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Calls an admin RPC with the credential injected server-side. The browser
- * never sees `p_password`; it only receives the result.
+ * Checks a Supabase Auth access token against GoTrue.
+ *
+ * Returns null for anything that is not a live session: GoTrue verifies the
+ * signature and the expiry, so a forged or expired token never gets through.
+ * The returned `aal` comes from the signed token, and `hasMfa` from the
+ * account's enrolled factors.
  */
-export async function callAdminRpc(config, rpc, args = {}) {
-  const credential = `${config.email}:${config.password}`;
+export async function verifySupabaseToken(config, token) {
+  if (!token) return null;
+  let response;
+  try {
+    response = await fetch(`${config.supabaseUrl}/auth/v1/user`, {
+      headers: { apikey: config.supabaseKey, Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return null;
+  }
+  if (!response.ok) return null;
+  const user = await response.json().catch(() => null);
+  const email = String(user?.email ?? '').trim().toLowerCase();
+  if (!email) return null;
+  const factors = Array.isArray(user?.factors) ? user.factors : [];
+  return {
+    email,
+    aal: readClaim(token, 'aal') ?? 'aal1',
+    hasMfa: factors.some(
+      (factor) => factor?.factor_type === 'totp' && factor?.status === 'verified',
+    ),
+  };
+}
+
+/**
+ * Calls an admin RPC.
+ *
+ * With an access token the request is made as the signed-in admin: PostgREST
+ * verifies the JWT and `is_admin()` checks the allow-list and the `aal2` claim.
+ * No password is sent at all, so a password can never stand in for a missing
+ * second factor.
+ *
+ * Without a token the legacy credential is injected server-side and the browser
+ * still never sees `p_password`.
+ */
+export async function callAdminRpc(config, rpc, args = {}, accessToken = null) {
+  const headers = { 'Content-Type': 'application/json', apikey: config.supabaseKey };
+  const body = { ...args };
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  } else {
+    headers.Authorization = `Bearer ${config.supabaseKey}`;
+    body.p_password = `${config.email}:${config.password}`;
+  }
   const response = await fetch(`${config.supabaseUrl}/rest/v1/rpc/${rpc}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: config.supabaseKey,
-      Authorization: `Bearer ${config.supabaseKey}`,
-    },
-    body: JSON.stringify({ p_password: credential, ...args }),
+    headers,
+    body: JSON.stringify(body),
   });
   const text = await response.text();
   const payload = text ? JSON.parse(text) : null;

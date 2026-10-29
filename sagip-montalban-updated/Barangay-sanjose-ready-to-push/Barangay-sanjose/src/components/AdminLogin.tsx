@@ -1,11 +1,13 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   ArrowRight,
   Check,
   Eye,
   EyeOff,
   Heart,
   Info,
+  KeyRound,
   LockKeyhole,
   MapPin,
   ShieldCheck,
@@ -15,20 +17,51 @@ import {
 
 import './AdminLogin.css';
 
-/** Local administrator sign-in. Not a Google account or a hosted identity service. */
+/** What a sign-in attempt reports back to the form. */
+export interface AdminLoginResult {
+  ok: boolean;
+  error?: string;
+  /** The password was accepted and a 6-digit code is now required. */
+  mfaRequired?: boolean;
+}
+
+/**
+ * Local administrator sign-in. Not a Google account or a hosted identity
+ * service.
+ *
+ * Two steps when the account has an authenticator app enrolled: the password
+ * proves what you know, the rotating 6-digit code proves what you hold. The
+ * database refuses every admin action until both have been presented.
+ */
 export function AdminLogin({
   onLogin,
+  onVerify,
   onClose,
 }: {
-  onLogin: (email: string, password: string) => Promise<boolean>;
+  onLogin: (email: string, password: string) => Promise<AdminLoginResult>;
+  onVerify: (code: string) => Promise<AdminLoginResult>;
   onClose: () => void;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(false);
+  const [errorText, setErrorText] = useState('');
   const [checking, setChecking] = useState(false);
+  const [step, setStep] = useState<'password' | 'code'>('password');
+  const [code, setCode] = useState('');
   const passwordInput = useRef<HTMLInputElement>(null);
+  const codeInput = useRef<HTMLInputElement>(null);
+
+  // The code step owns the focus, and a fresh code field every time.
+  useEffect(() => {
+    if (step === 'code') codeInput.current?.focus();
+  }, [step]);
+
+  function fail(message: string) {
+    setErrorText(message);
+    setError(true);
+  }
 
   return (
     <div className="sj-login">
@@ -127,9 +160,11 @@ export function AdminLogin({
             <LockKeyhole size={12} aria-hidden="true" />
             ADMIN WORKSPACE
           </div>
-          <h2 id="admin-title">Admin login</h2>
+          <h2 id="admin-title">{step === 'code' ? 'Two-factor check' : 'Admin login'}</h2>
           <p id="sj-login-description" className="sj-login-subtitle">
-            Welcome back. Pick up where you left off.
+            {step === 'code'
+              ? 'Open your authenticator app and enter the 6-digit code for San Jose admin.'
+              : 'Welcome back. Pick up where you left off.'}
           </p>
           <form
             className="sj-login-form"
@@ -137,20 +172,79 @@ export function AdminLogin({
               event.preventDefault();
               if (checking) return;
               setChecking(true);
-              const ok = await onLogin(email.trim(), password).catch(() => false);
+              setError(false);
+              setErrorText('');
+
+              if (step === 'password') {
+                const result = await onLogin(email.trim(), password).catch(() => ({
+                  ok: false,
+                  error: 'Sign in failed. Please try again.',
+                }) as AdminLoginResult);
+                setChecking(false);
+                if (result.ok) {
+                  setEmail('');
+                  setPassword('');
+                  setShowPassword(false);
+                  setError(false);
+                  return;
+                }
+                if (result.mfaRequired) {
+                  setStep('code');
+                  setCode('');
+                  return;
+                }
+                fail(result.error || 'That email or password doesn’t match. Try again.');
+                passwordInput.current?.focus();
+                return;
+              }
+
+              const result = await onVerify(code).catch(() => ({
+                ok: false,
+                error: 'Verification failed. Please try again.',
+              }) as AdminLoginResult);
               setChecking(false);
-              if (ok) {
+              if (result.ok) {
+                setCode('');
                 setEmail('');
                 setPassword('');
-                setShowPassword(false);
                 setError(false);
-              } else {
-                setError(true);
-                passwordInput.current?.focus();
+                return;
               }
+              if (result.mfaRequired) return;
+              setCode('');
+              fail(result.error || 'That code is not valid. Try again.');
+              codeInput.current?.focus();
             }}
             aria-describedby="sj-login-description sj-login-access-note"
           >
+            {step === 'code' ? (
+              <div className={`sj-login-field ${error ? 'sj-login-field-error' : ''}`}>
+                <input
+                  ref={codeInput}
+                  id="sj-admin-code"
+                  name="one-time-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  placeholder=" "
+                  value={code}
+                  onChange={(event) => {
+                    setCode(event.target.value.replace(/\D/g, '').slice(0, 6));
+                    setError(false);
+                  }}
+                  aria-invalid={error || undefined}
+                  aria-describedby={error ? 'sj-login-error' : undefined}
+                  required
+                />
+                <label htmlFor="sj-admin-code">6-digit code</label>
+                <span className="sj-login-code-badge" aria-hidden="true">
+                  <KeyRound size={18} />
+                </span>
+              </div>
+            ) : (
+              <>
             <div className={`sj-login-field ${error ? 'sj-login-field-error' : ''}`}>
               <input
                 id="sj-admin-email"
@@ -201,17 +295,47 @@ export function AdminLogin({
                 {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
               </button>
             </div>
+              </>
+            )}
             {error && (
               <p id="sj-login-error" className="sj-login-error" role="alert">
                 <TriangleAlert size={16} aria-hidden="true" />
-                <span>That email or password doesn’t match. Try again.</span>
+                <span>{errorText || 'That email or password doesn’t match. Try again.'}</span>
               </p>
             )}
-            <p className="sj-login-form-caption">Your community dashboard is one step away.</p>
+            <p className="sj-login-form-caption">
+              {step === 'code'
+                ? 'The code changes every 30 seconds.'
+                : 'Your community dashboard is one step away.'}
+            </p>
             <button type="submit" className="sj-login-submit" disabled={checking}>
-              <span>{checking ? 'Checking…' : 'Sign in'}</span>
+              <span>
+                {checking
+                  ? step === 'code'
+                    ? 'Verifying…'
+                    : 'Checking…'
+                  : step === 'code'
+                    ? 'Verify code'
+                    : 'Sign in'}
+              </span>
               <ArrowRight size={18} aria-hidden="true" />
             </button>
+            {step === 'code' && (
+              <button
+                type="button"
+                className="sj-login-back"
+                onClick={() => {
+                  setStep('password');
+                  setCode('');
+                  setError(false);
+                  setErrorText('');
+                  setPassword('');
+                }}
+              >
+                <ArrowLeft size={15} aria-hidden="true" />
+                <span>Use a different account</span>
+              </button>
+            )}
           </form>
           <div className="sj-login-access-note" id="sj-login-access-note">
             <Info size={16} aria-hidden="true" />

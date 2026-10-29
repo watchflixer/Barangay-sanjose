@@ -24,6 +24,27 @@ export type AdminMode = 'proxy' | 'direct' | 'unknown';
 let mode: AdminMode = 'unknown';
 let probe: Promise<AdminMode> | null = null;
 
+/**
+ * The Supabase Auth access token for the signed-in admin, held in memory only.
+ *
+ * When it is present the Function forwards it to PostgREST, so the database
+ * sees `auth.jwt()` and can check the allow-list plus the `aal2` claim. When it
+ * is absent the Function falls back to the legacy password path.
+ */
+let accessToken: string | null = null;
+
+export function setAdminAccessToken(token: string | null): void {
+  accessToken = token && token.length > 0 ? token : null;
+}
+
+export function getAdminAccessToken(): string | null {
+  return accessToken;
+}
+
+function authHeaders(): Record<string, string> {
+  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+}
+
 export class AdminSessionExpiredError extends Error {
   constructor() {
     super('Your admin session has expired. Sign in again.');
@@ -90,7 +111,7 @@ export async function proxyLogin(email: string, password: string): Promise<Proxy
     method: 'POST',
     credentials: 'same-origin',
     cache: 'no-store',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ email, password }),
   });
   const payload = (await response.json().catch(() => ({}))) as {
@@ -107,7 +128,36 @@ export async function proxyLogin(email: string, password: string): Promise<Proxy
   };
 }
 
+/**
+ * Opens the server session with a Supabase Auth token instead of a password.
+ *
+ * The Function verifies the token with Supabase before minting the cookie, so a
+ * forged or expired token never becomes a session. Requiring `aal2` here too
+ * keeps the error message honest instead of letting every later action fail.
+ */
+export async function proxyLoginWithToken(): Promise<ProxyLoginResult> {
+  if (!accessToken) return { ok: false, error: 'Sign in again to continue.' };
+  const response = await fetch('/api/admin/login', {
+    method: 'POST',
+    credentials: 'same-origin',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ method: 'supabase' }),
+  });
+  const payload = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    error?: string;
+    expiresAt?: number;
+  };
+  return {
+    ok: response.ok && payload.ok === true,
+    error: payload.error,
+    expiresAt: payload.expiresAt,
+  };
+}
+
 export async function proxyLogout(): Promise<void> {
+  accessToken = null;
   try {
     await fetch('/api/admin/logout', {
       method: 'POST',
@@ -134,7 +184,7 @@ export async function proxyRpc<T>(rpc: string, args: Record<string, unknown> = {
     method: 'POST',
     credentials: 'same-origin',
     cache: 'no-store',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify({ rpc, args }),
   });
   if (response.status === 401) throw new AdminSessionExpiredError();

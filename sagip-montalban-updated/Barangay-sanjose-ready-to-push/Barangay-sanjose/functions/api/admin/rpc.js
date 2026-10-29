@@ -5,6 +5,7 @@ import {
   json,
   parseCookie,
   readAdminConfig,
+  readBearer,
   verifySessionToken,
 } from '../../_lib/admin.js';
 
@@ -14,10 +15,13 @@ import {
  * Body: { rpc, args }
  *
  * The browser can only reach the RPCs in ALLOWED_RPCS, and only while it holds
- * a valid signed cookie. This Function adds the admin credential itself, so the
- * password is never present in a request the browser can inspect. `admin_login`
- * is deliberately absent from the allowlist: credential checks happen in
- * /api/admin/login, never by proxy.
+ * a valid signed cookie. `admin_login` is deliberately absent from the
+ * allowlist: credential checks happen in /api/admin/login, never by proxy.
+ *
+ * When the request also carries a Supabase Auth token, that token is forwarded
+ * and no password is sent — PostgREST then runs `assert_admin()` as the
+ * signed-in admin, which enforces the allow-list and `aal2`. Without a token
+ * the legacy credential is injected server-side instead.
  */
 export async function onRequestPost({ request, env }) {
   const config = readAdminConfig(env);
@@ -48,15 +52,25 @@ export async function onRequestPost({ request, env }) {
   const args = { ...incoming };
   delete args.p_password;
 
+  const bearer = readBearer(request);
+
   try {
-    const data = await callAdminRpc(config, rpc, args);
+    const data = await callAdminRpc(config, rpc, args, bearer);
     return json({ ok: true, data, expiresAt });
   } catch (error) {
+    if (error?.status === 401) {
+      // PostgREST rejected the forwarded token: expired, revoked or forged.
+      return json({ ok: false, error: 'Your admin sign-in has expired. Sign in again.' }, 401);
+    }
     // Never leak Supabase internals (or the credential) to the browser.
-    const message =
-      error?.message === 'Invalid admin password'
-        ? 'The server admin credential was rejected. Check ADMIN_EMAIL / ADMIN_PASSWORD.'
-        : 'The admin request could not be completed.';
+    const raw = String(error?.message ?? '');
+    const message = raw.includes('MFA verification is required')
+      ? 'Two-factor verification is required for this action. Sign in again.'
+      : raw.includes('not on the admin allow-list')
+        ? 'This account is not allowed to manage the dashboard.'
+        : raw === 'Invalid admin password'
+          ? 'The server admin credential was rejected. Check ADMIN_EMAIL / ADMIN_PASSWORD.'
+          : 'The admin request could not be completed.';
     return json({ ok: false, error: message }, 502);
   }
 }

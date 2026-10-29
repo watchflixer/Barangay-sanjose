@@ -25,6 +25,11 @@ export interface VisitConfig {
   url: string;
   key: string;
   origin: 'env' | 'built-in';
+  /**
+   * Optional Supabase Auth access token. Only the admin dashboard sets it, so
+   * PostgREST can read `auth.jwt()` and enforce the allow-list plus `aal2`.
+   */
+  accessToken?: string;
 }
 export interface SharedVisitSnapshot {
   total: number;
@@ -103,12 +108,14 @@ export function readVisitConfig(
 // moment later without blocking the map.
 const clients = new Map<string, Promise<SupabaseClient>>();
 export function getVisitClient(config: VisitConfig): Promise<SupabaseClient> {
-  const cacheKey = `${config.url}|${config.key}`;
+  const token = config.accessToken ?? '';
+  const cacheKey = `${config.url}|${config.key}|${token}`;
   const existing = clients.get(cacheKey);
   if (existing) return existing;
   const client = import('@supabase/supabase-js').then(({ createClient }) =>
     createClient(config.url, config.key, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      ...(token ? { global: { headers: { Authorization: `Bearer ${token}` } } } : {}),
     }),
   );
   clients.set(cacheKey, client);

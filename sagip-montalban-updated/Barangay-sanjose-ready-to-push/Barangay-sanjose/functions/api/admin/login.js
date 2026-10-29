@@ -7,9 +7,11 @@ import {
   json,
   noteFailure,
   readAdminConfig,
+  readBearer,
   retryAfterSeconds,
   safeEqual,
   sessionCookie,
+  verifySupabaseToken,
 } from '../../_lib/admin.js';
 
 /** A failed login always costs the same wall-clock time, so timing leaks nothing. */
@@ -19,11 +21,16 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * POST /api/admin/login
  *
- * Body: { email, password }
+ * Two ways in, both ending in the same opaque HttpOnly cookie:
  *
- * The comparison happens here, inside the Function, against the encrypted
- * Cloudflare Secrets. On success the browser receives a signed, HttpOnly
- * cookie — never the credential itself, and never a token the JS can read.
+ *   1. Supabase Auth: `Authorization: Bearer <access_token>`. GoTrue verifies
+ *      the token and the account must have reached `aal2` when it has an
+ *      authenticator enrolled. The password never reaches this Function.
+ *   2. Legacy password: body `{ email, password }`, compared here against the
+ *      encrypted Cloudflare Secrets.
+ *
+ * Either way the browser receives a signed cookie — never the credential, and
+ * never a token the JavaScript can read.
  */
 export async function onRequestPost({ request, env }) {
   const config = readAdminConfig(env);
@@ -43,6 +50,29 @@ export async function onRequestPost({ request, env }) {
     );
   }
 
+  // --- Path 1: a Supabase Auth access token ------------------------------
+  const bearer = readBearer(request);
+  if (bearer) {
+    const identity = await verifySupabaseToken(config, bearer);
+    if (!identity || !safeEqual(identity.email, config.email)) {
+      // The token is already verified, so there is no guessing to slow down;
+      // counting a failure here would only lock out a misconfigured admin.
+      return json({ ok: false, error: 'That sign-in is not recognised on this deployment.' }, 401);
+    }
+    if (identity.hasMfa && identity.aal !== 'aal2') {
+      return json(
+        { ok: false, error: 'Enter the 6-digit code from your authenticator app.' },
+        403,
+      );
+    }
+    clearFailures(ip);
+    const session = await createSessionToken(config.sessionSecret, SESSION_TTL_MS);
+    return json({ ok: true, expiresAt: session.expiresAt, method: 'supabase' }, 200, {
+      'Set-Cookie': sessionCookie(session.token, Math.floor(SESSION_TTL_MS / 1000)),
+    });
+  }
+
+  // --- Path 2: the legacy password ---------------------------------------
   let body;
   try {
     body = await request.json();

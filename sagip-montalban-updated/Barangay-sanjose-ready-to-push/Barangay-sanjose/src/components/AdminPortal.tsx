@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AdminLogin } from './AdminLogin';
+import { AdminLogin, type AdminLoginResult } from './AdminLogin';
 import { AdminDashboard } from './AdminDashboard';
 import type { HazardAlert, HazardDraft } from '../types';
 import type { AdminChange, ReportAction } from '../lib/admin';
@@ -8,7 +8,8 @@ import type { ResolveFlag } from '../lib/reportsApi';
 interface Props {
   isOpen: boolean;
   authenticated: boolean;
-  onLogin: (email: string, password: string) => Promise<boolean>;
+  onLogin: (email: string, password: string) => Promise<AdminLoginResult>;
+  onVerify: (code: string) => Promise<AdminLoginResult>;
   onLogout: () => void;
   onClose: () => void;
   alerts: HazardAlert[];
@@ -27,6 +28,7 @@ export function AdminPortal({
   isOpen,
   authenticated,
   onLogin,
+  onVerify,
   onLogout,
   onClose,
   alerts,
@@ -111,7 +113,7 @@ export function AdminPortal({
             loading={loading}
           />
         ) : (
-          <AdminLogin onLogin={onLogin} onClose={onClose} />
+          <AdminLogin onLogin={onLogin} onVerify={onVerify} onClose={onClose} />
         )}
       </div>
     </div>
