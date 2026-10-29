@@ -212,9 +212,11 @@ services are mocked because this sandbox blocks live Overpass/tile requests.
 1. Open **Hazard Map / Streets** and **Incident Feeds** (on a phone, use the feed arrow).
 2. Type exactly `Admin` in the incident search. Case and surrounding spaces are ignored;
    searches such as `Admin street` remain ordinary searches.
-3. Sign in with **Email: `admin`** and **Password: `admin`**. The Email field accepts this
-   admin username, not an email address. The password is verified by the database
-   (`admin_login`); Refresh or Logout clears the in-memory login.
+3. Sign in with the configured **admin email** and **password**. Both fields are checked:
+   the app sends `email:password` to `admin_login`, and the database compares its SHA-256
+   hash with the one stored in `app_secrets`, so the wrong email fails even with the right
+   password (and the reverse). The credential lives in memory only; Refresh or Logout
+   clears it. Type the email in any letter case — it is lower-cased before hashing.
 4. In the admin panel you can:
    - search reports by incident, reporter name, email, cellphone, location or report ID;
    - read full report/reporter details as text, with Philippine date/time and elapsed age;
@@ -293,8 +295,9 @@ view filters by report and author and can reopen an incident, including an archi
 Toasts announce actions and server errors stay visible instead of failing silently.
 
 **Security limits:** row access is closed to `anon`/`authenticated`; every write goes through
-a `security definer` RPC, and admin RPCs prove the caller with `admin_login`'s password
-check against a SHA-256 hash in `app_secrets` — not a secret in the bundle. It is still a
+a `security definer` RPC, and admin RPCs prove the caller with the `email:password` pair
+that `admin_login` compares against a SHA-256 hash in `app_secrets` — not a secret in the
+bundle. It is still a
 single shared password with no sessions, rate limiting or per-admin accounts. Treat public
 deployment as needing real authentication (Supabase Auth, per-admin accounts, audit
 attribution) before it becomes sensitive infrastructure.

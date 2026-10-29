@@ -21,7 +21,7 @@ Kung existing na ang Cloudflare project, siguraduhing **Git-integrated** ito at 
 
 - Private GitHub ≠ private website/database. Lahat ng inilalagay sa Vite `public/`, build output, at `VITE_*` variables ay makikita ng visitors. Ang Supabase anon/publishable key ay public by design; huwag kailanman gamitin ang service-role/secret key o passwords sa frontend variables. Tiyaking tama ang Supabase RLS, grants at RPC permissions sa **live** database bago maglagay ng sensitibong data.
 - **Mahalaga:** ang dating `supabase/shared_hazard_reports.sql` ay may default admin password na `admin`. Sa live `hazardsync-map-data` project, tinatanggihan ng `assert_admin` ang default hash, kaya kailangang itakda ang sariling password bago gumana ang admin login. Ang ibang database installation ay kailangang i-update nang hiwalay. Ang bagong SQL file ay walang default password at nagde-deny kapag walang naka-configure. Suriin din ang access/logs. Huwag i-commit o ilagay sa chat ang password.
-- Ang kasalukuyang admin RPC ay gumagamit ng shared password at simpleng SHA-256 hash, at public ang login endpoint. Hindi ito sapat na proteksyon laban sa brute force; bago mag-store ng sensitibong personal data, gumamit ng Supabase Auth, role-based authorization at rate limiting, at ipa-review ang live policies. Ang pagtatago ng admin entry point ay hindi security.
+- Ang admin login ay hinihingi ang **email + password**, at ang database ang nagpapatunay sa pares na `email:password` (SHA-256 hash sa `app_secrets`), kaya hindi sapat ang password lang. Gayunpaman, ito ay isang shared credential pa rin (hindi per-admin account) at simpleng SHA-256 hash ang gamit, at public ang login endpoint. Hindi ito sapat na proteksyon laban sa brute force; bago mag-store ng sensitibong personal data, gumamit ng Supabase Auth, role-based authorization at rate limiting, at ipa-review ang live policies. Ang pagtatago ng admin entry point ay hindi security.
 - Suriin ang deployed files at database policies; hindi na-audit o nababago ng gabay na ito ang Cloudflare/Supabase account o dati nang na-deploy na site.
 
 Para sa local development at iba pang detalye, tingnan ang README sa app directory.
@@ -32,6 +32,6 @@ Sa Supabase dashboard → `hazardsync-map-data` → SQL Editor lamang, patakbuhi
 
 ```sql
 insert into public.app_secrets (id, secret_hash)
-values ('admin', encode(sha256(convert_to('PALITAN_NG_RANDOM_PASSWORD', 'UTF8')), 'hex'))
+values ('admin', encode(sha256(convert_to(lower(trim('EMAIL_NG_ADMIN')) || ':' || 'PALITAN_NG_RANDOM_PASSWORD', 'UTF8')), 'hex'))
 on conflict (id) do update set secret_hash = excluded.secret_hash;
 ```

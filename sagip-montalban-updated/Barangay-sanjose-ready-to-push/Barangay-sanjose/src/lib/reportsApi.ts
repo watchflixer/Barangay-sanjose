@@ -184,8 +184,26 @@ export async function submitResolveFlag(
   if (error) raise(error);
 }
 
-export async function loginAdmin(client: SupabaseClient, password: string): Promise<boolean> {
-  const { data, error } = await client.rpc('admin_login', { p_password: password });
+/**
+ * The admin credential is `email:password`, not the password alone.
+ *
+ * The database stores only the SHA-256 hash of that pair, so BOTH fields must
+ * match before `admin_login` — and every later admin RPC — accepts the caller.
+ * Typing the right password with the wrong email fails, and the reverse too.
+ */
+export function buildAdminCredential(email: string, password: string): string {
+  return `${email.trim().toLowerCase()}:${password}`;
+}
+
+export async function loginAdmin(
+  client: SupabaseClient,
+  email: string,
+  password: string,
+): Promise<boolean> {
+  if (!email.trim() || !password) return false;
+  const { data, error } = await client.rpc('admin_login', {
+    p_password: buildAdminCredential(email, password),
+  });
   if (error) throw new Error(error.message || 'Sign in failed.');
   return data === true;
 }

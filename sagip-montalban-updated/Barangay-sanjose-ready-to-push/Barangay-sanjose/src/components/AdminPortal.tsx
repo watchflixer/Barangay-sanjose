@@ -8,7 +8,7 @@ import type { ResolveFlag } from '../lib/reportsApi';
 interface Props {
   isOpen: boolean;
   authenticated: boolean;
-  onLogin: (password: string) => Promise<boolean>;
+  onLogin: (email: string, password: string) => Promise<boolean>;
   onLogout: () => void;
   onClose: () => void;
   alerts: HazardAlert[];
