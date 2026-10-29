@@ -181,9 +181,10 @@ Credentials resolve in this order:
 
 Step 3 means a fresh Pages deploy shows pins without any dashboard variables. That project
 holds the per-filter `emergency_*`, `essentials_*`, `travel_*`, `money_*` and `community_*`
-tables, all with RLS + public SELECT of `is_active` rows only. To seed a project from the
-curated list, run `supabase/help_places.sql` (tables) then `supabase/help_places_seed.sql`
-(122 starter places, safe to re-run). Point the app at a different project with the env vars
+tables, all with RLS + public SELECT of `is_active` rows only. **The barangay owns that
+data**: rows are added, edited and deleted in the Supabase Table Editor, and nothing is
+bundled with the app. There is no curated or seeded place list in `src/` — `helpCenterPlaces.ts`
+holds only category definitions. Point the app at a different project with the env vars
 above; never ship a service_role key.
 
 ### Help Center fixes and checks

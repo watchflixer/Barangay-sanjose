@@ -16,10 +16,9 @@ list and no live OSM layer any more).
 1. Create the tables you want: run `help_places_single_table.sql` (one table) **or** `help_places.sql` (34 per-filter tables). Both are safe to re-run and only grant public SELECT of active rows. They do not erase existing rows.
 2. In Table Editor, insert `name`, `latitude`, `longitude` (and `category` when you use `help_places`); optional columns include address, hours, phone, note. Coordinates are decimal numbers, without N/E symbols.
 3. The Help Center map reads **only** from these tables — there is no built-in pin list and no live OSM layer. A filter whose table is empty (or unreachable) simply shows no pins, with a message in the results sheet. `replaces_id` remains available for records that used to point at the old built-in pin IDs; `is_active=false` hides a row read-only (it does not delete it).
-4. Optional: run `help_places_seed.sql` to fill the 34 tables with the 122 curated
-   Barangay San Jose places (police, fire, hospital, evacuation, pharmacy, 7-Eleven,
-   ATM, school, church, gas, …). It only inserts a row when that table has no place
-   with the same name, so it is safe to re-run and your edits win.
+4. Fill the tables yourself in Table Editor (or paste your own INSERTs in the SQL
+   Editor). No starter/seed rows ship with the repo — the barangay is the only
+   source of pins.
 5. Set `VITE_HELP_SUPABASE_URL` and `VITE_HELP_SUPABASE_ANON_KEY` in `.env.local` to use
    a different project than the built-in barangay directory. Never put a service-role
    key in Vite variables. With no variables set, the app talks to the built-in
