@@ -315,12 +315,76 @@ view filters by report and author and can reopen an incident, including an archi
 Toasts announce actions and server errors stay visible instead of failing silently.
 
 **Security limits:** row access is closed to `anon`/`authenticated`; every write goes through
-a `security definer` RPC, and admin RPCs prove the caller with the `email:password` pair
-that `admin_login` compares against a SHA-256 hash in `app_secrets` — not a secret in the
-bundle. It is still a
-single shared password with no sessions, rate limiting or per-admin accounts. Treat public
-deployment as needing real authentication (Supabase Auth, per-admin accounts, audit
-attribution) before it becomes sensitive infrastructure.
+a `security definer` RPC, and admin RPCs prove the caller with the `email:password` pair that
+`admin_login` compares against a SHA-256 hash in `app_secrets` — not a secret in the bundle.
+The database functions are still a single shared credential with no per-admin accounts, so
+Supabase Auth remains the right end state for sensitive infrastructure.
+
+## Admin security: the credential never reaches the browser
+
+On Cloudflare Pages the admin credential lives **only** in the encrypted environment. The
+browser holds a signed, HttpOnly cookie instead, so DevTools, the Network tab, the JS bundle
+and localStorage never contain the email or the password.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/admin/session` | Reports `{ proxy, authenticated, expiresAt }` — never the credential. |
+| `POST /api/admin/login` | Compares email + password server-side (constant-time), then sets the cookie. |
+| `POST /api/admin/rpc` | Forwards an allow-listed RPC and injects `p_password` server-side. |
+| `POST /api/admin/logout` | Clears the cookie (`Max-Age=0`). |
+
+Properties of the session:
+
+- **HttpOnly** — JavaScript, and therefore the DevTools console, cannot read it.
+- **Secure** — HTTPS only.
+- **SameSite=Strict** — never attached to cross-site requests.
+- **30 minutes** — signed with HMAC-SHA256 over the expiry, so it cannot be extended or forged.
+- Signing out also deletes the cached admin bundle, which holds reporter contact details.
+
+Hardening in the Functions:
+
+- `admin_login` is **not** in the RPC allow-list; credentials are only checked in
+  `/api/admin/login`, never proxied.
+- Any client-supplied `p_password` is stripped before forwarding, so the value cannot be
+  overridden from the browser.
+- Wrong email and wrong password return the same message and take the same time, so the form
+  cannot be used to discover which half is wrong.
+- Five failed attempts per IP in 15 minutes return `429` with `Retry-After`.
+- Upstream Supabase errors are replaced with a generic message; no internals leak.
+- Missing or short secrets fail closed (`503`) rather than falling back to "allow".
+
+### Required Cloudflare settings
+
+Pages → Settings → Variables and Secrets (production **and** preview, then redeploy):
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `ADMIN_EMAIL` | Secret | The admin email. |
+| `ADMIN_PASSWORD` | Secret | The admin password. |
+| `SESSION_SECRET` | Secret | Long random string, ≥ 32 chars (`openssl rand -base64 48`). |
+
+`ADMIN_PASSWORD` and `SESSION_SECRET` must **not** be named `VITE_*`. A `VITE_*` variable is
+inlined into the public JavaScript bundle at build time, which is exactly the leak this layer
+exists to prevent. `npm run dev` mounts the same Functions from `vite.config.ts`, so the flow
+can be exercised locally with the same variables in `.env.local`.
+
+If the Functions are missing (for example a bare `vite preview` or a deploy without
+`functions/`), `/api/admin/session` answers `proxy: false` and the app falls back to direct
+Supabase sign-in — correct for local work, but in that mode the credential *is* visible in the
+Network tab. Check that `GET /api/admin/session` returns `proxy: true` on production.
+
+### What each layer does and does not cover
+
+| Layer | Covered | Caveat |
+| --- | --- | --- |
+| Cloudflare CDN | Global caching of static assets; admin responses are `Cache-Control: no-store` so they are never cached at an edge. | A CDN is delivery, not authorisation. |
+| Cloudflare DDoS | Automatic L3/L4 mitigation, plus the platform's L7 protections. | For targeted L7 floods, add WAF / rate-limiting rules in the Cloudflare dashboard. |
+| Admin login and data | Credential stays server-side; HttpOnly session; allow-listed RPCs; PII cache cleared on logout. | Anyone who can guess the password can still sign in — set a long one and enable the account-level Cloudflare protections. |
+| `.env` | Non-`VITE_` secrets never enter the bundle; verified by grepping `dist/`. | `VITE_*` values are public by design. Never put a credential there. |
+
+Hiding the entry point (`admin` in the search box) is **not** a security control: the string is
+in the bundle, and anyone can open DevTools. It only avoids advertising the door. The
+credential, the session and the server-side checks are what actually protect the data.
 
 Tests:
 

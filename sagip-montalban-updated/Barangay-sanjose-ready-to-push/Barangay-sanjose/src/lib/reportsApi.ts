@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import type { AdminChange, ReportAction } from './admin';
 import { getVisitClient, readDataBackend } from './siteVisits';
+import { PROXY_CREDENTIAL, proxyRpc } from './adminProxy';
 
 export const HAZARD_TYPES: HazardType[] = ['fire', 'flood', 'power', 'streetlight', 'water', 'road'];
 export const TYPE_LABELS: Record<HazardType, string> = {
@@ -146,6 +147,25 @@ function raise(error: RpcError | null): never {
   throw new Error(error?.message || error?.details || 'The server could not complete this request.');
 }
 
+/**
+ * Every admin RPC goes through here.
+ *
+ * `__pages_proxy__` means the Cloudflare Function holds the credential and the
+ * browser only holds an HttpOnly session cookie, so `p_password` is injected
+ * server-side. Any other value is used directly (local dev / direct mode).
+ */
+async function adminRpc<T>(
+  client: SupabaseClient,
+  auth: string,
+  rpc: string,
+  args: Record<string, unknown> = {},
+): Promise<T> {
+  if (auth === PROXY_CREDENTIAL) return proxyRpc<T>(rpc, args);
+  const { data, error } = await client.rpc(rpc, { p_password: auth, ...args });
+  if (error) raise(error);
+  return data as T;
+}
+
 export async function fetchPublicFeed(client: SupabaseClient): Promise<PublicFeed> {
   const { data, error } = await client.rpc('public_feed');
   if (error) raise(error);
@@ -209,8 +229,7 @@ export async function loginAdmin(
 }
 
 export async function fetchAdminBundle(client: SupabaseClient, password: string): Promise<AdminBundle> {
-  const { data, error } = await client.rpc('admin_bundle', { p_password: password });
-  if (error) raise(error);
+  const data = await adminRpc<Row>(client, password, 'admin_bundle');
   const payload = (data ?? {}) as {
     reports?: Row[];
     history?: ReportAction[];
@@ -239,8 +258,7 @@ export async function changeReportRemote(
       : change.type === 'status' || change.type === 'visibility'
         ? { type: change.type, value: change.value }
         : { type: change.type };
-  const { error } = await client.rpc('admin_change', { p_password: password, p_id: id, p_change: payload });
-  if (error) raise(error);
+  await adminRpc(client, password, 'admin_change', { p_id: id, p_change: payload });
 }
 
 export async function createReportRemote(
@@ -248,11 +266,9 @@ export async function createReportRemote(
   password: string,
   draft: HazardDraft,
 ): Promise<HazardAlert> {
-  const { data, error } = await client.rpc('admin_create', {
-    p_password: password,
+  const data = await adminRpc<{ id?: string } | null>(client, password, 'admin_create', {
     payload: draftToPayload(draft),
   });
-  if (error) raise(error);
   const id = (data as { id?: string } | null)?.id;
   if (!id) throw new Error('The incident could not be published.');
   return reportFromRow(
@@ -266,12 +282,10 @@ export async function setHiddenTypesRemote(
   password: string,
   types: HazardType[],
 ): Promise<HazardType[]> {
-  const { data, error } = await client.rpc('admin_set_hidden_types', {
-    p_password: password,
+  const data = await adminRpc<HazardType[]>(client, password, 'admin_set_hidden_types', {
     p_types: types,
   });
-  if (error) raise(error);
-  return Array.isArray(data) ? (data as HazardType[]) : types;
+  return Array.isArray(data) ? data : types;
 }
 
 export async function reviewFlagRemote(
@@ -280,10 +294,8 @@ export async function reviewFlagRemote(
   flagId: string,
   decision: 'accepted' | 'ignored',
 ): Promise<void> {
-  const { error } = await client.rpc('admin_review_flag', {
-    p_password: password,
+  await adminRpc(client, password, 'admin_review_flag', {
     p_flag_id: flagId,
     p_decision: decision,
   });
-  if (error) raise(error);
 }

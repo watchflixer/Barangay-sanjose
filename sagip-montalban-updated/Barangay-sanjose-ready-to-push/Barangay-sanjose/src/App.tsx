@@ -4,8 +4,7 @@ import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
 import { AdminPortal } from './components/AdminPortal';
 import type { AdminChange } from './lib/admin';
-import { useAdminWorkspace, usePublicFeed, verifyAdminCredential } from './hooks/useSharedReports';
-import { buildAdminCredential } from './lib/reportsApi';
+import { useAdminWorkspace, usePublicFeed, signInAdmin, signOutAdmin } from './hooks/useSharedReports';
 import { ResolveRequestDialog } from './components/ResolveRequestDialog';
 import { MapViewer } from './components/MapViewer';
 import { AddHazardModal } from './components/AddHazardModal';
@@ -25,12 +24,17 @@ import { readRefreshView } from './lib/refreshView';
 
 export default function App() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
-  // The `email:password` credential is kept in memory only so admin RPCs can
-  // prove who is asking. Refresh or Logout clears it.
+  // On Cloudflare Pages this is only the proxy sentinel — the real credential
+  // stays in the Function and arrives as an HttpOnly cookie. Locally it is the
+  // `email:password` pair. Either way it lives in memory only.
   const [adminCredential, setAdminCredential] = useState<string | null>(null);
   const adminAuthenticated = !!adminCredential;
+  const handleAdminExpired = useCallback(() => {
+    setAdminCredential(null);
+    setIsAdminOpen(false);
+  }, []);
   const feed = usePublicFeed();
-  const workspace = useAdminWorkspace(adminCredential);
+  const workspace = useAdminWorkspace(adminCredential, handleAdminExpired);
   // The PAGASA marker is generated live in the browser, not stored as a report.
   const [autoAlert, setAutoAlert] = useState<HazardAlert | null>(null);
   const alerts = useMemo(
@@ -270,14 +274,18 @@ export default function App() {
         isOpen={isAdminOpen}
         authenticated={adminAuthenticated}
         onLogin={async (email, password) => {
-          // Both fields must match the stored credential — the database checks the pair.
-          const ok = await verifyAdminCredential(email, password);
-          if (ok) setAdminCredential(buildAdminCredential(email, password));
-          return ok;
+          // Both fields are verified — by the Pages Function when deployed,
+          // otherwise by the database against the stored pair.
+          const result = await signInAdmin(email, password);
+          if (result.ok && result.credential) setAdminCredential(result.credential);
+          return result.ok;
         }}
         onLogout={() => {
+          const credential = adminCredential;
           setAdminCredential(null);
           setIsAdminOpen(false);
+          // Drop the session cookie and the cached reporter contact details.
+          void signOutAdmin(credential);
         }}
         onClose={() => {
           setIsAdminOpen(false);

@@ -28,6 +28,7 @@
     "test:admin": "tsx --import ./tests/image-stub.mjs --test tests/admin.test.ts",
     "test:admin:browser": "node tests/admin-browser.mjs",
     "test:admin:login": "node tests/admin-login-browser.mjs",
+    "test:admin:proxy": "tsx --import ./tests/image-stub.mjs --test tests/admin-proxy.test.ts",
     "test:admin:dashboard": "tsx --import ./tests/image-stub.mjs --test tests/admin-dashboard.test.ts",
     "test:admin:dashboard:browser": "node tests/admin-dashboard-browser.mjs",
     "test:admin:moderation": "tsx --import ./tests/image-stub.mjs --test tests/admin-moderation.test.ts",

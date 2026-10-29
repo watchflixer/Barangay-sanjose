@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { HazardAlert, HazardDraft, HazardType } from '../types';
 import type { AdminChange, ReportAction } from '../lib/admin';
 import {
+  buildAdminCredential,
   changeReportRemote,
   createReportRemote,
   fetchAdminBundle,
@@ -16,6 +17,13 @@ import {
   type AdminBundle,
   type ResolveFlag,
 } from '../lib/reportsApi';
+import {
+  AdminSessionExpiredError,
+  PROXY_CREDENTIAL,
+  adminProxyEnabled,
+  proxyLogin,
+  proxyLogout,
+} from '../lib/adminProxy';
 
 const FEED_CACHE = 'san-jose-public-feed-v1';
 const ADMIN_CACHE = 'san-jose-admin-bundle-v1';
@@ -34,6 +42,18 @@ function writeCache(key: string, value: unknown) {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
     /* A full cache must never break live data. */
+  }
+}
+
+/**
+ * Wipes the cached admin bundle. It holds reporter contact numbers and email
+ * addresses, so it must never outlive the session that read it.
+ */
+export function clearAdminCache() {
+  try {
+    localStorage.removeItem(ADMIN_CACHE);
+  } catch {
+    /* nothing cached */
   }
 }
 
@@ -149,7 +169,7 @@ interface WorkspaceState extends AdminBundle {
 const EMPTY: AdminBundle = { reports: [], history: [], flags: [], hiddenTypes: [] };
 
 /** Admin data lives on the server too, so moderation changes reach every visitor. */
-export function useAdminWorkspace(password: string | null) {
+export function useAdminWorkspace(password: string | null, onExpired?: () => void) {
   const cached = useMemo(() => readCache<AdminBundle>(ADMIN_CACHE), []);
   const [state, setState] = useState<WorkspaceState>({
     ...(cached ?? EMPTY),
@@ -170,13 +190,18 @@ export function useAdminWorkspace(password: string | null) {
       writeCache(ADMIN_CACHE, bundle);
     } catch (cause) {
       if (!alive.current) return;
+      if (cause instanceof AdminSessionExpiredError) {
+        // The signed cookie ran out: drop the in-memory credential and data.
+        clearAdminCache();
+        onExpired?.();
+      }
       setState((previous) => ({
         ...previous,
         loading: false,
         error: cause instanceof Error ? cause.message : 'Could not load the admin workspace.',
       }));
     }
-  }, [password]);
+  }, [password, onExpired]);
 
   useEffect(() => {
     alive.current = true;
@@ -267,10 +292,36 @@ export function useAdminWorkspace(password: string | null) {
   return { ...state, refresh, change, create, setHiddenTypes, reviewFlag };
 }
 
-/** Email + password must both match the stored admin credential. */
-export async function verifyAdminCredential(email: string, password: string): Promise<boolean> {
+export interface AdminSignInResult {
+  ok: boolean;
+  /** Value the app keeps in memory: the proxy sentinel, or `email:password`. */
+  credential: string | null;
+  error?: string;
+}
+
+/**
+ * Signs in through the Cloudflare Function when the site is deployed with it,
+ * so the browser never stores (or transmits) the admin credential. Local dev
+ * without Functions falls back to verifying against Supabase directly.
+ */
+export async function signInAdmin(email: string, password: string): Promise<AdminSignInResult> {
+  if (await adminProxyEnabled()) {
+    const result = await proxyLogin(email, password);
+    return {
+      ok: result.ok,
+      credential: result.ok ? PROXY_CREDENTIAL : null,
+      error: result.error,
+    };
+  }
   const client = await reportClient();
-  return loginAdmin(client, email, password);
+  const ok = await loginAdmin(client, email, password);
+  return { ok, credential: ok ? buildAdminCredential(email, password) : null };
+}
+
+/** Ends the session and removes every trace of admin data from this device. */
+export async function signOutAdmin(credential: string | null): Promise<void> {
+  if (credential === PROXY_CREDENTIAL) await proxyLogout();
+  clearAdminCache();
 }
 
 export type { ReportAction, ResolveFlag };
