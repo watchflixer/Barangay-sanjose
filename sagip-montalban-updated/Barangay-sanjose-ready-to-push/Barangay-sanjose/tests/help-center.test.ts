@@ -1,6 +1,6 @@
 import { test, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildOverpassQuery, osmElementsToPlaces, mergePlaces, distanceKm, HELP_CENTER_PLACES } from '../src/data/helpCenterPlaces';
+import { buildOverpassQuery, osmElementsToPlaces, mergePlaces, distanceKm } from '../src/data/helpCenterPlaces';
 import { fetchOverpassElements, OVERPASS_ENDPOINTS } from '../src/services/helpCenterService';
 
 const originalFetch = globalThis.fetch;
@@ -53,11 +53,6 @@ test('same-name branches at different locations remain visible; nearby duplicate
   assert.equal(mergePlaces([], [first, otherCategory]).length, 2);
 });
 
-test('community fallback has valid pins even with no external connection', () => {
-  assert.ok(HELP_CENTER_PLACES.length > 0);
-  assert.ok(HELP_CENTER_PLACES.every(place => place.source === 'curated' && place.coords.every(Number.isFinite)));
-});
-
 test('basemap tiles follow the OSM usage policy and keep a backup', async () => {
   const { TILE_SERVERS, tileLayerOptions, OSM_REFERRER_POLICY } = await import('../src/data/tileServers');
   // Canonical host only: the a/b/c subdomains may be withdrawn.
@@ -73,14 +68,10 @@ test('basemap tiles follow the OSM usage policy and keep a backup', async () => 
   assert.equal(fallback!.referrerPolicy, undefined);
 });
 
-test('School filter always has curated pins; OSM school spam stays out', () => {
-  const schools = HELP_CENTER_PLACES.filter(place => place.category === 'school');
-  // The School filter must never open an empty map, even with no Supabase
-  // credentials and no network — the curated list is the offline fallback.
-  assert.ok(schools.length >= 20, `expected the curated school list, got ${schools.length}`);
-  assert.ok(schools.every(place => place.source === 'curated' && place.coords.every(Number.isFinite)));
-  assert.ok(schools.some(place => place.id === 'sc-kasiglahan-nhs'));
-  // Live OSM school results are still skipped (they duplicate the curated pins).
+test('live OSM school results stay out; pins come only from Supabase', async () => {
+  // There is no curated/bundled pin list any more: every Help Center pin is a
+  // Supabase row the barangay owns. OSM school spam must never sneak in.
+  assert.equal('HELP_CENTER_PLACES' in (await import('../src/data/helpCenterPlaces')), false);
   assert.deepEqual(osmElementsToPlaces([{ ...element, tags: { amenity: 'school', name: 'Named school' } }], ['school']), []);
   assert.equal(osmElementsToPlaces([element], ['pharmacy']).length, 1);
 });
