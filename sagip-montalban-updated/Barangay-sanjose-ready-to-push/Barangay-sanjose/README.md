@@ -386,6 +386,100 @@ Hiding the entry point (`admin` in the search box) is **not** a security control
 in the bundle, and anyone can open DevTools. It only avoids advertising the door. The
 credential, the session and the server-side checks are what actually protect the data.
 
+## Scraping, bots and downloads: what is actually possible
+
+**Read this first.** A public website cannot be both public and impossible to copy. The only
+way to stop a determined visitor from seeing your data is to stop them from reaching the site
+at all. Everything below is arranged by that trade-off.
+
+### The one rule that cannot be broken
+
+Anything the browser can render has already been downloaded to that device. The hazard pins,
+the flood polygons, the help-center rows and the map tiles are all delivered to the client so
+it can draw them. `Ctrl+S`, the print dialog, a screen recording, or a screenshot cannot be
+blocked by any server-side control. If a page is visible to a visitor, its content is theirs.
+
+Network responses can be made harder to automate, but never impossible:
+
+| Attempt | Can it work? | Why |
+| --- | --- | --- |
+| Block bots by User-Agent | Partly | Honest crawlers are stopped; anyone can send a browser UA instead. |
+| `robots.txt` + `X-Robots-Tag` | Partly | Instructions, not enforcement. Well-behaved engines comply; scrapers do not. |
+| Hide the API/endpoint | No | The browser must be told the URL to load it, so it is in the bundle. |
+| Encrypt the payload | No | The browser holds the decryption key; devtools can read the result. |
+| Disable right-click / devtools | No | Trivially bypassed; also breaks accessibility. |
+| Per-IP rate limiting | Partly | Slows bulk walking; does nothing against a handful of pages. |
+
+### What this repo now enforces
+
+`functions/_middleware.js` runs on every request and adds:
+
+- **AI crawler block.** Declared AI crawlers (`GPTBot`, `ClaudeBot`, `CCBot`,
+  `PerplexityBot`, `Google-Extended`, `Bytespider`, `Amazonbot`, `Meta-ExternalAgent`, …),
+  SEO harvesters and headless browsers get `403` before the app is reached.
+- **Generic HTTP client block.** `curl`, `wget`, `python-requests`, `node-fetch`, `axios`,
+  `okhttp`, … are refused by default — this is the "AI agent runs curl and parses the HTML"
+  path. Opt out with `SHIELD_ALLOW_HTTP_CLIENTS=1` if you need uptime monitors or smoke tests.
+- **Anti-index headers.** Every response carries `X-Robots-Tag: noindex, nofollow,
+  noarchive, nosnippet, noimageindex, noai, noimageai`.
+- **Baseline security headers.** `nosniff`, `SAMEORIGIN`, `strict-origin-when-cross-origin`,
+  and a permissions policy that allows only geolocation.
+- **Per-IP request budget.** 90 requests per minute per IP, then `429` with `Retry-After`.
+- **Emergency switch.** `SHIELD_DISABLED=1` turns the filter off without a deploy.
+
+`public/robots.txt` disallows every crawler and names the AI agents explicitly.
+
+The admin API (`/api/admin/*`) is exempt from the UA filter, because it authenticates itself
+with its own session and rate limit.
+
+### Cloudflare dashboard steps (these are the enforced controls)
+
+The middleware runs inside a Worker, so it only sees requests the platform lets through.
+The rules below are enforced before your code runs and are the ones that actually hold:
+
+1. **Always Use HTTPS** — SSL/TLS → Edge Certificates. Also enable **HSTS**.
+2. **Bot Fight Mode** — Security → Bots. Free plan blocks automated traffic automatically.
+3. **WAF → custom rule: block AI crawlers.** Security → WAF → Custom rules:
+   - Field `User Agent`, operator `contains`, values `GPTBot`, `ClaudeBot`, `CCBot`,
+     `PerplexityBot`, `Google-Extended`, `Bytespider`, `Amazonbot`, `Meta-ExternalAgent`,
+     `Applebot-Extended`, `cohere-ai`, `Diffbot`, `Omgili`, `ImagesiftBot`.
+   - Action: **Block**. Also add a rule for `cf.client.bot` if you only want verified bots.
+4. **Rate limiting** — Security → WAF → Rate limiting rules: e.g. 60 requests per minute per
+   IP → Block for 10 minutes. This survives a scraper that rotates User-Agent values.
+5. **Managed rules** — enable the Cloudflare Managed Ruleset so known scanner signatures are
+   blocked even without a UA.
+6. **Hotlink protection** — Scrape Shield → Hotlink Protection, so other sites cannot embed
+   your assets.
+
+### If the site must be genuinely unreachable
+
+Only **Cloudflare Access** (Zero Trust → Access → Applications) does this. Add the Pages hostname
+as a self-hosted application and require an email one-time-PIN or Google login, allow-listing
+your admins and residents. Effect: nobody without an approved identity can open the site, load
+the map, or download the JSON — not a person, not a crawler, not an AI agent.
+
+The cost is real: the site stops being a public information portal. Choose deliberately:
+
+| Goal | Configuration |
+| --- | --- |
+| Public portal, hard to scrape | Middleware (this repo) + WAF AI-crawler rule + Bot Fight Mode + rate limiting |
+| Only some pages public | Cloudflare Access policy scoped to `/admin*` and any sensitive path |
+| Nobody without an account | Cloudflare Access on the whole hostname |
+
+### Honest answer to "100% secured"
+
+There is no such state for a website. What can be guaranteed is:
+
+- the admin credential is not in the browser (done — see the section above);
+- the database denies `anon` reads of `app_secrets`, `hazard_reports`, `resolve_flags` and
+  `report_events` (verified: RLS on with no permissive policy — only `public_feed()` exposes
+  the public map rows);
+- declared bots and generic scrapers are refused at the edge (done, bypassable by design);
+- every response tells search engines and AI crawlers to stay away (done);
+- and a determined human with a browser can still copy what they can see (unavoidable).
+
+Anyone offering more than that without a login wall is selling something that does not exist.
+
 Tests:
 
 ```bash

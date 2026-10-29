@@ -1,0 +1,24 @@
+# Cloudflare Pages serves these headers for the static build.
+# The same values are also applied per-request by functions/_middleware.js, so a
+# response cannot lose them by going through a different path.
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=()
+  X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai
+  Cross-Origin-Opener-Policy: same-origin
+
+# Never let the rebuild-heavy data files be cached long, or indexed.
+/rizal_flood_data.json
+  Cache-Control: public, max-age=300, must-revalidate
+  X-Robots-Tag: noindex, nofollow, noarchive, noai, noimageai
+
+# The app shell must revalidate so a deploy is picked up immediately.
+/index.html
+  Cache-Control: no-cache
+
+# Hashed assets can be cached forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

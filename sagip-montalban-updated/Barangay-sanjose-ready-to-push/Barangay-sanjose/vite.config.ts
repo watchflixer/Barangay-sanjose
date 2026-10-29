@@ -43,6 +43,40 @@ function adminFunctions(): Plugin {
   return {
     name: 'admin-functions',
     configureServer(server) {
+      // Same classification Pages runs at the edge, so bot rules can be tested
+      // locally instead of only after a deploy.
+      server.middlewares.use(async (req, res, next) => {
+        const pathname = (req.url || '/').split('?')[0];
+        const shielded = ['/api/admin/login', '/api/admin/session', '/api/admin/logout', '/api/admin/rpc']
+          .some((prefix) => pathname.startsWith(prefix));
+        if (shielded) return next();
+        try {
+          const shield = await import(pathToFileURL(path.resolve(__dirname, 'functions/_middleware.js')).href);
+          if (process.env.SHIELD_DISABLED === '1') return next();
+          const kind = shield.classifyAgent(req.headers['user-agent'] || '', {
+            allowHttpClients: process.env.SHIELD_ALLOW_HTTP_CLIENTS === '1',
+          });
+          if (kind === 'bot' || kind === 'scanner') {
+            res.statusCode = 403;
+            res.setHeader('Content-Type', 'application/json; charset=utf-8');
+            res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, noai, noimageai');
+            res.end(JSON.stringify({error: 'Automated collection is not permitted on this site.'}));
+            return;
+          }
+          res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai');
+          res.setHeader('X-Content-Type-Options', 'nosniff');
+          res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+          res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+          res.setHeader(
+            'Permissions-Policy',
+            'geolocation=(self), camera=(), microphone=(), payment=()',
+          );
+        } catch (error) {
+          server.config.logger.error(`[edge-shield] ${(error as Error).message}`);
+        }
+        next();
+      });
+
       server.middlewares.use(async (req, res, next) => {
         const pathname = (req.url || '/').split('?')[0];
         const route = routes[pathname];
