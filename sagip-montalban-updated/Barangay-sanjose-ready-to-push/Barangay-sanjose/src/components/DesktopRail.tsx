@@ -18,7 +18,13 @@ import { DonateButton } from './DonateButton';
  * `display: none`, so Android/iPhone portrait views (and tablets) are
  * untouched — no markup, no width, no behaviour changes there.
  */
-export const DesktopRail: React.FC = () => {
+export const DesktopRail: React.FC<{
+  /**
+   * A report card is open on the map: the rail's Donate item greys out until
+   * it is closed, so the card is never knocked off screen by the dialog.
+   */
+  donateDisabled?: boolean;
+}> = ({ donateDisabled = false }) => {
   // The Donate item drives the SAME dialog the navbar/phone build shows —
   // DonateButton in controlled mode, rendered here without its own trigger.
   const [donateOpen, setDonateOpen] = useState(false);
@@ -52,7 +58,8 @@ export const DesktopRail: React.FC = () => {
       className="desktop-rail__item"
       aria-label="Donate"
       aria-haspopup="dialog"
-      title="Donate"
+      title={donateDisabled ? 'Close the report first' : 'Donate'}
+      disabled={donateDisabled}
       onClick={() => setDonateOpen(true)}
     >
       <span className="desktop-rail__icon">

@@ -1543,6 +1543,17 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     background: transparent;
   }
 
+  /* Switched off (Donate while a report card is open): greyed out, no hover
+     highlight, and the not-allowed cursor says why. */
+  .desktop-rail__item:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .desktop-rail__item:disabled:hover .desktop-rail__icon {
+    background: transparent;
+  }
+
   .desktop-rail__item.is-active .desktop-rail__icon {
     border-color: #1a73e8;
     background: #e8f0fe;

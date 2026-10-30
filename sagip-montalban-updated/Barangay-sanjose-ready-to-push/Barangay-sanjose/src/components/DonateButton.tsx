@@ -57,6 +57,11 @@ interface DonateButtonProps {
   onOpenChange?: (open: boolean) => void;
   /** Render only the dialog, without the navbar trigger button. */
   showTrigger?: boolean;
+  /**
+   * Greys the trigger out and stops it opening the dialog. Used while a report
+   * card is open on the map — only Recenter (and the card's X) stay live then.
+   */
+  disabled?: boolean;
 }
 
 export const DonateButton: React.FC<DonateButtonProps> = ({
@@ -64,6 +69,7 @@ export const DonateButton: React.FC<DonateButtonProps> = ({
   open: openProp,
   onOpenChange,
   showTrigger = true,
+  disabled = false,
 }) => {
   const [internalOpen, setInternalOpen] = useState(false);
   // Uncontrolled by default (navbar); controlled when `open` is supplied
@@ -212,7 +218,9 @@ export const DonateButton: React.FC<DonateButtonProps> = ({
           type="button"
           aria-haspopup="dialog"
           onClick={() => setOpen(true)}
-          className={`inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 ${className}`}
+          disabled={disabled}
+          title={disabled ? 'Close the report first' : undefined}
+          className={`inline-flex h-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white ${className}`}
         >
           Donate
         </button>

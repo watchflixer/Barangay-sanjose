@@ -146,18 +146,23 @@ try {
     await page.waitForTimeout(500);
     await assertOpenOn(page, 'Kasiglahan riverside flooding', 'desktop: Escape');
 
-    // Re-renders (opening/closing the feed drawer) must not rebuild markers.
+    // The feed toggle stands down while a report is open (see the lockdown
+    // suite), so the drawer cannot be used to re-render underneath the card.
     const drawer = page.getByRole('button', { name: 'Show incident feeds', exact: true });
-    if (await drawer.isVisible()) await drawer.click();
-    await page.waitForTimeout(700);
-    if (await drawer.isVisible()) await drawer.click();
-    await page.waitForTimeout(700);
-    await assertOpenOn(page, 'Kasiglahan riverside flooding', 'desktop: drawer toggles');
+    if (await drawer.isVisible()) {
+      assert.equal(await drawer.isDisabled(), true, 'desktop: the feed toggle waits for the card');
+    }
+    await assertOpenOn(page, 'Kasiglahan riverside flooding', 'desktop: feed toggle locked');
 
-    // Picking another report switches the popup — never two at once.
-    // (Its card, because after the flight the other pin is off screen.)
+    // Close it, then pick another report from the feed: it switches the popup
+    // rather than adding a second one.
+    await page.locator('.leaflet-popup-close-button').first().click();
+    await page.waitForTimeout(1600);
+    await assertClosed(page, 'desktop: X before switching');
+    if (await drawer.isVisible()) await drawer.click();
+    await page.waitForTimeout(500);
     await page.locator('#alert-card-hz-002').click();
-    await page.waitForTimeout(1800);
+    await page.waitForTimeout(2000);
     await assertOpenOn(page, 'Litex transformer fire', 'desktop: other report');
     assert.equal(await popupCount(page), 1, 'desktop: only one report is open at a time');
 
