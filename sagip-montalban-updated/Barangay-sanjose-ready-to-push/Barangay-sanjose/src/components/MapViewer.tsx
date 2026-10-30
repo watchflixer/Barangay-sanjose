@@ -1,4 +1,6 @@
 import { escapeHtml, safeImageUrl } from '../lib/html';
+import { formatReportedTime, reportDate } from '../lib/admin';
+import { useLiveNow } from '../hooks/useLiveNow';
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 /*
@@ -114,7 +116,7 @@ interface HazardPresentation {
   signature: string;
 }
 
-const hazardPresentation = (alert: HazardAlert): HazardPresentation => {
+const hazardPresentation = (alert: HazardAlert, now: number): HazardPresentation => {
   let iconSymbol = '⚠️';
   let bgColor = 'bg-amber-500';
   let ringColor = 'bg-amber-400';
@@ -199,6 +201,10 @@ const hazardPresentation = (alert: HazardAlert): HazardPresentation => {
 
   const shortDescription = alert.description.length > 110 ? `${alert.description.slice(0, 110).trim()}…` : alert.description;
   const hasMoreDescription = alert.description.length > 110;
+  const reportedLabel = formatReportedTime(alert, now);
+  const reportedTitleAttr = alert.reportedAt
+    ? ` title="${escapeHtml(reportDate(alert.reportedAt))}"`
+    : '';
 
   const popupHtml = `
     <div class="p-2.5 space-y-2 font-sans">
@@ -233,7 +239,7 @@ const hazardPresentation = (alert: HazardAlert): HazardPresentation => {
 
         <div class="flex items-center justify-between">
           <span class="text-slate-400 font-medium text-[11px]">Reported:</span>
-          <span class="text-slate-600 font-mono text-[10px]">${escapeHtml(alert.timeReported)}</span>
+          <span class="text-slate-600 font-mono text-[10px]"${reportedTitleAttr}>${escapeHtml(reportedLabel)}</span>
         </div>
       </div>
 
@@ -273,7 +279,8 @@ const hazardPresentation = (alert: HazardAlert): HazardPresentation => {
     alert.severity,
     alert.description,
     alert.reportedBy,
-    alert.timeReported,
+    reportedLabel,
+    alert.reportedAt ?? '',
     alert.photoUrl ?? '',
     alert.evacuationCenter ?? '',
     alert.pendingResolveFlags ?? 0,
@@ -317,6 +324,8 @@ interface MapViewerProps {
   onHelpCenterChange?: (isOpen: boolean) => void;
   /** Lets the parent app know the Weather view is open (for navbar gating). */
   onWeatherChange?: (isOpen: boolean) => void;
+  /** Invoked when the resident closes an open report card (X or Recenter). */
+  onDismissReportCard?: () => void;
 }
 
 export const MapViewer: React.FC<MapViewerProps> = ({
@@ -326,6 +335,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   onSelectAlert,
   selectionNonce = 0,
   onReportPopupChange,
+  onDismissReportCard,
   onRequestResolved,
   mapSettings,
   onUpdateMapSettings,
@@ -339,6 +349,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   onHelpCenterChange,
   onWeatherChange,
 }) => {
+  const now = useLiveNow();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileMountRef = useRef<TileMount | null>(null);
@@ -357,6 +368,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const requestResolvedRef = useRef(onRequestResolved);
   const selectedAlertRef = useRef<HazardAlert | null>(selectedAlert);
   const reportPopupChangeRef = useRef(onReportPopupChange);
+  const dismissReportCardRef = useRef(onDismissReportCard);
   const mapSettingsRef = useRef(mapSettings);
   const alternateMapOpenRef = useRef(false);
   /**
@@ -392,6 +404,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   requestResolvedRef.current = onRequestResolved;
   selectedAlertRef.current = selectedAlert;
   reportPopupChangeRef.current = onReportPopupChange;
+  dismissReportCardRef.current = onDismissReportCard;
   mapSettingsRef.current = mapSettings;
 
   const getOpenReportMarker = (): L.Marker | null => {
@@ -1324,9 +1337,36 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       forceClosedRef.current = false;
     });
 
+    const wirePopupActions = (entry: MarkerEntry) => {
+      window.setTimeout(() => {
+        const resolveButton = document.getElementById(`btn-popup-resolve-${entry.alert.id}`);
+        if (resolveButton) {
+          resolveButton.onclick = (event) => {
+            event.stopPropagation();
+            requestResolvedRef.current(entry.alert);
+          };
+        }
+        const more = document.getElementById(`btn-popup-more-${entry.alert.id}`);
+        if (more) {
+          more.onclick = (event) => {
+            event.stopPropagation();
+            const shortText = document.getElementById(`popup-desc-short-${entry.alert.id}`);
+            const fullText = document.getElementById(`popup-desc-full-${entry.alert.id}`);
+            if (shortText && fullText) {
+              shortText.style.display = 'none';
+              fullText.style.display = 'inline';
+              more.remove();
+              // Expanding the description grows the card upward; keep it centred.
+              scheduleSnapBackRef.current(60);
+            }
+          };
+        }
+      }, 0);
+    };
+
     // b) Add new pins, update the ones already on the map.
     visibleAlerts.forEach((alert) => {
-      const presentation = hazardPresentation(alert);
+      const presentation = hazardPresentation(alert, now);
       const existing = markerEntriesRef.current.get(alert.id);
 
       if (existing) {
@@ -1338,7 +1378,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           existing.marker.setIcon(presentation.icon);
           // Keep the popup open across a content update; only its body changes.
           existing.marker.setPopupContent(presentation.popupHtml);
-          if (existing.marker.isPopupOpen()) scheduleSnapBackRef.current(60);
+          if (existing.marker.isPopupOpen()) {
+            wirePopupActions(existing);
+            scheduleSnapBackRef.current(60);
+          }
         }
         return;
       }
@@ -1376,35 +1419,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
       marker.on('popupopen', () => {
         cancelSnapBackRef.current();
-        // Buttons inside the injected popup markup are wired by hand.
-        window.setTimeout(() => {
-          const resolveButton = document.getElementById(`btn-popup-resolve-${alert.id}`);
-          if (resolveButton) {
-            resolveButton.onclick = (event) => {
-              event.stopPropagation();
-              requestResolvedRef.current(entry.alert);
-            };
-          }
-          const more = document.getElementById(`btn-popup-more-${alert.id}`);
-          if (more) {
-            more.onclick = (event) => {
-              event.stopPropagation();
-              const shortText = document.getElementById(`popup-desc-short-${alert.id}`);
-              const fullText = document.getElementById(`popup-desc-full-${alert.id}`);
-              if (shortText && fullText) {
-                shortText.style.display = 'none';
-                fullText.style.display = 'inline';
-                more.remove();
-                // Expanding the description grows the card upward; keep it centred.
-                scheduleSnapBackRef.current(60);
-              }
-            };
-          }
-        }, 0);
-        // Slow glide that parks the whole card in the middle of the map.
-        window.setTimeout(() => centerPopupCard(entry.marker, { ensureDetailZoom: true }), 0);
+        wirePopupActions(entry);
         setReportOpen(true);
         selectAlertRef.current(entry.alert);
+        // Wait until React commits closing Incident Feeds (desktop) so Leaflet
+        // measures the full post-close map width in a single smooth glide.
+        window.setTimeout(() => {
+          const currentMap = mapInstanceRef.current;
+          if (!currentMap || !entry.marker.isPopupOpen()) return;
+          currentMap.invalidateSize({ animate: false });
+          centerPopupCard(entry.marker, { ensureDetailZoom: true });
+        }, 32);
       });
 
       marker.on('popupclose', () => {
@@ -1412,21 +1437,21 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         isAutoCenteringRef.current = false;
         resizedDuringAutoCenterRef.current = false;
         const forcedOut = forceClosedRef.current;
-        setReportOpen(false);
-        if (forcedOut) return;
+        const anotherReportOpen = Array.from(markerEntriesRef.current.values()).some(
+          (other) => other.marker !== entry.marker && other.marker.isPopupOpen(),
+        );
+        if (!anotherReportOpen) setReportOpen(false);
+        if (forcedOut || anotherReportOpen) return;
 
-        // The X is the only control that closes a report, so a close here is
-        // the resident saying "done" — glide back to the default barangay
-        // view once we are sure no other report took its place.
+        // Tapping the card's X acts as Back: reopen Incident Feeds on desktop
+        // and glide back to the default barangay centre once layout settles.
+        dismissReportCardRef.current?.();
         window.setTimeout(() => {
-          const map = mapInstanceRef.current;
-          if (!map) return;
-          const anotherReportOpen = Array.from(markerEntriesRef.current.values()).some(
-            (other) => other.marker.isPopupOpen(),
-          );
-          if (anotherReportOpen) return; // switched reports: keep its centring
+          const currentMap = mapInstanceRef.current;
+          if (!currentMap || getOpenReportMarker()) return;
+          currentMap.invalidateSize({ animate: false });
           recenterAfterClose();
-        }, 80);
+        }, 50);
       });
 
       // Leaflet's own click handler TOGGLES a popup shut, so tapping the same
@@ -1438,16 +1463,28 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         // never closes anything — the previous report is swapped out, so only
         // one popup is ever on screen.
         markerEntriesRef.current.forEach((other) => {
-          if (other.marker !== marker && other.marker.isPopupOpen()) other.marker.closePopup();
+          if (other.marker !== marker && other.marker.isPopupOpen()) {
+            forceClosedRef.current = true;
+            other.marker.closePopup();
+            forceClosedRef.current = false;
+          }
         });
-        if (!marker.isPopupOpen()) marker.openPopup();
-        else centerPopupCard(marker, { ensureDetailZoom: true });
         selectAlertRef.current(entry.alert);
+        if (!marker.isPopupOpen()) {
+          marker.openPopup();
+        } else {
+          window.setTimeout(() => {
+            const currentMap = mapInstanceRef.current;
+            if (!currentMap || !marker.isPopupOpen()) return;
+            currentMap.invalidateSize({ animate: false });
+            centerPopupCard(marker, { ensureDetailZoom: true });
+          }, 32);
+        }
       });
 
       markerEntriesRef.current.set(alert.id, entry);
     });
-  }, [alerts, mapSettings.activeFilterType, mapSettings.activeFilterStatus]);
+  }, [alerts, mapSettings.activeFilterType, mapSettings.activeFilterStatus, now]);
 
   // 7. Open/raise the selected report's popup (feed card, pin or re-selection)
   //
@@ -1462,10 +1499,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (!map) return;
 
     const closeEverything = () => {
+      forceClosedRef.current = true;
       markerEntriesRef.current.forEach((entry) => {
         if (entry.marker.isPopupOpen()) entry.marker.closePopup();
       });
       map.closePopup();
+      forceClosedRef.current = false;
+      setReportOpen(false);
     };
 
     const alert = selectedAlertRef.current;
@@ -1486,7 +1526,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
 
     // Already open (a pin tap opened it): ensure it stays centred.
     if (entry.marker.isPopupOpen()) {
-      centerPopupCard(entry.marker, { ensureDetailZoom: true });
+      window.setTimeout(() => {
+        const currentMap = mapInstanceRef.current;
+        if (!currentMap || !entry.marker.isPopupOpen()) return;
+        currentMap.invalidateSize({ animate: false });
+        centerPopupCard(entry.marker, { ensureDetailZoom: true });
+      }, 32);
       return;
     }
 
@@ -1526,22 +1571,36 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
     if (!mapInstanceRef.current) return;
 
-    // Recenter is a reset: the report card closes with it, then the camera
-    // glides back to the barangay below.
-    closeOpenReport();
+    // Recenter is a reset: the report card closes with it, Incident Feeds
+    // reopens on desktop, and the camera glides back to the barangay below.
+    const closedCard = closeOpenReport();
+    if (closedCard) {
+      setReportOpen(false);
+      dismissReportCardRef.current?.();
+    }
 
-    const map = mapInstanceRef.current;
-    map.once('moveend', () => {
-      if (!getOpenReportMarker() && mapSettingsRef.current.lockCameraToBounds) {
-        map.setMaxBounds(buildHazardMaxBounds(TIGHT_BOUNDS_PAD));
-      }
-    });
+    const runRecenterFlight = () => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+      map.invalidateSize({ animate: false });
+      map.once('moveend', () => {
+        if (!getOpenReportMarker() && mapSettingsRef.current.lockCameraToBounds) {
+          map.setMaxBounds(buildHazardMaxBounds(TIGHT_BOUNDS_PAD));
+        }
+      });
 
-    // Smooth fast recenter back to Barangay San Jose center
-    map.flyTo(SAN_JOSE_CENTER, hazardStartZoom(), {
-      duration: 0.75,
-      easeLinearity: 0.25,
-    });
+      // Smooth fast recenter back to Barangay San Jose center
+      map.flyTo(SAN_JOSE_CENTER, hazardStartZoom(), {
+        duration: 0.75,
+        easeLinearity: 0.25,
+      });
+    };
+
+    if (closedCard) {
+      window.setTimeout(runRecenterFlight, 50);
+    } else {
+      runRecenterFlight();
+    }
   };
 
   return (

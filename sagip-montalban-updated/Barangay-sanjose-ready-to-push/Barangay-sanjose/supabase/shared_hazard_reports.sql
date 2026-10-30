@@ -143,6 +143,27 @@ exception
 end;
 $$;
 
+create or replace function public.format_report_age(p_reported_at timestamptz, p_fallback text default 'Time unavailable')
+returns text
+language sql
+stable
+set search_path = public, pg_temp
+as $$
+  select case
+    when p_reported_at is null then coalesce(nullif(btrim(p_fallback), ''), 'Time unavailable')
+    when floor(extract(epoch from greatest(now() - p_reported_at, interval '0 seconds')) / 60) < 1 then 'Just now'
+    when floor(extract(epoch from (now() - p_reported_at)) / 60) < 60 then
+      floor(extract(epoch from (now() - p_reported_at)) / 60)::bigint::text
+      || case when floor(extract(epoch from (now() - p_reported_at)) / 60)::bigint = 1 then ' minute ago' else ' minutes ago' end
+    when floor(extract(epoch from (now() - p_reported_at)) / 3600) < 24 then
+      floor(extract(epoch from (now() - p_reported_at)) / 3600)::bigint::text
+      || case when floor(extract(epoch from (now() - p_reported_at)) / 3600)::bigint = 1 then ' hour ago' else ' hours ago' end
+    else
+      floor(extract(epoch from (now() - p_reported_at)) / 86400)::bigint::text
+      || case when floor(extract(epoch from (now() - p_reported_at)) / 86400)::bigint = 1 then ' day ago' else ' days ago' end
+  end;
+$$;
+
 create or replace function public.public_feed()
 returns jsonb
 language sql
@@ -168,8 +189,10 @@ select jsonb_build_object(
       'description', r.description,
       'reported_by', case when r.show_reporter then r.reported_by else 'Anonymous reporter' end,
       'photo_url', r.photo_url, 'affected_households', r.affected_households,
-      'evacuation_center', r.evacuation_center, 'time_reported', r.time_reported,
-      'reported_at', r.reported_at, 'last_updated', r.last_updated,
+      'evacuation_center', r.evacuation_center,
+      'time_reported', public.format_report_age(coalesce(r.reported_at, r.created_at), r.time_reported),
+      'reported_at', coalesce(r.reported_at, r.created_at),
+      'created_at', r.created_at, 'last_updated', r.last_updated,
       'updates_count', r.updates_count, 'show_reporter', r.show_reporter, 'source', r.source,
       'pending_resolve_flags', (
         select count(*) from public.resolve_flags f where f.report_id = r.id and f.status = 'pending'

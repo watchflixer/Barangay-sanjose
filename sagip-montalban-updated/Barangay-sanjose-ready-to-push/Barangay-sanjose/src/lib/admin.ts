@@ -22,9 +22,23 @@ export function isAdminSearch(query: string) {
   return query.trim().toLowerCase() === 'admin';
 }
 
+/** Parses ISO 8601 and Postgres space-separated timestamps consistently across browsers. */
+export function parseTimestampMs(at?: string): number | null {
+  if (!at) return null;
+  const direct = Date.parse(at);
+  if (Number.isFinite(direct)) return direct;
+  const normalized = at
+    .trim()
+    .replace(/^(\d{4}-\d{2}-\d{2})\s+/, '$1T')
+    .replace(/([+-]\d{2})$/, '$1:00');
+  const parsed = Date.parse(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function reportAge(reportedAt?: string, now = Date.now()): string {
-  if (!reportedAt || !Number.isFinite(Date.parse(reportedAt))) return 'Exact report date unavailable';
-  const minutes = Math.max(0, Math.floor((now - Date.parse(reportedAt)) / 60000));
+  const reportedMs = parseTimestampMs(reportedAt);
+  if (reportedMs === null) return 'Exact report date unavailable';
+  const minutes = Math.max(0, Math.floor((now - reportedMs) / 60000));
   if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
   const hours = Math.floor(minutes / 60);
@@ -33,13 +47,28 @@ export function reportAge(reportedAt?: string, now = Date.now()): string {
   return `${days} day${days === 1 ? '' : 's'} ago`;
 }
 export function reportDate(at?: string): string {
-  return at && Number.isFinite(Date.parse(at))
-    ? new Date(at).toLocaleString('en-PH', {
+  const parsedMs = parseTimestampMs(at);
+  return parsedMs !== null
+    ? new Date(parsedMs).toLocaleString('en-PH', {
         timeZone: 'Asia/Manila',
         dateStyle: 'medium',
         timeStyle: 'short',
       }) + ' (PH)'
     : 'Not recorded';
+}
+
+/**
+ * Computes an accurate relative age from `reportedAt` when present, falling
+ * back to `timeReported` for non-timestamp labels (e.g. live PAGASA feed).
+ */
+export function formatReportedTime(
+  alert: { reportedAt?: string; timeReported?: string },
+  now = Date.now(),
+): string {
+  if (parseTimestampMs(alert.reportedAt) !== null) {
+    return reportAge(alert.reportedAt, now);
+  }
+  return alert.timeReported || 'Time unavailable';
 }
 
 /** Shared by the admin form; the database re-validates every field. */
