@@ -143,7 +143,10 @@ export function isPhMobile(value: string): boolean {
 /** Client-side preflight so people get instant feedback; the database re-checks all of it. */
 export function reportDraftError(draft: HazardDraft, requirePhoto: boolean): string {
   if (draft.title.trim().length < 3) return 'Enter a short incident title.';
-  if (!draft.streetName.trim()) return 'Enter the street or landmark.';
+  // Free text: any street, landmark or exact spot is valid. Only the database
+  // limits apply (2–200 characters).
+  if (draft.streetName.trim().length < 2) return 'Enter the street or landmark.';
+  if (draft.streetName.trim().length > 200) return 'Keep the street or landmark under 200 characters.';
   if (!draft.sitio.trim()) return 'Enter the sitio or area.';
   if (draft.description.trim().length < 5) return 'Describe what is happening.';
   if (!Number.isFinite(draft.coordinates[0]) || !Number.isFinite(draft.coordinates[1]))
