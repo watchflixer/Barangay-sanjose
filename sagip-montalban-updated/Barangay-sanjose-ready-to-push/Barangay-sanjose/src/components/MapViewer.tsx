@@ -79,6 +79,14 @@ const hazardMinZoom = () => (isSmallPortraitViewport() ? 11 : 13);
 /** Zoom step. 0.5 lets the small portrait view land on 12.5; others stay at 1. */
 const hazardZoomSnap = () => (isSmallPortraitViewport() ? 0.5 : 1);
 
+/**
+ * How long the resident gets to stop moving the map before an open report
+ * card glides back to the middle of the screen.
+ */
+const CARD_SNAP_BACK_DELAY = 500;
+/** Beyond this many pixels the card counts as "out of the middle". */
+const CARD_CENTRE_TOLERANCE = 8;
+
 /* ------------------------------------------------------------------------- */
 /* HAZARD PIN + POPUP PRESENTATION                                           */
 /*                                                                           */
@@ -355,6 +363,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [reportCardOpen, setReportCardOpen] = React.useState(false);
   /** True while a marker is torn down by data, not by the resident's X. */
   const forceClosedRef = useRef(false);
+  /** Pending "the report card drifted, glide it back" timer (see effect 7b). */
+  const cardSnapBackTimerRef = useRef<number | null>(null);
   /**
    * The embedded maps post their layer picks in a listener registered once, so
    * it reads the reset through a ref instead of a stale closure.
@@ -380,6 +390,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
    * Returns true when a card was actually open.
    */
   const closeOpenReport = () => {
+    cancelCardSnapBack();
     let closed = false;
     markerEntriesRef.current.forEach((entry) => {
       if (!entry.marker.isPopupOpen()) return;
@@ -423,6 +434,37 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   };
 
   /**
+   * How far the open report card's middle sits from the map's middle, in
+   * pixels. `null` when the card is not on screen (yet).
+   */
+  const cardCentreOffset = (marker: L.Marker) => {
+    const map = mapInstanceRef.current;
+    const popupEl = marker.getPopup()?.getElement() as HTMLElement | null | undefined;
+    if (!map || !popupEl) return null;
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const cardRect = popupEl.getBoundingClientRect();
+    if (!cardRect.height || !mapRect.height) return null;
+    return {
+      dx: cardRect.left + cardRect.width / 2 - (mapRect.left + mapRect.width / 2),
+      dy: cardRect.top + cardRect.height / 2 - (mapRect.top + mapRect.height / 2),
+    };
+  };
+
+  /** Has the resident dragged/zoomed the card out of the middle? */
+  const isCardOffCentre = (marker: L.Marker) => {
+    const offset = cardCentreOffset(marker);
+    if (!offset) return false;
+    return Math.abs(offset.dx) > CARD_CENTRE_TOLERANCE || Math.abs(offset.dy) > CARD_CENTRE_TOLERANCE;
+  };
+
+  const cancelCardSnapBack = () => {
+    if (cardSnapBackTimerRef.current !== null) {
+      window.clearTimeout(cardSnapBackTimerRef.current);
+      cardSnapBackTimerRef.current = null;
+    }
+  };
+
+  /**
    * CENTRE THE REPORT CARD, NOT THE PIN
    *
    * The card hangs *above* its pin, so flying to the pin's coordinates leaves
@@ -430,7 +472,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
    * viewport. Measure the card and glide to the map centre that puts the
    * card's middle in the middle of the map instead.
    */
-  const centerPopupCard = (marker: L.Marker) => {
+  const centerPopupCard = (marker: L.Marker, duration = 1) => {
     const map = mapInstanceRef.current;
     const popupEl = marker.getPopup()?.getElement() as HTMLElement | null | undefined;
     if (!map || !popupEl) return;
@@ -464,7 +506,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     // middle as the card sits above it.
     const target = map.unproject(map.project(pin, zoom).add(hang), zoom);
     map.flyTo(target, zoom, {
-      duration: 1,
+      duration,
       easeLinearity: 0.25,
     });
   };
@@ -1186,6 +1228,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       });
 
       marker.on('popupclose', () => {
+        // No card, nothing to snap back.
+        cancelCardSnapBack();
         const forcedOut = forceClosedRef.current;
         setReportOpen(false);
         if (forcedOut) return;
@@ -1264,6 +1308,51 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     closeEverything();
     entry.marker.openPopup();
   }, [selectionNonce]);
+
+  // 7b. Keep the open report card in the middle of the map
+  //
+  // The card is pinned to its hazard, so any pan or zoom drags it off centre —
+  // and a resident could lose track of the report they were reading. Half a
+  // second after they stop moving the map, a card that drifted glides back to
+  // the middle. Moving again simply restarts the wait, and closing the card
+  // cancels it.
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const openEntry = () =>
+      Array.from(markerEntriesRef.current.values()).find((entry) => entry.marker.isPopupOpen());
+
+    const scheduleSnapBack = () => {
+      cancelCardSnapBack();
+      const entry = openEntry();
+      if (!entry) return;
+      // Already in the middle: nothing to do, and no timer left ticking.
+      if (!isCardOffCentre(entry.marker)) return;
+
+      cardSnapBackTimerRef.current = window.setTimeout(() => {
+        cardSnapBackTimerRef.current = null;
+        const stillOpen = openEntry();
+        if (!stillOpen) return;
+        if (!isCardOffCentre(stillOpen.marker)) return;
+        // A shorter glide than the on-open one: this is a correction, not a
+        // journey, and it should feel like the card is springing back.
+        centerPopupCard(stillOpen.marker, 0.6);
+      }, CARD_SNAP_BACK_DELAY);
+    };
+
+    // `moveend` covers drags, pans and zooms — our own centre glide included,
+    // which then finds the card centred and does nothing. `movestart` drops any
+    // pending snap, so grabbing the map mid-wait restarts the half second
+    // instead of letting the old timer fly the map out from under the finger.
+    map.on('movestart', cancelCardSnapBack);
+    map.on('moveend', scheduleSnapBack);
+    return () => {
+      cancelCardSnapBack();
+      map.off('movestart', cancelCardSnapBack);
+      map.off('moveend', scheduleSnapBack);
+    };
+  }, []);
 
   // 8. Auto-recenter map when triggered externally (e.g. from Navbar)
   useEffect(() => {

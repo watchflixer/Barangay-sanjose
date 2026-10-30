@@ -46,7 +46,8 @@
     "test:sticky-popup:browser": "node tests/sticky-report-popup-browser.mjs",
     "test:popup-center:browser": "node tests/popup-center-weather-browser.mjs",
     "test:hazard-reset:browser": "node tests/recenter-reset-browser.mjs",
-    "test:report-card-lock:browser": "node tests/report-card-lockdown-browser.mjs"
+    "test:report-card-lock:browser": "node tests/report-card-lockdown-browser.mjs",
+    "test:card-snap-back:browser": "node tests/report-card-snap-back-browser.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
