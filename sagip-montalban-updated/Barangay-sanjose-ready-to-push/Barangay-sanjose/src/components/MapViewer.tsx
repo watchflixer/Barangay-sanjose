@@ -344,10 +344,26 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const requestResolvedRef = useRef(onRequestResolved);
   const selectedAlertRef = useRef<HazardAlert | null>(selectedAlert);
   const reportPopupChangeRef = useRef(onReportPopupChange);
+  /** True while a marker is torn down by data, not by the resident's X. */
+  const forceClosedRef = useRef(false);
   selectAlertRef.current = onSelectAlert;
   requestResolvedRef.current = onRequestResolved;
   selectedAlertRef.current = selectedAlert;
   reportPopupChangeRef.current = onReportPopupChange;
+
+  /**
+   * The report card is closed and the resident is done with it: put the map
+   * back where it starts — barangay centre at the default zoom, exactly what
+   * the Recenter button does.
+   */
+  const recenterAfterClose = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    map.flyTo(SAN_JOSE_CENTER, hazardStartZoom(), {
+      duration: 0.75,
+      easeLinearity: 0.25,
+    });
+  };
 
   /**
    * CENTRE THE REPORT CARD, NOT THE PIN
@@ -1017,9 +1033,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     // a) Drop pins that are no longer shown (filtered out, hidden type, deleted).
     markerEntriesRef.current.forEach((entry, id) => {
       if (visibleIds.has(id)) return;
+      // A pin that disappears (filter, hidden category, deleted report) is
+      // not the resident tapping X — do not yank the camera back for it.
+      forceClosedRef.current = true;
       if (entry.marker.isPopupOpen()) reportPopupChangeRef.current?.(false);
       entry.marker.remove();
       markerEntriesRef.current.delete(id);
+      forceClosedRef.current = false;
     });
 
     // b) Add new pins, update the ones already on the map.
@@ -1102,7 +1122,22 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       });
 
       marker.on('popupclose', () => {
+        const forcedOut = forceClosedRef.current;
         reportPopupChangeRef.current?.(false);
+        if (forcedOut) return;
+
+        // The X is the only control that closes a report, so a close here is
+        // the resident saying "done" — glide back to the default barangay
+        // view once we are sure no other report took its place.
+        window.setTimeout(() => {
+          const map = mapInstanceRef.current;
+          if (!map) return;
+          const anotherReportOpen = Array.from(markerEntriesRef.current.values()).some(
+            (other) => other.marker.isPopupOpen(),
+          );
+          if (anotherReportOpen) return; // switched reports: keep its centring
+          recenterAfterClose();
+        }, 80);
       });
 
       // Leaflet's own click handler TOGGLES a popup shut, so tapping the same

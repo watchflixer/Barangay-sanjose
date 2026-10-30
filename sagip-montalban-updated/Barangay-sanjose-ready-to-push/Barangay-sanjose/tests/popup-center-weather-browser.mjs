@@ -14,7 +14,9 @@ import { baseReport, createBackend } from './supabase-mock.mjs';
  *     on phone, iPhone and desktop alike;
  *   - on phones the weather card hides while a report is open and comes back
  *     the moment its X is tapped;
- *   - on desktop the weather card never hides — there is room for both.
+ *   - on desktop the weather card never hides — there is room for both;
+ *   - tapping that X glides the map back to the default barangay view (what
+ *     the Recenter button does), so the resident is left where they started.
  */
 const base = process.env.TEST_BASE_URL || 'http://localhost:3000';
 
@@ -67,6 +69,30 @@ const assertCardCentred = async (page, label) => {
   assert.ok(fullyVisible, `${label}: the whole card fits inside the map`);
 };
 
+/**
+ * Where the pin sits relative to the middle of the map. The default view puts
+ * it at a fixed spot, so this returns to the same numbers after an X recenters.
+ */
+const pinOffset = (page, id) =>
+  page.evaluate((pinId) => {
+    const map = document.querySelector('#leaflet-map-root').getBoundingClientRect();
+    const pin = document.querySelector(`#map-pin-${pinId}`)?.getBoundingClientRect();
+    if (!pin) return null;
+    return [
+      Math.round(pin.x + pin.width / 2 - (map.x + map.width / 2)),
+      Math.round(pin.y + pin.height / 2 - (map.y + map.height / 2)),
+    ];
+  }, id);
+
+const assertBackAtDefaultView = async (page, before, label) => {
+  const after = await pinOffset(page, 'hz-001');
+  assert.ok(after, `${label}: the pin is still on the map`);
+  assert.ok(
+    Math.abs(after[0] - before[0]) <= 4 && Math.abs(after[1] - before[1]) <= 4,
+    `${label}: X glides back to the default view (pin ${JSON.stringify(before)} -> ${JSON.stringify(after)})`,
+  );
+};
+
 const openFromFeed = async (page) => {
   const drawer = page.getByRole('button', { name: 'Open incident feeds', exact: true });
   if (await drawer.isVisible()) await drawer.click();
@@ -104,6 +130,8 @@ try {
     await page.waitForTimeout(800);
 
     assert.equal((await geometry(page)).weatherVisible, true, `${phone.tag}: weather card starts visible`);
+    const defaultPin = await pinOffset(page, 'hz-001');
+    assert.ok(defaultPin, `${phone.tag}: the pin is on the default view`);
 
     await openFromFeed(page);
     await assertCardCentred(page, `${phone.tag}: card tap`);
@@ -124,13 +152,15 @@ try {
       `${phone.tag}: the second report is centred too`,
     );
 
-    // ...and the X brings the weather card straight back.
+    // ...and the X brings the weather card straight back, and the map with it.
     await closeWithX(page);
     assert.equal(
       (await geometry(page)).weatherVisible,
       true,
       `${phone.tag}: tapping X brings the weather card back`,
     );
+    await page.waitForTimeout(1400); // the recenter glide
+    await assertBackAtDefaultView(page, defaultPin, `${phone.tag}: after X`);
 
     assert.deepEqual(errors, []);
     await context.close();
@@ -151,6 +181,9 @@ try {
     await page.locator('#alert-card-hz-001').waitFor();
     await page.waitForTimeout(800);
 
+    const defaultPin = await pinOffset(page, 'hz-001');
+    assert.ok(defaultPin, 'desktop: the pin is on the default view');
+
     await page.locator('#map-pin-hz-001').click({ force: true });
     await page.waitForTimeout(2400);
     await assertCardCentred(page, 'desktop: pin tap');
@@ -162,6 +195,8 @@ try {
 
     await closeWithX(page);
     assert.equal((await geometry(page)).weatherVisible, true, 'desktop: weather card is still there');
+    await page.waitForTimeout(1400);
+    await assertBackAtDefaultView(page, defaultPin, 'desktop: after X');
 
     // Re-opening from the feed centres the card again.
     await openFromFeed(page);
@@ -172,7 +207,7 @@ try {
     await context.close();
   }
 
-  console.log('Report cards open in the middle; phones tuck the weather card away');
+  console.log('Report cards open in the middle, phones tuck the weather card away, X recenters');
 } finally {
   await browser.close();
 }
