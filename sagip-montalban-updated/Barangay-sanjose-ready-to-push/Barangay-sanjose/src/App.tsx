@@ -184,6 +184,24 @@ export default function App() {
   const [selectionNonce, setSelectionNonce] = useState(0);
   const selectedAlertIdRef = useRef<string | null>(null);
 
+  /**
+   * A report card on the map and the floating weather card overlap on phone
+   * screens, so the weather card steps aside while a report is open and comes
+   * back the moment its X is tapped. Desktop has room for both.
+   */
+  const [reportPopupOpen, setReportPopupOpen] = useState(false);
+  const [isCompactViewport, setIsCompactViewport] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 1024,
+  );
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1023px)');
+    const sync = () => setIsCompactViewport(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+
   const closeDrawerOnPhone = () => {
     if (window.innerWidth < 1024) setMobileMenuOpen(false);
   };
@@ -488,8 +506,11 @@ export default function App() {
             onTrafficChange={setTrafficOpen}
             onHelpCenterChange={setHelpCenterOpen}
             onWeatherChange={setWeatherOpen}
+            onReportPopupChange={setReportPopupOpen}
           />
-          {!alternateMapOpen && <PagasaFloodStatus />}
+          {!alternateMapOpen && (
+            <PagasaFloodStatus hidden={reportPopupOpen && isCompactViewport} />
+          )}
         </main>
       </div>
 

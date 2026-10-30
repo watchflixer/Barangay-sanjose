@@ -43,7 +43,8 @@
     "test:android-parity:browser": "node tests/android-pixel7-parity.mjs",
     "test:public-report:browser": "node tests/public-report-browser.mjs",
     "test:report-location:browser": "node tests/report-location-roundtrip-browser.mjs",
-    "test:sticky-popup:browser": "node tests/sticky-report-popup-browser.mjs"
+    "test:sticky-popup:browser": "node tests/sticky-report-popup-browser.mjs",
+    "test:popup-center:browser": "node tests/popup-center-weather-browser.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

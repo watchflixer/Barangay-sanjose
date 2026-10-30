@@ -25,7 +25,12 @@ const weatherLabel = (code: number) => {
   return 'Current conditions';
 };
 
-export const PagasaFloodStatus: React.FC = () => {
+/**
+ * `hidden` keeps the card mounted but off screen: phones drop it while a
+ * report card is open (the two overlap), and it returns untouched — same
+ * weather data, no refetch — as soon as that card is closed.
+ */
+export const PagasaFloodStatus: React.FC<{ hidden?: boolean }> = ({ hidden = false }) => {
   const [data, setData] = useState<WeatherData | null>(null);
   const [error, setError] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -84,7 +89,7 @@ export const PagasaFloodStatus: React.FC = () => {
   return (
     <div
       id="weather-card"
-      className="absolute top-20 right-4 z-10 w-56 rounded-lg bg-slate-900/95 backdrop-blur-md border border-slate-800 shadow-lg text-slate-200 overflow-hidden"
+      className={`absolute top-20 right-4 z-10 w-56 rounded-lg bg-slate-900/95 backdrop-blur-md border border-slate-800 shadow-lg text-slate-200 overflow-hidden ${hidden ? 'hidden' : ''}`}
     >
       <div className="px-3 py-2 flex items-center justify-between border-b border-slate-800">
         <div className="flex items-center gap-2">
