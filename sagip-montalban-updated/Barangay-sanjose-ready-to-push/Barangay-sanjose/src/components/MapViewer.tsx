@@ -282,6 +282,11 @@ interface MapViewerProps {
    * report stays selected until the reporter taps the popup's X.
    */
   selectionNonce?: number;
+  /**
+   * Tells the app when a report card is on screen. Phones hide the floating
+   * weather card while it is open — the two panels overlap there.
+   */
+  onReportPopupChange?: (open: boolean) => void;
   /** Residents ask an admin to close an incident; they cannot resolve it directly. */
   onRequestResolved: (alert: HazardAlert) => void;
   mapSettings: MapSettings;
@@ -307,6 +312,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   selectedAlert,
   onSelectAlert,
   selectionNonce = 0,
+  onReportPopupChange,
   onRequestResolved,
   mapSettings,
   onUpdateMapSettings,
@@ -337,9 +343,59 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const selectAlertRef = useRef(onSelectAlert);
   const requestResolvedRef = useRef(onRequestResolved);
   const selectedAlertRef = useRef<HazardAlert | null>(selectedAlert);
+  const reportPopupChangeRef = useRef(onReportPopupChange);
   selectAlertRef.current = onSelectAlert;
   requestResolvedRef.current = onRequestResolved;
   selectedAlertRef.current = selectedAlert;
+  reportPopupChangeRef.current = onReportPopupChange;
+
+  /**
+   * CENTRE THE REPORT CARD, NOT THE PIN
+   *
+   * The card hangs *above* its pin, so flying to the pin's coordinates leaves
+   * the card crowded against the top of the screen — clipped on a short phone
+   * viewport. Measure the card and glide to the map centre that puts the
+   * card's middle in the middle of the map instead.
+   */
+  const centerPopupCard = (marker: L.Marker) => {
+    const map = mapInstanceRef.current;
+    const popupEl = marker.getPopup()?.getElement() as HTMLElement | null | undefined;
+    if (!map || !popupEl) return;
+
+    // Measure the card as it is actually drawn (tip, margin and all) instead
+    // of guessing how tall it is.
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const cardRect = popupEl.getBoundingClientRect();
+    if (!cardRect.height || !mapRect.height) return;
+
+    const pin = marker.getLatLng();
+    const pinPoint = map.latLngToContainerPoint(pin);
+    // Leaflet 2's namespace has classes only (no `L.point()` factory).
+    const cardPoint = new L.Point(
+      cardRect.left + cardRect.width / 2 - mapRect.left,
+      cardRect.top + cardRect.height / 2 - mapRect.top,
+    );
+    // The card always hangs this far above its pin — a screen offset, so it
+    // stays true at every zoom level.
+    const hang = cardPoint.subtract(pinPoint);
+
+    // Never zoom out of a closer look; from further out, settle on 16.
+    const zoom = Math.max(map.getZoom(), 16);
+    const size = map.getSize();
+    const middle = new L.Point(size.x / 2, size.y / 2);
+
+    // Already dead centre at the right zoom — do not nudge the map.
+    if (map.getZoom() === zoom && pinPoint.add(hang).distanceTo(middle) < 6) return;
+
+    // Centre the CARD, not the pin: the pin must end up as far BELOW the
+    // middle as the card sits above it.
+    const target = map.unproject(map.project(pin, zoom).add(hang), zoom);
+    map.flyTo(target, zoom, {
+      duration: 1,
+      easeLinearity: 0.25,
+    });
+  };
+
   // Read the one-time view snapshot set by the HazardSync brand refresh.
   const [refreshView] = React.useState(readRefreshView);
   React.useEffect(() => {
@@ -961,6 +1017,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     // a) Drop pins that are no longer shown (filtered out, hidden type, deleted).
     markerEntriesRef.current.forEach((entry, id) => {
       if (visibleIds.has(id)) return;
+      if (entry.marker.isPopupOpen()) reportPopupChangeRef.current?.(false);
       entry.marker.remove();
       markerEntriesRef.current.delete(id);
     });
@@ -998,13 +1055,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         autoClose: false,
         closeOnClick: false,
         closeOnEscapeKey: false,
-        autoPan: true,
+        // Leaflet's own autoPan only nudges the card *into* view. We glide the
+        // whole card to the middle of the map instead (centerPopupCard), so
+        // the two must not fight over the camera.
+        autoPan: false,
         // keepInView fights the Recenter button (it yanks the camera back to
-        // the popup on every moveend), so the initial autoPan is enough.
+        // the popup on every moveend).
         keepInView: false,
-        autoPanPadding: [40, 120],
-        autoPanPaddingTopLeft: [40, 96],
-        autoPanPaddingBottomRight: [40, 140],
       });
 
       const entry: MarkerEntry = {
@@ -1038,7 +1095,14 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             };
           }
         }, 0);
+        // Slow glide that parks the whole card in the middle of the map.
+        window.setTimeout(() => centerPopupCard(entry.marker), 0);
+        reportPopupChangeRef.current?.(true);
         selectAlertRef.current(entry.alert);
+      });
+
+      marker.on('popupclose', () => {
+        reportPopupChangeRef.current?.(false);
       });
 
       // Leaflet's own click handler TOGGLES a popup shut, so tapping the same
@@ -1086,13 +1150,16 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
 
     const entry = markerEntriesRef.current.get(alert.id);
-    map.flyTo(alert.coordinates, 16, {
-      duration: 1.2,
-      easeLinearity: 0.25,
-    });
+    if (!entry) {
+      // No pin for this report (filtered out): at least bring the spot up.
+      map.flyTo(alert.coordinates, 16, {
+        duration: 1.2,
+        easeLinearity: 0.25,
+      });
+      return;
+    }
 
-    if (!entry) return;
-    // Already open (the pin tap opened it): keep it, let the flight do the work.
+    // Already open (a pin tap opened it): it was centred when it opened.
     if (entry.marker.isPopupOpen()) return;
 
     closeEverything();
