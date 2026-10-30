@@ -97,6 +97,31 @@ test('the picker pin is styled, and hover scale never fights Leaflet positioning
   assert.match(css, /prefers-reduced-motion[\s\S]{0,200}picker-pin/, 'the pin animation needs a reduced-motion escape');
 });
 
+test('the hazard pin is centred on its saved coordinate, never shifted by CSS', () => {
+  const css = readFileSync(path.join(SRC, 'index.css'), 'utf8');
+
+  const ruleStart = css.indexOf('.hazard-pin-container {');
+  assert.ok(ruleStart >= 0, 'missing .hazard-pin-container styles');
+  const rule = css.slice(ruleStart, css.indexOf('}', ruleStart));
+  // Leaflet centres a 38×38 DivIcon on the coordinate through iconAnchor
+  // [19, 19]. A second translate here moved every pin ~19 px up-left
+  // (~350 m at the default zoom 13) — the "pin is not accurate" bug.
+  assert.doesNotMatch(rule, /transform\s*:\s*translate/, 'no extra translate on the pin box');
+  assert.match(rule, /width:\s*100%/, 'the pin box must fill the 38×38 DivIcon');
+  assert.match(rule, /height:\s*100%/, 'the pin box must fill the 38×38 DivIcon');
+
+  const hoverStart = css.indexOf('.hazard-pin-container:hover');
+  const hoverRule = css.slice(hoverStart, css.indexOf('}', hoverStart));
+  assert.doesNotMatch(hoverRule, /translate/, 'hover scaling must stay centred');
+
+  const map = stripComments(readFileSync(path.join(SRC, 'components/MapViewer.tsx'), 'utf8'));
+  assert.match(
+    map,
+    /iconSize:\s*\[38,\s*38\][\s\S]{0,160}iconAnchor:\s*\[19,\s*19\]/,
+    'the marker anchor must be the centre of the 38×38 pin',
+  );
+});
+
 test('no source file imports the deleted assets/images folder', () => {
   const imageDir = path.join(SRC, 'assets', 'images');
   assert.equal(existsSync(imageDir), false, 'src/assets/images was deleted from the repo');

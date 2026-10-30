@@ -83,18 +83,27 @@ body,
 }
 
 /* Custom Marker Styling & Pulse animations */
+/*
+ * ACCURACY: Leaflet already centres this 38×38 DivIcon on the saved
+ * coordinate via `iconAnchor: [19, 19]`. The old rule added a second
+ * `translate(-50%, -50%)` here, so every hazard pin rendered 19 px up and
+ * 19 px left of its real position (~350 m at the default zoom 13). Keep this
+ * box free of `transform: translate(...)`; hover scaling is centred instead.
+ */
 .hazard-pin-container {
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  width: 100%;
+  height: 100%;
   cursor: pointer;
-  transform: translate(-50%, -50%);
+  transform-origin: 50% 50%;
   transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .hazard-pin-container:hover {
-  transform: translate(-50%, -50%) scale(1.18);
+  transform: scale(1.18);
   z-index: 1000 !important;
 }
 

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { HazardAlert, HazardDraft, HazardType, HazardSeverity } from '../types';
 import { reportDraftError } from '../lib/reportsApi';
-import { INITIAL_HAZARDS, SAN_JOSE_SITIOS } from '../data/geoData';
+import { SAN_JOSE_SITIOS } from '../data/geoData';
 
 interface AddHazardModalProps {
   isOpen: boolean;
@@ -50,7 +50,10 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
 }) => {
   const [type, setType] = useState<HazardType>('flood');
   const [title, setTitle] = useState('');
-  const [streetName, setStreetName] = useState(COMMON_STREETS[0]);
+  // Starts empty: this is free text typed by the reporter (any street,
+  // landmark or spot). It used to be pre-filled and then overwritten with the
+  // nearest seeded incident whenever the pin moved, losing what was typed.
+  const [streetName, setStreetName] = useState('');
   const [sitio, setSitio] = useState(SAN_JOSE_SITIOS[0].name);
   const [severity, setSeverity] = useState<HazardSeverity>('high');
   const [description, setDescription] = useState('');
@@ -75,12 +78,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
     const nearestSitio = SAN_JOSE_SITIOS.reduce((nearest, sitio) =>
       distanceTo(sitio.coordinates) < distanceTo(nearest.coordinates) ? sitio : nearest,
     );
-    const nearestKnownLocation = INITIAL_HAZARDS.reduce((nearest, alert) =>
-      distanceTo(alert.coordinates) < distanceTo(nearest.coordinates) ? alert : nearest,
-    );
-
     setSitio(nearestSitio.name);
-    setStreetName(nearestKnownLocation.streetName);
   }, [selectedCoordinates]);
 
   // Default coordinate if none selected
@@ -188,6 +186,7 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
       await onAddAlert(draft);
       onClose();
       setTitle('');
+      setStreetName('');
       setDescription('');
       setPhotoUrl('');
       setPhotoError(null);
@@ -407,16 +406,21 @@ export const AddHazardModal: React.FC<AddHazardModalProps> = ({
           {/* Street & Sitio */}
           <div className="grid grid-cols-1 gap-3">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+              <label
+                htmlFor="hazard-street"
+                className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1"
+              >
                 Street / Specific Location *
               </label>
               <input
+                id="hazard-street"
                 type="text"
                 required
                 list="street-options"
                 value={streetName}
                 onChange={(e) => setStreetName(e.target.value)}
-                placeholder="Street name or landmark"
+                placeholder="Any street, landmark or exact spot (e.g. Blk 7 Lot 12, malapit sa covered court)"
+                maxLength={200}
                 className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900"
               />
               <datalist id="street-options">

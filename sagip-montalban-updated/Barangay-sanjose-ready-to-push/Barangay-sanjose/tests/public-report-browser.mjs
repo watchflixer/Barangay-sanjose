@@ -18,6 +18,10 @@ try {
   const context = await browser.newContext({
     viewport: { width: 1280, height: 900 },
     reducedMotion: 'reduce',
+    // A fixed GPS fix lets the test prove the saved coordinates are the ones
+    // placed on the picker, not a default barangay-centre guess.
+    geolocation: { latitude: 14.744123, longitude: 121.135987, accuracy: 10 },
+    permissions: ['geolocation'],
   });
   const backend = createBackend([
     baseReport('hz-001', { title: 'Kasiglahan riverside flooding' }),
@@ -40,7 +44,19 @@ try {
   await page
     .getByPlaceholder('e.g. Waist-deep flood along river dike / Snapped electrical cable')
     .fill('Sampaloc creek overflow');
-  await page.getByPlaceholder('Street name or landmark').fill('Sampaloc Street');
+  // Free text: any street, landmark or spot is accepted and saved as typed.
+  const typedStreet = 'Blk 7 Lot 12, Sampaloc Street (near the covered court)';
+  await page.locator('#hazard-street').fill(typedStreet);
+
+  // Drop the pin through "Click Pin On Map" → picker, then confirm the typed
+  // street survived the round-trip and the pin kept the picked coordinate.
+  await page.getByRole('button', { name: 'Click Pin On Map' }).click();
+  const picker = page.locator('#location-picker');
+  await picker.getByRole('button', { name: 'Show your location' }).click();
+  await picker.getByRole('button', { name: 'Use This Location' }).click();
+  await page.locator('#hazard-street').waitFor();
+  assert.equal(await page.locator('#hazard-street').inputValue(), typedStreet);
+
   await page.getByPlaceholder('e.g. Juan Dela Cruz').fill('Maria Santos');
   await page.getByPlaceholder('e.g. 09171234567').fill('09171234567');
   await page.getByPlaceholder('e.g. juan@gmail.com').fill('maria.santos@gmail.com');
@@ -66,6 +82,12 @@ try {
   assert.equal(submitted.review_status, 'pending');
   assert.equal(submitted.source, 'community');
   assert.equal(submitted.photo_url.startsWith('data:image/'), true);
+  // The typed location is saved word-for-word, even though it is not one of
+  // the quick-pick streets.
+  assert.equal(submitted.street_name, typedStreet);
+  // And the pin keeps the exact picked coordinates, not a fallback.
+  assert.ok(Math.abs(submitted.lat - 14.744123) < 1e-5, 'lat must match the placed pin');
+  assert.ok(Math.abs(submitted.lng - 121.135987) < 1e-5, 'lng must match the placed pin');
   // A pending report is not public.
   await page.waitForTimeout(500);
   assert.equal(await page.locator('#alert-card-' + submitted.id).count(), 0);
