@@ -123,12 +123,25 @@ try {
     }
 
     /* --------------------------------- 2. Leaving for Traffic resets it */
+    // Layers stands down while a report card is open (see the lockdown suite),
+    // so switching basemaps is a two-step: close the card, then pick.
     await openCard(page);
-    assert.equal((await snapshot(page)).popups, 1, `${viewport.tag}: card open again before switching`);
+    assert.equal((await snapshot(page)).popups, 1, `${viewport.tag}: card open before switching`);
+    assert.equal(
+      await page.locator('#btn-toggle-layers-menu').isDisabled(),
+      true,
+      `${viewport.tag}: Layers waits while the card is open`,
+    );
+
+    const closingX = await page.locator('.leaflet-popup-close-button').first().boundingBox();
+    assert.ok(closingX, `${viewport.tag}: the card has its X`);
+    await page.mouse.click(closingX.x + closingX.width / 2, closingX.y + closingX.height / 2);
+    await page.waitForTimeout(1600);
+
     await pickLayer(page, 'Traffic');
     const onTraffic = await snapshot(page);
     assert.equal(onTraffic.traffic, true, `${viewport.tag}: the Traffic map is showing`);
-    assert.equal(onTraffic.popups, 0, `${viewport.tag}: the streets report card closed on the way out`);
+    assert.equal(onTraffic.popups, 0, `${viewport.tag}: the streets report card is gone on the way out`);
 
     /* ------------------------- 3. Coming back to streets = a fresh map */
     const trafficFrame = page.frames().find((frame) => frame.url().includes('rizal_traffic_map'));

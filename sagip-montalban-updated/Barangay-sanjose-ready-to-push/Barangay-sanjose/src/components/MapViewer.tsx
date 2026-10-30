@@ -344,6 +344,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const requestResolvedRef = useRef(onRequestResolved);
   const selectedAlertRef = useRef<HazardAlert | null>(selectedAlert);
   const reportPopupChangeRef = useRef(onReportPopupChange);
+  /**
+   * A report card is open right now.
+   *
+   * While it is, the map's other controls go quiet — the resident is reading a
+   * report, and a stray tap on Zoom/Layers/Locate (or the feed) would knock
+   * that report off screen. Only Recenter stays live, and both Recenter and
+   * the card's own X bring everything back.
+   */
+  const [reportCardOpen, setReportCardOpen] = React.useState(false);
   /** True while a marker is torn down by data, not by the resident's X. */
   const forceClosedRef = useRef(false);
   /**
@@ -355,6 +364,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   requestResolvedRef.current = onRequestResolved;
   selectedAlertRef.current = selectedAlert;
   reportPopupChangeRef.current = onReportPopupChange;
+
+  /** Tell both the map's own buttons and the app that a card came/went. */
+  const setReportOpen = (open: boolean) => {
+    setReportCardOpen(open);
+    reportPopupChangeRef.current?.(open);
+  };
 
   /**
    * Close whatever report card is open on the resident's behalf — they hit
@@ -1085,7 +1100,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       // A pin that disappears (filter, hidden category, deleted report) is
       // not the resident tapping X — do not yank the camera back for it.
       forceClosedRef.current = true;
-      if (entry.marker.isPopupOpen()) reportPopupChangeRef.current?.(false);
+      if (entry.marker.isPopupOpen()) setReportOpen(false);
       entry.marker.remove();
       markerEntriesRef.current.delete(id);
       forceClosedRef.current = false;
@@ -1166,13 +1181,13 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         }, 0);
         // Slow glide that parks the whole card in the middle of the map.
         window.setTimeout(() => centerPopupCard(entry.marker), 0);
-        reportPopupChangeRef.current?.(true);
+        setReportOpen(true);
         selectAlertRef.current(entry.alert);
       });
 
       marker.on('popupclose', () => {
         const forcedOut = forceClosedRef.current;
-        reportPopupChangeRef.current?.(false);
+        setReportOpen(false);
         if (forcedOut) return;
 
         // The X is the only control that closes a report, so a close here is
@@ -1402,8 +1417,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           <button
             id="btn-toggle-layers-menu"
             onClick={() => toggleLayerMenu()}
-            title="Layers"
-            className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-800 shadow-xs border border-slate-200 transition-colors active:scale-95 cursor-pointer"
+            title={reportCardOpen ? 'Close the report first' : 'Layers'}
+            disabled={reportCardOpen}
+            className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-800 shadow-xs border border-slate-200 transition-colors active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:active:scale-100"
           >
             <Layers className="w-4 h-4 text-slate-700" />
           </button>
@@ -1574,9 +1590,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         <button
           id="btn-show-user-location"
             onClick={handleShowUserLocation}
-            title="Show your location"
+            title={reportCardOpen ? 'Close the report first' : 'Show your location'}
             aria-label="Show your location"
-            className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95"
+            disabled={reportCardOpen}
+            className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:active:scale-100"
           >
             <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
           </button>
@@ -1590,18 +1607,20 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             <button
               id="btn-zoom-in"
               onClick={handleZoomIn}
-              title="Zoom in"
+              title={reportCardOpen ? 'Close the report first' : 'Zoom in'}
               aria-label="Zoom in"
-              className={`p-2 text-slate-800 transition-colors hover:bg-slate-50 ${showWeather ? 'rounded-none border-b border-slate-300' : 'rounded-md border border-slate-200 bg-white shadow-xs active:scale-95'}`}
+              disabled={reportCardOpen}
+              className={`p-2 text-slate-800 transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:active:scale-100 ${showWeather ? 'rounded-none border-b border-slate-300' : 'rounded-md border border-slate-200 bg-white shadow-xs active:scale-95'}`}
             >
               <Plus className={`h-4 w-4 ${showWeather ? 'text-black' : 'text-slate-700'}`} strokeWidth={showWeather ? 3 : 2} />
             </button>
             <button
               id="btn-zoom-out"
               onClick={handleZoomOut}
-              title="Zoom out"
+              title={reportCardOpen ? 'Close the report first' : 'Zoom out'}
               aria-label="Zoom out"
-              className={`p-2 text-slate-800 transition-colors hover:bg-slate-50 ${showWeather ? 'rounded-none' : 'rounded-md border border-slate-200 bg-white shadow-xs active:scale-95'}`}
+              disabled={reportCardOpen}
+              className={`p-2 text-slate-800 transition-colors hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:active:scale-100 ${showWeather ? 'rounded-none' : 'rounded-md border border-slate-200 bg-white shadow-xs active:scale-95'}`}
             >
               <Minus className={`h-4 w-4 ${showWeather ? 'text-black' : 'text-slate-700'}`} strokeWidth={showWeather ? 3 : 2} />
             </button>
@@ -1625,14 +1644,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
             type="button"
             id="btn-desktop-feed-toggle"
             onClick={onOpenMobileMenu}
-            title={isMobileMenuOpen ? 'Hide incident feeds' : 'Show incident feeds'}
+            title={reportCardOpen ? 'Close the report first' : isMobileMenuOpen ? 'Hide incident feeds' : 'Show incident feeds'}
             aria-label={isMobileMenuOpen ? 'Hide incident feeds' : 'Show incident feeds'}
             aria-expanded={isMobileMenuOpen}
+            disabled={reportCardOpen}
             /* `self-center` centres it under the zoom pair (it is narrower than
                the stack, so without it the button sits left-aligned).
                `mt-16` sits it below the controls — 64px plus the stack's own
                6px gap = 70px of air below the minus button. */
-            className="hidden lg:flex self-center mt-16 h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm transition-all hover:bg-slate-50 active:scale-90"
+            className="hidden lg:flex self-center mt-16 h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-800 shadow-sm transition-all hover:bg-slate-50 active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:active:scale-100"
           >
             <ChevronRight
               className={`h-4 w-4 transition-transform duration-300 ${isMobileMenuOpen ? 'rotate-180' : 'rotate-0'}`}

@@ -408,6 +408,7 @@ export default function App() {
         onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
         feedsVisible={incidentFeedsVisible}
+        reportCardOpen={reportPopupOpen}
       />
 
       {/* Main Workspace Layout */}
@@ -415,7 +416,7 @@ export default function App() {
         {/* Google-Maps-style icon rail. Renders on laptop/desktop widths only
             (all of its CSS sits behind @media (min-width: 1024px)), so the
             Android/iPhone portrait layout is untouched. */}
-        <DesktopRail />
+        <DesktopRail donateDisabled={reportPopupOpen} />
 
         {/* Left Sidebar (Alerts Feed & GIS Controls) — HAZARD MAP ONLY. */}
         {incidentFeedsVisible && (
@@ -458,9 +459,11 @@ export default function App() {
                 <button
                   id="btn-mobile-sidebar-toggle-arrow"
                   onClick={() => setMobileMenuOpen((prev) => !prev)}
-                  title={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
+                  title={reportPopupOpen ? 'Close the report first' : mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
                   aria-label={mobileMenuOpen ? 'Close incident feeds' : 'Open incident feeds'}
-                  className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none"
+                  // Only Recenter stays live while a report card is open.
+                  disabled={reportPopupOpen}
+                  className="hidden portrait:flex sm:portrait:hidden absolute left-full ml-1.5 top-[44%] -translate-y-1/2 z-30 h-8 w-8 items-center justify-center rounded-full bg-white border border-slate-200 shadow-sm transition-transform active:scale-90 cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100"
                 >
                   <svg
                     viewBox="0 0 70 140"

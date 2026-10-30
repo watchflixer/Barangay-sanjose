@@ -41,6 +41,8 @@ interface NavbarProps {
   helpCenterOpen?: boolean;
   /** Weather view is open — also disables Report/●●● on ALL devices. */
   weatherOpen?: boolean;
+  /** A report card is open on the map — Donate waits until it is closed. */
+  reportCardOpen?: boolean;
   onOpenLiveModal?: () => void;
   onOpenUpdates?: () => void;
   onOpenEvacuationCenters?: () => void;
@@ -61,6 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   trafficOpen = false,
   helpCenterOpen = false,
   weatherOpen = false,
+  reportCardOpen = false,
   onOpenLiveModal = () => {},
   onOpenUpdates = () => {},
   onOpenEvacuationCenters = () => {},
@@ -240,7 +243,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <GuideButton className="ml-4 portrait:ml-0 portrait:mr-0.5 sm:portrait:mr-5 portrait:h-7 sm:portrait:h-8" />
 
             {/* Donate — katabi ng Guide (nagpalitan sila ng pwesto). */}
-            <DonateButton className="portrait:h-7 sm:portrait:h-8" />
+            <DonateButton className="portrait:h-7 sm:portrait:h-8" disabled={reportCardOpen} />
 
             <button
               id="btn-emergency-hotlines"
