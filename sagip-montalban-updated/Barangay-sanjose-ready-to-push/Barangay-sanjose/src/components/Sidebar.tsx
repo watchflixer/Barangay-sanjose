@@ -388,10 +388,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {alert.title}
                 </h3>
 
-                {/* Location & Sitio */}
-                <div className="flex items-center gap-1 text-[11px] mb-1 text-slate-600">
-                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                  <span className="truncate font-medium">{alert.streetName}</span>
+                {/* Location & Sitio — the resident's own words, shown in full
+                    (wrapped, not clipped) so the published card matches what
+                    they typed. `title` keeps the complete text on hover too. */}
+                <div className="flex items-start gap-1 text-[11px] mb-1 text-slate-600">
+                  <MapPin className="mt-[1px] w-3 h-3 text-slate-400 shrink-0" />
+                  <span className="min-w-0 break-words font-medium" title={alert.streetName}>
+                    {alert.streetName}
+                  </span>
                 </div>
 
 
