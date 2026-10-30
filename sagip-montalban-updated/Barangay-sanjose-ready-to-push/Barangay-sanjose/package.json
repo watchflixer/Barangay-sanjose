@@ -44,7 +44,8 @@
     "test:public-report:browser": "node tests/public-report-browser.mjs",
     "test:report-location:browser": "node tests/report-location-roundtrip-browser.mjs",
     "test:sticky-popup:browser": "node tests/sticky-report-popup-browser.mjs",
-    "test:popup-center:browser": "node tests/popup-center-weather-browser.mjs"
+    "test:popup-center:browser": "node tests/popup-center-weather-browser.mjs",
+    "test:hazard-reset:browser": "node tests/recenter-reset-browser.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

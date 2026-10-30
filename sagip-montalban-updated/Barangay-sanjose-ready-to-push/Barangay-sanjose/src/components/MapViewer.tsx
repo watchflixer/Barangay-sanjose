@@ -346,10 +346,52 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const reportPopupChangeRef = useRef(onReportPopupChange);
   /** True while a marker is torn down by data, not by the resident's X. */
   const forceClosedRef = useRef(false);
+  /**
+   * The embedded maps post their layer picks in a listener registered once, so
+   * it reads the reset through a ref instead of a stale closure.
+   */
+  const resetHazardMapRef = useRef<() => void>(() => {});
   selectAlertRef.current = onSelectAlert;
   requestResolvedRef.current = onRequestResolved;
   selectedAlertRef.current = selectedAlert;
   reportPopupChangeRef.current = onReportPopupChange;
+
+  /**
+   * Close whatever report card is open on the resident's behalf — they hit
+   * Recenter, or they left the streets hazard map for another basemap.
+   *
+   * The close is flagged, so the `popupclose` handler does not ALSO schedule
+   * its own recenter: whoever called this decides where the camera goes.
+   * Returns true when a card was actually open.
+   */
+  const closeOpenReport = () => {
+    let closed = false;
+    markerEntriesRef.current.forEach((entry) => {
+      if (!entry.marker.isPopupOpen()) return;
+      closed = true;
+      forceClosedRef.current = true;
+      entry.marker.closePopup();
+      forceClosedRef.current = false;
+    });
+    // No card left on the map, so nothing should stay highlighted in the feed.
+    if (closed) selectAlertRef.current(null);
+    return closed;
+  };
+
+  /**
+   * Put the streets hazard map back to its default view, with no card open.
+   * `animate: false` because nobody is looking at it when we reset on the way
+   * out, and a glide would still be running by the time they come back.
+   */
+  const resetHazardMap = () => {
+    closeOpenReport();
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    map.stop(); // cancel any glide that is still running
+    map.setView(SAN_JOSE_CENTER, hazardStartZoom(), { animate: false });
+  };
+
+  resetHazardMapRef.current = resetHazardMap;
 
   /**
    * The report card is closed and the resident is done with it: put the map
@@ -831,28 +873,35 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       if (message?.type !== 'hazardsync-layer-select') return;
 
       toggleLayerMenu(false);
+      // Every pick (including coming back to streets) leaves the hazard map
+      // in its default state: no report card and the barangay centred.
       if (message.layer === 'dark') {
+        resetHazardMapRef.current();
         setShowTrafficMap(true);
         setShowFloodProneBlank(false);
         setShowHelpCenter(false);
         setShowWeather(false);
       } else if (message.layer === 'light') {
+        resetHazardMapRef.current();
         setShowTrafficMap(false);
         setShowFloodProneBlank(true);
         setShowHelpCenter(false);
         setShowWeather(false);
         onUpdateMapSettings({ tileLayer: 'light' });
       } else if (message.layer === 'weather') {
+        resetHazardMapRef.current();
         setShowTrafficMap(false);
         setShowFloodProneBlank(false);
         setShowHelpCenter(false);
         setShowWeather(true);
       } else if (message.layer === 'satellite') {
+        resetHazardMapRef.current();
         setShowTrafficMap(false);
         setShowFloodProneBlank(false);
         setShowHelpCenter(true);
         setShowWeather(false);
       } else if (message.layer === 'streets') {
+        resetHazardMapRef.current();
         setShowTrafficMap(false);
         setShowFloodProneBlank(false);
         setShowHelpCenter(false);
@@ -1233,8 +1282,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
     if (!mapInstanceRef.current) return;
 
-    // The selected report stays open (only its X closes it); recenter just
-    // moves the camera back to the barangay.
+    // Recenter is a reset: the report card closes with it, then the camera
+    // glides back to the barangay below.
+    closeOpenReport();
+
     if (mapSettings.lockCameraToBounds) {
       const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
       const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
@@ -1388,6 +1439,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                         key={layer}
                         onClick={() => {
                           if (layer === 'weather') {
+                            resetHazardMap();
                             setShowTrafficMap(false);
                             setShowFloodProneBlank(false);
                             setShowHelpCenter(false);
@@ -1397,6 +1449,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                           }
                           if (layer === 'dark') {
                             // The former "Comming Soon" slot now opens the realtime Traffic map.
+                            resetHazardMap();
                             setShowTrafficMap(true);
                             setShowFloodProneBlank(false);
                             setShowHelpCenter(false);
@@ -1405,6 +1458,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             return;
                           }
                           if (layer === 'light') {
+                            resetHazardMap();
                             setShowTrafficMap(false);
                             setShowFloodProneBlank(true);
                             setShowHelpCenter(false);
@@ -1415,6 +1469,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                           }
                           if (layer === 'satellite') {
                             // "Help Center" — its own filterable Leaflet directory map (pick a filter first).
+                            resetHazardMap();
                             setShowTrafficMap(false);
                             setShowFloodProneBlank(false);
                             setShowHelpCenter(true);
@@ -1422,6 +1477,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                             toggleLayerMenu(false);
                             return;
                           }
+                          // Back on the streets hazard map: it opens fresh —
+                          // no card, default view.
+                          resetHazardMap();
                           setShowTrafficMap(false);
                           setShowFloodProneBlank(false);
                           setShowHelpCenter(false);
