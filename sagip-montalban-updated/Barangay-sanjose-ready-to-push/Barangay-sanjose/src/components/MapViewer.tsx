@@ -79,12 +79,209 @@ const hazardMinZoom = () => (isSmallPortraitViewport() ? 11 : 13);
 /** Zoom step. 0.5 lets the small portrait view land on 12.5; others stay at 1. */
 const hazardZoomSnap = () => (isSmallPortraitViewport() ? 0.5 : 1);
 
+/* ------------------------------------------------------------------------- */
+/* HAZARD PIN + POPUP PRESENTATION                                           */
+/*                                                                           */
+/* Built outside the component so a data refresh can DIFF the markers        */
+/* instead of rebuilding them (a rebuild closes whatever popup is open).     */
+/* ------------------------------------------------------------------------- */
+
+interface MarkerEntry {
+  marker: L.Marker;
+  alert: HazardAlert;
+  /** Content fingerprint: markers only get touched when something changed. */
+  signature: string;
+  labelText: string;
+}
+
+interface HazardPresentation {
+  icon: L.DivIcon;
+  popupHtml: string;
+  labelText: string;
+  signature: string;
+}
+
+const hazardPresentation = (alert: HazardAlert): HazardPresentation => {
+  let iconSymbol = '⚠️';
+  let bgColor = 'bg-amber-500';
+  let ringColor = 'bg-amber-400';
+  let labelText = 'Warning';
+
+  if (alert.type === 'fire') {
+    iconSymbol = '🔥';
+    bgColor = 'bg-red-600';
+    ringColor = 'bg-red-500';
+    labelText = 'Fire Alert';
+  } else if (alert.type === 'flood') {
+    iconSymbol = '🌊';
+    bgColor = 'bg-blue-600';
+    ringColor = 'bg-blue-400';
+    labelText = 'Flood Warning';
+  } else if (alert.type === 'power') {
+    iconSymbol = '⚡';
+    bgColor = 'bg-amber-500';
+    ringColor = 'bg-amber-400';
+    labelText = 'No Electricity';
+  } else if (alert.type === 'streetlight') {
+    iconSymbol = '💡';
+    bgColor = 'bg-indigo-600';
+    ringColor = 'bg-indigo-400';
+    labelText = 'No Streetlights';
+  } else if (alert.type === 'water') {
+    iconSymbol = '🚰';
+    bgColor = 'bg-cyan-600';
+    ringColor = 'bg-cyan-400';
+    labelText = 'Water Interruption';
+  } else if (alert.type === 'road') {
+    iconSymbol = '🚧';
+    bgColor = 'bg-orange-600';
+    ringColor = 'bg-orange-400';
+    labelText = 'Road Obstruction';
+  }
+
+  const isResolved = alert.status === 'resolved';
+  const isMonitoring = alert.status === 'monitoring';
+
+  const customPinHtml = `
+    <div class="hazard-pin-container" id="map-pin-${alert.id}">
+      ${!isResolved && (alert.severity === 'critical' || alert.severity === 'high') ? `<div class="hazard-pulse-ring ${ringColor}"></div>` : ''}
+      <div class="hazard-pin-icon ${isResolved ? 'bg-slate-500 opacity-80' : bgColor}">
+        <span>${iconSymbol}</span>
+      </div>
+    </div>
+  `;
+
+  const icon = new L.DivIcon({
+    className: 'custom-hazard-divicon',
+    html: customPinHtml,
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+    popupAnchor: [0, -22],
+  });
+
+  // Status pill styling
+  const statusBadge = isResolved
+    ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600">Resolved</span>'
+    : isMonitoring
+    ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">Monitoring</span>'
+    : '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">Active Alert</span>';
+
+  const severityBadge = alert.severity === 'critical'
+    ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-red-600 text-white">Critical</span>'
+    : alert.severity === 'high'
+    ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-orange-500 text-white">High</span>'
+    : alert.severity === 'moderate'
+    ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500 text-white">Moderate</span>'
+    : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 text-slate-700">Low</span>';
+
+  // Rich HTML Popup with Photo Proof
+  const photoHtml = alert.photoUrl
+    ? `<div class="relative w-full h-20 rounded-md overflow-hidden border border-slate-200 bg-slate-100 mt-1">
+        <img src="${safeImageUrl(alert.photoUrl)}" alt="${escapeHtml(alert.title)}" class="w-full h-full object-cover" />
+        <div class="absolute bottom-1 right-1 bg-black/70 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
+          📸 Verified Photo
+        </div>
+      </div>`
+    : '';
+
+  const shortDescription = alert.description.length > 110 ? `${alert.description.slice(0, 110).trim()}…` : alert.description;
+  const hasMoreDescription = alert.description.length > 110;
+
+  const popupHtml = `
+    <div class="p-2.5 space-y-2 font-sans">
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">${iconSymbol}</span>
+          <div>
+            <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">${labelText}</div>
+            <div class="font-bold text-slate-900 text-xs leading-snug">${escapeHtml(alert.title)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Photo Proof (if uploaded) -->
+      ${photoHtml}
+
+      <!-- Key Details -->
+      <div class="space-y-1 text-xs text-slate-700">
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400 font-medium text-[11px]">Status:</span>
+          <div class="flex items-center gap-1.5">
+            ${statusBadge}
+            ${severityBadge}
+          </div>
+        </div>
+
+        <div class="flex items-start justify-between pt-0.5">
+          <span class="text-slate-400 font-medium text-[11px] shrink-0">Street:</span>
+          <span class="font-semibold text-right text-slate-800 text-[11px]">${escapeHtml(alert.streetName)}</span>
+        </div>
+
+        <div class="flex items-center justify-between">
+          <span class="text-slate-400 font-medium text-[11px]">Reported:</span>
+          <span class="text-slate-600 font-mono text-[10px]">${escapeHtml(alert.timeReported)}</span>
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="p-1.5 bg-slate-50 rounded text-[10px] text-slate-600 leading-snug border border-slate-200">
+        <span id="popup-desc-short-${escapeHtml(alert.id)}">${escapeHtml(shortDescription)}</span>
+        <span id="popup-desc-full-${escapeHtml(alert.id)}" style="display:none">${escapeHtml(alert.description)}</span>
+        ${hasMoreDescription ? `<button id="btn-popup-more-${escapeHtml(alert.id)}" class="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700">See more</button>` : ''}
+      </div>
+
+      ${alert.evacuationCenter ? `
+        <div class="text-[10px] bg-emerald-50 text-emerald-800 p-1.5 rounded border border-emerald-200">
+          <strong>Evacuation Center:</strong> ${escapeHtml(alert.evacuationCenter)}
+        </div>
+      ` : ''}
+
+      <!-- Footer Actions -->
+      <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+        <span class="text-[10px] text-slate-400 truncate max-w-[120px]">By: ${escapeHtml(alert.reportedBy)}</span>
+        ${!isResolved ? `<button
+          id="btn-popup-resolve-${escapeHtml(alert.id)}"
+          ${alert.pendingResolveFlags ? 'disabled' : ''}
+          title="${alert.pendingResolveFlags ? 'A resolve request is already waiting for admin review.' : 'Ask the barangay admin to mark this incident resolved.'}"
+          class="px-2.5 py-1 text-xs font-semibold rounded ${alert.pendingResolveFlags ? 'bg-slate-100 text-slate-500' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs'} transition-colors cursor-pointer disabled:cursor-default"
+        >
+          ${alert.pendingResolveFlags ? 'Request pending' : 'Flag as resolved'}
+        </button>` : ''}
+      </div>
+    </div>
+  `;
+
+  const signature = JSON.stringify([
+    alert.type,
+    alert.title,
+    alert.streetName,
+    alert.status,
+    alert.severity,
+    alert.description,
+    alert.reportedBy,
+    alert.timeReported,
+    alert.photoUrl ?? '',
+    alert.evacuationCenter ?? '',
+    alert.pendingResolveFlags ?? 0,
+    alert.coordinates,
+  ]);
+
+  return { icon, popupHtml, labelText, signature };
+};
+
 interface MapViewerProps {
   alerts: HazardAlert[];
   /** Categories the admin hid from public incident feeds. */
   hiddenTypes?: HazardType[];
   selectedAlert: HazardAlert | null;
   onSelectAlert: (alert: HazardAlert | null) => void;
+  /**
+   * Bumped by the app every time a report is picked (feed card, pin or the
+   * same card again). The map opens/raises the popup on every bump, so a
+   * report stays selected until the reporter taps the popup's X.
+   */
+  selectionNonce?: number;
   /** Residents ask an admin to close an incident; they cannot resolve it directly. */
   onRequestResolved: (alert: HazardAlert) => void;
   mapSettings: MapSettings;
@@ -109,6 +306,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   hiddenTypes = [],
   selectedAlert,
   onSelectAlert,
+  selectionNonce = 0,
   onRequestResolved,
   mapSettings,
   onUpdateMapSettings,
@@ -129,7 +327,19 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const boundaryLayerRef = useRef<L.Polygon | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const sitiosLayerRef = useRef<L.LayerGroup | null>(null);
-  const activePopupsRef = useRef<{ [key: string]: L.Marker }>({});
+  /** Live marker per report id — lets updates happen in place (see effect 6). */
+  const markerEntriesRef = useRef<Map<string, MarkerEntry>>(new Map());
+  /**
+   * Latest callbacks + selection for the marker effect below. Reading them
+   * through refs keeps that effect from re-running (and re-creating markers)
+   * every time the app re-renders, which used to close the open popup.
+   */
+  const selectAlertRef = useRef(onSelectAlert);
+  const requestResolvedRef = useRef(onRequestResolved);
+  const selectedAlertRef = useRef<HazardAlert | null>(selectedAlert);
+  selectAlertRef.current = onSelectAlert;
+  requestResolvedRef.current = onRequestResolved;
+  selectedAlertRef.current = selectedAlert;
   // Read the one-time view snapshot set by the HazardSync brand refresh.
   const [refreshView] = React.useState(readRefreshView);
   React.useEffect(() => {
@@ -318,6 +528,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       maxBoundsViscosity: 1.0, // Hard lock - rubberband bouncing back
       zoomControl: false, // Zoom buttons are custom buttons in the left control stack, below 'Show your location'
       attributionControl: false,
+      // A selected report stays open: only its X (or picking another report)
+      // closes the popup, never a stray tap on the map.
+      closePopupOnClick: false,
     });
 
     // Initial Tile Layer — mountTileLayer stamps OSM's required referrer
@@ -725,10 +938,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // button — no automatic geolocation prompt on page load.
 
   // 6. Render Custom Hazard Markers with SVG / Emoji Icons and Popups
+  //
+  // DIFF SYNC, NOT A REBUILD.
+  // This effect used to clear the layer and recreate every marker. Leaflet
+  // closes a popup when its marker leaves the map, so every re-render (a feed
+  // poll, a 45s refresh, opening the drawer, clicking the pin again) threw the
+  // open report away. Now markers are updated in place: an open popup survives
+  // data refreshes, filter changes that keep it visible, and re-renders.
   useEffect(() => {
-    if (!markersLayerRef.current || !mapInstanceRef.current) return;
-    markersLayerRef.current.clearLayers();
-    activePopupsRef.current = {};
+    const map = mapInstanceRef.current;
+    const layer = markersLayerRef.current;
+    if (!map || !layer) return;
 
     // Filter alerts if filter is active
     const visibleAlerts = alerts.filter((alert) => {
@@ -736,197 +956,78 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       const matchStatus = mapSettings.activeFilterStatus === 'all' || alert.status === mapSettings.activeFilterStatus;
       return matchType && matchStatus;
     });
+    const visibleIds = new Set(visibleAlerts.map((alert) => alert.id));
 
+    // a) Drop pins that are no longer shown (filtered out, hidden type, deleted).
+    markerEntriesRef.current.forEach((entry, id) => {
+      if (visibleIds.has(id)) return;
+      entry.marker.remove();
+      markerEntriesRef.current.delete(id);
+    });
+
+    // b) Add new pins, update the ones already on the map.
     visibleAlerts.forEach((alert) => {
-      // Configure icon badge appearance based on hazard type
-      let iconSymbol = '⚠️';
-      let bgColor = 'bg-amber-500';
-      let ringColor = 'bg-amber-400';
-      let labelText = 'Warning';
+      const presentation = hazardPresentation(alert);
+      const existing = markerEntriesRef.current.get(alert.id);
 
-      if (alert.type === 'fire') {
-        iconSymbol = '🔥';
-        bgColor = 'bg-red-600';
-        ringColor = 'bg-red-500';
-        labelText = 'Fire Alert';
-      } else if (alert.type === 'flood') {
-        iconSymbol = '🌊';
-        bgColor = 'bg-blue-600';
-        ringColor = 'bg-blue-400';
-        labelText = 'Flood Warning';
-      } else if (alert.type === 'power') {
-        iconSymbol = '⚡';
-        bgColor = 'bg-amber-500';
-        ringColor = 'bg-amber-400';
-        labelText = 'No Electricity';
-      } else if (alert.type === 'streetlight') {
-        iconSymbol = '💡';
-        bgColor = 'bg-indigo-600';
-        ringColor = 'bg-indigo-400';
-        labelText = 'No Streetlights';
-      } else if (alert.type === 'water') {
-        iconSymbol = '🚰';
-        bgColor = 'bg-cyan-600';
-        ringColor = 'bg-cyan-400';
-        labelText = 'Water Interruption';
-      } else if (alert.type === 'road') {
-        iconSymbol = '🚧';
-        bgColor = 'bg-orange-600';
-        ringColor = 'bg-orange-400';
-        labelText = 'Road Obstruction';
+      if (existing) {
+        existing.alert = alert;
+        if (existing.signature !== presentation.signature) {
+          existing.signature = presentation.signature;
+          existing.labelText = presentation.labelText;
+          existing.marker.setLatLng(alert.coordinates);
+          existing.marker.setIcon(presentation.icon);
+          // Keep the popup open across a content update; only its body changes.
+          existing.marker.setPopupContent(presentation.popupHtml);
+        }
+        return;
       }
 
-      // Check if hazard is resolved
-      const isResolved = alert.status === 'resolved';
-      const isMonitoring = alert.status === 'monitoring';
-
-      // HTML template for the custom Leaflet Pin
-      const customPinHtml = `
-        <div class="hazard-pin-container" id="map-pin-${alert.id}">
-          ${!isResolved && (alert.severity === 'critical' || alert.severity === 'high') ? `<div class="hazard-pulse-ring ${ringColor}"></div>` : ''}
-          <div class="hazard-pin-icon ${isResolved ? 'bg-slate-500 opacity-80' : bgColor}">
-            <span>${iconSymbol}</span>
-          </div>
-        </div>
-      `;
-
-      const customIcon = new L.DivIcon({
-        className: 'custom-hazard-divicon',
-        html: customPinHtml,
-        iconSize: [38, 38],
-        iconAnchor: [19, 19],
-        popupAnchor: [0, -22],
-      });
-
       const marker = new L.Marker(alert.coordinates, {
-        icon: customIcon,
-        title: `${labelText}: ${alert.streetName}`,
-      });
+        icon: presentation.icon,
+        title: `${presentation.labelText}: ${alert.streetName}`,
+      }).addTo(layer);
 
-      // Status pill styling
-      const statusBadge = isResolved
-        ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600">Resolved</span>'
-        : isMonitoring
-        ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">Monitoring</span>'
-        : '<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-700">Active Alert</span>';
-
-      const severityBadge = alert.severity === 'critical'
-        ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-red-600 text-white">Critical</span>'
-        : alert.severity === 'high'
-        ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-orange-500 text-white">High</span>'
-        : alert.severity === 'moderate'
-        ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500 text-white">Moderate</span>'
-        : '<span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-200 text-slate-700">Low</span>';
-
-      // Rich HTML Popup with Photo Proof
-      const photoHtml = alert.photoUrl
-        ? `<div class="relative w-full h-20 rounded-md overflow-hidden border border-slate-200 bg-slate-100 mt-1">
-            <img src="${safeImageUrl(alert.photoUrl)}" alt="${escapeHtml(alert.title)}" class="w-full h-full object-cover" />
-            <div class="absolute bottom-1 right-1 bg-black/70 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 rounded font-semibold flex items-center gap-1">
-              📸 Verified Photo
-            </div>
-          </div>`
-        : '';
-
-      const shortDescription = alert.description.length > 110 ? `${alert.description.slice(0, 110).trim()}…` : alert.description;
-      const hasMoreDescription = alert.description.length > 110;
-
-      const popupHtml = `
-        <div class="p-2.5 space-y-2 font-sans">
-          <!-- Header -->
-          <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
-            <div class="flex items-center gap-2">
-              <span class="text-xl">${iconSymbol}</span>
-              <div>
-                <div class="text-[10px] font-bold uppercase tracking-wider text-slate-500">${labelText}</div>
-                <div class="font-bold text-slate-900 text-xs leading-snug">${escapeHtml(alert.title)}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Photo Proof (if uploaded) -->
-          ${photoHtml}
-
-          <!-- Key Details -->
-          <div class="space-y-1 text-xs text-slate-700">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-400 font-medium text-[11px]">Status:</span>
-              <div class="flex items-center gap-1.5">
-                ${statusBadge}
-                ${severityBadge}
-              </div>
-            </div>
-
-            <div class="flex items-start justify-between pt-0.5">
-              <span class="text-slate-400 font-medium text-[11px] shrink-0">Street:</span>
-              <span class="font-semibold text-right text-slate-800 text-[11px]">${escapeHtml(alert.streetName)}</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <span class="text-slate-400 font-medium text-[11px]">Reported:</span>
-              <span class="text-slate-600 font-mono text-[10px]">${escapeHtml(alert.timeReported)}</span>
-            </div>
-          </div>
-
-          <!-- Description -->
-          <div class="p-1.5 bg-slate-50 rounded text-[10px] text-slate-600 leading-snug border border-slate-200">
-            <span id="popup-desc-short-${escapeHtml(alert.id)}">${escapeHtml(shortDescription)}</span>
-            <span id="popup-desc-full-${escapeHtml(alert.id)}" style="display:none">${escapeHtml(alert.description)}</span>
-            ${hasMoreDescription ? `<button id="btn-popup-more-${escapeHtml(alert.id)}" class="ml-1 text-[10px] font-bold text-blue-600 hover:text-blue-700">See more</button>` : ''}
-          </div>
-
-          ${alert.evacuationCenter ? `
-            <div class="text-[10px] bg-emerald-50 text-emerald-800 p-1.5 rounded border border-emerald-200">
-              <strong>Evacuation Center:</strong> ${escapeHtml(alert.evacuationCenter)}
-            </div>
-          ` : ''}
-
-          <!-- Footer Actions -->
-          <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span class="text-[10px] text-slate-400 truncate max-w-[120px]">By: ${escapeHtml(alert.reportedBy)}</span>
-            ${!isResolved ? `<button
-              id="btn-popup-resolve-${escapeHtml(alert.id)}"
-              ${alert.pendingResolveFlags ? 'disabled' : ''}
-              title="${alert.pendingResolveFlags ? 'A resolve request is already waiting for admin review.' : 'Ask the barangay admin to mark this incident resolved.'}"
-              class="px-2.5 py-1 text-xs font-semibold rounded ${alert.pendingResolveFlags ? 'bg-slate-100 text-slate-500' : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs'} transition-colors cursor-pointer disabled:cursor-default"
-            >
-              ${alert.pendingResolveFlags ? 'Request pending' : 'Flag as resolved'}
-            </button>` : ''}
-          </div>
-        </div>
-      `;
-
-      marker.bindPopup(popupHtml, {
+      marker.bindPopup(presentation.popupHtml, {
         className: 'custom-leaflet-popup',
         maxWidth: 250,
         minWidth: 220,
-        closeOnClick: false,
+        // Only the X closes this popup. `autoClose` would dismiss a pinned
+        // report as soon as another pin is tapped, and `closeOnClick` (map
+        // click) is the "naglalaho" bug residents reported.
         autoClose: false,
+        closeOnClick: false,
         closeOnEscapeKey: false,
         autoPan: true,
-        keepInView: true,
+        // keepInView fights the Recenter button (it yanks the camera back to
+        // the popup on every moveend), so the initial autoPan is enough.
+        keepInView: false,
         autoPanPadding: [40, 120],
-        autoPanPaddingTopLeft: [40, 100],
-        autoPanPaddingBottomRight: [40, 120],
+        autoPanPaddingTopLeft: [40, 96],
+        autoPanPaddingBottomRight: [40, 140],
       });
 
+      const entry: MarkerEntry = {
+        marker,
+        alert,
+        signature: presentation.signature,
+        labelText: presentation.labelText,
+      };
+
       marker.on('popupopen', () => {
-        onSelectAlert(alert);
-        // Reposition immediately: no animated delay and enough bottom clearance.
-        mapInstanceRef.current?.panBy([0, -500], { animate: false });
-        // Attach click listener to the button inside popup
-        setTimeout(() => {
+        // Buttons inside the injected popup markup are wired by hand.
+        window.setTimeout(() => {
           const resolveButton = document.getElementById(`btn-popup-resolve-${alert.id}`);
           if (resolveButton) {
-            resolveButton.onclick = (e) => {
-              e.stopPropagation();
-              onRequestResolved(alert);
+            resolveButton.onclick = (event) => {
+              event.stopPropagation();
+              requestResolvedRef.current(entry.alert);
             };
           }
           const more = document.getElementById(`btn-popup-more-${alert.id}`);
           if (more) {
-            more.onclick = (e) => {
-              e.stopPropagation();
+            more.onclick = (event) => {
+              event.stopPropagation();
               const shortText = document.getElementById(`popup-desc-short-${alert.id}`);
               const fullText = document.getElementById(`popup-desc-full-${alert.id}`);
               if (shortText && fullText) {
@@ -936,34 +1037,67 @@ export const MapViewer: React.FC<MapViewerProps> = ({
               }
             };
           }
-        }, 50);
+        }, 0);
+        selectAlertRef.current(entry.alert);
       });
 
+      // Leaflet's own click handler TOGGLES a popup shut, so tapping the same
+      // pin twice made the details vanish. Remove it: a pin click always
+      // shows/keeps the report, and only the X closes it.
+      marker.off('click', (marker as unknown as { _openPopup: L.LeafletEventHandlerFn })._openPopup);
       marker.on('click', () => {
-        onSelectAlert(alert);
+        // A pin tap OPENS this report (also right after an X closed it) and
+        // never closes anything — the previous report is swapped out, so only
+        // one popup is ever on screen.
+        markerEntriesRef.current.forEach((other) => {
+          if (other.marker !== marker && other.marker.isPopupOpen()) other.marker.closePopup();
+        });
+        if (!marker.isPopupOpen()) marker.openPopup();
+        selectAlertRef.current(entry.alert);
       });
 
-      markersLayerRef.current?.addLayer(marker);
-      activePopupsRef.current[alert.id] = marker;
+      markerEntriesRef.current.set(alert.id, entry);
     });
-  }, [alerts, hiddenTypes, mapSettings.activeFilterType, mapSettings.activeFilterStatus, onRequestResolved]);
+  }, [alerts, mapSettings.activeFilterType, mapSettings.activeFilterStatus]);
 
-  // 7. Auto-fly to selected alert from sidebar
+  // 7. Open/raise the selected report's popup (feed card, pin or re-selection)
+  //
+  // Driven by `selectionNonce` only: a feed refresh must NOT replay the flight
+  // or re-open a popup the reporter just dismissed.
+  const lastSelectionNonceRef = useRef(selectionNonce);
   useEffect(() => {
-    if (!selectedAlert || !mapInstanceRef.current) return;
-    const targetMarker = activePopupsRef.current[selectedAlert.id];
+    if (lastSelectionNonceRef.current === selectionNonce) return;
+    lastSelectionNonceRef.current = selectionNonce;
 
-    mapInstanceRef.current.flyTo(selectedAlert.coordinates, 16, {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const closeEverything = () => {
+      markerEntriesRef.current.forEach((entry) => {
+        if (entry.marker.isPopupOpen()) entry.marker.closePopup();
+      });
+      map.closePopup();
+    };
+
+    const alert = selectedAlertRef.current;
+    if (!alert) {
+      closeEverything();
+      return;
+    }
+
+    const entry = markerEntriesRef.current.get(alert.id);
+    map.flyTo(alert.coordinates, 16, {
       duration: 1.2,
       easeLinearity: 0.25,
     });
 
-    if (targetMarker) {
-      setTimeout(() => {
-        targetMarker.openPopup();
-      }, 700);
-    }
-  }, [selectedAlert]);
+    if (!entry) return;
+    // Already open (the pin tap opened it): keep it, let the flight do the work.
+    if (entry.marker.isPopupOpen()) return;
+
+    closeEverything();
+    entry.marker.openPopup();
+  }, [selectionNonce]);
 
   // 8. Auto-recenter map when triggered externally (e.g. from Navbar)
   useEffect(() => {
@@ -997,8 +1131,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     }
     if (!mapInstanceRef.current) return;
 
-    // Close any active open popups
-    mapInstanceRef.current.closePopup();
+    // The selected report stays open (only its X closes it); recenter just
+    // moves the camera back to the barangay.
     if (mapSettings.lockCameraToBounds) {
       const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
       const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
