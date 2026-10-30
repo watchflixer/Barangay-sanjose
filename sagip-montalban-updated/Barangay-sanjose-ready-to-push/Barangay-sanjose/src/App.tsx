@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Navbar } from './components/Navbar';
 import { DesktopRail } from './components/DesktopRail';
 import { Sidebar } from './components/Sidebar';
@@ -174,12 +174,43 @@ export default function App() {
     }
   }, [floodStatus.data]);
 
-  const handleSelectAlert = (alert: HazardAlert | null) => {
-    setSelectedAlert(alert);
-    if (alert && window.innerWidth < 1024) {
-      setMobileMenuOpen(false); // Close mobile drawer when selecting from sidebar
-    }
+  /**
+   * A tapped report stays selected on the map until its popup X is tapped.
+   *
+   * `selectionNonce` is bumped on every pick so the map re-opens/raises the
+   * popup even when the SAME report is picked again (previously the map only
+   * reacted when the id changed, so re-picking did nothing).
+   */
+  const [selectionNonce, setSelectionNonce] = useState(0);
+  const selectedAlertIdRef = useRef<string | null>(null);
+
+  const closeDrawerOnPhone = () => {
+    if (window.innerWidth < 1024) setMobileMenuOpen(false);
   };
+
+  /** From the map: only a real selection change needs a new flight. */
+  const handleSelectAlert = useCallback((alert: HazardAlert | null) => {
+    const id = alert?.id ?? null;
+    setSelectedAlertId(id);
+    if (id !== selectedAlertIdRef.current) {
+      selectedAlertIdRef.current = id;
+      setSelectionNonce((nonce) => nonce + 1);
+    }
+    if (alert) closeDrawerOnPhone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * From a feed card: always (re)open it — including a report the reporter
+   * just closed with the popup X.
+   */
+  const handleSelectAlertFromFeed = useCallback((alert: HazardAlert) => {
+    setSelectedAlertId(alert.id);
+    selectedAlertIdRef.current = alert.id;
+    setSelectionNonce((nonce) => nonce + 1);
+    closeDrawerOnPhone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [submissionNotice, setSubmissionNotice] = useState('');
   const [flagTarget, setFlagTarget] = useState<HazardAlert | null>(null);
@@ -264,6 +295,8 @@ export default function App() {
 
   const handleResetMap = () => {
     setSelectedAlert(null);
+    selectedAlertIdRef.current = null;
+    setSelectionNonce((nonce) => nonce + 1);
     setMapSettings((prev) => ({
       ...prev,
       activeFilterType: 'all',
@@ -383,7 +416,7 @@ export default function App() {
                 alerts={alerts}
                 hiddenTypes={feed.hiddenTypes}
                 selectedAlert={selectedAlert}
-                onSelectAlert={handleSelectAlert}
+                onSelectAlert={handleSelectAlertFromFeed}
                 onRequestResolved={handleRequestResolved}
                 onOpenReportModal={handleOpenReportModal}
                 onOpenHotlinesModal={() => setIsHotlinesModalOpen(true)}
@@ -442,6 +475,7 @@ export default function App() {
             hiddenTypes={feed.hiddenTypes}
             selectedAlert={selectedAlert}
             onSelectAlert={handleSelectAlert}
+            selectionNonce={selectionNonce}
             onRequestResolved={handleRequestResolved}
             mapSettings={mapSettings}
             onUpdateMapSettings={handleUpdateMapSettings}
