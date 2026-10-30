@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { isAdminSearch, reportAge, validateHazardDraft } from '../src/lib/admin';
+import {
+  formatReportedTime,
+  isAdminSearch,
+  parseTimestampMs,
+  reportAge,
+  validateHazardDraft,
+} from '../src/lib/admin';
 import {
   fetchAdminBundle,
   fetchPublicFeed,
@@ -64,6 +70,38 @@ test('report age renders minutes, hours and days without inventing dates', () =>
   assert.equal(reportAge('2026-10-29T09:00:00.000Z', now), '3 hours ago');
   assert.equal(reportAge('2026-10-27T12:00:00.000Z', now), '2 days ago');
   assert.equal(reportAge(undefined, now), 'Exact report date unavailable');
+});
+
+test('formatReportedTime computes live age from reportedAt instead of stale "Just now"', () => {
+  const now = Date.parse('2026-10-30T16:12:06.000Z');
+  assert.equal(
+    formatReportedTime(
+      { reportedAt: '2026-10-30T12:12:06.665078+00:00', timeReported: 'Just now' },
+      now,
+    ),
+    '3 hours ago',
+  );
+  // Postgres space-separated UTC timestamp format is also parsed cleanly
+  assert.ok(parseTimestampMs('2026-10-30 12:12:06.665078+00') !== null);
+  assert.equal(
+    formatReportedTime(
+      { reportedAt: '2026-10-30 12:12:06.665078+00', timeReported: 'Just now' },
+      Date.parse('2026-10-30T16:15:00.000Z'),
+    ),
+    '4 hours ago',
+  );
+  // Preserves non-timestamp labels when reportedAt is absent (e.g. PAGASA live pin)
+  assert.equal(
+    formatReportedTime({ timeReported: 'Automatic — PAGASA FFWS' }, now),
+    'Automatic — PAGASA FFWS',
+  );
+  // reportFromRow replaces hardcoded "Just now" when reported_at is hours old
+  const mapped = reportFromRow({
+    ...row,
+    time_reported: 'Just now',
+    reported_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
+  });
+  assert.equal(mapped.timeReported, '4 hours ago');
 });
 
 test('escaped text never becomes markup', () => {

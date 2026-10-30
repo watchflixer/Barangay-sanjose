@@ -7,7 +7,7 @@ import type {
   HazardType,
   ReviewStatus,
 } from '../types';
-import type { AdminChange, ReportAction } from './admin';
+import { formatReportedTime, type AdminChange, type ReportAction } from './admin';
 import { getVisitClient, readDataBackend } from './siteVisits';
 import { PROXY_CREDENTIAL, getAdminAccessToken, proxyRpc } from './adminProxy';
 
@@ -83,6 +83,8 @@ function coordinates(row: Row): [number, number] {
 export function reportFromRow(row: Row, admin = false): HazardAlert {
   const id = String(row.id ?? '');
   const review = text(row.review_status) as ReviewStatus | undefined;
+  const reportedAt = text(row.reported_at) ?? text(row.created_at);
+  const rawTimeReported = text(row.time_reported);
   return {
     id,
     type: (text(row.type) ?? 'flood') as HazardType,
@@ -90,8 +92,8 @@ export function reportFromRow(row: Row, admin = false): HazardAlert {
     streetName: text(row.street_name) ?? '',
     sitio: text(row.sitio) ?? '',
     coordinates: coordinates(row),
-    timeReported: text(row.time_reported) ?? 'Time unavailable',
-    reportedAt: text(row.reported_at),
+    timeReported: formatReportedTime({ reportedAt, timeReported: rawTimeReported }),
+    reportedAt,
     showReporter: flag(row.show_reporter),
     deletedAt: text(row.deleted_at),
     status: (text(row.status) ?? 'active') as HazardStatus,

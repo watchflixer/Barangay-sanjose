@@ -4,7 +4,8 @@ import {
   HazardType, 
   HazardStatus 
 } from '../types';
-import { isAdminSearch } from '../lib/admin';
+import { formatReportedTime, isAdminSearch, reportDate } from '../lib/admin';
+import { useLiveNow } from '../hooks/useLiveNow';
 import { WaterLevelLiveBanner } from './WaterLevelLiveBanner';
 import { OptionsMenu } from './OptionsMenu';
 import { ReportButton } from './ReportButton';
@@ -81,6 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdmin,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const now = useLiveNow();
 
   // Filter alerts by search and active filters
   const filteredAlerts = alerts.filter((alert) => {
@@ -402,9 +404,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <p className="mb-2 break-words text-[10px] text-slate-500">Reported by: {alert.reportedBy}</p>
                 {/* Footer info: time & action */}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
-                  <div className="flex items-center gap-1 font-mono text-[10px]">
-                    <Clock className="w-3 h-3" />
-                    <span>{alert.timeReported}</span>
+                  <div
+                    className="flex items-center gap-1 font-mono text-[10px]"
+                    title={alert.reportedAt ? reportDate(alert.reportedAt) : undefined}
+                  >
+                    <Clock className="w-3 h-3 shrink-0" />
+                    <span>{formatReportedTime(alert, now)}</span>
                   </div>
 
                   {!isResolved && <button

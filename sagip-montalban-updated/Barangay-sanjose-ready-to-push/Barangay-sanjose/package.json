@@ -48,7 +48,8 @@
     "test:hazard-reset:browser": "node tests/recenter-reset-browser.mjs",
     "test:report-card-lock:browser": "node tests/report-card-lockdown-browser.mjs",
     "test:card-snap-back:browser": "node tests/report-card-snap-back-browser.mjs",
-    "test:popup-snap-center:browser": "node tests/report-card-snap-center-browser.mjs"
+    "test:popup-snap-center:browser": "node tests/report-card-snap-center-browser.mjs",
+    "test:desktop-feed-pin:browser": "node tests/desktop-feed-and-reported-time-browser.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

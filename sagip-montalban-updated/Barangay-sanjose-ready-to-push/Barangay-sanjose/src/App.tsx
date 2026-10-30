@@ -113,7 +113,7 @@ export default function App() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      setMobileMenuOpen(false);
+      if (!isDesktopFeedViewport()) setMobileMenuOpen(false);
       setIsReportModalOpen(false);
       setIsHotlinesModalOpen(false);
       setIsLiveModalOpen(false);
@@ -202,9 +202,23 @@ export default function App() {
     return () => query.removeEventListener('change', sync);
   }, []);
 
-  const closeDrawerOnPhone = () => {
-    if (window.innerWidth < 1024) setMobileMenuOpen(false);
+  /**
+   * Opening a report card closes Incident Feeds on BOTH portrait phones and
+   * desktop/landscape so the pin card takes centre stage unobstructed.
+   * Closing the pin card with its X (back) recenters the map and reopens
+   * Incident Feeds on desktop/landscape while keeping the drawer shut on phones.
+   */
+  const closeIncidentFeeds = () => {
+    setMobileMenuOpen(false);
   };
+
+  const handleDismissReportCard = useCallback(() => {
+    setSelectedAlertId(null);
+    selectedAlertIdRef.current = null;
+    if (isDesktopFeedViewport()) {
+      setMobileMenuOpen(true);
+    }
+  }, []);
 
   /** From the map: only a real selection change needs a new flight. */
   const handleSelectAlert = useCallback((alert: HazardAlert | null) => {
@@ -214,7 +228,7 @@ export default function App() {
       selectedAlertIdRef.current = id;
       setSelectionNonce((nonce) => nonce + 1);
     }
-    if (alert) closeDrawerOnPhone();
+    if (alert) closeIncidentFeeds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -226,7 +240,7 @@ export default function App() {
     setSelectedAlertId(alert.id);
     selectedAlertIdRef.current = alert.id;
     setSelectionNonce((nonce) => nonce + 1);
-    closeDrawerOnPhone();
+    closeIncidentFeeds();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -312,9 +326,13 @@ export default function App() {
   };
 
   const handleResetMap = () => {
+    const hadOpenCard = Boolean(selectedAlertIdRef.current || reportPopupOpen);
     setSelectedAlert(null);
     selectedAlertIdRef.current = null;
     setSelectionNonce((nonce) => nonce + 1);
+    if (hadOpenCard && isDesktopFeedViewport()) {
+      setMobileMenuOpen(true);
+    }
     setMapSettings((prev) => ({
       ...prev,
       activeFilterType: 'all',
@@ -510,6 +528,7 @@ export default function App() {
             onHelpCenterChange={setHelpCenterOpen}
             onWeatherChange={setWeatherOpen}
             onReportPopupChange={setReportPopupOpen}
+            onDismissReportCard={handleDismissReportCard}
           />
           {!alternateMapOpen && (
             <PagasaFloodStatus hidden={reportPopupOpen && isCompactViewport} />

@@ -1,6 +1,8 @@
 import React from 'react';
 import { X, History, Calendar, MapPin, CheckCircle2, AlertOctagon, User, FileText } from 'lucide-react';
 import { HazardAlert } from '../types';
+import { formatReportedTime, reportDate } from '../lib/admin';
+import { useLiveNow } from '../hooks/useLiveNow';
 
 interface HistoryModalProps {
   isOpen: boolean;
@@ -13,6 +15,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
   onClose,
   alerts,
 }) => {
+  const now = useLiveNow();
   if (!isOpen) return null;
 
   return (
@@ -82,7 +85,12 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({
                     </p>
                     <p className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span>Timestamp: {alert.lastUpdated || 'Recent'}</span>
+                      <span>
+                        Timestamp:{' '}
+                        {alert.reportedAt
+                          ? `${formatReportedTime(alert, now)} · ${reportDate(alert.reportedAt)}`
+                          : alert.lastUpdated || alert.timeReported || 'Recent'}
+                      </span>
                     </p>
                   </div>
 
