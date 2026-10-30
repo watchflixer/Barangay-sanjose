@@ -84,7 +84,7 @@ const REPORT_OPEN_BOUNDS_PAD = 0.35;
 /** Pixel distance within which the open pin card counts as aligned with map centre. */
 const CARD_CENTER_DEADBAND_PX = 3;
 /** Idle pause after map movement ends before gliding the open card back to centre. */
-const SNAP_BACK_IDLE_MS = 180;
+const SNAP_BACK_IDLE_MS = 500;
 
 const buildHazardMaxBounds = (pad: number) =>
   new L.LatLngBounds(

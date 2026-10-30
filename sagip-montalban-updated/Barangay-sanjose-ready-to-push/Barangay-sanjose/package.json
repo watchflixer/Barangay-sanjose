@@ -47,6 +47,7 @@
     "test:popup-center:browser": "node tests/popup-center-weather-browser.mjs",
     "test:hazard-reset:browser": "node tests/recenter-reset-browser.mjs",
     "test:report-card-lock:browser": "node tests/report-card-lockdown-browser.mjs",
+    "test:card-snap-back:browser": "node tests/report-card-snap-back-browser.mjs",
     "test:popup-snap-center:browser": "node tests/report-card-snap-center-browser.mjs"
   },
   "dependencies": {

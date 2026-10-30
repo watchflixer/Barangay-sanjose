@@ -197,7 +197,7 @@ try {
 
     /* 1. Drag LEFT (pakaliwa) + hold check before release */
     {
-      const { whileHeld, afterHold } = await dragMapBy(page, -110, 0, { holdMs: 350 });
+      const { whileHeld, afterHold } = await dragMapBy(page, -110, 0, { holdMs: 650 });
       assert.ok(
         Math.abs(whileHeld.card.dx) >= 60,
         `${vp.tag}: dragging left moved the pin card off-centre (${Math.round(whileHeld.card.dx)}px)`,
@@ -206,7 +206,7 @@ try {
         Math.abs(afterHold.card.dx - whileHeld.card.dx) <= 6,
         `${vp.tag}: card does not yank while finger/mouse is still holding the map`,
       );
-      await page.waitForTimeout(1150);
+      await page.waitForTimeout(1500);
       await assertCardCentred(page, `${vp.tag}: after dragging left`);
     }
 
@@ -217,7 +217,7 @@ try {
         Math.abs(whileHeld.card.dx) >= 60,
         `${vp.tag}: dragging right moved the pin card off-centre (${Math.round(whileHeld.card.dx)}px)`,
       );
-      await page.waitForTimeout(1150);
+      await page.waitForTimeout(1500);
       await assertCardCentred(page, `${vp.tag}: after dragging right`);
     }
 
@@ -228,7 +228,7 @@ try {
         Math.abs(whileHeld.card.dy) >= 50,
         `${vp.tag}: dragging up moved the pin card off-centre (${Math.round(whileHeld.card.dy)}px)`,
       );
-      await page.waitForTimeout(1150);
+      await page.waitForTimeout(1500);
       await assertCardCentred(page, `${vp.tag}: after dragging up`);
     }
 
@@ -239,7 +239,7 @@ try {
         Math.abs(whileHeld.card.dy) >= 50,
         `${vp.tag}: dragging down moved the pin card off-centre (${Math.round(whileHeld.card.dy)}px)`,
       );
-      await page.waitForTimeout(1150);
+      await page.waitForTimeout(1500);
       await assertCardCentred(page, `${vp.tag}: after dragging down`);
     }
 
@@ -250,7 +250,7 @@ try {
         Math.hypot(whileHeld.card.dx, whileHeld.card.dy) >= 75,
         `${vp.tag}: diagonal drag moved the pin card off-centre`,
       );
-      await page.waitForTimeout(1150);
+      await page.waitForTimeout(1500);
       await assertCardCentred(page, `${vp.tag}: after diagonal drag`);
     }
 
@@ -260,7 +260,7 @@ try {
       // Scroll-wheel zoom OUT around a corner of the map (knocks card off-centre + changes zoom).
       await page.mouse.move(beforeZoom.map.x + beforeZoom.map.w * 0.85, beforeZoom.map.y + beforeZoom.map.h * 0.85);
       await page.mouse.wheel(0, 360);
-      await page.waitForTimeout(1400);
+      await page.waitForTimeout(1750);
       const zoomedOut = await assertCardCentred(page, `${vp.tag}: after wheel zoom out`);
       assert.ok(
         zoomedOut.pinSpread < beforeZoom.pinSpread,
@@ -269,21 +269,21 @@ try {
 
       // Drag while zoomed out — still returns to centre in that view!
       await dragMapBy(page, 130, -90);
-      await page.waitForTimeout(1150);
+      await page.waitForTimeout(1500);
       await assertCardCentred(page, `${vp.tag}: after dragging in zoomed-out view`);
 
       // Scroll-wheel zoom IN around an off-centre spot — still returns to centre!
       await page.mouse.move(beforeZoom.map.x + beforeZoom.map.w * 0.8, beforeZoom.map.y + beforeZoom.map.h * 0.2);
       await page.mouse.wheel(0, -480);
-      await page.waitForTimeout(1400);
+      await page.waitForTimeout(1750);
       await assertCardCentred(page, `${vp.tag}: after wheel zoom in`);
 
       // Viewport resize while card is open — returns to centre of the resized map!
       await page.setViewportSize({ width: 1200, height: 820 });
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(1600);
       await assertCardCentred(page, `${vp.tag}: after viewport resize`);
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(1600);
       await assertCardCentred(page, `${vp.tag}: after restoring viewport size`);
     }
 
