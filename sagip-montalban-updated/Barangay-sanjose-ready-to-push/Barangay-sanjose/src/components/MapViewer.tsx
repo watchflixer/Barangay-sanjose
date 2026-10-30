@@ -79,13 +79,18 @@ const hazardMinZoom = () => (isSmallPortraitViewport() ? 11 : 13);
 /** Zoom step. 0.5 lets the small portrait view land on 12.5; others stay at 1. */
 const hazardZoomSnap = () => (isSmallPortraitViewport() ? 0.5 : 1);
 
-/**
- * How long the resident gets to stop moving the map before an open report
- * card glides back to the middle of the screen.
- */
-const CARD_SNAP_BACK_DELAY = 500;
-/** Beyond this many pixels the card counts as "out of the middle". */
-const CARD_CENTRE_TOLERANCE = 8;
+const TIGHT_BOUNDS_PAD = 0.015;
+const REPORT_OPEN_BOUNDS_PAD = 0.35;
+/** Pixel distance within which the open pin card counts as aligned with map centre. */
+const CARD_CENTER_DEADBAND_PX = 3;
+/** Idle pause after map movement ends before gliding the open card back to centre. */
+const SNAP_BACK_IDLE_MS = 500;
+
+const buildHazardMaxBounds = (pad: number) =>
+  new L.LatLngBounds(
+    new L.LatLng(SAN_JOSE_BOUNDS[0][0] - pad, SAN_JOSE_BOUNDS[0][1] - pad),
+    new L.LatLng(SAN_JOSE_BOUNDS[1][0] + pad, SAN_JOSE_BOUNDS[1][1] + pad),
+  );
 
 /* ------------------------------------------------------------------------- */
 /* HAZARD PIN + POPUP PRESENTATION                                           */
@@ -352,6 +357,21 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const requestResolvedRef = useRef(onRequestResolved);
   const selectedAlertRef = useRef<HazardAlert | null>(selectedAlert);
   const reportPopupChangeRef = useRef(onReportPopupChange);
+  const mapSettingsRef = useRef(mapSettings);
+  const alternateMapOpenRef = useRef(false);
+  /**
+   * Snap-back state while a hazard pin card is open:
+   * - `snapBackTimerRef`: short idle debounce after any map movement ends,
+   * - `isAutoCenteringRef`: true while `centerPopupCard` owns the current glide,
+   * - `resizedDuringAutoCenterRef`: true if the container resized mid-glide,
+   * - `isUserPressingMapRef`: true while a mouse button / finger is holding the map.
+   */
+  const snapBackTimerRef = useRef<number | null>(null);
+  const isAutoCenteringRef = useRef(false);
+  const resizedDuringAutoCenterRef = useRef(false);
+  const isUserPressingMapRef = useRef(false);
+  const cancelSnapBackRef = useRef<() => void>(() => {});
+  const scheduleSnapBackRef = useRef<(delay?: number) => void>(() => {});
   /**
    * A report card is open right now.
    *
@@ -363,8 +383,6 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const [reportCardOpen, setReportCardOpen] = React.useState(false);
   /** True while a marker is torn down by data, not by the resident's X. */
   const forceClosedRef = useRef(false);
-  /** Pending "the report card drifted, glide it back" timer (see effect 7b). */
-  const cardSnapBackTimerRef = useRef<number | null>(null);
   /**
    * The embedded maps post their layer picks in a listener registered once, so
    * it reads the reset through a ref instead of a stale closure.
@@ -374,6 +392,22 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   requestResolvedRef.current = onRequestResolved;
   selectedAlertRef.current = selectedAlert;
   reportPopupChangeRef.current = onReportPopupChange;
+  mapSettingsRef.current = mapSettings;
+
+  const getOpenReportMarker = (): L.Marker | null => {
+    for (const entry of markerEntriesRef.current.values()) {
+      if (entry.marker.isPopupOpen()) return entry.marker;
+    }
+    return null;
+  };
+
+  const cancelSnapBack = () => {
+    if (snapBackTimerRef.current !== null) {
+      window.clearTimeout(snapBackTimerRef.current);
+      snapBackTimerRef.current = null;
+    }
+  };
+  cancelSnapBackRef.current = cancelSnapBack;
 
   /** Tell both the map's own buttons and the app that a card came/went. */
   const setReportOpen = (open: boolean) => {
@@ -390,7 +424,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
    * Returns true when a card was actually open.
    */
   const closeOpenReport = () => {
-    cancelCardSnapBack();
+    cancelSnapBack();
+    isAutoCenteringRef.current = false;
+    resizedDuringAutoCenterRef.current = false;
     let closed = false;
     markerEntriesRef.current.forEach((entry) => {
       if (!entry.marker.isPopupOpen()) return;
@@ -415,6 +451,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (!map) return;
     map.stop(); // cancel any glide that is still running
     map.setView(SAN_JOSE_CENTER, hazardStartZoom(), { animate: false });
+    if (mapSettingsRef.current.lockCameraToBounds) {
+      map.setMaxBounds(buildHazardMaxBounds(TIGHT_BOUNDS_PAD));
+    }
   };
 
   resetHazardMapRef.current = resetHazardMap;
@@ -427,41 +466,18 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   const recenterAfterClose = () => {
     const map = mapInstanceRef.current;
     if (!map) return;
+    cancelSnapBack();
+    isAutoCenteringRef.current = false;
+    resizedDuringAutoCenterRef.current = false;
+    map.once('moveend', () => {
+      if (!getOpenReportMarker() && mapSettingsRef.current.lockCameraToBounds) {
+        map.setMaxBounds(buildHazardMaxBounds(TIGHT_BOUNDS_PAD));
+      }
+    });
     map.flyTo(SAN_JOSE_CENTER, hazardStartZoom(), {
       duration: 0.75,
       easeLinearity: 0.25,
     });
-  };
-
-  /**
-   * How far the open report card's middle sits from the map's middle, in
-   * pixels. `null` when the card is not on screen (yet).
-   */
-  const cardCentreOffset = (marker: L.Marker) => {
-    const map = mapInstanceRef.current;
-    const popupEl = marker.getPopup()?.getElement() as HTMLElement | null | undefined;
-    if (!map || !popupEl) return null;
-    const mapRect = map.getContainer().getBoundingClientRect();
-    const cardRect = popupEl.getBoundingClientRect();
-    if (!cardRect.height || !mapRect.height) return null;
-    return {
-      dx: cardRect.left + cardRect.width / 2 - (mapRect.left + mapRect.width / 2),
-      dy: cardRect.top + cardRect.height / 2 - (mapRect.top + mapRect.height / 2),
-    };
-  };
-
-  /** Has the resident dragged/zoomed the card out of the middle? */
-  const isCardOffCentre = (marker: L.Marker) => {
-    const offset = cardCentreOffset(marker);
-    if (!offset) return false;
-    return Math.abs(offset.dx) > CARD_CENTRE_TOLERANCE || Math.abs(offset.dy) > CARD_CENTRE_TOLERANCE;
-  };
-
-  const cancelCardSnapBack = () => {
-    if (cardSnapBackTimerRef.current !== null) {
-      window.clearTimeout(cardSnapBackTimerRef.current);
-      cardSnapBackTimerRef.current = null;
-    }
   };
 
   /**
@@ -471,11 +487,27 @@ export const MapViewer: React.FC<MapViewerProps> = ({
    * the card crowded against the top of the screen — clipped on a short phone
    * viewport. Measure the card and glide to the map centre that puts the
    * card's middle in the middle of the map instead.
+   *
+   * - On initial open (`ensureDetailZoom: true`, default), zooms in to at least
+   *   16 from further out (never zooming out of a closer look).
+   * - When snapping back after the resident moved the view (`ensureDetailZoom:
+   *   false`), keeps whatever zoom/view they are in and returns the card to
+   *   dead centre once movement stops.
    */
-  const centerPopupCard = (marker: L.Marker, duration = 1) => {
+  const centerPopupCard = (
+    marker: L.Marker,
+    options?: { ensureDetailZoom?: boolean },
+  ) => {
     const map = mapInstanceRef.current;
+    if (!map || alternateMapOpenRef.current || !marker.isPopupOpen()) return;
     const popupEl = marker.getPopup()?.getElement() as HTMLElement | null | undefined;
-    if (!map || !popupEl) return;
+    if (!popupEl) return;
+
+    // Give the camera enough headroom to align the card's middle with the map's
+    // middle at every zoom level (including zoomed-out views and border pins).
+    if (mapSettingsRef.current.lockCameraToBounds) {
+      map.setMaxBounds(buildHazardMaxBounds(REPORT_OPEN_BOUNDS_PAD));
+    }
 
     // Measure the card as it is actually drawn (tip, margin and all) instead
     // of guessing how tall it is.
@@ -494,22 +526,75 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     // stays true at every zoom level.
     const hang = cardPoint.subtract(pinPoint);
 
-    // Never zoom out of a closer look; from further out, settle on 16.
-    const zoom = Math.max(map.getZoom(), 16);
+    const ensureDetailZoom = options?.ensureDetailZoom ?? true;
+    const zoom = ensureDetailZoom ? Math.max(map.getZoom(), 16) : map.getZoom();
     const size = map.getSize();
     const middle = new L.Point(size.x / 2, size.y / 2);
 
     // Already dead centre at the right zoom — do not nudge the map.
-    if (map.getZoom() === zoom && pinPoint.add(hang).distanceTo(middle) < 6) return;
+    if (map.getZoom() === zoom && pinPoint.add(hang).distanceTo(middle) < CARD_CENTER_DEADBAND_PX) {
+      return;
+    }
 
     // Centre the CARD, not the pin: the pin must end up as far BELOW the
     // middle as the card sits above it.
-    const target = map.unproject(map.project(pin, zoom).add(hang), zoom);
-    map.flyTo(target, zoom, {
-      duration,
-      easeLinearity: 0.25,
-    });
+    const targetPoint = map.project(pin, zoom).add(hang);
+    const target = map.unproject(targetPoint, zoom);
+    const currentPoint = map.project(map.getCenter(), zoom);
+    if (map.getZoom() === zoom && currentPoint.distanceTo(targetPoint) < 1.5) return;
+
+    isAutoCenteringRef.current = true;
+    resizedDuringAutoCenterRef.current = false;
+
+    const panDelta = targetPoint.subtract(currentPoint);
+    const fitsDirectPan =
+      !ensureDetailZoom &&
+      map.getZoom() === zoom &&
+      Math.abs(panDelta.x) < size.x &&
+      Math.abs(panDelta.y) < size.y;
+
+    if (fitsDirectPan) {
+      map.panTo(target, {
+        animate: true,
+        duration: 0.55,
+        easeLinearity: 0.25,
+      });
+    } else {
+      map.flyTo(target, zoom, {
+        duration: ensureDetailZoom ? 1 : 0.75,
+        easeLinearity: 0.25,
+      });
+    }
   };
+
+  /**
+   * Whenever the view is moved (pan left/right/up/down/diagonal, wheel or pinch
+   * zoom, double-click zoom, keyboard pan, or viewport resize) while a hazard
+   * pin card is open, wait until the resident stops moving the map and smoothly
+   * return the pin card to the centre of the view.
+   */
+  const scheduleSnapBack = (delay = SNAP_BACK_IDLE_MS) => {
+    cancelSnapBack();
+    if (alternateMapOpenRef.current) return;
+    if (isUserPressingMapRef.current) return;
+    if (!getOpenReportMarker()) return;
+
+    snapBackTimerRef.current = window.setTimeout(() => {
+      snapBackTimerRef.current = null;
+      if (alternateMapOpenRef.current) return;
+      if (isUserPressingMapRef.current) return;
+      const map = mapInstanceRef.current as (L.Map & { _animatingZoom?: boolean }) | null;
+      if (!map) return;
+      if (map._animatingZoom) {
+        scheduleSnapBackRef.current(80);
+        return;
+      }
+      const openMarker = getOpenReportMarker();
+      if (!openMarker) return;
+      centerPopupCard(openMarker, { ensureDetailZoom: false });
+    }, delay);
+  };
+  scheduleSnapBackRef.current = scheduleSnapBack;
 
   // Read the one-time view snapshot set by the HazardSync brand refresh.
   const [refreshView] = React.useState(readRefreshView);
@@ -636,6 +721,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   React.useLayoutEffect(() => {
     onTrafficChange?.(showTrafficMap);
   }, [showTrafficMap, onTrafficChange]);
+  alternateMapOpenRef.current =
+    showFloodProneBlank || showTrafficMap || showHelpCenter || showWeather;
   const [isRecenterSpinning, setIsRecenterSpinning] = React.useState(false);
   const [isLocating, setIsLocating] = React.useState(false);
   const [locationMessage, setLocationMessage] = React.useState('');
@@ -683,13 +770,12 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // 1. Initialize Map
   useEffect(() => {
     if (!mapContainerRef.current) return;
+    const container = mapContainerRef.current;
 
     // Define strict bounding box for Barangay San Jose
-    const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-    const maxBounds = new L.LatLngBounds(corner1, corner2);
+    const maxBounds = buildHazardMaxBounds(TIGHT_BOUNDS_PAD);
 
-    const map = new L.Map(mapContainerRef.current, {
+    const map = new L.Map(container, {
       center: SAN_JOSE_CENTER,
       zoom: hazardStartZoom(),
       minZoom: hazardMinZoom(),
@@ -747,6 +833,86 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       });
     });
 
+    // Keep an open pin card aligned with the centre of the map: if the resident
+    // pans left/right/up/down, flicks, zooms with wheel/pinch/double-click,
+    // pans with the keyboard, or resizes the viewport, wait until movement
+    // stops and glide the open card back to the middle.
+    const isPopupTarget = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return false;
+      return !!target.closest('.leaflet-popup');
+    };
+
+    const onContainerPressStart = (event: Event) => {
+      if (isPopupTarget(event.target)) return;
+      isUserPressingMapRef.current = true;
+      cancelSnapBackRef.current();
+      if (
+        (typeof TouchEvent !== 'undefined' && event instanceof TouchEvent && event.touches.length >= 2) ||
+        (event instanceof MouseEvent && event.shiftKey)
+      ) {
+        isAutoCenteringRef.current = false;
+        resizedDuringAutoCenterRef.current = false;
+      }
+    };
+
+    const onContainerDirectGesture = (event: Event) => {
+      if (isPopupTarget(event.target)) return;
+      isAutoCenteringRef.current = false;
+      resizedDuringAutoCenterRef.current = false;
+      cancelSnapBackRef.current();
+    };
+
+    const onWindowPressEnd = () => {
+      if (!isUserPressingMapRef.current) return;
+      isUserPressingMapRef.current = false;
+      scheduleSnapBackRef.current();
+    };
+
+    container.addEventListener('pointerdown', onContainerPressStart, { passive: true });
+    container.addEventListener('mousedown', onContainerPressStart, { passive: true });
+    container.addEventListener('touchstart', onContainerPressStart, { passive: true });
+    container.addEventListener('wheel', onContainerDirectGesture, { passive: true });
+    container.addEventListener('dblclick', onContainerDirectGesture);
+    container.addEventListener('keydown', onContainerDirectGesture);
+    window.addEventListener('pointerup', onWindowPressEnd, { passive: true });
+    window.addEventListener('pointercancel', onWindowPressEnd, { passive: true });
+    window.addEventListener('mouseup', onWindowPressEnd, { passive: true });
+    window.addEventListener('touchend', onWindowPressEnd, { passive: true });
+    window.addEventListener('touchcancel', onWindowPressEnd, { passive: true });
+    window.addEventListener('blur', onWindowPressEnd);
+
+    map.on('dragstart', () => {
+      isUserPressingMapRef.current = true;
+      isAutoCenteringRef.current = false;
+      resizedDuringAutoCenterRef.current = false;
+      cancelSnapBackRef.current();
+    });
+    map.on('movestart move drag zoomstart zoom', () => {
+      cancelSnapBackRef.current();
+    });
+    map.on('dragend', () => {
+      isUserPressingMapRef.current = false;
+      scheduleSnapBackRef.current();
+    });
+    map.on('resize', () => {
+      if (isAutoCenteringRef.current) {
+        resizedDuringAutoCenterRef.current = true;
+      } else {
+        scheduleSnapBackRef.current();
+      }
+    });
+    map.on('moveend', () => {
+      if (isAutoCenteringRef.current) {
+        isAutoCenteringRef.current = false;
+        if (resizedDuringAutoCenterRef.current) {
+          resizedDuringAutoCenterRef.current = false;
+          scheduleSnapBackRef.current(60);
+        }
+        return;
+      }
+      scheduleSnapBackRef.current();
+    });
+
     mapInstanceRef.current = map;
 
     // Keep Leaflet in step when the map container changes size — e.g. when the
@@ -755,10 +921,23 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(() => map.invalidateSize());
-      resizeObserver.observe(mapContainerRef.current);
+      resizeObserver.observe(container);
     }
 
     return () => {
+      cancelSnapBackRef.current();
+      container.removeEventListener('pointerdown', onContainerPressStart);
+      container.removeEventListener('mousedown', onContainerPressStart);
+      container.removeEventListener('touchstart', onContainerPressStart);
+      container.removeEventListener('wheel', onContainerDirectGesture);
+      container.removeEventListener('dblclick', onContainerDirectGesture);
+      container.removeEventListener('keydown', onContainerDirectGesture);
+      window.removeEventListener('pointerup', onWindowPressEnd);
+      window.removeEventListener('pointercancel', onWindowPressEnd);
+      window.removeEventListener('mouseup', onWindowPressEnd);
+      window.removeEventListener('touchend', onWindowPressEnd);
+      window.removeEventListener('touchcancel', onWindowPressEnd);
+      window.removeEventListener('blur', onWindowPressEnd);
       resizeObserver?.disconnect();
       tileMountRef.current?.dispose();
       tileMountRef.current = null;
@@ -840,12 +1019,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   // 4. Update Camera Bounds lock
   useEffect(() => {
     if (!mapInstanceRef.current) return;
-    const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-    const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-    const maxBounds = new L.LatLngBounds(corner1, corner2);
-
     if (mapSettings.lockCameraToBounds) {
-      mapInstanceRef.current.setMaxBounds(maxBounds);
+      const pad = getOpenReportMarker() ? REPORT_OPEN_BOUNDS_PAD : TIGHT_BOUNDS_PAD;
+      mapInstanceRef.current.setMaxBounds(buildHazardMaxBounds(pad));
     } else {
       mapInstanceRef.current.setMaxBounds(null as any);
     }
@@ -1162,6 +1338,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           existing.marker.setIcon(presentation.icon);
           // Keep the popup open across a content update; only its body changes.
           existing.marker.setPopupContent(presentation.popupHtml);
+          if (existing.marker.isPopupOpen()) scheduleSnapBackRef.current(60);
         }
         return;
       }
@@ -1198,6 +1375,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       };
 
       marker.on('popupopen', () => {
+        cancelSnapBackRef.current();
         // Buttons inside the injected popup markup are wired by hand.
         window.setTimeout(() => {
           const resolveButton = document.getElementById(`btn-popup-resolve-${alert.id}`);
@@ -1217,19 +1395,22 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                 shortText.style.display = 'none';
                 fullText.style.display = 'inline';
                 more.remove();
+                // Expanding the description grows the card upward; keep it centred.
+                scheduleSnapBackRef.current(60);
               }
             };
           }
         }, 0);
         // Slow glide that parks the whole card in the middle of the map.
-        window.setTimeout(() => centerPopupCard(entry.marker), 0);
+        window.setTimeout(() => centerPopupCard(entry.marker, { ensureDetailZoom: true }), 0);
         setReportOpen(true);
         selectAlertRef.current(entry.alert);
       });
 
       marker.on('popupclose', () => {
-        // No card, nothing to snap back.
-        cancelCardSnapBack();
+        cancelSnapBackRef.current();
+        isAutoCenteringRef.current = false;
+        resizedDuringAutoCenterRef.current = false;
         const forcedOut = forceClosedRef.current;
         setReportOpen(false);
         if (forcedOut) return;
@@ -1260,6 +1441,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           if (other.marker !== marker && other.marker.isPopupOpen()) other.marker.closePopup();
         });
         if (!marker.isPopupOpen()) marker.openPopup();
+        else centerPopupCard(marker, { ensureDetailZoom: true });
         selectAlertRef.current(entry.alert);
       });
 
@@ -1302,57 +1484,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       return;
     }
 
-    // Already open (a pin tap opened it): it was centred when it opened.
-    if (entry.marker.isPopupOpen()) return;
+    // Already open (a pin tap opened it): ensure it stays centred.
+    if (entry.marker.isPopupOpen()) {
+      centerPopupCard(entry.marker, { ensureDetailZoom: true });
+      return;
+    }
 
     closeEverything();
     entry.marker.openPopup();
   }, [selectionNonce]);
-
-  // 7b. Keep the open report card in the middle of the map
-  //
-  // The card is pinned to its hazard, so any pan or zoom drags it off centre —
-  // and a resident could lose track of the report they were reading. Half a
-  // second after they stop moving the map, a card that drifted glides back to
-  // the middle. Moving again simply restarts the wait, and closing the card
-  // cancels it.
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
-    const openEntry = () =>
-      Array.from(markerEntriesRef.current.values()).find((entry) => entry.marker.isPopupOpen());
-
-    const scheduleSnapBack = () => {
-      cancelCardSnapBack();
-      const entry = openEntry();
-      if (!entry) return;
-      // Already in the middle: nothing to do, and no timer left ticking.
-      if (!isCardOffCentre(entry.marker)) return;
-
-      cardSnapBackTimerRef.current = window.setTimeout(() => {
-        cardSnapBackTimerRef.current = null;
-        const stillOpen = openEntry();
-        if (!stillOpen) return;
-        if (!isCardOffCentre(stillOpen.marker)) return;
-        // A shorter glide than the on-open one: this is a correction, not a
-        // journey, and it should feel like the card is springing back.
-        centerPopupCard(stillOpen.marker, 0.6);
-      }, CARD_SNAP_BACK_DELAY);
-    };
-
-    // `moveend` covers drags, pans and zooms — our own centre glide included,
-    // which then finds the card centred and does nothing. `movestart` drops any
-    // pending snap, so grabbing the map mid-wait restarts the half second
-    // instead of letting the old timer fly the map out from under the finger.
-    map.on('movestart', cancelCardSnapBack);
-    map.on('moveend', scheduleSnapBack);
-    return () => {
-      cancelCardSnapBack();
-      map.off('movestart', cancelCardSnapBack);
-      map.off('moveend', scheduleSnapBack);
-    };
-  }, []);
 
   // 8. Auto-recenter map when triggered externally (e.g. from Navbar)
   useEffect(() => {
@@ -1390,14 +1530,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     // glides back to the barangay below.
     closeOpenReport();
 
-    if (mapSettings.lockCameraToBounds) {
-      const corner1 = new L.LatLng(SAN_JOSE_BOUNDS[0][0] - 0.015, SAN_JOSE_BOUNDS[0][1] - 0.015);
-      const corner2 = new L.LatLng(SAN_JOSE_BOUNDS[1][0] + 0.015, SAN_JOSE_BOUNDS[1][1] + 0.015);
-      mapInstanceRef.current.setMaxBounds(new L.LatLngBounds(corner1, corner2));
-    }
+    const map = mapInstanceRef.current;
+    map.once('moveend', () => {
+      if (!getOpenReportMarker() && mapSettingsRef.current.lockCameraToBounds) {
+        map.setMaxBounds(buildHazardMaxBounds(TIGHT_BOUNDS_PAD));
+      }
+    });
 
     // Smooth fast recenter back to Barangay San Jose center
-    mapInstanceRef.current.flyTo(SAN_JOSE_CENTER, hazardStartZoom(), {
+    map.flyTo(SAN_JOSE_CENTER, hazardStartZoom(), {
       duration: 0.75,
       easeLinearity: 0.25,
     });
