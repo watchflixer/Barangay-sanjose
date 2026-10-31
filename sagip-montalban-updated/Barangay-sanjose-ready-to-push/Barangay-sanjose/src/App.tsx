@@ -190,6 +190,7 @@ export default function App() {
    * back the moment its X is tapped. Desktop has room for both.
    */
   const [reportPopupOpen, setReportPopupOpen] = useState(false);
+  const [helpPopupOpen, setHelpPopupOpen] = useState(false);
   const [isCompactViewport, setIsCompactViewport] = useState(
     () => typeof window !== 'undefined' && window.innerWidth < 1024,
   );
@@ -426,7 +427,7 @@ export default function App() {
         onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
         feedsVisible={incidentFeedsVisible}
-        reportCardOpen={reportPopupOpen}
+        reportCardOpen={reportPopupOpen || helpPopupOpen}
       />
 
       {/* Main Workspace Layout */}
@@ -434,7 +435,7 @@ export default function App() {
         {/* Google-Maps-style icon rail. Renders on laptop/desktop widths only
             (all of its CSS sits behind @media (min-width: 1024px)), so the
             Android/iPhone portrait layout is untouched. */}
-        <DesktopRail donateDisabled={reportPopupOpen} />
+        <DesktopRail donateDisabled={reportPopupOpen || helpPopupOpen} />
 
         {/* Left Sidebar (Alerts Feed & GIS Controls) — HAZARD MAP ONLY. */}
         {incidentFeedsVisible && (
@@ -528,6 +529,7 @@ export default function App() {
             onHelpCenterChange={setHelpCenterOpen}
             onWeatherChange={setWeatherOpen}
             onReportPopupChange={setReportPopupOpen}
+            onHelpPopupChange={setHelpPopupOpen}
             onDismissReportCard={handleDismissReportCard}
           />
           {!alternateMapOpen && (

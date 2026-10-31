@@ -307,6 +307,7 @@ interface MapViewerProps {
    * weather card while it is open — the two panels overlap there.
    */
   onReportPopupChange?: (open: boolean) => void;
+  onHelpPopupChange?: (open: boolean) => void;
   /** Residents ask an admin to close an incident; they cannot resolve it directly. */
   onRequestResolved: (alert: HazardAlert) => void;
   mapSettings: MapSettings;
@@ -335,6 +336,7 @@ export const MapViewer: React.FC<MapViewerProps> = ({
   onSelectAlert,
   selectionNonce = 0,
   onReportPopupChange,
+  onHelpPopupChange,
   onDismissReportCard,
   onRequestResolved,
   mapSettings,
@@ -668,10 +670,17 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     return sharedRoute.help || helpCenterWasOpen;
   });
   const helpCenterMapInstanceRef = useRef<L.Map | null>(null);
+  const helpCenterRecenteringRef = useRef(false);
   // The Help Center opens on its filter picker, which covers the whole map.
   // Its floating buttons (Recenter / Layers / Locate) are pointless — and
   // overlap the picker — until the map screen shows, so they are hidden then.
   const [helpFilterOpen, setHelpFilterOpen] = React.useState(false);
+  const [helpPopupOpen, setHelpPopupOpen] = React.useState(false);
+  const handleHelpPopupChange = React.useCallback((open: boolean) => {
+    setHelpPopupOpen(open);
+    onHelpPopupChange?.(open);
+    if (open) setShowLayerMenu(false);
+  }, [onHelpPopupChange]);
   const handleHelpStageChange = React.useCallback((stage: 'picker' | 'map') => {
     setHelpFilterOpen(stage === 'picker');
   }, []);
@@ -1563,6 +1572,10 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     if (showWeather) { sendWeatherAction('recenter'); return; }
     // In Help Center mode, recenter its own Leaflet map.
     if (showHelpCenter) {
+      helpCenterRecenteringRef.current = true;
+      helpCenterMapInstanceRef.current?.fire('helpcenter:recenter');
+      helpCenterMapInstanceRef.current?.closePopup();
+      helpCenterRecenteringRef.current = false;
       helpCenterMapInstanceRef.current?.flyTo(SAN_JOSE_CENTER, 13, {
         duration: 0.75,
         easeLinearity: 0.25,
@@ -1660,6 +1673,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           mapRef={helpCenterMapInstanceRef}
           lockCameraToBounds={mapSettings.lockCameraToBounds}
           onStageChange={handleHelpStageChange}
+          onPopupChange={handleHelpPopupChange}
+          recenteringRef={helpCenterRecenteringRef}
           userLocationRequest={helpCenterUserLocation}
         />
       )}
@@ -1706,8 +1721,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
           <button
             id="btn-toggle-layers-menu"
             onClick={() => toggleLayerMenu()}
-            title={reportCardOpen ? 'Close the report first' : 'Layers'}
-            disabled={reportCardOpen}
+            title={helpPopupOpen ? 'Close the place card first' : reportCardOpen ? 'Close the report first' : 'Layers'}
+            disabled={reportCardOpen || helpPopupOpen}
             className="p-2 rounded-md bg-white hover:bg-slate-50 text-slate-800 shadow-xs border border-slate-200 transition-colors active:scale-95 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:active:scale-100"
           >
             <Layers className="w-4 h-4 text-slate-700" />
@@ -1879,9 +1894,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
         <button
           id="btn-show-user-location"
             onClick={handleShowUserLocation}
-            title={reportCardOpen ? 'Close the report first' : 'Show your location'}
+            title={helpPopupOpen ? 'Close the place card first' : reportCardOpen ? 'Close the report first' : 'Show your location'}
             aria-label="Show your location"
-            disabled={reportCardOpen}
+            disabled={reportCardOpen || helpPopupOpen}
             className="rounded-md border border-slate-200 bg-white p-2 text-slate-800 shadow-xs transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:active:scale-100"
           >
             <LocateFixed className={`h-4 w-4 ${isLocating ? 'animate-pulse text-blue-600' : 'text-slate-700'}`} />
