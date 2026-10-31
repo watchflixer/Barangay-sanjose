@@ -405,16 +405,11 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const category = CATEGORY_BY_ID[place.category];
     const directions = `https://www.google.com/maps/dir/?api=1&destination=${place.coords[0]},${place.coords[1]}`;
     const phoneDigits = (place.phone ?? '').replace(/[^\d+]/g, '');
-    const sourceLabel = place.source === 'supabase'
-      ? 'Barangay List · Supabase'
-      : place.source === 'osm'
-        ? 'OpenStreetMap'
-        : 'Community Pin';
-    const sourceDescription = place.source === 'supabase'
-      ? 'SOURCE: BARANGAY LIST (SUPABASE)'
-      : place.source === 'osm'
-        ? 'SOURCE: OPENSTREETMAP'
-        : 'SOURCE: COMMUNITY PIN';
+    const address = place.address.trim();
+    const showAddress = Boolean(address) && address.toLowerCase() !== 'brgy. san jose, rodriguez, rizal';
+    const showSource = place.source !== 'supabase';
+    const sourceLabel = place.source === 'osm' ? 'OpenStreetMap' : 'Community Pin';
+    const sourceDescription = place.source === 'osm' ? 'SOURCE: OPENSTREETMAP' : 'SOURCE: COMMUNITY PIN';
     const extraRows: string[] = [];
     if (place.hours) extraRows.push(`<span>Hours: ${escapeHtml(place.hours)}</span>`);
     if (place.phone) {
@@ -437,24 +432,24 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
             <div class="hc-popup-subtitle">${escapeHtml(category.label)}</div>
           </div>
         </div>
-        <div class="hc-popup-address">
+        ${showAddress ? `<div class="hc-popup-address">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
             <circle cx="12" cy="10" r="2.5" />
           </svg>
-          <span>${escapeHtml(place.address)}</span>
-        </div>
-        ${extraRows.length ? `<div class="hc-popup-details">${extraRows.join('')}</div>` : ''}
+          <span>${escapeHtml(address)}</span>
+        </div>` : ''}
+        ${extraRows.length ? `<div class="hc-popup-details${showAddress ? '' : ' hc-popup-details--no-address'}">${extraRows.join('')}</div>` : ''}
         <div class="hc-popup-divider"></div>
-        <div class="hc-popup-actions">
-          <div class="hc-popup-source" title="${sourceDescription}">
+        <div class="hc-popup-actions${showSource ? '' : ' hc-popup-actions--solo'}">
+          ${showSource ? `<div class="hc-popup-source" title="${sourceDescription}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <ellipse cx="12" cy="5" rx="8" ry="3" />
               <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
               <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
             </svg>
             <span>${sourceLabel}</span>
-          </div>
+          </div>` : ''}
           <a href="${directions}" target="_blank" rel="noopener noreferrer" class="hc-popup-directions" aria-label="Directions to ${escapeHtml(place.name)}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="m3.5 2.5 17 9.5-17 9.5 3.5-9.5-3.5-9.5Z" />
@@ -956,7 +951,7 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
                   <button type="button" className="hc-sheet-tx" onClick={() => focusPlace(place)}>
                     <span className="hc-sheet-name">{place.name}</span>
                     <span className="hc-sheet-sub">
-                      {category.label} &middot; {place.address}
+                      {place.address ? `${category.label} · ${place.address}` : category.label}
                     </span>
                   </button>
                   <span className="hc-sheet-km">{formatDistance(km)}</span>
