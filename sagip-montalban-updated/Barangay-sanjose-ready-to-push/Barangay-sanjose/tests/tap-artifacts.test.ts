@@ -17,7 +17,7 @@ const rule = (selector: string) => {
 test('the existing selected-state colors are preserved', () => {
   assert.match(rule('#hc-base-switch button.active'), /background:\s*#111827/);
   assert.match(rule('#hc-sheet .hc-sheet-filter'), /background:\s*#111827/);
-  assert.match(rule('.hc-popup-btn--primary'), /background:\s*#000000/);
+  assert.match(rule('.hc-popup-directions'), /background:\s*#1a73e8/);
   assert.match(mapViewer, /'bg-black text-white border-black'/);
 });
 
