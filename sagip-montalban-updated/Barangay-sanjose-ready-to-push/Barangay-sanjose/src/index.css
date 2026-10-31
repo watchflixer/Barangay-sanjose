@@ -1367,13 +1367,16 @@ html.kb-nav .hc-cat:focus-visible .hc-cat-title {
   background-image: none !important;
 }
 
-/* Popups: the Layers menu card recipe (1px #e2e8f0, radius 8, that shadow). */
+/* Help Center pin popup: compact Google Maps-style place card. */
 .hc-popup .leaflet-popup-content-wrapper {
-  border: 1px solid #e2e8f0 !important;
-  border-radius: 8px !important;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-  color: #1e293b;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  overflow: hidden;
+  padding: 0 !important;
+  border: 1px solid #e2e5e9 !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(60, 64, 67, 0.24) !important;
+  color: #202124;
+  font-family: 'Plus Jakarta Sans', Arial, sans-serif;
 }
 
 .hc-popup .leaflet-popup-tip {
@@ -1382,57 +1385,214 @@ html.kb-nav .hc-cat:focus-visible .hc-cat-title {
 }
 
 .hc-popup .leaflet-popup-close-button {
-  background: transparent !important;
+  top: 7px !important;
+  right: 7px !important;
+  z-index: 2;
+  display: flex !important;
+  width: 24px !important;
+  height: 24px !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
   border: 0 !important;
-  color: #94a3b8 !important;
-  font-family: inherit !important;
-  font-size: 12px !important;
-  line-height: 16px !important;
-  font-weight: 700 !important;
+  border-radius: 50%;
+  background: transparent !important;
+  color: #5f6368 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 20px !important;
+  line-height: 24px !important;
+  font-weight: 400 !important;
 }
 
 .hc-popup .leaflet-popup-close-button:hover {
-  color: #475569 !important;
+  background: #f1f3f4 !important;
+  color: #202124 !important;
 }
 
 .hc-popup .leaflet-popup-content {
-  min-width: 236px !important;
-  max-width: 288px !important;
+  width: min(304px, calc(100vw - 48px)) !important;
+  min-width: 0 !important;
+  max-width: 340px !important;
+  margin: 0 !important;
 }
 
-.hc-popup-meta {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid #f1f5f9;
-  font-size: 10px;
+.hc-popup-card {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px 13px 13px;
+}
+
+.hc-popup-heading {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 12px;
+  padding-right: 20px;
+}
+
+.hc-popup-place-icon {
+  display: flex;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.hc-popup-place-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.hc-popup-title-block {
+  min-width: 0;
+}
+
+.hc-popup-title {
+  overflow: hidden;
+  color: #202124;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: #64748b;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.hc-popup-btn {
-  display: inline-block;
-  padding: 4px 8px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #f8fafc;
-  color: #334155;
-  font-family: inherit;
-  font-size: 12px;
+.hc-popup-subtitle {
+  margin-top: 1px;
+  color: #5f6368;
+  font-size: 12.5px;
+  line-height: 17px;
+}
+
+.hc-popup-address {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  color: #3c4043;
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.hc-popup-address svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin-top: 1px;
+  color: #5f6368;
+}
+
+.hc-popup-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 7px 0 0 26px;
+  color: #5f6368;
+  font-size: 11.5px;
   line-height: 16px;
-  font-weight: 600;
+}
+
+.hc-popup-details a {
+  color: #1a73e8;
   text-decoration: none;
 }
 
-.hc-popup-btn:hover {
-  background: #f1f5f9;
+.hc-popup-details a:hover {
+  text-decoration: underline;
 }
 
-.hc-popup-btn--primary {
-  border-color: #000000;
-  background: #000000;
-  color: #ffffff;
+.hc-popup-divider {
+  height: 1px;
+  margin: 12px 0;
+  background: #e8eaed;
+}
+
+.hc-popup-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 9px;
+}
+
+.hc-popup-source {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border-radius: 9px;
+  background: #f1f3f4;
+  color: #5f6368;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 12px;
+}
+
+.hc-popup-source svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+}
+
+.hc-popup-source span {
+  min-width: 0;
+}
+
+.hc-popup-directions {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 11px;
+  border-radius: 24px;
+  background: #1a73e8;
+  color: #ffffff !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 16px;
+  text-decoration: none !important;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hc-popup-directions:hover {
+  background: #1765cc;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+}
+
+.hc-popup-directions svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+@media (max-width: 360px) {
+  .hc-popup .leaflet-popup-content {
+    width: calc(100vw - 48px) !important;
+  }
+
+  .hc-popup-actions {
+    gap: 6px;
+  }
+
+  .hc-popup-source {
+    gap: 5px;
+    padding: 0 7px;
+    font-size: 10px;
+  }
+
+  .hc-popup-directions {
+    gap: 5px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
 }
 
 /* --- Focus modality -------------------------------------------------------

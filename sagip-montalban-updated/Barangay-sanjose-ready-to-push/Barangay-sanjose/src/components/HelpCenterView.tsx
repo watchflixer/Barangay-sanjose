@@ -405,29 +405,63 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
     const category = CATEGORY_BY_ID[place.category];
     const directions = `https://www.google.com/maps/dir/?api=1&destination=${place.coords[0]},${place.coords[1]}`;
     const phoneDigits = (place.phone ?? '').replace(/[^\d+]/g, '');
-    const rows: string[] = [];
-    rows.push(`<p class="mt-2 text-[12.5px] leading-snug text-[#5f6368]">${escapeHtml(place.address)}</p>`);
-    if (place.hours) rows.push(`<p class="mt-1 text-[12.5px] text-[#5f6368]">Hours: ${escapeHtml(place.hours)}</p>`);
-    if (place.note) rows.push(`<p class="mt-1 text-[11.5px] text-[#5f6368]">${escapeHtml(place.note)}</p>`);
-    if (place.phone) rows.push(`<p class="mt-1 text-[12.5px] text-[#5f6368]">Phone: ${escapeHtml(place.phone)}</p>`);
+    const sourceLabel = place.source === 'supabase'
+      ? 'Barangay List · Supabase'
+      : place.source === 'osm'
+        ? 'OpenStreetMap'
+        : 'Community Pin';
+    const sourceDescription = place.source === 'supabase'
+      ? 'SOURCE: BARANGAY LIST (SUPABASE)'
+      : place.source === 'osm'
+        ? 'SOURCE: OPENSTREETMAP'
+        : 'SOURCE: COMMUNITY PIN';
+    const extraRows: string[] = [];
+    if (place.hours) extraRows.push(`<span>Hours: ${escapeHtml(place.hours)}</span>`);
+    if (place.phone) {
+      extraRows.push(`<a href="tel:${escapeHtml(phoneDigits)}">Phone: ${escapeHtml(place.phone)}</a>`);
+    }
+    if (place.note) extraRows.push(`<span>${escapeHtml(place.note)}</span>`);
 
     return `
-      <div class="p-3">
-        <div class="flex items-start gap-2.5">
-          <span class="hc-pin-ref">${escapeHtml(category.code)}</span>
-          <div class="min-w-0">
-            <p class="text-[15px]>
-          <span class="hc-pin-ref">${escapeHtml(category.code)}</span>
-          <div class="min-w-0">
-            <p class="text-[15px] leading-tight text-[#202124]">${escapeHtml(place.name)}</p>
-            <p class="mt-[3px] text-[12.5px] text-[#5f6368]">${escapeHtml(category.label)}</p>
+      <div class="hc-popup-card">
+        <div class="hc-popup-heading">
+          <span class="hc-popup-place-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m3 10 9-7 9 7" />
+              <path d="M5 9.5V21h14V9.5" />
+              <path d="M9 21v-7h6v7" />
+            </svg>
+          </span>
+          <div class="hc-popup-title-block">
+            <div class="hc-popup-title">${escapeHtml(place.name)}</div>
+            <div class="hc-popup-subtitle">${escapeHtml(category.label)}</div>
           </div>
         </div>
-        ${rows.join('')}
-        <div class="hc-popup-meta">${place.source === 'osm' ? 'SOURCE: OPENSTREETMAP' : place.source === 'supabase' ? 'SOURCE: BARANGAY LIST (SUPABASE)' : 'SOURCE: COMMUNITY PIN'}</div>
-        <div class="mt-2 flex flex-wrap items-center gap-1.5">
-          <a href="${directions}" target="_blank" rel="noopener noreferrer" class="hc-popup-btn hc-popup-btn--primary">Directions</a>
-          ${phoneDigits ? `<a href="tel:${escapeHtml(phoneDigits)}" class="hc-popup-btn">Call</a>` : ''}
+        <div class="hc-popup-address">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" />
+            <circle cx="12" cy="10" r="2.5" />
+          </svg>
+          <span>${escapeHtml(place.address)}</span>
+        </div>
+        ${extraRows.length ? `<div class="hc-popup-details">${extraRows.join('')}</div>` : ''}
+        <div class="hc-popup-divider"></div>
+        <div class="hc-popup-actions">
+          <div class="hc-popup-source" title="${sourceDescription}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <ellipse cx="12" cy="5" rx="8" ry="3" />
+              <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+              <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+            </svg>
+            <span>${sourceLabel}</span>
+          </div>
+          <a href="${directions}" target="_blank" rel="noopener noreferrer" class="hc-popup-directions" aria-label="Directions to ${escapeHtml(place.name)}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m3.5 2.5 17 9.5-17 9.5 3.5-9.5-3.5-9.5Z" />
+              <path d="M7 12h7" />
+            </svg>
+            <span>Directions</span>
+          </a>
         </div>
       </div>`;
   }, []);
@@ -453,9 +487,9 @@ export const HelpCenterView: React.FC<HelpCenterViewProps> = ({
       });
       marker.bindPopup(popupHtml(place), {
         className: 'custom-leaflet-popup hc-popup',
-        maxWidth: 290,
-        minWidth: 240,
-        autoPanPadding: [24, 96],
+        maxWidth: 340,
+        minWidth: 280,
+        autoPanPadding: [20, 24],
       });
       marker.addTo(group);
       markersRef.current.set(place.id, marker);
