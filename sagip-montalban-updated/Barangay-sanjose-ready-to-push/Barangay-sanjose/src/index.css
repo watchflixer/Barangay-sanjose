@@ -477,7 +477,13 @@ body,
   transition: background 0.15s ease, color 0.15s ease;
 }
 
-#hc-base-switch button:hover {
+#hc-base-switch button:disabled,
+#help-center-view .hc-pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+#hc-base-switch button:hover:not(:disabled) {
   background: #eef1ec;
 }
 
@@ -1607,8 +1613,8 @@ html.kb-nav .hc-cat:focus-visible .hc-cat-title {
    compact without changing its size on desktop or narrower phones. */
 @media (min-width: 400px) and (max-width: 430px) {
   .hc-popup .leaflet-popup-content {
-    width: 280px !important;
-    max-width: 280px !important;
+    width: 250px !important;
+    max-width: 250px !important;
   }
 
   .hc-popup-card {
