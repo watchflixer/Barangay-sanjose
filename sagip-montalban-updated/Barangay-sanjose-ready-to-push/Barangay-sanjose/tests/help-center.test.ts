@@ -146,11 +146,14 @@ test('Supabase tables match all filters and rows validate before becoming pins',
     { id: 'b', name: 'Invalid', latitude: '', longitude: 121 },
     { id: 'c', name: 'Swapped', latitude: 121, longitude: 14 },
     { id: 'd', name: '', latitude: 14, longitude: 121 },
+    { id: 'e', name: 'Addressed School', latitude: 14.744, longitude: 121.14, address: 'San Jose Road' },
   ]);
-  assert.equal(places.length, 1);
+  assert.equal(places.length, 2);
   assert.equal(places[0].name, 'Test School');
+  assert.equal(places[0].address, '', 'missing addresses stay empty rather than using a generic barangay location');
   assert.equal(places[0].source, 'supabase');
   assert.equal(places[0].replaces, 'sc-kasiglahan-elem');
   assert.deepEqual(places[0].coords, [14.7435, 121.1445]);
+  assert.equal(places[1].address, 'San Jose Road', 'a real address remains available for the popup');
   assert.deepEqual(supabaseRowsToPlaces('nope' as never, []), []);
 });

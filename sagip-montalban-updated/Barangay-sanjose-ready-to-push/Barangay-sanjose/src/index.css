@@ -1496,6 +1496,10 @@ html.kb-nav .hc-cat:focus-visible .hc-cat-title {
   line-height: 16px;
 }
 
+.hc-popup-details.hc-popup-details--no-address {
+  margin-left: 0;
+}
+
 .hc-popup-details a {
   color: #1a73e8;
   text-decoration: none;
@@ -1516,6 +1520,10 @@ html.kb-nav .hc-cat:focus-visible .hc-cat-title {
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
   align-items: stretch;
   gap: 9px;
+}
+
+.hc-popup-actions--solo {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .hc-popup-source {
@@ -1592,6 +1600,113 @@ html.kb-nav .hc-cat:focus-visible .hc-cat-title {
     gap: 5px;
     padding: 0 8px;
     font-size: 12px;
+  }
+}
+
+/* Pixel 7 portrait CSS viewport (412px): keep the place card notably more
+   compact without changing its size on desktop or narrower phones. */
+@media (min-width: 400px) and (max-width: 430px) {
+  .hc-popup .leaflet-popup-content {
+    width: 280px !important;
+    max-width: 280px !important;
+  }
+
+  .hc-popup-card {
+    padding: 9px 10px 10px;
+  }
+
+  .hc-popup-heading {
+    min-height: 36px;
+    gap: 9px;
+    padding-right: 18px;
+  }
+
+  .hc-popup-place-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    border-radius: 10px;
+  }
+
+  .hc-popup-place-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .hc-popup-title {
+    font-size: 14px;
+    line-height: 18px;
+  }
+
+  .hc-popup-subtitle {
+    font-size: 11.5px;
+    line-height: 15px;
+  }
+
+  .hc-popup-address {
+    gap: 8px;
+    margin-top: 9px;
+    font-size: 11.5px;
+    line-height: 16px;
+  }
+
+  .hc-popup-address svg {
+    width: 15px;
+    height: 15px;
+    flex-basis: 15px;
+  }
+
+  .hc-popup-details {
+    gap: 3px;
+    margin: 5px 0 0 23px;
+    font-size: 10.5px;
+    line-height: 14px;
+  }
+
+  .hc-popup-divider {
+    margin: 9px 0;
+  }
+
+  .hc-popup-actions {
+    gap: 7px;
+  }
+
+  .hc-popup-source {
+    min-height: 35px;
+    gap: 5px;
+    padding: 0 7px;
+    border-radius: 8px;
+    font-size: 9.5px;
+    line-height: 11px;
+  }
+
+  .hc-popup-source svg {
+    width: 12px;
+    height: 12px;
+    flex-basis: 12px;
+  }
+
+  .hc-popup-directions {
+    min-height: 35px;
+    gap: 5px;
+    padding: 0 9px;
+    font-size: 11.5px;
+    line-height: 14px;
+  }
+
+  .hc-popup-directions svg {
+    width: 14px;
+    height: 14px;
+    flex-basis: 14px;
+  }
+
+  .hc-popup .leaflet-popup-close-button {
+    top: 5px !important;
+    right: 5px !important;
+    width: 22px !important;
+    height: 22px !important;
+    font-size: 18px !important;
+    line-height: 22px !important;
   }
 }
 

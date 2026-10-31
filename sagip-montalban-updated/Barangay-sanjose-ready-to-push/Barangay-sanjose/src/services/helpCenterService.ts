@@ -213,7 +213,7 @@ export function supabaseRowsToPlaces(category: PlaceCategoryId, rows: HelpPlaceR
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < 4 || lat > 22 || lng < 116 || lng > 128) return [];
     return [{
       id: `sb-${category}-${row.id}`, category, name: text(row.name), coords: [lat, lng],
-      address: text(row.address) || 'Brgy. San Jose, Rodriguez, Rizal',
+      address: text(row.address),
       hours: text(row.hours) || undefined, phone: text(row.phone) || undefined,
       note: text(row.note) || undefined, approx: row.approx === true,
       replaces: text(row.replaces_id) || undefined, source: 'supabase',
