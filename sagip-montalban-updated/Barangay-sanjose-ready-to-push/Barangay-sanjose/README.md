@@ -242,28 +242,27 @@ flat na listahan, kaya kahit magdagdag o magbawas ng slot ay hindi mahahati ang 
 mananatiling katabi ng style ang partner nito. Ang `tests/layers-menu-pairs.test.ts`
 (`npm run test:layers-menu`) ang guard sa order at sa disabled na Coming Soon cell.
 
-## Flood Prone map: satellite basemap na hindi "nahati-hati"
+## Flood Prone (satellite): walang puti/abo kapag naka-zoom
 
-Nasa `public/rizal_flood_100yr_map.html`. Dati, kapag may tile na bigong mag-load,
-pinapalitan ito ng **isa-isang tile** mula sa ibang provider (alternate Esri host →
-Google → NASA GIBS). Dalawa ang naging sakit nito:
+Nasa `public/rizal_flood_100yr_map.html`. Kapag walang imagery ang Esri sa isang
+column ng tiles, **nagbabalik ito ng tile na pantay-pantay ang kulay (pale grey)
+na 200 OK** — kaya hindi ito "error" at walang ma-fallback. Lumalabas itong
+bandang puti/abo sa gitna ng satellite view, lalo na kapag naka-zoom.
 
-- **Puting banda** — ang bigong tile ay walang image, kaya ang puting page
-  background ang lumalabas; kapag isang column ng tiles ang bumagsak, mukhang
-  bandang nakabandera sa gitna ng satellite imagery.
-- **Shifted / washed-out na imagery** — ang NASA GIBS ay may level-9 tile matrix
-  lang, kaya sa zoom 10 pataas, mali ang scale/lokasyon ng tile na naka-patch.
+Fix — dalawang patong:
 
-Ngayon:
-
-- provider fallback ay **buong layer**, hindi per tile: Esri `services.` → Esri
-  `server.` → Sentinel-2 cloudless (EOX, parehong WebMercator matrix) — isang
-  matrix lang ang nakikita sa screen, kaya laging pantay ang lining.
-- bawat provider may sariling `maxNativeZoom`; lampas doon, ini-upscale ni Leaflet
-  ang huling tile — malabo pero **hindi displaced**.
-- `errorTileUrl` = transparent 1×1 at **madilim ang canvas** (`#0b1220`), kaya ang
-  bigong tile ay hindi na puting banda.
-- tinanggal ang Google at NASA GIBS fallback.
+- **Sa ilalim:** Sentinel-2 cloudless (EOX, `s2cloudless-2020`, walang key,
+  parehong `GoogleMapsCompatible` matrix, `maxNativeZoom: 16`). Kumpleto ang
+  coverage nito, kaya laging may totoong imagery na lumalabas sa butas.
+- **Sa itaas:** Esri World Imagery. Bawat tile na na-load ay sinasample sa 4×4 px;
+  kung pantay-pantay at pale (walang laman) → `data-blank="1"` → `opacity:0`,
+  para lumitaw ang Sentinel-2 sa ilalim.
+- **Madilim na canvas** (`#map` at `.leaflet-container` → `#0b1220`) bilang huling
+  panagip — hindi na `#ddd` ng Leaflet ang nakikita sa butas.
+- Kung tainted ang canvas (cross-origin) o wala pang underlay, **hindi
+  gumagalaw** ang detector — walang sisirain.
+- Tinanggal ang Google at NASA GIBS retry (ibang zoom matrix → shifted na tiles);
+  isang same-service host retry na lang ang natitira.
 
 Guard: `tests/flood-map-satellite.test.ts` (`npm run test:flood-map`).
 

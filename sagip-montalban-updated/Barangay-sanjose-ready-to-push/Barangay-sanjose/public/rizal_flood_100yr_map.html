@@ -20,10 +20,13 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;height:100%;width:100%;overflow:hidden;}
-  /* Dark canvas on purpose: a tile that never loads (blocked CDN, 404, offline)
-     has no image, so this is what shows through instead of a white patch
-     that reads as a misplaced "band" over the imagery. */
+  /* Dark canvas on purpose: a gap between tiles (not yet loaded, blocked CDN,
+     or a provider with no imagery there) must never read as a white band
+     across the satellite view. Leaflet's own container background is #ddd. */
   #map{position:absolute;top:0;left:0;right:0;bottom:0;background:#0b1220;}
+  .leaflet-container{background:#0b1220;}
+  /* An Esri tile with no imagery is hidden so the Sentinel-2 underlay shows. */
+  #map .leaflet-tile[data-blank="1"]{opacity:0 !important;}
   /* Zoom buttons stay immediately below the three app-style controls now owned by this page. */
   #map .leaflet-top.leaflet-left{top:132px;left:6px;}
   @keyframes fast-spin{
@@ -195,129 +198,126 @@
 const map = L.map('map', { zoomControl: false, maxZoom: 19 });
 L.control.zoom({ position: 'topleft' }).addTo(map);
 
+const streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxNativeZoom: 19,
+  maxZoom: 19,
+  // OSM blocks tile requests without a Referer ("403r Access blocked").
+  referrerPolicy: 'strict-origin-when-cross-origin',
+  attribution: '&copy; OpenStreetMap contributors'
+});
+
+const satelliteLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+  maxNativeZoom: 19,
+  maxZoom: 19,
+  attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+});
+
 /* ------------------------------------------------------------------
-   BASEMAPS — provider swaps happen at the LAYER level, never per tile.
+   WALANG PUTI/ABO SA SATELLITE — kahit saan mag-zoom.
 
-   Why it matters: a failed tile has no image, so Leaflet leaves an empty
-   <img> behind and the page background shows through — on a light page
-   that is a white/pale patch, and a whole column of them reads as a band
-   across the map. Two rules keep the basemap looking like ONE image:
+   Ang sakit: kapag walang imagery ang Esri sa isang column ng tiles (karaniwan
+   sa labas ng Metro Manila, o lampas sa zoom na may coverage), bumabalik ito ng
+   tile na halos pantay-pantay ang kulay — pale grey — at NAKA-200 OK pa, kaya
+   hindi ito "error" at hindi natin ma-fallback. Lumalabas itong bandang
+   puti/abo sa gitna ng satellite view, lalo na kapag naka-zoom.
 
-     1. the canvas is dark and every failed tile gets a transparent
-        errorTileUrl, so a missing tile blends into the canvas instead of
-        flashing white;
-     2. providers are never mixed tile-by-tile. Stitching a tile from a
-        different service (and a different zoom matrix — NASA GIBS publishes
-        a level-9 matrix only, so its tiles land at the wrong scale) is what
-        made the imagery look shifted, duplicated and washed out. When enough
-        tiles of the current provider fail, the WHOLE layer is swapped for the
-        next provider, so everything on screen still comes from one matrix.
+   Solusyon, dalawang patong:
+     1. Sa ILALIM, isang kumpletong coverage na satellite layer
+        (Sentinel-2 cloudless ng EOX, walang key). Kahit may butas ang Esri,
+        totoong imagery ang lumalabas sa ilalim — hindi page background.
+     2. Sa ITAAS, ang Esri World Imagery. Kapag ang isang tile ay
+        pantay-pantay/pale (walang laman), tinatago natin ito para lumitaw ang
+        Sentinel-2 sa ilalim.
 
-   maxNativeZoom is per provider: past it Leaflet upscales the last real
-   tile, which stays aligned (blurry, never displaced).
+   Ang page background ay madilim din (`#map` / `.leaflet-container`), kaya
+   kahit bigong mag-load ang dalawang provider, hindi ito nagiging puting
+   banda — at ang `blankTile` detector ay naka-off kapag hindi mabasa ang
+   pixels (cross-origin), kaya walang sisirain.
    ------------------------------------------------------------------ */
-const TRANSPARENT_TILE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-const ESRI_IMAGERY_ATTRIBUTION = 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community';
-const ESRI_STREET_ATTRIBUTION = 'Tiles &copy; Esri &mdash; Source: Esri, HERE, Garmin, &copy; OpenStreetMap contributors';
+const SENTINEL2_TILES = 'https://tiles.maps.eox.at/wmts?layer=s2cloudless-2020&style=default&tilematrixset=GoogleMapsCompatible&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={z}&TileCol={x}&TileRow={y}';
 
-const BASE_PROVIDERS = {
-  streets: [
-    {
-      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      maxNativeZoom: 19,
-      // OSM blocks tile requests without a Referer ("403r Access blocked").
-      referrerPolicy: 'strict-origin-when-cross-origin',
-      attribution: '&copy; OpenStreetMap contributors'
-    },
-    {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
-      maxNativeZoom: 19,
-      attribution: ESRI_STREET_ATTRIBUTION
+// Standard WebMercator matrix (same as Esri), 10 m Sentinel-2: past zoom 16
+// Leaflet upscales the last real tile, so it stays aligned — never displaced.
+const satelliteUnderlay = L.tileLayer(SENTINEL2_TILES, {
+  maxNativeZoom: 16,
+  maxZoom: 19,
+  zIndex: 1,
+  attribution: 'Sentinel-2 cloudless &copy; <a href="https://s2maps.eu">EOX</a>'
+});
+
+let underlayReady = false;
+satelliteUnderlay.on('tileload', function() { underlayReady = true; });
+
+// Sample each loaded tile down to 4x4 px: a real imagery tile varies, an Esri
+// "no imagery" tile is one flat pale grey.
+const blankProbe = document.createElement('canvas');
+blankProbe.width = 4;
+blankProbe.height = 4;
+const blankProbeCtx = blankProbe.getContext ? blankProbe.getContext('2d', { willReadFrequently: true }) : null;
+let blankProbeUsable = Boolean(blankProbeCtx);
+
+function tileLooksEmpty(img) {
+  if (!blankProbeUsable) return false;
+  try {
+    blankProbeCtx.clearRect(0, 0, 4, 4);
+    blankProbeCtx.drawImage(img, 0, 0, 4, 4);
+    const px = blankProbeCtx.getImageData(0, 0, 4, 4).data;
+    let lo = 255, hi = 0, sum = 0, n = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i + 3] < 250) return false; // transparent/tile-gap: nothing opaque to hide
+      const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+      if (lum < lo) lo = lum;
+      if (lum > hi) hi = lum;
+      sum += lum;
+      n += 1;
     }
-  ],
-  satellite: [
-    {
-      url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      maxNativeZoom: 19,
-      attribution: ESRI_IMAGERY_ATTRIBUTION
-    },
-    {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      maxNativeZoom: 19,
-      attribution: ESRI_IMAGERY_ATTRIBUTION
-    },
-    {
-      // Sentinel-2 cloudless (EOX): keyless WMTS in the STANDARD WebMercator
-      // matrix, so it lines up with the Esri layers above; 16 is its ceiling.
-      url: 'https://tiles.maps.eox.at/wmts?layer=s2cloudless-2020&style=default&tilematrixset=GoogleMapsCompatible&Service=WMTS&Request=GetTile&Version=1.0.0&Format=image%2Fjpeg&TileMatrix={z}&TileCol={x}&TileRow={y}',
-      maxNativeZoom: 16,
-      attribution: 'Sentinel-2 cloudless &copy; EOX'
-    }
-  ]
-};
-
-// One 404 is a bad tile; a wall of them means this network cannot reach the
-// provider at all, so the whole layer moves on to the next one.
-const PROVIDER_SWAP_AFTER = 6;
-
-function createBasemap(kind) {
-  const providers = BASE_PROVIDERS[kind];
-  let index = 0;
-  let layer = null;
-
-  function attach(target) {
-    if (!map.hasLayer(target)) target.addTo(map);
+    const mean = sum / n;
+    // Flat pale grey (the "no imagery here" tile) — not a dark ocean tile and
+    // not a colourful land tile.
+    return (hi - lo) < 10 && mean > 170 && mean < 248;
+  } catch (err) {
+    blankProbeUsable = false; // cross-origin canvas: leave Esri's tiles alone
+    return false;
   }
-
-  function build() {
-    const provider = providers[index];
-    let errors = 0;
-    const next = L.tileLayer(provider.url, {
-      maxZoom: 19,
-      maxNativeZoom: provider.maxNativeZoom,
-      errorTileUrl: TRANSPARENT_TILE,
-      attribution: provider.attribution,
-      ...(provider.referrerPolicy ? { referrerPolicy: provider.referrerPolicy } : {})
-    });
-    next.on('tileerror', function() {
-      errors += 1;
-      if (errors < PROVIDER_SWAP_AFTER) return;
-      if (index >= providers.length - 1) return; // last provider: keep what renders
-      const onMap = map.hasLayer(next);
-      if (onMap) map.removeLayer(next);
-      index += 1;
-      layer = build();
-      if (onMap) attach(layer);
-    });
-    return next;
-  }
-
-  layer = build();
-  return {
-    get layer() { return layer; },
-    attach: function() { attach(layer); },
-    detach: function() { if (map.hasLayer(layer)) map.removeLayer(layer); },
-    isAttached: function() { return map.hasLayer(layer); }
-  };
 }
 
-const streetBasemap = createBasemap('streets');
-const satelliteBasemap = createBasemap('satellite');
+satelliteLayer.on('tileload', function(e) {
+  if (!underlayReady || !e.tile) return; // nothing to reveal underneath yet
+  if (tileLooksEmpty(e.tile)) e.tile.dataset.blank = '1';
+  else delete e.tile.dataset.blank;
+});
 
-// Satellite is the default base for the flood hazards.
-satelliteBasemap.attach();
+// If a tile still fails outright, one same-service host retry; anything more
+// (Google, NASA GIBS) came from a different zoom matrix and is what made the
+// imagery look shifted and washed out.
+satelliteLayer.on('tileerror', function(e) {
+  const z = e.coords.z, x = e.coords.x, y = e.coords.y;
+  if (e.tile.dataset.retryStep) return;
+  e.tile.dataset.retryStep = '1';
+  e.tile.src = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/' + z + '/' + y + '/' + x;
+});
+
+function setBasemap(useSatellite) {
+  [streetLayer, satelliteUnderlay, satelliteLayer].forEach(function(layer) {
+    if (map.hasLayer(layer)) map.removeLayer(layer);
+  });
+  if (useSatellite) {
+    // Underlay first so it always renders BENEATH the Esri tiles.
+    satelliteUnderlay.addTo(map);
+    satelliteLayer.addTo(map);
+  } else {
+    streetLayer.addTo(map);
+  }
+}
+
+setBasemap(true);
 
 // Keep the compact selector scoped to this Flood Prone map only.
 document.getElementById('base-switch').addEventListener('click', function(event) {
   const button = event.target instanceof Element ? event.target.closest('button[data-base]') : null;
   if (!button) return;
 
-  const useSatellite = button.dataset.base === 'satellite';
-  const nextBasemap = useSatellite ? satelliteBasemap : streetBasemap;
-  const previousBasemap = useSatellite ? streetBasemap : satelliteBasemap;
-
-  if (previousBasemap.isAttached()) previousBasemap.detach();
-  if (!nextBasemap.isAttached()) nextBasemap.attach();
+  setBasemap(button.dataset.base === 'satellite');
 
   document.querySelectorAll('#base-switch button').forEach(function(option) {
     const active = option === button;
