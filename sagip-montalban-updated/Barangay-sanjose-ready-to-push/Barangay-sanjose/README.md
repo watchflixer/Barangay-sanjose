@@ -242,6 +242,31 @@ flat na listahan, kaya kahit magdagdag o magbawas ng slot ay hindi mahahati ang 
 mananatiling katabi ng style ang partner nito. Ang `tests/layers-menu-pairs.test.ts`
 (`npm run test:layers-menu`) ang guard sa order at sa disabled na Coming Soon cell.
 
+## Flood Prone map: satellite basemap na hindi "nahati-hati"
+
+Nasa `public/rizal_flood_100yr_map.html`. Dati, kapag may tile na bigong mag-load,
+pinapalitan ito ng **isa-isang tile** mula sa ibang provider (alternate Esri host →
+Google → NASA GIBS). Dalawa ang naging sakit nito:
+
+- **Puting banda** — ang bigong tile ay walang image, kaya ang puting page
+  background ang lumalabas; kapag isang column ng tiles ang bumagsak, mukhang
+  bandang nakabandera sa gitna ng satellite imagery.
+- **Shifted / washed-out na imagery** — ang NASA GIBS ay may level-9 tile matrix
+  lang, kaya sa zoom 10 pataas, mali ang scale/lokasyon ng tile na naka-patch.
+
+Ngayon:
+
+- provider fallback ay **buong layer**, hindi per tile: Esri `services.` → Esri
+  `server.` → Sentinel-2 cloudless (EOX, parehong WebMercator matrix) — isang
+  matrix lang ang nakikita sa screen, kaya laging pantay ang lining.
+- bawat provider may sariling `maxNativeZoom`; lampas doon, ini-upscale ni Leaflet
+  ang huling tile — malabo pero **hindi displaced**.
+- `errorTileUrl` = transparent 1×1 at **madilim ang canvas** (`#0b1220`), kaya ang
+  bigong tile ay hindi na puting banda.
+- tinanggal ang Google at NASA GIBS fallback.
+
+Guard: `tests/flood-map-satellite.test.ts` (`npm run test:flood-map`).
+
 ## Traffic map: walang error banner, laging may mapa
 
 Nasa `public/rizal_traffic_map.html`. Kapag tinanggihan ng Mapbox ang account —
