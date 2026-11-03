@@ -128,6 +128,26 @@ const SECURITY_HEADERS = {
   // Ask search engines and AI crawlers not to index, cache or train on the site.
   'X-Robots-Tag': 'noindex, nofollow, noarchive, nosnippet, noimageindex, noai, noimageai',
   'Cross-Origin-Opener-Policy': 'same-origin',
+  // CSP: no external scripts except the Leaflet CDN the embedded map pages use,
+  // no plugins, no framing from other origins. connect/img stay broad because
+  // the app legitimately calls many map/weather/geocoding APIs and Supabase
+  // Realtime over wss:. Inline scripts/styles are required by the standalone
+  // public/*.html map pages and the bundled CSS.
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https:",
+    "font-src 'self' data: https://fonts.gstatic.com",
+    "connect-src 'self' https: wss:",
+    "worker-src 'self' blob:",
+    "child-src 'self' blob:",
+    "frame-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+  ].join('; '),
 };
 
 function withHeaders(response, extra = {}) {
