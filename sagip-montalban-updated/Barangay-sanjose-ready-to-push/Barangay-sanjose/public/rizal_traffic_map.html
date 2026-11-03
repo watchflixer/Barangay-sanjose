@@ -1173,6 +1173,89 @@
   });
 
   // ---------------------------------------------------------------
+  // KEYLESS BASEMAP FALLBACK — no Mapbox quota involved.
+  //
+  // Mapbox answers 401 (invalid/restricted token), 403 and 429 (monthly
+  // quota or rate limit exhausted) with an `error` event. None of that is
+  // the visitor's problem, so this page never announces it: the SAME GL
+  // map quietly re-styles itself with plain raster tiles that need no key
+  // (OpenStreetMap for streets, Esri World Imagery for satellite). Every
+  // route line, marker, label and camera move keeps working, because they
+  // are local GeoJSON layers on the same map instance.
+  // ---------------------------------------------------------------
+  const KEYLESS_STYLES = {
+    street: {
+      version: 8,
+      sources: {
+        base: {
+          type: 'raster',
+          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+          tileSize: 256,
+          maxzoom: 19,
+          attribution: '© OpenStreetMap contributors',
+        },
+      },
+      layers: [{ id: 'base', type: 'raster', source: 'base' }],
+    },
+    satellite: {
+      version: 8,
+      sources: {
+        base: {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          maxzoom: 19,
+          attribution: 'Tiles © Esri',
+        },
+      },
+      layers: [{ id: 'base', type: 'raster', source: 'base' }],
+    },
+  };
+  let keylessBasemap = false;
+  function keylessStyleFor(base) {
+    return KEYLESS_STYLES[base === 'satellite' ? 'satellite' : 'street'];
+  }
+  function updateCreditStrip() {
+    const strip = document.getElementById('credit-strip');
+    if (!strip) return;
+    strip.textContent = keylessBasemap
+      ? (currentBase === 'satellite' ? 'Tiles © Esri' : '© OpenStreetMap contributors')
+      : '© Mapbox © OpenStreetMap';
+  }
+  function useKeylessBasemap() {
+    if (keylessBasemap) return;
+    keylessBasemap = true;
+    console.debug('Mapbox basemap unavailable — switching to keyless OSM raster tiles.');
+    glContainer.style.background = '#e9eef2';
+    updateCreditStrip();
+    try {
+      map.setStyle(keylessStyleFor(currentBase), { diff: false });
+    } catch (e) {
+      // Absolute last resort: reveal whatever sits underneath instead of
+      // leaving a white void where the map should be.
+      glContainer.style.display = 'none';
+    }
+  }
+
+  // OSM's volunteer tile servers reject requests that arrive without a Referer
+  // (the same rule the app's Leaflet basemap already handles). If a few keyless
+  // street tiles fail in a row, swap them for Esri's keyless World Street Map
+  // on the live source — no style reload, so route lines stay put.
+  const KEYLESS_STREET_BACKUP_TILES =
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+  let keylessTileErrors = 0;
+  let keylessStreetHardened = false;
+  function hardenKeylessStreet() {
+    if (keylessStreetHardened || currentBase === 'satellite') return;
+    try {
+      const src = map.getSource('base');
+      if (!src || typeof src.setTiles !== 'function') return; // style not ready yet — retry on the next tile error
+      src.setTiles([KEYLESS_STREET_BACKUP_TILES]);
+      keylessStreetHardened = true;
+    } catch (e) { /* whatever already renders stays */ }
+  }
+
+  // ---------------------------------------------------------------
   // MAPBOX + LEAFLET, one view.
   // Leaflet (the Help Center / Flood Prone engine) drives pan/zoom; Mapbox
   // GL renders the live-traffic style, routing layers and markers on top.
@@ -1373,9 +1456,11 @@
         if (!st || st.state !== 'granted') return; // never trigger a permission prompt just for this
         await getUserLoc();
       }
-      const url = 'https://api.mapbox.com/directions/v5/mapbox/driving-traffic/' + userLoc.lng + ',' + userLoc.lat + ';' + p.lng + ',' + p.lat +
-        '?overview=false&access_token=' + encodeURIComponent(mapboxgl.accessToken);
-      const r = ((await (await fetch(url)).json()).routes || [])[0]; if (!r) return;
+      // Goes through the shared fetchRoutes() so a quota/token failure simply
+      // falls through to the keyless OSRM router instead of leaving the green
+      // ETA blank for the rest of the month.
+      const rs = await fetchRoutes('driving-traffic', [{ lng: userLoc.lng, lat: userLoc.lat }, { lng: p.lng, lat: p.lat }], false);
+      const r = (rs || [])[0]; if (!r) return;
       const m = Math.max(1, Math.round(r.duration / 60));
       eta[k] = m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
       if (!panel.hidden && !dirty[active]) renderBody();
@@ -2320,13 +2405,91 @@
     return u + (nav ? '&dir_action=navigate' : '');
   }
 
-  async function fetchRoutes(profile, pts, alt) {
+  // ===== Keyless routing fallback (same "no banner" rule as the basemap) =====
+  // Mapbox Directions is billed to the SAME account as the tiles, so a 401 /
+  // 403 / 429 there means routing is gone for the rest of the month too. The
+  // OSM OSRM servers need no key at all and answer in the same GeoJSON shape,
+  // so the route line, distance, ETA, fare card and the turn-by-turn card all
+  // keep working. What the fallback cannot provide is Mapbox's live-congestion
+  // annotations — the route simply draws in the solid blue "no traffic data"
+  // colour instead of inventing yellow/red segments.
+  const OSRM_ROUTERS = {
+    'driving-traffic': ['https://router.project-osrm.org/route/v1/driving', 'https://routing.openstreetmap.de/routed-car/route/v1/driving'],
+    driving: ['https://router.project-osrm.org/route/v1/driving', 'https://routing.openstreetmap.de/routed-car/route/v1/driving'],
+    'two-wheeler': ['https://routing.openstreetmap.de/routed-bike/route/v1/driving', 'https://router.project-osrm.org/route/v1/driving'],
+    walking: ['https://routing.openstreetmap.de/routed-foot/route/v1/driving', 'https://router.project-osrm.org/route/v1/driving'],
+  };
+  const OSRM_MANEUVER = {
+    depart: 'depart', arrive: 'arrive', turn: 'turn', 'new name': 'new name', continue: 'continue',
+    merge: 'merge', fork: 'fork', 'end of road': 'end of road', 'on ramp': 'on ramp', 'off ramp': 'off ramp',
+    roundabout: 'roundabout', rotary: 'roundabout', 'roundabout turn': 'roundabout', notification: 'continue',
+  };
+  let mapboxDirectionsDown = false;
+  // OSRM route → the subset of the Mapbox Directions shape this page reads.
+  function osrmRoute(r) {
+    return {
+      distance: r.distance,
+      duration: r.duration,
+      duration_typical: r.duration, // no live-traffic model: never claim "heavier than usual"
+      geometry: r.geometry,
+      legs: (r.legs || []).map((leg) => ({
+        distance: leg.distance,
+        duration: leg.duration,
+        steps: (leg.steps || []).map((s) => {
+          const m = s.maneuver || {};
+          return {
+            distance: s.distance,
+            duration: s.duration,
+            name: s.name || '',
+            geometry: s.geometry,
+            maneuver: { type: OSRM_MANEUVER[m.type] || 'turn', modifier: m.modifier, location: m.location },
+          };
+        }),
+      })),
+    };
+  }
+  async function fetchOsrmRoutes(profile, pts, alt) {
+    const coords = pts.map((p) => p.lng + ',' + p.lat).join(';');
+    const urls = OSRM_ROUTERS[profile] || OSRM_ROUTERS.driving;
+    let lastErr = new Error('noroute');
+    for (const base of urls) {
+      try {
+        const url = base + '/' + coords + '?overview=full&geometries=geojson&steps=true' + (alt && pts.length === 2 ? '&alternatives=true' : '');
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('http');
+        const rs = ((await res.json()).routes || []).filter((r) => r && r.geometry && r.geometry.coordinates);
+        if (!rs.length) throw new Error('noroute');
+        return rs.map(osrmRoute);
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr;
+  }
+  async function fetchMapboxRoutes(profile, pts, alt) {
     const ex = profile === 'walking' ? [] : [opts.toll && 'toll', opts.hwy && 'motorway', opts.ferry && 'ferry'].filter(Boolean);
     const url = 'https://api.mapbox.com/directions/v5/mapbox/' + profile + '/' + pts.map((p) => p.lng + ',' + p.lat).join(';') +
       '?geometries=geojson&overview=full' + (profile === 'driving-traffic' ? '&annotations=congestion,duration,distance,speed&steps=true&banner_instructions=true' : '') + (alt && pts.length === 2 ? '&alternatives=true' : '') +
       (ex.length ? '&exclude=' + ex.join(',') : '') + '&access_token=' + encodeURIComponent(mapboxgl.accessToken);
-    const res = await fetch(url); if (!res.ok) throw new Error('http');
+    let res;
+    try { res = await fetch(url); }
+    catch (e) { const err = new Error('http'); err.mapboxDown = true; throw err; }
+    if (!res.ok) {
+      const err = new Error('http');
+      // 401/403/429/5xx = the account or the service, not this query.
+      err.mapboxDown = res.status === 401 || res.status === 403 || res.status === 429 || res.status >= 500;
+      throw err;
+    }
     const r = (await res.json()).routes; if (!r || !r.length) throw new Error('noroute'); return r;
+  }
+  async function fetchRoutes(profile, pts, alt) {
+    if (!mapboxDirectionsDown) {
+      try { return await fetchMapboxRoutes(profile, pts, alt); }
+      catch (e) {
+        if (!e || !e.mapboxDown) throw e; // a real "no route" is not a quota problem
+        mapboxDirectionsDown = true;
+        console.debug('Mapbox Directions unavailable — using keyless OSRM routing.');
+      }
+    }
+    return fetchOsrmRoutes(profile, pts, alt);
   }
   async function go() {
     if (!from || !to) return;
@@ -2783,6 +2946,7 @@
   }
   const currentBaseIsSatellite = () => currentBase === 'satellite';
   function addNavTrafficOverlay() {
+    if (keylessBasemap) return; // no Mapbox account traffic tiles in keyless mode
     if (map.getLayer('nav-traffic-flow')) return;
     if (!map.getSource('nav-traffic')) map.addSource('nav-traffic', { type: 'vector', url: 'mapbox://mapbox.mapbox-traffic-v1' });
     map.addLayer({
@@ -3642,6 +3806,7 @@
 
   // Live traffic overlay for the satellite base: color roads by congestion.
   function addTrafficOverlay() {
+    if (keylessBasemap) return; // Mapbox traffic tiles ride on the Mapbox account
     if (map.getSource('traffic')) return;
     map.addSource('traffic', { type: 'vector', url: 'mapbox://mapbox.mapbox-traffic-v1' });
     map.addLayer({
@@ -3677,7 +3842,8 @@
     if (base === currentBase) return;
     switchBox.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
     currentBase = base;
-    map.setStyle(base === 'satellite' ? STYLE_SATELLITE : STYLE_TRAFFIC);
+    updateCreditStrip();
+    map.setStyle(keylessBasemap ? keylessStyleFor(base) : (base === 'satellite' ? STYLE_SATELLITE : STYLE_TRAFFIC), { diff: false });
   });
 
   // ===== Shared route auto-load (?sfrom=lat,lng&sto=lat,lng&smode=car) =====
@@ -3698,14 +3864,29 @@
     go();
   })();
 
+  // Mapbox failures are handled silently, never as a banner: an expired token
+  // (401), a URL-restricted token (403) or an exhausted monthly quota (429) all
+  // mean "this account cannot serve tiles right now", so the basemap quietly
+  // swaps to keyless OSM/Esri rasters and directions fall back to OSRM. The
+  // visitor keeps a working map instead of an error message.
   map.on('error', (e) => {
-    const status = e && e.error && e.error.status;
-    if (status === 401) {
-      showNotice('Hindi valid ang Mapbox token — i-check ang VITE_MAPBOX_TRAFFIC_TOKEN.');
-    } else if (status === 429) {
-      showNotice('Naubos na ang Mapbox quota ngayong buwan. Subukan ulit sa susunod.');
+    const err = e && e.error;
+    const status = err && (err.status || err.statusCode);
+    if (keylessBasemap) {
+      // Already keyless: only the OSM volunteer tiles can still fail here.
+      const fromBase = !e || !e.sourceId || e.sourceId === 'base';
+      if (fromBase && status !== 401 && status !== 429 && ++keylessTileErrors >= 4) hardenKeylessStreet();
+      return;
     }
+    if (status === 401 || status === 403 || status === 429) useKeylessBasemap();
   });
+
+  // Safety net: if the Mapbox style never finishes loading (blocked CDN, dead
+  // network, or an error event that carries no HTTP status), take over with the
+  // keyless rasters rather than leaving a blank canvas forever.
+  let mapboxStyleReady = false;
+  map.on('style.load', () => { mapboxStyleReady = true; });
+  setTimeout(() => { if (!mapboxStyleReady) useKeylessBasemap(); }, 12000);
 
   // The traffic-day-v2 style renders LIVE congestion by itself — no polling
   // needed. The Recenter button from the parent app returns to the overview.

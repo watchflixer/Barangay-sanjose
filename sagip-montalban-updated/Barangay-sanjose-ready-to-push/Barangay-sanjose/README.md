@@ -226,6 +226,26 @@ picker exit, filtering, list search, map pins/popups, directions URLs, mocked
 geolocation, and provider failure/recovery. Like the weather tests, external
 services are mocked because this sandbox blocks live Overpass/tile requests.
 
+## Traffic map: walang error banner, laging may mapa
+
+Nasa `public/rizal_traffic_map.html`. Kapag tinanggihan ng Mapbox ang account —
+401 (invalid/restricted token), 403, o 429 (naubos ang buwanang quota) — **hindi
+ito ipinapakita sa bisita**. Sa halip, tahimik na nag-a-adjust ang page:
+
+- **Basemap** — lumilipat ang parehong GL map sa keyless na raster tiles
+  (`tile.openstreetmap.org` para sa Streets, Esri World Imagery para sa
+  Satellite), kaya tuloy pa rin ang route lines, markers, labels at camera moves.
+  Kung i-block ng OSM ang tiles, Esri World Street Map ang awtomatikong kapalit.
+- **Direksyon / ETA / fare card** — lumilipat ang routing sa keyless na OSRM
+  (`router.project-osrm.org`, `routing.openstreetmap.de`). Wala itong live-traffic
+  annotations, kaya solid blue ang route line: hindi ito nagpapanggap na may
+  congestion data.
+- **Live traffic overlay** (Mapbox vector tiles) — hindi available habang keyless;
+  tahimik itong hindi lumalabas.
+
+Ang `tests/traffic-map-fallback.test.ts` (`npm run test:traffic-map`) ang guard na
+bawal bumalik ang quota/token banner text at bawal mawala ang fallback.
+
 ## Hidden incident admin workspace
 
 1. Open **Hazard Map / Streets** and **Incident Feeds** (on a phone, use the feed arrow).
