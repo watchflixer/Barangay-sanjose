@@ -244,25 +244,37 @@ mananatiling katabi ng style ang partner nito. Ang `tests/layers-menu-pairs.test
 
 ## Flood Prone (satellite): walang puti/abo kapag naka-zoom
 
-Nasa `public/rizal_flood_100yr_map.html`. Kapag walang imagery ang Esri sa isang
-column ng tiles, **nagbabalik ito ng tile na pantay-pantay ang kulay (pale grey)
-na 200 OK** — kaya hindi ito "error" at walang ma-fallback. Lumalabas itong
-bandang puti/abo sa gitna ng satellite view, lalo na kapag naka-zoom.
+Nasa `public/rizal_flood_100yr_map.html`. Dalawang magkaibang sanhi ang naging
+"puting banda", at magkaiba ang tamang lunas:
 
-Fix — dalawang patong:
+**1. Walang imagery ang Esri sa ilang strip ng Rizal, pero 200 OK pa rin.**
+Sa malalim na zoom (17–19) bumabalik ito ng tile na pantay-pantay ang kulay
+(pale grey) — hindi "tileerror", kaya walang fallback na tumatakbo. Isang buong
+column ng tiles → puting banda.
 
-- **Sa ilalim:** Sentinel-2 cloudless (EOX, `s2cloudless-2020`, walang key,
-  parehong `GoogleMapsCompatible` matrix, `maxNativeZoom: 16`). Kumpleto ang
-  coverage nito, kaya laging may totoong imagery na lumalabas sa butas.
-- **Sa itaas:** Esri World Imagery. Bawat tile na na-load ay sinasample sa 4×4 px;
-  kung pantay-pantay at pale (walang laman) → `data-blank="1"` → `opacity:0`,
-  para lumitaw ang Sentinel-2 sa ilalim.
-- **Madilim na canvas** (`#map` at `.leaflet-container` → `#0b1220`) bilang huling
-  panagip — hindi na `#ddd` ng Leaflet ang nakikita sa butas.
-- Kung tainted ang canvas (cross-origin) o wala pang underlay, **hindi
-  gumagalaw** ang detector — walang sisirain.
-- Tinanggal ang Google at NASA GIBS retry (ibang zoom matrix → shifted na tiles);
-  isang same-service host retry na lang ang natitira.
+- Lunas: **`maxNativeZoom: 16`** sa satellite layer. Hindi na hinihingi ni
+  Leaflet ang mga zoom na walang imagery; ini-upscale ang huling totoong tile
+  (malabo pero tuloy-tuloy, aligned, walang butas).
+
+**2. Butas sa overview zoom (≤ 14).**
+
+- Lunas: **Sentinel-2 cloudless (EOX, walang key)** sa ILALIM, pero **hanggang
+  zoom 14 lang** — doon native pa ito at sharp. Sa zoom 15+ tinatanggal ito ni
+  `syncUnderlay()` sa `zoomend`, kaya hindi nagiging pale-blur/seams.
+
+**Mga bagay na sinubukan at mali** (nakadokumento para hindi maulit):
+
+- per-tile na pagpapalit ng provider (Google/NASA GIBS) — ibang zoom matrix, kaya
+  shifted at washed-out ang mga patch;
+- pagtatago ng "blank" tile gamit ang pixel reading — **tainted** ang canvas kapag
+  cross-origin, kaya hindi mapagkakatiwalaan;
+- upscaled Sentinel-2 sa ilalim sa lahat ng zoom — ito ang gumawa ng pale, blurry
+  na satellite na may visible tile seams. `maxNativeZoom` (16) at ang zoom-gated
+  underlay (14) ang tamang sagot.
+
+Karagdagang panagip: madilim ang canvas (`#map` at `.leaflet-container` →
+`#0b1220`) at transparent ang `errorTileUrl`, kaya ang totoong network failure ay
+hindi nagiging puting banda.
 
 Guard: `tests/flood-map-satellite.test.ts` (`npm run test:flood-map`).
 
