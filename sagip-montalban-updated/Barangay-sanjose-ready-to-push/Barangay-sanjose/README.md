@@ -226,6 +226,22 @@ picker exit, filtering, list search, map pins/popups, directions URLs, mocked
 geolocation, and provider failure/recovery. Like the weather tests, external
 services are mocked because this sandbox blocks live Overpass/tile requests.
 
+## Layers menu: pares ang bawat basemap style
+
+Sa **Layers** button ng hazard map, dalawang hanay ang menu at laging magkatabi ang
+basemap style at ang kanyang tool:
+
+| Hanay | Kaliwa (basemap style) | Kanan (katabi) |
+| --- | --- | --- |
+| 1 | **Streets** | **Help Center** |
+| 2 | **Traffic** | **Weather** |
+| 3 | **Flood Prone** | **Coming Soon** (disabled, nakareserba) |
+
+Nasa `src/components/MapViewer.tsx` ang `LAYER_MENU_ROWS`: array ng **pares**, hindi
+flat na listahan, kaya kahit magdagdag o magbawas ng slot ay hindi mahahati ang row —
+mananatiling katabi ng style ang partner nito. Ang `tests/layers-menu-pairs.test.ts`
+(`npm run test:layers-menu`) ang guard sa order at sa disabled na Coming Soon cell.
+
 ## Traffic map: walang error banner, laging may mapa
 
 Nasa `public/rizal_traffic_map.html`. Kapag tinanggihan ng Mapbox ang account —

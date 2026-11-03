@@ -79,6 +79,37 @@ const hazardMinZoom = () => (isSmallPortraitViewport() ? 11 : 13);
 /** Zoom step. 0.5 lets the small portrait view land on 12.5; others stay at 1. */
 const hazardZoomSnap = () => (isSmallPortraitViewport() ? 0.5 : 1);
 
+/**
+ * LAYERS MENU — BASEMAP STYLES, TWINNED WITH THEIR MAP.
+ *
+ * Every style has a partner in the cell to its right, and the rows read in
+ * this exact order:
+ *
+ *   1. Streets      | Help Center
+ *   2. Traffic      | Weather
+ *   3. Flood Prone  | Coming Soon
+ *
+ * The grid is built from these PAIRS instead of a flat list, so a row can
+ * never split in two: whatever happens to one slot, each basemap style keeps
+ * sitting beside the map it belongs to. `coming-soon` is a disabled
+ * placeholder that still occupies a real cell (row 3, right).
+ */
+type LayerSlot = 'streets' | 'light' | 'dark' | 'satellite' | 'weather';
+const LAYER_MENU_ROWS: ReadonlyArray<readonly [LayerSlot, LayerSlot | 'coming-soon']> = [
+  ['streets', 'satellite'],
+  ['dark', 'weather'],
+  ['light', 'coming-soon'],
+];
+
+/** Visible text of each cell — the `layer` key is an implementation detail. */
+const LAYER_LABELS: Record<LayerSlot, string> = {
+  streets: 'Streets',
+  light: 'Flood Prone',
+  dark: 'Traffic',
+  satellite: 'Help Center',
+  weather: 'Weather',
+};
+
 interface MapViewerProps {
   alerts: HazardAlert[];
   /** Categories the admin hid from public incident feeds. */
@@ -1012,6 +1043,87 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     });
   };
 
+  /**
+   * One Layers-menu cell. Its position in the grid comes from
+   * LAYER_MENU_ROWS, so this only knows how to render and activate a slot —
+   * never where that slot sits.
+   */
+  const renderLayerCell = (layer: LayerSlot) => {
+    const isActive =
+      layer === 'weather' ? showWeather
+        : layer === 'dark' ? showTrafficMap
+          : layer === 'light' ? showFloodProneBlank
+            : layer === 'satellite' ? showHelpCenter
+              : mapSettings.tileLayer === layer && !showTrafficMap && !showHelpCenter && !showWeather;
+
+    const activate = () => {
+      if (layer === 'weather') {
+        setShowTrafficMap(false);
+        setShowFloodProneBlank(false);
+        setShowHelpCenter(false);
+        setShowWeather(true);
+      } else if (layer === 'dark') {
+        // The "Traffic" slot opens the realtime Traffic map.
+        setShowTrafficMap(true);
+        setShowFloodProneBlank(false);
+        setShowHelpCenter(false);
+        setShowWeather(false);
+      } else if (layer === 'light') {
+        // The "Flood Prone" slot opens the 100-year flood hazard map.
+        setShowTrafficMap(false);
+        setShowFloodProneBlank(true);
+        setShowHelpCenter(false);
+        setShowWeather(false);
+        onUpdateMapSettings({ tileLayer: layer });
+      } else if (layer === 'satellite') {
+        // The "Help Center" slot opens the filterable directory map (pick a filter first).
+        setShowTrafficMap(false);
+        setShowFloodProneBlank(false);
+        setShowHelpCenter(true);
+        setShowWeather(false);
+      } else {
+        setShowTrafficMap(false);
+        setShowFloodProneBlank(false);
+        setShowHelpCenter(false);
+        setShowWeather(false);
+        onUpdateMapSettings({ tileLayer: layer });
+      }
+      toggleLayerMenu(false);
+    };
+
+    return (
+      <button
+        key={layer}
+        type="button"
+        data-layer={layer}
+        aria-pressed={isActive}
+        onClick={activate}
+        className={`relative px-2 py-1 rounded-md text-center text-xs font-semibold border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
+          isActive
+            ? 'bg-black text-white border-black'
+            : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+        }`}
+      >
+        {LAYER_LABELS[layer]}
+      </button>
+    );
+  };
+
+  /** The reserved placeholder — a real cell, permanently disabled. */
+  const renderComingSoonCell = () => (
+    <button
+      key="coming-soon"
+      type="button"
+      disabled
+      title="Coming soon"
+      aria-label="Coming soon"
+      data-layer="coming-soon"
+      className="px-2 py-1 rounded-md text-center text-xs font-semibold border border-dashed border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed select-none"
+    >
+      Coming Soon
+    </button>
+  );
+
   return (
     <div className="relative w-full h-full overflow-hidden select-none bg-slate-950">
       {/* The Leaflet Map Canvas */}
@@ -1146,78 +1258,15 @@ export const MapViewer: React.FC<MapViewerProps> = ({
                     BASEMAP STYLE:
                   </label>
                   <div className="grid grid-cols-2 gap-1.5">
-                      {/* Help Center (the 'satellite' slot) opens the filterable directory map. */}
-                    {(['streets', 'dark', 'weather', 'light', 'satellite'] as const).map((layer) => (
-                      <button
-                        key={layer}
-                        onClick={() => {
-                          if (layer === 'weather') {
-                            setShowTrafficMap(false);
-                            setShowFloodProneBlank(false);
-                            setShowHelpCenter(false);
-                            setShowWeather(true);
-                            toggleLayerMenu(false);
-                            return;
-                          }
-                          if (layer === 'dark') {
-                            // The former "Comming Soon" slot now opens the realtime Traffic map.
-                            setShowTrafficMap(true);
-                            setShowFloodProneBlank(false);
-                            setShowHelpCenter(false);
-                            setShowWeather(false);
-                            toggleLayerMenu(false);
-                            return;
-                          }
-                          if (layer === 'light') {
-                            setShowTrafficMap(false);
-                            setShowFloodProneBlank(true);
-                            setShowHelpCenter(false);
-                            setShowWeather(false);
-                            onUpdateMapSettings({ tileLayer: layer });
-                            toggleLayerMenu(false);
-                            return;
-                          }
-                          if (layer === 'satellite') {
-                            // "Help Center" — its own filterable Leaflet directory map (pick a filter first).
-                            setShowTrafficMap(false);
-                            setShowFloodProneBlank(false);
-                            setShowHelpCenter(true);
-                            setShowWeather(false);
-                            toggleLayerMenu(false);
-                            return;
-                          }
-                          setShowTrafficMap(false);
-                          setShowFloodProneBlank(false);
-                          setShowHelpCenter(false);
-                          setShowWeather(false);
-                          onUpdateMapSettings({ tileLayer: layer });
-                        }}
-                      className={`relative px-2 py-1 rounded-md text-center text-xs font-semibold capitalize border transition-colors disabled:opacity-40 disabled:pointer-events-none ${
-                        (layer === 'weather' ? showWeather
-                          : layer === 'dark' ? showTrafficMap
-                          : layer === 'light' ? showFloodProneBlank
-                          : layer === 'satellite' ? showHelpCenter
-                          : mapSettings.tileLayer === layer && !showTrafficMap && !showHelpCenter && !showWeather)
-                          ? 'bg-black text-white border-black'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      {layer === 'weather' ? 'Weather' : layer === 'light' ? 'Flood Prone' : layer === 'dark' ? 'Traffic' : layer === 'satellite' ? 'Help Center' : layer}
-                    </button>
-                  ))}
-
-                  {/* Coming Soon — reserved placeholder slot next to Help Center. */}
-                  <button
-                    type="button"
-                    disabled
-                    title="Coming soon"
-                    aria-label="Coming soon"
-                    className="px-2 py-1 rounded-md text-center text-xs font-semibold border border-dashed border-slate-300 bg-slate-100 text-slate-400 cursor-not-allowed select-none"
-                  >
-                    Coming Soon
-                  </button>
+                    {/* Cells are flattened from LAYER_MENU_ROWS so every basemap
+                        style stays in the same row as its partner:
+                        Streets | Help Center · Traffic | Weather · Flood Prone | Coming Soon */}
+                    {LAYER_MENU_ROWS.flatMap(([style, partner]) => [
+                      renderLayerCell(style),
+                      partner === 'coming-soon' ? renderComingSoonCell() : renderLayerCell(partner),
+                    ])}
+                  </div>
                 </div>
-              </div>
 
               {!showFloodProneBlank && !showTrafficMap && !showHelpCenter && !showWeather && (
                 <>
