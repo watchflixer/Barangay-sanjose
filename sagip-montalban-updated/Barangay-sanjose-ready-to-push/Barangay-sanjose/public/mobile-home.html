@@ -46,7 +46,7 @@
       --red: #ff6f6f;
       --blue: #6ea8fe;
 
-      --sb: 30px;               /* status bar height (standalone) */
+      --sb: 0px;                /* walang pekeng status bar — app mula y=0 */
       --nav-h: 62px;
       --ease: cubic-bezier(.2, 0, 0, 1);
       --tick: rgba(255, 255, 255, .22);
@@ -60,7 +60,6 @@
       font-family: 'Plus Jakarta Sans', 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
       -webkit-font-smoothing: antialiased;
     }
-    body.is-framed { --sb: 0px; }
     button, input, textarea { font: inherit; color: inherit; }
     button { border: 0; background: none; cursor: pointer; }
     button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
@@ -88,20 +87,9 @@
     @keyframes slideDown { from { transform: translateY(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
     @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 
-    .statusbar {
-      position: absolute; top: 0; left: 0; right: 0; height: var(--sb); z-index: 40;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 18px; font-size: 12px; font-weight: 800; letter-spacing: .2px;
-      color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.55); pointer-events: none;
-    }
-    body.is-framed .statusbar { display: none; }
-    .sb-icons { display: flex; align-items: center; gap: 5px; }
-    .sb-icons .ic { width: 14px; height: 14px; stroke-width: 0; }
-    .home-indicator {
-      position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
-      width: 108px; height: 4px; border-radius: 999px;
-      background: rgba(255,255,255,.8); z-index: 60; pointer-events: none;
-    }
+    /* WALA nang pekeng Android status bar (oras / wifi / battery) at WALA
+       nang gray home-indicator / gesture pill sa ibaba. Ang screen ay puno
+       ng app mula y=0, sa framed man o sa standalone na view. */
 
     /* ---------- shared components ---------- */
     .topbar {
@@ -624,12 +612,6 @@
     }
 
     :root[data-theme="light"] body { background: #e9eee8; }
-    :root[data-theme="light"] .home-indicator { background: rgba(16,26,20,.45); }
-    :root[data-theme="light"] .statusbar { color: #101a14; text-shadow: none; }
-    :root[data-theme="light"] .app[data-view="hazard"] .statusbar,
-    :root[data-theme="light"] .app[data-view="photo"] .statusbar,
-    :root[data-theme="light"] .app[data-view="live"] .statusbar,
-    :root[data-theme="light"] .app[data-view="map"] .statusbar { color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.55); }
 
     :root[data-theme="light"] .round-btn { color: #101a14; background: rgba(255,255,255,.92); border-color: rgba(16,26,20,.14); }
     :root[data-theme="light"] .round-btn:hover { background: #fff; }
@@ -821,15 +803,6 @@
   </svg>
 
   <div class="app" id="app" data-view="home" data-nav="1">
-    <div class="statusbar">
-      <span id="sbTime">9:41</span>
-      <span class="sb-icons">
-        <svg class="ic"><use href="#i-signal"/></svg>
-        <svg class="ic"><use href="#i-wifi"/></svg>
-        <svg class="ic"><use href="#i-battery"/></svg>
-      </span>
-    </div>
-
     <!-- ======================= 1. HOME ======================= -->
     <section class="view view-home scroll is-active" data-screen="home" tabindex="-1" aria-label="Home">
       <header class="greeting">
@@ -1273,7 +1246,6 @@
       <button class="nav-item" type="button" data-nav="profile"><svg class="ic"><use href="#i-user"/></svg><span>Profile</span></button>
     </nav>
 
-    <div class="home-indicator"></div>
     <div class="sr-only" aria-live="polite" id="liveRegion"></div>
 
     <!-- ======================= overlays ======================= -->
@@ -1783,15 +1755,6 @@
         if (anyOverlayOpen()) closeOverlays();
         else if (current !== 'home') back();
       });
-
-      /* ---------- clock (standalone status bar) ---------- */
-      function tickClock() {
-        var d = new Date();
-        var h = d.getHours() % 12 || 12;
-        document.getElementById('sbTime').textContent = h + ':' + String(d.getMinutes()).padStart(2, '0');
-      }
-      tickClock();
-      setInterval(tickClock, 30000);
 
       /* ---------- boot ---------- */
       var urlTheme = params.get('theme');

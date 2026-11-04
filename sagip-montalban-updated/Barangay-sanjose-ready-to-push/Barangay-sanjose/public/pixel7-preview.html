@@ -54,21 +54,9 @@
     .pixel7-screen iframe {
       border:0; display:block; background:#fff;
     }
-    /* White theme is the default, so the white Android status bar is default.
-       When the prototype switches to dark, postMessage adds .dark-status. */
-    .pixel7-screen.dark-status .hs-status-bar {
-      background:#0e100e; color:#f4f6f1;
-      box-shadow:0 1px 0 rgba(255,255,255,.07);
-    }
-    .punch-hole {
-      position:absolute; top:9px; left:50%; transform:translateX(-50%);
-      width:13px; height:13px; background:#000; border-radius:50%;
-      z-index:40; box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
-    }
-    .pixel7::after {
-      content:''; position:absolute; bottom:5px; left:50%; transform:translateX(-50%);
-      width:86px; height:4px; background:rgba(255,255,255,0.22); border-radius:999px;
-    }
+    /* Walang pekeng phone chrome: WALA nang Android status bar (oras / wifi /
+       battery), camera punch-hole, o gray gesture pill sa ibaba. Ang screen ay
+       puno ng app mula y=0 hanggang sa ibaba. */
     .btn { position:absolute; background:#2a2f3a; border:1px solid #3a3f4b; }
     .btn-power { right:-4px; top:110px; width:4px; height:70px; border-radius:0 4px 4px 0; }
     .btn-vol  { left:-4px;  top:90px;  width:4px; height:50px; border-radius:4px 0 0 4px; }
@@ -119,7 +107,6 @@
         <div class="btn btn-vol"></div>
         <div class="btn btn-vol2"></div>
         <div class="pixel7-screen" id="screen">
-          <div class="punch-hole"></div>
           <iframe id="appFrame" src="./mobile-home.html?frame=1" title="HazardSync — Pixel 7 preview" scrolling="yes"></iframe>
         </div>
       </div>
@@ -158,7 +145,6 @@
     Direkta: <code>/mobile-home.html</code> · Lahat ng devices: <code>/mobile-preview.html</code>
   </p>
 
-  <script src="status-bar.js"></script>
   <script>
     (function () {
       var params = new URLSearchParams(location.search);
@@ -232,7 +218,7 @@
         });
       });
 
-      // Once the frame moves to the real map, restore the white status bar.
+      // Kapag lumipat ang frame sa tunay na mapa, i-reset ang switcher state.
       frame.addEventListener('load', function () {
         try {
           if (frame.contentWindow.location.pathname.indexOf('mobile-home.html') === -1) {
@@ -242,9 +228,8 @@
         } catch (e) { setTheme('light'); }
       });
 
-      // Android status bar (live clock) sits on top of the app viewport.
-      var BAR = window.HSStatusBar ? window.HSStatusBar.height('android') : 0;
-      if (window.HSStatusBar) window.HSStatusBar.mount(screen, {os: 'android'});
+      // Full-height viewport: walang status bar, kaya 0 ang offset sa itaas.
+      var BAR = 0;
 
       box.style.width = (W + PAD) + 'px';
       box.style.marginLeft = (-(W + PAD) / 2) + 'px';
