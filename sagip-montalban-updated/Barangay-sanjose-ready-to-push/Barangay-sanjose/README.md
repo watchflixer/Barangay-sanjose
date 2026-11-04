@@ -52,8 +52,10 @@ para walang flash; pwede rin ang `?theme=dark` / `?theme=light` sa URL.
 Sa light mode: puting surfaces, `--lime` ay mas madilim na `#2e7d52` para
 mabasa ang white text sa primary buttons, severity colors ay mas contrast,
 at ang mga photo/map overlays ay nananatiling madilim para mabasa ang white
-captions. Ang device frame ay sumusunod din (puting Android status bar sa light,
-dark sa dark) gamit ang `postMessage`.
+captions. **Walang pekeng phone chrome sa mga device frame**: tinanggal na ang
+Android status bar (oras / wifi / battery), camera punch-hole at ang gray
+gesture pill sa ibaba; ang iframe ay buong taas ng screen mula `y = 0`. Ang
+`postMessage` ay ginagamit na lang para sa theme at active screen.
 
 | # | Screen | Katumbas sa konsepto | Hazard version |
 | - | ------ | -------------------- | -------------- |
@@ -65,8 +67,8 @@ dark sa dark) gamit ang `postMessage`.
 | 6 | `#map` | People in Hike + Traffic Management | Dark satellite + route overlays, chips, evacuee capacity card, chat report, warning sheet |
 
 **Ibinabalik ang dating white navbar ng map screen** (`#map`) — nasa dating
-pwesto sa pinaka-itaas, ilalim ng status bar (`top: calc(var(--sb) + 6px)`,
-`left/right: 16px`). Row 1: **puting bilog na may black icon** — back arrow
+pwesto sa pinaka-itaas (`top: calc(var(--sb) + 6px)`, `left/right: 16px`;
+`--sb` ay `0px` na ngayon dahil wala nang status bar). Row 1: **puting bilog na may black icon** — back arrow
 `←` sa kaliwa, `BASE MAP STYLE` + pangalan ng aktibong style sa gitna, at
 **bell na may pulang dot** sa kanan. Row 2: dalawang glass chips —
 `Route 2 · San Jose` (katumbas ng `Bus 6023` sa reference) at `Hazard layer`.
@@ -202,9 +204,10 @@ Home / Map / Reports / Profile.
 
 Ang Pixel 7 frame (`/pixel7-preview.html`) ay may **screen switcher** (6 buttons)
 na nag-postMessage papuntang iframe, kaya pwedeng i-preview ang kahit anong
-screen nang hindi nagre-reload. Ang `postMessage` din ang nag-a-adjust ng status
-bar theme. Ang `?frame=1` ay nagtatago ng sariling status bar ng prototype para
-hindi mag-doble sa status bar ng device frame. Ang all-devices page
+screen nang hindi nagre-reload. Ang `postMessage` ay nagdadala ng theme at ng
+aktibong screen; `?frame=1` ay marker lang ng framed mode. **Wala nang status
+bar sa alinmang panig** (device frame man o prototype) kaya walang dobleng oras
+o icon, at walang gray home-indicator sa ibaba. Ang all-devices page
 (`/mobile-preview.html`) ay awtomatikong nagbubukas sa home screen.
 
 Lahat ng larawan ay nasa `public/assets/`: `hazard-flood.jpg`,
