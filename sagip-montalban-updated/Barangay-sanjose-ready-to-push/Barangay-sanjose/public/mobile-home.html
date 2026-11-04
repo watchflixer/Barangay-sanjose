@@ -46,7 +46,9 @@
       --red: #ff6f6f;
       --blue: #6ea8fe;
 
-      --sb: 0px;                /* walang pekeng status bar — app mula y=0 */
+      --sb: 30px;               /* BLANK top safe area lang — walang status bar
+                                    na iginuguhit, space lang para hindi dumikit
+                                    ang "Hello, Rizal" sa pinaka-itaas */
       --nav-h: 62px;
       --ease: cubic-bezier(.2, 0, 0, 1);
       --tick: rgba(255, 255, 255, .22);
@@ -88,8 +90,11 @@
     @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
 
     /* WALA nang pekeng Android status bar (oras / wifi / battery) at WALA
-       nang gray home-indicator / gesture pill sa ibaba. Ang screen ay puno
-       ng app mula y=0, sa framed man o sa standalone na view. */
+       nang gray home-indicator / gesture pill sa ibaba. Ang `--sb` ay isang
+       BLANK na top safe area lang (30px): walang anumang bar, oras o icon na
+       iginuguhit — espasyo lang para may breathing room ang content sa itaas,
+       sa framed man o sa standalone na view. Lahat ng `calc(var(--sb) + …)`
+       (view-home, topbars, map navbar, sheets) ay sabay na bumaba. */
 
     /* ---------- shared components ---------- */
     .topbar {

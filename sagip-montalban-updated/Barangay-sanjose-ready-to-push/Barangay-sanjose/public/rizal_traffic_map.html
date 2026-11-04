@@ -155,15 +155,7 @@
      above it; Mapbox markers re-enable pointer events so route pins stay
      tappable. */
   #map-gl .mapboxgl-marker{pointer-events:auto;}
-  /* Bottom-right credit strip — the Mapbox attribution bar's exact look:
-     "© Mapbox © OpenStreetMap". */
-  #credit-strip{
-    position:absolute;right:0;bottom:0;z-index:900;
-    padding:0 5px;background:rgba(255,255,255,0.7);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    font-size:11px;line-height:1.6;color:#404040;
-    pointer-events:auto;
-  }
+  /* Walang bottom-right credit / attribution strip sa mapa. */
   /* Raise the stack on mobile portrait so it clears the parent app's bottom overlays */
   @media (orientation: portrait) and (max-width: 640px){
     #legend-stack{ bottom: 56px; }
@@ -845,8 +837,6 @@
     <div class="row"><span class="sw" style="background:#7A1F1B;"></span>Road closed</div>
   </div>
 </div>
-<!-- Credit strip in the Mapbox attribution bar's exact format and position. -->
-<div id="credit-strip">© Mapbox © OpenStreetMap</div>
 <div id="dir-panel" hidden>
   <div class="dir-top">
     <button type="button" class="dir-ib" id="dir-back" aria-label="Back" data-i="back"></button>
@@ -1165,9 +1155,7 @@
     // Leaflet owns every gesture (drag, wheel, pinch) — same as the Help
     // Center map — so this GL map is a pure renderer and never handles input.
     interactive: false,
-    // Mapbox's own credit bar stays off — the custom bottom-right strip
-    // already shows "© Mapbox © OpenStreetMap". Mapbox draws every tile
-    // of the basemap here.
+    // Walang anumang credit / attribution strip sa ibaba ng mapa.
     attributionControl: false,
     logoControl: false,
   });

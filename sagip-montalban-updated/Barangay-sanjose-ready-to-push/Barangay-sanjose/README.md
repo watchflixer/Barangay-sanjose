@@ -54,8 +54,13 @@ mabasa ang white text sa primary buttons, severity colors ay mas contrast,
 at ang mga photo/map overlays ay nananatiling madilim para mabasa ang white
 captions. **Walang pekeng phone chrome sa mga device frame**: tinanggal na ang
 Android status bar (oras / wifi / battery), camera punch-hole at ang gray
-gesture pill sa ibaba; ang iframe ay buong taas ng screen mula `y = 0`. Ang
-`postMessage` ay ginagamit na lang para sa theme at active screen.
+gesture pill sa ibaba; ang iframe ay buong taas ng screen mula `y = 0`. Bilang
+kapalit, may **blank top safe area na 30px** sa loob ng prototype (`--sb`) —
+espasyo lang, walang bar/oras/icon na iginuguhit — kaya hindi dumidikit ang
+`Hello, Rizal` at ang mga topbar sa gilid ng screen. Lahat ng
+`calc(var(--sb) + …)` ay sabay na bumaba; ang `.app` background ang pumupuno
+sa blank space sa light at dark theme. Ang `postMessage` ay ginagamit na lang
+para sa theme at active screen.
 
 | # | Screen | Katumbas sa konsepto | Hazard version |
 | - | ------ | -------------------- | -------------- |
@@ -68,7 +73,7 @@ gesture pill sa ibaba; ang iframe ay buong taas ng screen mula `y = 0`. Ang
 
 **Ibinabalik ang dating white navbar ng map screen** (`#map`) — nasa dating
 pwesto sa pinaka-itaas (`top: calc(var(--sb) + 6px)`, `left/right: 16px`;
-`--sb` ay `0px` na ngayon dahil wala nang status bar). Row 1: **puting bilog na may black icon** — back arrow
+`--sb` ay 30px na blank safe area, walang status bar). Row 1: **puting bilog na may black icon** — back arrow
 `←` sa kaliwa, `BASE MAP STYLE` + pangalan ng aktibong style sa gitna, at
 **bell na may pulang dot** sa kanan. Row 2: dalawang glass chips —
 `Route 2 · San Jose` (katumbas ng `Bus 6023` sa reference) at `Hazard layer`.
@@ -102,8 +107,10 @@ pero wala na itong ini-inject na element.
 **Floating back bar sa tunay na map** — sa halip ng lumang brand navbar, may
 `#hs-map-back-bar` sa pinaka-itaas: **black `←` icon** sa loob ng 38px na
 **puting bilog**,
-eksaktong **buong lapad ng dating navbar × 53px ang taas** (parehong sukat ng
-`#app-navbar` noon). **Wala nang solid na itim na background**: transparent ang
+eksaktong **buong lapad ng dating navbar × 53px ang content band** (parehong
+sukat ng `#app-navbar` noon), **dinagdagan ng kunting 10px na BLANK top inset**
+kaya 63px ang kabuuang taas — espasyo lang sa itaas, walang iginuguhit na bar,
+oras o icon. **Wala nang solid na itim na background**: transparent ang
 banda (`background: transparent`, walang border, `pointer-events: none`), at
 **walang `padding-top` sa `#root`** — kaya ang mga map tile ay umaabot hanggang
 `y = 0` at ang back / title / bookmark buttons ay **nakapatong mismo sa mapa**.
@@ -138,29 +145,44 @@ Flood = Satellite (white), Traffic = Street (black), Help Center = Street
 (black).
 Tanging ang dalawang button ang may `pointer-events: auto`. Ang
 `#map-control-stack` (Recenter / Layers / Locate / Zoom) ay ini-shift pababa ng
-53px para hindi matabunan. I-click ang `←` para bumalik (`history.back()` kung
+**63px** (53px + 10px inset) para sabay na bumaba ang buong top region. Ang
+PAGASA weather card (`main > div.absolute.top-20.right-4`) ay isinabay din ng
+10px, kaya nanatiling pareho ang pagitan ng mga disc, controls at weather card. I-click ang `←` para bumalik (`history.back()` kung
 may same-origin history, kung hindi ay `./mobile-home.html`).
 
 Dahil transparent na ang banda, may `hs-overlay-shift` injector na naglalagay ng
-same-origin CSS sa loob ng bawat embedded map para bumaba rin nang 53px ang
+same-origin CSS sa loob ng bawat embedded map para bumaba rin nang 63px ang
 sarili nitong top controls: `#host-map-controls`, `#traffic-zoom`,
 `#base-switch` (Satellite / Street), `header.absolute` at `.ph-map-controls`
-ng Weather. Sa pangunahing dokumento, `#hc-picker` ay may 63px na padding at
+ng Weather. Sa pangunahing dokumento, `#hc-picker` ay may 73px na padding at
 `#hc-base-switch` ay ini-shift din, kaya ang Help Center filter picker ay hindi
 nakikipag-banggaan sa mga floating button at nananatiling clickable ang `X`.
+
+**Walang attribution / credit strip sa kahit anong mapa.** Tinanggal ang
+`.leaflet-control-attribution` ng Flood Prone (`attributionControl: false` sa
+`L.map`, inalis ang `attribution` sa OSM/Esri tile layers at ang lumang
+click-handler para sa Leaflet credit link) at ang custom `#credit-strip`
+("© Mapbox © OpenStreetMap") ng Traffic. Ang `index.html` ay may safety-net na
+`display:none!important` para sa `.leaflet-control-attribution`,
+`.mapboxgl-ctrl-attrib`, `.mapboxgl-ctrl-logo` at `#credit-strip` — sa pangunahing
+dokumento at sa `hs-overlay-shift` CSS na ini-inject sa bawat embedded map.
+Ang Streets / Help Center / Weather ay `attributionControl: false` na noon pa.
+*Paalala:* karaniwang hinihingi ng OSM, Esri at Mapbox ang attribution ayon sa
+kanilang terms; kung ilalabas sa production, ilagay ito sa isang About /
+Credits page sa halip na sa ibaba ng mapa.
 
 **Posisyon ng limang map buttons sa Flood Prone at Help Center** — sa dalawang
 view na ito, ang **zoom in / zoom out ay hiwalay na Leaflet control** (hindi
 kasama sa `#host-map-controls` / `#map-control-stack`). Nang i-shift ang stack
-ng 53px, naiwan ang zoom pair sa dating `top` kaya **tinatakpan nito ang
+ng 63px, naiwan ang zoom pair sa dating `top` kaya **tinatakpan nito ang
 "Show your location"**. Inaayos ito ng
 `.leaflet-control-zoom:not(#traffic-zoom)` sa injected iframe CSS at ng
 `#help-center-map-root .leaflet-control-zoom` sa pangunahing CSS: parehong
-bumababa ng 53px, kaya ang buong column ay
+bumababa ng 63px, kaya ang buong column ay
 **Recenter → Layers → Show your location → Zoom in → Zoom out** nang sunud-sunod
 at walang overlap. `#traffic-zoom` ay hindi na dobleng ini-shift. Sa ≤344px
-(cover screen) mas maikli ang 26px buttons, kaya 23px lang ang shift ng zoom
-pair at **pinapaliit ang Satellite / Street toggle** (`right:6px`, mas maliit na
+(cover screen) mas maikli ang 26px buttons, kaya 33px lang ang shift ng zoom
+pair (23px + 10px inset) at **pinapaliit ang Satellite / Street toggle** (`right:6px`, mas maliit na
 padding at font) para hindi nito matakpan ang Recenter / Layers. Verified sa
 196×417, 412×887 at 1440×900: zero overlap sa pagitan ng limang buttons, ng
 floating bar, at ng style toggle.
@@ -175,7 +197,7 @@ pagkatapos ng 2.4 s.
 ng tunay na app. Kapag **Streets** ang aktibo, **`Hazard Map`** ang nakasulat;
 kapag binuksan ang iba: `Flood Prone`, `Traffic`, `Weather`, `Help Center`.
 **Plain bold text (black o white ayon sa basemap, walang card)**, naka-center
-sa 53px bar, `aria-live="polite"`, at
+sa 63px top band (53px + 10px blank inset), `aria-live="polite"`, at
 `pointer-events:none` kaya hindi nakakasagabal sa back target. Kinukuha ang
 state mula sa: iframe ng bawat alternate view (`rizal_flood_100yr_map.html` /
 `rizal_traffic_map.html` / `weather.html`), `san-jose-helpcenter-open` at
