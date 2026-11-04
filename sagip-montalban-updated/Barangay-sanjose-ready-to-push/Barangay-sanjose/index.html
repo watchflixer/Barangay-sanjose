@@ -21,11 +21,22 @@
          in the React tree so the existing layout tests stay unchanged. */
       #app-navbar { display: none !important; }
 
+      /* WALANG map attribution / credit strip kahit saan: Leaflet
+         ("Leaflet | Tiles © Esri …"), Mapbox GL, o custom (#credit-strip).
+         Safety net ito sa main document; ang kaparehong rule ay ini-inject din
+         sa bawat embedded map ng hs-overlay-shift sa ibaba. */
+      .leaflet-control-attribution, .mapboxgl-ctrl-attrib,
+      .mapboxgl-ctrl-logo, #credit-strip { display: none !important; }
+
       /* Walang solid bar: ang mga button ay NAKAPATONG mismo sa map tiles.
-         Transparent ang 53px banda, kaya ang mapa ay umaabot sa pinaka-itaas. */
+         Transparent ang banda, kaya ang mapa ay umaabot sa pinaka-itaas.
+         May KUNTING 10px na BLANK top inset (walang anumang iginuguhit):
+         53px ang dated content band + 10px sa itaas = 63px ang kabuuan.
+         Kaya hindi dumidikit ang title / discs sa gilid ng screen. */
       #hs-map-back-bar {
         position: fixed; top: 0; left: 0; right: 0; z-index: 10000;
-        width: 100%; height: 53px; margin: 0; padding: 0 12px;
+        width: 100%; height: 63px; margin: 0; padding: 10px 12px 0;
+        box-sizing: border-box;
         display: flex; align-items: center; justify-content: space-between;
         background: transparent; border: 0; pointer-events: none;
         -webkit-tap-highlight-color: transparent;
@@ -53,25 +64,32 @@
       #hs-map-alert-btn:hover .hs-alert-disc { background: #f1f4ef; }
       #hs-map-back-btn:active .hs-back-disc,
       #hs-map-alert-btn:active .hs-alert-disc { transform: scale(.94); }
-      /* Recenter / Layers / Locate / Zoom ng main map ay nasa ilalim ng overlay. */
-      #map-control-stack { transform: translateY(53px) !important; }
+      /* Recenter / Layers / Locate / Zoom ng main map ay nasa ilalim ng overlay.
+         Ang 63px = dated 53px shift + 10px blank top inset, kaya SABAY na
+         bumaba ang buong top region at nanatiling pareho ang pagitan ng
+         discs, controls at weather card. */
+      #map-control-stack { transform: translateY(63px) !important; }
+      /* Ang PAGASA weather card ay `absolute top-20` sa main map. Isinabay din
+         ito sa 10px inset para hindi humigpit ang pagitan nito sa mga disc. */
+      main > div.absolute.top-20.right-4 { transform: translateY(10px) !important; }
       /* Help Center: ang sarili nitong picker at Street/Satellite toggle ay
-         kailangan ding bumaba nang 53px para hindi makipag-banggaan sa
+         kailangan ding bumaba nang 63px para hindi makipag-banggaan sa
          floating back / title / bookmark buttons. */
-      #hc-picker { padding-top: 63px !important; }
-      #hc-base-switch { transform: translateY(53px) !important; }
+      #hc-picker { padding-top: 73px !important; }
+      #hc-base-switch { transform: translateY(63px) !important; }
       /* Sa Help Center ang Leaflet zoom pair ay HINDI kasama sa
-         #map-control-stack, kaya kailangan din itong bumaba ng 53px —
+         #map-control-stack, kaya kailangan din itong bumaba ng 63px —
          kundi ay matatakpan nito ang "Show your location". */
       #help-center-map-root .leaflet-control-zoom {
-        transform: translateY(53px) !important;
+        transform: translateY(63px) !important;
       }
       /* Sa ≤344px mas maikli ang stack (26px buttons), kaya mas maliit ang
-         shift ng zoom pair. Pinapaliit din ang Satellite/Street toggle para
-         hindi nito matakpan ang Recenter / Layers / Show your location. */
+         shift ng zoom pair (23px + 10px inset = 33px). Pinapaliit din ang
+         Satellite/Street toggle para hindi nito matakpan ang Recenter /
+         Layers / Show your location. */
       @media (max-width: 344px) {
         #help-center-map-root .leaflet-control-zoom {
-          transform: translateY(23px) !important;
+          transform: translateY(33px) !important;
         }
         #hc-base-switch {
           right: 6px !important; padding: 3px !important; gap: 2px !important;
@@ -104,7 +122,10 @@
       #hs-map-alert-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
       /* Pangalan ng aktibong basemap style sa gitna ng bar. */
       #hs-map-title {
-        position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        /* +5px = kalahati ng 10px blank top inset, kaya ang title ay naka-center
+           sa 53px CONTENT band (kasabay ng gitna ng dalawang disc), hindi sa
+           buong 63px bar. */
+        position: absolute; left: 50%; top: calc(50% + 5px); transform: translate(-50%, -50%);
         box-sizing: border-box;
         max-width: calc(100% - 132px); overflow: hidden; text-overflow: ellipsis;
         white-space: nowrap; pointer-events: none;
@@ -127,7 +148,7 @@
     </style>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased font-['Plus_Jakarta_Sans',sans-serif]">
-    <!-- Minimal top bar: buong lapad × 53px (sukat ng dating navbar). -->
+    <!-- Minimal top bar: 53px content band + 10px blank top inset = 63px. -->
     <div id="hs-map-back-bar">
       <button id="hs-map-back-btn" type="button" aria-label="Back" title="Back">
         <span class="hs-back-disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></span>
@@ -318,12 +339,16 @@
       // controls, para hindi matabunan ng floating back button kahit transparent
       // na ang banda sa itaas.
       (function () {
+        // 63px = dated 53px shift + ang kunting 10px blank top inset sa itaas.
         var CSS =
+          // Walang Leaflet / Mapbox / custom credit strip sa anumang embedded map.
+          '.leaflet-control-attribution,.mapboxgl-ctrl-attrib,' +
+          '.mapboxgl-ctrl-logo,#credit-strip{display:none!important}' +
           '#host-map-controls,#traffic-zoom,#base-switch,.ph-map-controls,' +
-          '.leaflet-control-zoom:not(#traffic-zoom){transform:translateY(53px)!important}' +
-          'header.absolute{transform:translateY(53px)!important}' +
+          '.leaflet-control-zoom:not(#traffic-zoom){transform:translateY(63px)!important}' +
+          'header.absolute{transform:translateY(63px)!important}' +
           '@media (max-width:344px){' +
-          '.leaflet-control-zoom:not(#traffic-zoom){transform:translateY(23px)!important}' +
+          '.leaflet-control-zoom:not(#traffic-zoom){transform:translateY(33px)!important}' +
           '#base-switch{right:6px!important;padding:3px!important;gap:2px!important}' +
           '#base-switch button{padding:3px 6px!important;font-size:10px!important}' +
           '}';
