@@ -21,18 +21,19 @@
 </head>
 <body>
   <h1>📱 Barangay San Jose - Pixel 7 Preview</h1>
-  <p>Pixel 7 na view (412 × 926 CSS px). Yung default preview ngayon ay ang Pixel 7 na view; desktop app sa /?full=1.</p>
+  <p>Pixel 7 na view (412 × 926 CSS px). <b>Home muna</b>, tapos 6-screen hazard flow (detail, reports, field photo, live status, area map); ang "Go to Map" ay papuntang tunay na app. Desktop app sa /?full=1.</p>
 
   <div class="phone">
     <div class="screen">
-      <iframe id="pixel7" src="/index.html" width="412" height="926" title="Pixel 7 Preview"></iframe>
+      <iframe id="pixel7" src="/mobile-home.html?frame=1" width="412" height="926" title="Pixel 7 Preview"></iframe>
     </div>
   </div>
   <div class="label">Pixel 7 — 412 x 926</div>
 
   <div class="controls">
-    <a href="/index.html?full=1" target="_blank">Open Desktop App</a>
-    <a href="/index.html" target="_blank">Open in New Tab</a>
+    <a href="/mobile-home.html" target="_blank">Home Fullscreen</a>
+    <a href="/index.html?fromHome=1" target="_blank">Go to Map</a>
+    <a class="secondary" href="/index.html?full=1" target="_blank">Open Desktop App</a>
   </div>
 </body>
 </html>

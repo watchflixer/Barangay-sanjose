@@ -11,12 +11,208 @@ na nag-e-embed ng totoong app, naka-fit sa kahit gaano kaliit na preview panel).
 | URL                                | Ano ang lalabas                                               |
 | ---------------------------------- | ------------------------------------------------------------- |
 | `/`                                | Normal app (default)                                          |
-| `/?pixel7=1`                       | Pixel 7 device preview                                        |
+| `/mobile-home.html`                | **6-screen hazard prototype** (Pixel 7 / phone, fullscreen)    |
+| `/mobile-home.html#map`            | Direkta sa area map screen (pwede ring `#hazard`, `#reports`, `#photo`, `#live`) |
+| `/?home=1`                         | Redirect sa home screen (dev/preview; sa Pages gamitin ang URL sa itaas) |
+| `/?pixel7=1`                       | Pixel 7 device preview — **home muna**                        |
 | `/?full=1` o `/?desktop=1`         | Desktop/regular app                                           |
-| `/index.html`                      | Raw app (ito ang ini-embed ng device frames)                  |
+| `/index.html`                      | Raw app (ito ang binubuksan ng `Go to Map`)                   |
+| `/index.html?fromHome=1`           | Raw app (route marker lang; pabalik = back button sa taas)     |
 | `/pixel7-preview.html?w=375&h=820` | Pixel 7 frame sa ibang viewport size                          |
 | `/mobile-preview.html`             | Lahat ng devices (Pixel 7, iPhone SE, iPhone 14 Pro, Android) |
 | `/?traffic=1&sfrom=...`            | Deep link papuntang app (hindi ni-re-redirect)                |
+
+## Home muna, tapos mapa — 6-screen hazard flow (Pixel 7)
+
+Ang `public/mobile-home.html` ay isang self-contained na phone prototype (plain
+HTML/CSS/JS, walang bagong dependency). Hindi na ito hiking concept: lahat ng
+copy, imagery at interaction ay naka-align sa **hazard monitoring** — alert
+level, severity, water level, evacuation routes, verified reports at emergency
+alert. Iisang design system ang gamit (white + dark theme): iisang token set,
+`--lime` = action, `--amber` = watch, `--red` = critical, `--blue` = lokasyon;
+8dp spacing, 16–28px radii, 200–280ms motion, `aria`/focus-visible at
+`prefers-reduced-motion` support.
+
+**Buong Rizal ang scope, hindi isang barangay.** Dahil wala pang login at
+create-account, ang site ay **open sa lahat**: `Hello, Rizal` /
+`Here's today's situation across all of Rizal`, location pill na `All of Rizal`,
+walang personalized na avatar (globe icon = public access), at ang Profile sheet
+ay may `Public access · No account required` plus `Login & create account —
+Coming soon`. Ang mga bagong report ay naka-label na `Guest report · Pending
+review` sa halip na pangalan ng isang account. Kapag ready na ang auth, saka
+lang ibabalik ang personalized greeting. Ang incident-level na detalye
+(Marikina River, Station SJ-04, Purok 3) ay nanatiling sample data para sa
+hazard flow.
+
+**White theme ang default.** Ang dark version ay available pa rin: i-tap ang
+sun/moon button sa tabi ng avatar, o ang `Dark theme` toggle sa Profile sheet,
+o ang `☀ White theme / ☾ Dark theme` button sa ilalim ng Pixel 7 frame.
+Naka-save ang choice sa `localStorage` (`hs-theme`) at ina-apply bago mag-paint
+para walang flash; pwede rin ang `?theme=dark` / `?theme=light` sa URL.
+Sa light mode: puting surfaces, `--lime` ay mas madilim na `#2e7d52` para
+mabasa ang white text sa primary buttons, severity colors ay mas contrast,
+at ang mga photo/map overlays ay nananatiling madilim para mabasa ang white
+captions. Ang device frame ay sumusunod din (puting Android status bar sa light,
+dark sa dark) gamit ang `postMessage`.
+
+| # | Screen | Katumbas sa konsepto | Hazard version |
+| - | ------ | -------------------- | -------------- |
+| 1 | `#home` | Hello, Rizal | Situation overview · ORANGE ALERT strip, Marikina River card, `Go to Map`, recent reports |
+| 2 | `#hazard` | Aiguille du Midi detail | Photo hero + scrollable bottom sheet, metrics, Details / Evacuation / Reports tabs |
+| 3 | `#reports` | Hike Progress leaderboard | Community reports (walang gamification) · verified/pending, filters, report FAB |
+| 4 | `#photo` | Mike Wadkly photo screen | Field report ng volunteer, floating reporter card, `Go to Map` |
+| 5 | `#live` | Hike Details / compass | Live status · rain duration, evacuation distance, flow compass, sensor readings, emergency alert |
+| 6 | `#map` | People in Hike + Traffic Management | Dark satellite + route overlays, chips, evacuee capacity card, chat report, warning sheet |
+
+**Ibinabalik ang dating white navbar ng map screen** (`#map`) — nasa dating
+pwesto sa pinaka-itaas, ilalim ng status bar (`top: calc(var(--sb) + 6px)`,
+`left/right: 16px`). Row 1: **puting bilog na may black icon** — back arrow
+`←` sa kaliwa, `BASE MAP STYLE` + pangalan ng aktibong style sa gitna, at
+**bell na may pulang dot** sa kanan. Row 2: dalawang glass chips —
+`Route 2 · San Jose` (katumbas ng `Bus 6023` sa reference) at `Hazard layer`.
+Parehong puti ang bilog sa light at dark theme; ang chips ay puting glass sa
+light at dark glass sa dark, gaya ng dating bersyon.
+
+Ang pangalan ng style sa gitna ay **dynamic**, hindi hardcoded: i-tap ito para sa
+maliit na `BASEMAP STYLE` menu na may `Hazard Map` (Streets), `Traffic`,
+`Weather`, `Flood Prone`, at `Help Center` — kapag binuksan ang **Flood Prone**,
+`Flood Prone` din ang nakalagay (parehong pangalan sa menu ng tunay na app).
+May bahagyang tint sa mapa bawat style. Puwede ring ipilit sa URL, hal.
+`mobile-home.html?style=floodprone#map`. Ang `Escape` o tap sa labas ay nagsasara
+ng menu; ang napiling style ay naka-save sa `localStorage` (`hs-map-style`) kaya
+hindi nawawala kahit bumalik mula sa tunay na map. Ang puting bilog na may black
+icon ay nananatili rin sa top bars ng ibang screens (home, hazard, reports,
+photo, live).
+
+**Tinanggal na ang lumang white top navbar ng tunay na React app**
+(`#app-navbar`: HazardSync mark · Rizal · live clock · Donate · Guide). Isang
+rule lang sa `index.html` (`#app-navbar { display:none !important }`) ang nag-aalis
+nito sa lahat ng viewport. Hindi binago ang React components o `src/index.css`
+para manatiling buo ang existing layout tests.
+
+**Tinanggal na rin ang maliit na `Home` pill** (`#hs-home-shortcut`) na dating
+nasa ibabang kaliwa ng tunay na mapa — nakikipag-banggaan ito sa incident banner
+at sa controls. Ang tanging pabalik na ngayon ay ang **`←` back button** sa
+transparent top bar (`history.back()` o `./mobile-home.html`). Ang
+`?fromHome=1` ay iniwang route marker para hindi mabasag ang `Go to Map` links,
+pero wala na itong ini-inject na element.
+
+**Floating back bar sa tunay na map** — sa halip ng lumang brand navbar, may
+`#hs-map-back-bar` sa pinaka-itaas: **black `←` icon** sa loob ng 38px na
+**puting bilog**,
+eksaktong **buong lapad ng dating navbar × 53px ang taas** (parehong sukat ng
+`#app-navbar` noon). **Wala nang solid na itim na background**: transparent ang
+banda (`background: transparent`, walang border, `pointer-events: none`), at
+**walang `padding-top` sa `#root`** — kaya ang mga map tile ay umaabot hanggang
+`y = 0` at ang back / title / bookmark buttons ay **nakapatong mismo sa mapa**.
+Ang dalawang disc ay **solid `#fff` na may black icon** (`stroke:#101a14`) —
+kapareho ng restored white navbar ng prototype. May manipis na
+`rgba(16,26,20,.20)` border at `0 4px 16px rgba(0,0,0,.32)` shadow para hindi
+mawala kahit sa mapa o view na puti ang background; hover ay `#f1f4ef`. Ang
+pulang `2` badge ay may puting ring.
+
+**Ang pangalan sa gitna ay PLAIN TEXT lang — walang card, pill, background,
+anino o outline** (`text-shadow:none`, walang `background`). Ang kulay ng text
+ay awtomatikong sumusunod sa liwanag ng aktibong tile:
+
+| Basemap style | Kulay ng text |
+| --- | --- |
+| Streets → `Hazard Map` | **black** `#101a14` |
+| Traffic · Street | **black** |
+| Traffic · Satellite | **white** |
+| Weather | **white** |
+| Flood Prone · Satellite | **white** |
+| Flood Prone · Street | **black** |
+| Help Center · Street | **black** |
+| Help Center · Satellite | **white** |
+
+Binabasa ng `activeBase()` ang `button.active` / `aria-pressed` ng
+`#base-switch` sa loob ng Flood Prone at Traffic iframes, at ng
+`#hc-base-switch` sa mismong dokumento para sa Help Center; dahil nasa loob ng
+iframe ang dalawang toggle, may 200ms `setInterval(applyInk, …)` na
+nagre-refresh ng `data-ink` at `style.color` kahit hindi ito abot ng
+`MutationObserver` ng pangunahing dokumento. Default bago mag-load:
+Flood = Satellite (white), Traffic = Street (black), Help Center = Street
+(black).
+Tanging ang dalawang button ang may `pointer-events: auto`. Ang
+`#map-control-stack` (Recenter / Layers / Locate / Zoom) ay ini-shift pababa ng
+53px para hindi matabunan. I-click ang `←` para bumalik (`history.back()` kung
+may same-origin history, kung hindi ay `./mobile-home.html`).
+
+Dahil transparent na ang banda, may `hs-overlay-shift` injector na naglalagay ng
+same-origin CSS sa loob ng bawat embedded map para bumaba rin nang 53px ang
+sarili nitong top controls: `#host-map-controls`, `#traffic-zoom`,
+`#base-switch` (Satellite / Street), `header.absolute` at `.ph-map-controls`
+ng Weather. Sa pangunahing dokumento, `#hc-picker` ay may 63px na padding at
+`#hc-base-switch` ay ini-shift din, kaya ang Help Center filter picker ay hindi
+nakikipag-banggaan sa mga floating button at nananatiling clickable ang `X`.
+
+**Posisyon ng limang map buttons sa Flood Prone at Help Center** — sa dalawang
+view na ito, ang **zoom in / zoom out ay hiwalay na Leaflet control** (hindi
+kasama sa `#host-map-controls` / `#map-control-stack`). Nang i-shift ang stack
+ng 53px, naiwan ang zoom pair sa dating `top` kaya **tinatakpan nito ang
+"Show your location"**. Inaayos ito ng
+`.leaflet-control-zoom:not(#traffic-zoom)` sa injected iframe CSS at ng
+`#help-center-map-root .leaflet-control-zoom` sa pangunahing CSS: parehong
+bumababa ng 53px, kaya ang buong column ay
+**Recenter → Layers → Show your location → Zoom in → Zoom out** nang sunud-sunod
+at walang overlap. `#traffic-zoom` ay hindi na dobleng ini-shift. Sa ≤344px
+(cover screen) mas maikli ang 26px buttons, kaya 23px lang ang shift ng zoom
+pair at **pinapaliit ang Satellite / Street toggle** (`right:6px`, mas maliit na
+padding at font) para hindi nito matakpan ang Recenter / Layers. Verified sa
+196×417, 412×887 at 1440×900: zero overlap sa pagitan ng limang buttons, ng
+floating bar, at ng style toggle.
+
+Sa **kanan** ng parehong bar ay ang `#hs-map-alert-btn`: **black bookmark**
+outline sa 38px na puting bilog na may **pulang `2` badge** (gaya ng reference
+crop).
+I-tap ito para sa `2 unread critical alerts` toast, na awtomatikong nawawala
+pagkatapos ng 2.4 s.
+
+**Pangalan sa gitna (`#hs-map-title`)** — sumusunod sa aktibong `BASEMAP STYLE`
+ng tunay na app. Kapag **Streets** ang aktibo, **`Hazard Map`** ang nakasulat;
+kapag binuksan ang iba: `Flood Prone`, `Traffic`, `Weather`, `Help Center`.
+**Plain bold text (black o white ayon sa basemap, walang card)**, naka-center
+sa 53px bar, `aria-live="polite"`, at
+`pointer-events:none` kaya hindi nakakasagabal sa back target. Kinukuha ang
+state mula sa: iframe ng bawat alternate view (`rizal_flood_100yr_map.html` /
+`rizal_traffic_map.html` / `weather.html`), `san-jose-helpcenter-open` at
+`san-jose-refresh-view` sa sessionStorage, `?help=1`, ang active `bg-black`
+button sa React Layers menu, at ang `hazardsync-layer-select` postMessage ng
+sariling style menu ng embedded maps. May 900ms "hold" habang nagpapalit ang
+React para hindi ma-override ng lumang iframe ang bagong pangalan; sinusundan
+itong `MutationObserver`.
+
+Makikita ang buong bar sa lahat ng viewport (196×417, 412×887, 1440×900) nang
+walang overflow. Nasa `index.html` lang din ito, hindi sa React tree. Ang
+notification icon ng prototype (`#mapBell`) ay hiwalay at nananatiling bell na
+may pulang dot; ang sarili nitong dynamic label (`#mapStyleLabel`) ay buo rin.
+
+**`Go to Map`** ay nasa home, hazard sheet, photo, live at area map. Binubuksan
+nito ang tunay na `/index.html?fromHome=1` — ang existing Leaflet hazard map,
+hindi dummy page — at ang back button sa taas ang pabalik. Hindi nagbago ang default
+na `/`: ang normal app ang lalabas doon, kaya ligtas ang lahat ng existing
+layout tests.
+
+Navigation: hash-based (`#home` … `#map`) na may `history.pushState` kaya
+gumagana ang browser/iframe back; `Escape` ay nagba-back o nagsasara ng sheet.
+May search sheet, report form (nagdadagdag ng row sa feed), emergency confirm,
+profile sheet at toasts. Lahat ng screen ay may back button; bottom nav ay
+Home / Map / Reports / Profile.
+
+Ang Pixel 7 frame (`/pixel7-preview.html`) ay may **screen switcher** (6 buttons)
+na nag-postMessage papuntang iframe, kaya pwedeng i-preview ang kahit anong
+screen nang hindi nagre-reload. Ang `postMessage` din ang nag-a-adjust ng status
+bar theme. Ang `?frame=1` ay nagtatago ng sariling status bar ng prototype para
+hindi mag-doble sa status bar ng device frame. Ang all-devices page
+(`/mobile-preview.html`) ay awtomatikong nagbubukas sa home screen.
+
+Lahat ng larawan ay nasa `public/assets/`: `hazard-flood.jpg`,
+`hazard-satellite.jpg`, `hazard-field.jpg`, `avatar-mike.jpg` — kasama sa build.
+Ang `avatar-agnes.jpg` ay naka-reserba para sa account avatar kapag may login na
+(hindi na ito ginagamit sa public home). Ang area map at live
+screen ay may hand-drawn SVG route/compass overlays sa ibabaw ng satellite image,
+kaya gumagana kahit walang external tile server.
 
 ```bash
 npm install

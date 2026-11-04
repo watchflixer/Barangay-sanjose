@@ -14,10 +14,341 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+      /* The old white brand/top navbar (HazardSync · Rizal · clock · Donate ·
+         Guide) is removed on every viewport: the app opens straight into the
+         full-screen map, matching the Pixel 7 reference. Kept here rather than
+         in the React tree so the existing layout tests stay unchanged. */
+      #app-navbar { display: none !important; }
+
+      /* Walang solid bar: ang mga button ay NAKAPATONG mismo sa map tiles.
+         Transparent ang 53px banda, kaya ang mapa ay umaabot sa pinaka-itaas. */
+      #hs-map-back-bar {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 10000;
+        width: 100%; height: 53px; margin: 0; padding: 0 12px;
+        display: flex; align-items: center; justify-content: space-between;
+        background: transparent; border: 0; pointer-events: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #hs-map-back-btn {
+        flex: none; width: 44px; height: 53px; display: flex; align-items: center;
+        padding: 0; margin: 0; border: 0; background: none; cursor: pointer;
+        pointer-events: auto;
+      }
+      #hs-map-alert-btn {
+        position: relative; width: 38px; height: 38px; flex: none;
+        padding: 0; margin: 0; border: 0; background: none; cursor: pointer;
+        pointer-events: auto;
+      }
+      .hs-back-disc, .hs-alert-disc {
+        width: 38px; height: 38px; flex: none; border-radius: 50%;
+        display: grid; place-items: center;
+        /* Puting bilog + black icon, kapareho ng white navbar ng prototype.
+           Manipis na dark border at shadow para hindi mawala sa puting view. */
+        background: #fff; border: 1px solid rgba(16,26,20,.20);
+        box-shadow: 0 4px 16px rgba(0,0,0,.32);
+        transition: background .15s ease, transform .15s ease;
+      }
+      #hs-map-back-btn:hover .hs-back-disc,
+      #hs-map-alert-btn:hover .hs-alert-disc { background: #f1f4ef; }
+      #hs-map-back-btn:active .hs-back-disc,
+      #hs-map-alert-btn:active .hs-alert-disc { transform: scale(.94); }
+      /* Recenter / Layers / Locate / Zoom ng main map ay nasa ilalim ng overlay. */
+      #map-control-stack { transform: translateY(53px) !important; }
+      /* Help Center: ang sarili nitong picker at Street/Satellite toggle ay
+         kailangan ding bumaba nang 53px para hindi makipag-banggaan sa
+         floating back / title / bookmark buttons. */
+      #hc-picker { padding-top: 63px !important; }
+      #hc-base-switch { transform: translateY(53px) !important; }
+      /* Sa Help Center ang Leaflet zoom pair ay HINDI kasama sa
+         #map-control-stack, kaya kailangan din itong bumaba ng 53px —
+         kundi ay matatakpan nito ang "Show your location". */
+      #help-center-map-root .leaflet-control-zoom {
+        transform: translateY(53px) !important;
+      }
+      /* Sa ≤344px mas maikli ang stack (26px buttons), kaya mas maliit ang
+         shift ng zoom pair. Pinapaliit din ang Satellite/Street toggle para
+         hindi nito matakpan ang Recenter / Layers / Show your location. */
+      @media (max-width: 344px) {
+        #help-center-map-root .leaflet-control-zoom {
+          transform: translateY(23px) !important;
+        }
+        #hc-base-switch {
+          right: 6px !important; padding: 3px !important; gap: 2px !important;
+        }
+        #hc-base-switch button {
+          padding: 3px 6px !important; font-size: 10px !important;
+        }
+      }
+      #hs-map-back-bar svg {
+        width: 22px; height: 22px; fill: none; stroke: #101a14;
+        stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round;
+      }
+      /* Pulang "2" badge gaya ng reference. */
+      .hs-alert-badge {
+        position: absolute; top: -3px; right: -4px; min-width: 18px; height: 18px;
+        padding: 0 4px; border-radius: 999px; display: grid; place-items: center;
+        background: #ef2f24; color: #fff; border: 1.5px solid #fff;
+        box-shadow: 0 2px 6px rgba(0,0,0,.4);
+        font: 800 10px "Plus Jakarta Sans", system-ui, sans-serif; line-height: 1;
+      }
+      #hs-map-alert-toast {
+        position: fixed; top: 62px; left: 50%; transform: translate(-50%, -8px);
+        z-index: 10001; padding: 9px 14px; border-radius: 999px;
+        background: #f4f7f2; color: #101a14; white-space: nowrap;
+        box-shadow: 0 10px 28px rgba(0,0,0,.38);
+        font: 800 11px "Plus Jakarta Sans", system-ui, sans-serif;
+        opacity: 0; pointer-events: none;
+        transition: opacity .18s ease, transform .18s ease;
+      }
+      #hs-map-alert-toast.is-on { opacity: 1; transform: translate(-50%, 0); }
+      /* Pangalan ng aktibong basemap style sa gitna ng bar. */
+      #hs-map-title {
+        position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        box-sizing: border-box;
+        max-width: calc(100% - 132px); overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; pointer-events: none;
+        font: 800 13px "Plus Jakarta Sans", system-ui, sans-serif;
+        letter-spacing: .2px;
+        /* Plain black, walang anino / outline. */
+        color: #101a14; text-shadow: none;
+      }
+      /* Sa madilim na basemap (Hazard Map / Weather) kailangan ng maliit na
+         puting surface sa likod ng BLACK text para mabasa pa rin — kapareho
+         ng puting bilog ng back at bookmark. Sa mapang maliwanag
+         (Help Center / Flood Prone / Traffic) WALANG anuman: plain black lang. */
+      /* WALANG card / pill / background sa likod — plain text lang.
+         Ang kulay ay itinatakda ng JS ayon sa basemap style (black sa
+         maliwanag, white sa madilim), kaya hindi na kailangan ng surface. */
+      /* Napakaliit na viewport (cover screen): buo pa rin ang pangalan. */
+      @media (max-width: 240px) {
+        #hs-map-title { font-size: 11px; max-width: calc(100% - 108px); }
+      }
+    </style>
   </head>
   <body class="bg-slate-50 text-slate-900 antialiased font-['Plus_Jakarta_Sans',sans-serif]">
+    <!-- Minimal top bar: buong lapad × 53px (sukat ng dating navbar). -->
+    <div id="hs-map-back-bar">
+      <button id="hs-map-back-btn" type="button" aria-label="Back" title="Back">
+        <span class="hs-back-disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg></span>
+      </button>
+      <button id="hs-map-alert-btn" type="button" aria-label="2 unread critical alerts" title="Notifications">
+        <span class="hs-alert-disc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16l-6-4-6 4V4Z"/></svg></span>
+        <span class="hs-alert-badge" aria-hidden="true">2</span>
+      </button>
+      <span id="hs-map-title" data-ink="black" aria-live="polite">Hazard Map</span>
+    </div>
     <div id="root"></div>
     <script type="module" src="./src/main.tsx"></script>
+    <script>
+      // Walang nang "Home" pill sa ibaba ng mapa: ang tanging pabalik ay ang
+      // back button sa transparent top bar. (?fromHome=1 ay route marker na
+      // lang para sa Go to Map links; hindi na ito nag-re-render ng kahit ano.)
+
+      // Back target (halos buong lapad ng bar) + notification button sa kanan.
+      // Balik sa dating screen kung may same-origin history; kung hindi,
+      // diretso sa mobile home.
+      (function () {
+        var back = document.getElementById('hs-map-back-btn');
+        if (back) {
+          back.addEventListener('click', function () {
+            var sameOrigin = document.referrer && document.referrer.indexOf(location.origin) === 0;
+            if (sameOrigin && history.length > 1) history.back();
+            else location.href = './mobile-home.html' + (window.self !== window.top ? '?frame=1' : '');
+          });
+        }
+        var alertBtn = document.getElementById('hs-map-alert-btn');
+        if (!alertBtn) return;
+        var toast = document.createElement('div');
+        toast.id = 'hs-map-alert-toast';
+        toast.setAttribute('role', 'status');
+        toast.textContent = '2 unread critical alerts';
+        document.body.appendChild(toast);
+        var timer;
+        alertBtn.addEventListener('click', function () {
+          toast.classList.add('is-on');
+          clearTimeout(timer);
+          timer = setTimeout(function () { toast.classList.remove('is-on'); }, 2400);
+        });
+      })();
+
+      // Pangalan sa gitna = aktibong BASEMAP STYLE ng tunay na Leaflet app.
+      // Streets ang default kaya "Hazard Map" ang nakasulat; kapag Flood Prone /
+      // Traffic / Weather / Help Center ang binuksan, yun ang ipapakita.
+      (function () {
+        var title = document.getElementById('hs-map-title');
+        if (!title) return;
+        var NAMES = {
+          streets: 'Hazard Map', 'hazard map': 'Hazard Map', main: 'Hazard Map',
+          dark: 'Traffic', traffic: 'Traffic', weather: 'Weather',
+          light: 'Flood Prone', flood: 'Flood Prone', 'flood prone': 'Flood Prone',
+          satellite: 'Help Center', helpcenter: 'Help Center', help: 'Help Center',
+          'help center': 'Help Center'
+        };
+        function fromLayer(layer) { return NAMES[String(layer || '').toLowerCase()] || 'Hazard Map'; }
+        // Plain text lang, WALANG card. Kulay = contrast ng aktibong tile:
+        //   Streets / Hazard Map .......... black
+        //   Traffic ..... Street=black, Satellite=white
+        //   Weather ....................... white
+        //   Flood Prone . Satellite=white, Street=black
+        //   Help Center . Street=black, Satellite=white
+        var BLACK = '#101a14', WHITE = '#ffffff';
+        function activeBase(doc) {
+          try {
+            // Flood/Traffic = #base-switch sa loob ng iframe;
+            // Help Center   = #hc-base-switch sa mismong dokumento.
+            var sw = doc && doc.querySelector('#base-switch, #hc-base-switch');
+            if (!sw) return null;
+            var btn = sw.querySelector('button.active') ||
+                      sw.querySelector('button[aria-pressed="true"]');
+            if (!btn) return null;
+            var t = ((btn.textContent || '') + ' ' + (btn.getAttribute('data-base') || '')).toLowerCase();
+            if (t.indexOf('street') !== -1) return 'street';
+            if (t.indexOf('satel') !== -1) return 'satellite';
+            return null;
+          } catch (e) { return null; }
+        }
+        function inkFor(name) {
+          if (name === 'Weather') return WHITE;
+          if (name === 'Flood Prone' || name === 'Traffic') {
+            var frames = document.querySelectorAll('iframe');
+            for (var i = 0; i < frames.length; i++) {
+              var src = frames[i].getAttribute('src') || '';
+              var wanted = name === 'Flood Prone'
+                ? /rizal_flood_100yr_map/i : /rizal_traffic_map/i;
+              if (!wanted.test(src)) continue;
+              var base = activeBase(frames[i].contentDocument);
+              if (base === 'street') return BLACK;
+              if (base === 'satellite') return WHITE;
+            }
+            // Default bago mag-load ang frame: Flood=Satellite, Traffic=Street.
+            return name === 'Flood Prone' ? WHITE : BLACK;
+          }
+          if (name === 'Help Center') {
+            // Help Center ay nasa mismong dokumento kaya diretso ang basa.
+            var hcBase = activeBase(document);
+            if (hcBase === 'satellite') return WHITE;
+            if (hcBase === 'street') return BLACK;
+            return BLACK; // default Street bago mag-render ang picker
+          }
+          return BLACK; // Streets / Hazard Map
+        }
+        function applyInk(name) {
+          var white = inkFor(name || currentName()) === WHITE;
+          var ink = white ? 'white' : 'black';
+          if (title.dataset.ink === ink) return;
+          title.dataset.ink = ink;
+          title.style.color = white ? WHITE : BLACK;
+        }
+        function setName(name) {
+          applyInk(name);
+          if (title.textContent === name) return;
+          title.textContent = name;
+          title.setAttribute('title', 'Basemap style: ' + name);
+        }
+        function currentName() {
+          // Ang bawat alternate view ay may sariling iframe maliban sa Help Center.
+          var frames = document.querySelectorAll('iframe');
+          for (var i = 0; i < frames.length; i++) {
+            var src = frames[i].getAttribute('src') || '';
+            if (/rizal_flood_100yr_map/i.test(src)) return 'Flood Prone';
+            if (/rizal_traffic_map/i.test(src)) return 'Traffic';
+            if (/weather\.html/i.test(src)) return 'Weather';
+          }
+          var ss = null;
+          try { ss = window.sessionStorage; } catch (e) {}
+          if (ss && ss.getItem('san-jose-helpcenter-open') === '1') return 'Help Center';
+          if (/Choose what you want to filter/i.test(document.body.innerText || '')) return 'Help Center';
+          if (new URLSearchParams(location.search).has('help')) return 'Help Center';
+          var view = ss && ss.getItem('san-jose-refresh-view');
+          if (view && NAMES[view]) return NAMES[view];
+          // Active button sa React Layers menu (habang bukas ang menu).
+          var btns = document.querySelectorAll('button');
+          for (var j = 0; j < btns.length; j++) {
+            var t = (btns[j].textContent || '').trim().toLowerCase();
+            if (NAMES[t] && /bg-black/.test(btns[j].className || '')) return NAMES[t];
+          }
+          return 'Hazard Map';
+        }
+        // Habang nagpapalit ng view ang React, panandaliang i-hold ang hayagang
+        // pinili para hindi ma-override ng lumang iframe ang bagong pangalan.
+        var lockUntil = 0;
+        function sync(force) {
+          if (!force && Date.now() < lockUntil) return;
+          setName(currentName());
+        }
+        function hold(ms) {
+          lockUntil = Date.now() + ms;
+          setTimeout(function () { sync(true); }, ms + 60);
+        }
+        var pend;
+        function scheduleSync() {
+          if (pend) return;
+          pend = setTimeout(function () { pend = null; sync(); }, 80);
+        }
+        // Delegated sa React Layers menu (capture, bago ang sariling onClick nito).
+        document.addEventListener('click', function (e) {
+          var el = e.target && e.target.closest ? e.target.closest('button') : null;
+          if (!el) return;
+          var name = NAMES[(el.textContent || '').trim().toLowerCase()];
+          if (!name) return;
+          setName(name);
+          hold(900);
+        }, true);
+        // Ang sariling BASEMAP STYLE menu ng embedded maps ay nagpo-post nito.
+        window.addEventListener('message', function (e) {
+          var m = e.data;
+          if (!m || m.type !== 'hazardsync-layer-select') return;
+          setName(fromLayer(m.layer));
+          hold(900);
+        });
+        if (window.MutationObserver) {
+          new MutationObserver(scheduleSync).observe(document.body, { childList: true, subtree: true });
+        }
+        window.addEventListener('load', function () { sync(true); applyInk(); });
+        // Ang Satellite / Street toggle ay nasa LOOB ng iframe, kaya hindi ito
+        // abot ng MutationObserver ng pangunahing dokumento.
+        setInterval(applyInk, 200);
+        sync(true);
+        applyInk();
+      })();
+
+      // Ang Flood Prone / Traffic / Weather ay sariling HTML sa loob ng iframe.
+      // Same-origin kaya puwede nating i-shift pababa ang sarili nilang top
+      // controls, para hindi matabunan ng floating back button kahit transparent
+      // na ang banda sa itaas.
+      (function () {
+        var CSS =
+          '#host-map-controls,#traffic-zoom,#base-switch,.ph-map-controls,' +
+          '.leaflet-control-zoom:not(#traffic-zoom){transform:translateY(53px)!important}' +
+          'header.absolute{transform:translateY(53px)!important}' +
+          '@media (max-width:344px){' +
+          '.leaflet-control-zoom:not(#traffic-zoom){transform:translateY(23px)!important}' +
+          '#base-switch{right:6px!important;padding:3px!important;gap:2px!important}' +
+          '#base-switch button{padding:3px 6px!important;font-size:10px!important}' +
+          '}';
+        function shift() {
+          var frames = document.querySelectorAll('iframe');
+          for (var i = 0; i < frames.length; i++) {
+            try {
+              var d = frames[i].contentDocument;
+              if (!d || !d.head || !d.body || d.URL === 'about:blank') continue;
+              if (d.getElementById('hs-overlay-shift')) continue;
+              var s = d.createElement('style');
+              s.id = 'hs-overlay-shift';
+              s.textContent = CSS;
+              d.head.appendChild(s);
+            } catch (e) { /* cross-origin: hindi na kailangan */ }
+          }
+        }
+        document.addEventListener('load', function () { setTimeout(shift, 30); }, true);
+        window.addEventListener('load', shift);
+        if (window.MutationObserver) {
+          new MutationObserver(shift).observe(document.body, { childList: true, subtree: true });
+        }
+        shift();
+      })();
+    </script>
   </body>
 </html>
 
