@@ -1,0 +1,1808 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b100e" />
+  <meta name="description" content="HazardSync mobile — province-wide flood, traffic and incident monitoring for the whole of Rizal. Open to everyone, no account required." />
+  <title>HazardSync · Home</title>
+  <script>
+    // Apply the saved theme before first paint (no flash).
+    (function () {
+      var q = new URLSearchParams(location.search).get('theme');
+      var saved = null;
+      try { saved = localStorage.getItem('hs-theme'); } catch (e) {}
+      var theme = (q === 'dark' || q === 'light') ? q : (saved === 'dark' ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b100e' : '#f7f9f6');
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       HAZARDSYNC MOBILE — design system
+       One token set, one type scale, one 8dp spacing rhythm.
+       Dark "operations console" palette: lime = action/safe,
+       amber = watch, red = critical, blue = your location.
+       ============================================================ */
+    :root {
+      --bg: #0b100e;
+      --surface: #141a17;
+      --surface-2: #1b221e;
+      --surface-3: #242d27;
+      --line: rgba(255, 255, 255, .09);
+      --line-strong: rgba(255, 255, 255, .17);
+      --text: #f2f6f1;
+      --muted: #98a39b;
+      --faint: #6d786f;
+
+      --lime: #c9f36b;
+      --lime-soft: rgba(201, 243, 107, .13);
+      --teal: #6fe0c1;
+      --amber: #ffc24b;
+      --red: #ff6f6f;
+      --blue: #6ea8fe;
+
+      --sb: 30px;               /* status bar height (standalone) */
+      --nav-h: 62px;
+      --ease: cubic-bezier(.2, 0, 0, 1);
+      --tick: rgba(255, 255, 255, .22);
+      --tick-major: rgba(255, 255, 255, .5);
+      --compass-ring: rgba(255, 255, 255, .1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      background: #050806; color: var(--text);
+      font-family: 'Plus Jakarta Sans', 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    body.is-framed { --sb: 0px; }
+    button, input, textarea { font: inherit; color: inherit; }
+    button { border: 0; background: none; cursor: pointer; }
+    button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--lime); outline-offset: 2px;
+    }
+    img { display: block; }
+    .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .scroll { scrollbar-width: none; }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    /* ---------- shell ---------- */
+    .app {
+      position: relative; width: 100%; max-width: 412px; height: 100dvh; min-height: 100%;
+      margin: 0 auto; overflow: hidden; isolation: isolate; background: var(--bg);
+    }
+    .view { position: absolute; inset: 0; display: none; overflow: hidden; }
+    .view.is-active { display: block; animation: screenIn .28s var(--ease) both; }
+    @keyframes screenIn { from { opacity: .45; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideDown { from { transform: translateY(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+    .statusbar {
+      position: absolute; top: 0; left: 0; right: 0; height: var(--sb); z-index: 40;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 18px; font-size: 12px; font-weight: 800; letter-spacing: .2px;
+      color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.55); pointer-events: none;
+    }
+    body.is-framed .statusbar { display: none; }
+    .sb-icons { display: flex; align-items: center; gap: 5px; }
+    .sb-icons .ic { width: 14px; height: 14px; stroke-width: 0; }
+    .home-indicator {
+      position: absolute; bottom: 7px; left: 50%; transform: translateX(-50%);
+      width: 108px; height: 4px; border-radius: 999px;
+      background: rgba(255,255,255,.8); z-index: 60; pointer-events: none;
+    }
+
+    /* ---------- shared components ---------- */
+    .topbar {
+      position: absolute; top: calc(var(--sb) + 12px); left: 18px; right: 18px; z-index: 14;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .topbar .title { flex: 1; font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+    .round-btn {
+      width: 40px; height: 40px; flex: none; border-radius: 50%; display: grid; place-items: center;
+      color: #fff; background: rgba(20,26,23,.6); border: 1px solid var(--line-strong);
+      backdrop-filter: blur(12px); transition: transform .16s var(--ease), background .16s;
+    }
+    .round-btn:hover { background: rgba(36,45,39,.8); }
+    .round-btn:active { transform: scale(.93); }
+    .round-btn.is-on { color: var(--lime); border-color: rgba(201,243,107,.55); }
+    .glass {
+      background: rgba(20,26,23,.68); border: 1px solid var(--line-strong);
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    }
+    .chip {
+      flex: none; height: 34px; padding: 0 15px; border-radius: 999px;
+      background: var(--surface); border: 1px solid var(--line);
+      color: #c6cec6; font-size: 11.5px; font-weight: 700;
+      transition: color .18s, border-color .18s, background .18s;
+    }
+    .chip.is-active { color: var(--lime); border-color: var(--lime); background: var(--lime-soft); }
+    .chip-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+    .chip-row::-webkit-scrollbar { display: none; }
+    .btn {
+      height: 52px; border-radius: 18px; display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 0 18px; font-size: 14px; font-weight: 800; letter-spacing: -.2px;
+      transition: transform .16s var(--ease), box-shadow .16s var(--ease), background .16s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn-primary { background: var(--lime); color: #13170e; box-shadow: 0 12px 28px rgba(201,243,107,.16); }
+    .btn-primary:active { box-shadow: 0 6px 16px rgba(201,243,107,.12); }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid var(--line-strong); }
+    .btn-outline:hover { background: var(--surface-2); }
+    .btn .trailing { margin-left: auto; width: 18px; height: 18px; }
+    .btn .ic { width: 19px; height: 19px; stroke-width: 2; }
+    .sev {
+      display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 9px;
+      border-radius: 999px; font-size: 9.5px; font-weight: 800; letter-spacing: .3px; white-space: nowrap;
+    }
+    .sev::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+    .sev-critical { color: #ff9b9b; background: rgba(255,111,111,.13); }
+    .sev-watch { color: var(--amber); background: rgba(255,194,75,.13); }
+    .sev-verified { color: var(--teal); background: rgba(111,224,193,.13); }
+    .sev-pending { color: #b6c0b6; background: rgba(255,255,255,.08); }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; }
+    .eyebrow { font-size: 9.5px; font-weight: 800; letter-spacing: 1.7px; color: var(--faint); }
+    .divider { height: 1px; background: var(--line); }
+
+    /* ---------- bottom navigation (Material 3 navigation bar) ---------- */
+    /* Content fades under the navigation bar instead of being cut off. */
+    .nav-scrim {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 124px; z-index: 29;
+      display: none; pointer-events: none;
+      background: linear-gradient(180deg, rgba(11,16,14,0) 0%, rgba(11,16,14,.88) 34%, var(--bg) 72%);
+    }
+    .app[data-nav="1"] .nav-scrim { display: block; }
+    .bottom-nav {
+      position: absolute; left: 16px; right: 16px; bottom: 24px; height: var(--nav-h); z-index: 30;
+      display: none; align-items: center; border-radius: 22px;
+      background: rgba(20,26,23,.96); border: 1px solid var(--line);
+      box-shadow: 0 14px 34px rgba(0,0,0,.46); backdrop-filter: blur(16px);
+    }
+    .app[data-nav="1"] .bottom-nav { display: flex; }
+    .nav-item { flex: 1; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--faint); }
+    .nav-item .ic { width: 20px; height: 20px; }
+    .nav-item span { font-size: 9.5px; font-weight: 700; }
+    .nav-item.is-active { color: var(--lime); }
+    .nav-item:active { transform: scale(.94); }
+
+    /* ============================================================
+       1. HOME — situation overview
+       ============================================================ */
+    .view-home { overflow-y: auto; overflow-x: hidden; padding: calc(var(--sb) + 18px) 20px calc(var(--nav-h) + 54px); }
+    .greeting { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .greeting h1 { font-size: 25px; font-weight: 800; letter-spacing: -.7px; line-height: 1.15; }
+    .greeting .sub { margin-top: 5px; font-size: 12px; font-weight: 500; color: var(--muted); }
+    .greeting-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+    .theme-btn {
+      width: 36px; height: 36px; flex: none; border-radius: 50%; display: grid; place-items: center;
+      background: var(--surface); border: 1px solid var(--line); transition: transform .16s var(--ease);
+    }
+    .theme-btn:active { transform: scale(.92); }
+    .theme-btn .ic { width: 16px; height: 16px; }
+    .avatar-btn { width: 40px; height: 40px; flex: none; border-radius: 50%; overflow: hidden; display: grid; place-items: center; border: 2px solid rgba(255,255,255,.16); background: var(--surface); }
+    .avatar-btn img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 28%; }
+    .avatar-btn .ic { width: 19px; height: 19px; color: var(--lime); }
+    .search-row { display: flex; gap: 10px; margin-top: 18px; }
+    .location-pill {
+      flex: 1; min-width: 0; height: 44px; border-radius: 999px; display: flex; align-items: center; gap: 8px;
+      padding: 0 13px; background: var(--surface); border: 1px solid var(--line);
+      font-size: 11.5px; font-weight: 700; color: #e8ebe3;
+    }
+    .location-pill .ic:first-child { width: 15px; height: 15px; color: var(--lime); }
+    .location-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .location-pill .ic:last-child { width: 13px; height: 13px; margin-left: auto; opacity: .55; }
+    .icon-btn { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--surface); border: 1px solid var(--line); }
+    .icon-btn .ic { width: 17px; height: 17px; }
+    .alert-strip {
+      display: flex; align-items: center; gap: 11px; width: 100%; text-align: left;
+      margin-top: 16px; padding: 11px 13px; border-radius: 16px;
+      background: linear-gradient(100deg, rgba(255,194,75,.15), rgba(255,194,75,.02));
+      border: 1px solid rgba(255,194,75,.28);
+    }
+    .alert-strip .dot { width: 9px; height: 9px; flex: none; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px rgba(255,194,75,.15); }
+    .alert-strip div { flex: 1; min-width: 0; }
+    .alert-strip strong { display: block; font-size: 9.5px; font-weight: 800; letter-spacing: 1.4px; color: var(--amber); }
+    .alert-strip p { margin-top: 3px; font-size: 11px; font-weight: 600; color: #e9e0cf; }
+    .alert-strip .ic { width: 15px; height: 15px; color: var(--amber); }
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; }
+    .section-head span { font-size: 13px; font-weight: 800; letter-spacing: -.2px; }
+    .section-head button { font-size: 11px; font-weight: 700; color: var(--lime); }
+    .feature-wrap { position: relative; height: 350px; margin-top: 12px; }
+    .feature-wrap::before, .feature-wrap::after {
+      content: ''; position: absolute; top: 14px; bottom: 14px; width: 16px;
+      background: #303a34; border-radius: 20px; z-index: 0;
+    }
+    .feature-wrap::before { left: -9px; }
+    .feature-wrap::after { right: -9px; }
+    .feature-card {
+      position: relative; z-index: 1; display: block; width: 100%; height: 100%;
+      border-radius: 24px; overflow: hidden; text-align: left;
+      border: 1px solid rgba(255,255,255,.12); background: #1b211f;
+      box-shadow: 0 18px 38px rgba(0,0,0,.38); transition: transform .2s var(--ease);
+    }
+    .feature-card:active { transform: scale(.985); }
+    .feature-card > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 52%; }
+    .feature-shade {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(8,12,10,.72) 0%, rgba(8,12,10,.05) 38%, rgba(8,12,10,.2) 58%, rgba(8,12,10,.92) 100%);
+    }
+    .feature-top { position: absolute; top: 16px; left: 17px; right: 15px; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .feature-title { font-size: 19px; font-weight: 800; letter-spacing: -.5px; display: block; text-shadow: 0 2px 12px rgba(0,0,0,.45); }
+    .feature-title small { display: block; margin-top: 4px; font-size: 11.5px; font-weight: 600; color: rgba(255,255,255,.84); }
+    .feature-arrow { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3); backdrop-filter: blur(8px); }
+    .feature-arrow .ic { width: 15px; height: 15px; }
+    .feature-stats { position: absolute; left: 12px; right: 12px; bottom: 14px; display: grid; grid-template-columns: repeat(3, 1fr); }
+    .stat { display: flex; align-items: flex-start; gap: 6px; padding: 0 8px; border-left: 1px solid rgba(255,255,255,.2); }
+    .stat:first-child { border-left: 0; }
+    .stat .ic { width: 14px; height: 14px; color: var(--lime); margin-top: 2px; }
+    .stat b { display: block; font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .stat small { display: block; margin-top: 2px; font-size: 9.5px; font-weight: 500; color: rgba(255,255,255,.68); }
+    .home-actions { display: flex; gap: 9px; margin-top: 14px; }
+    .home-actions .btn-primary { flex: 1.4; }
+    .home-actions .btn-outline { flex: 1; padding: 0 10px; font-size: 12px; }
+    .home-actions .btn-outline .ic { width: 16px; height: 16px; }
+    .recent { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+    .report-mini { display: flex; align-items: center; gap: 11px; width: 100%; padding: 10px 12px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); text-align: left; }
+    .report-mini:active { background: var(--surface-2); }
+    .report-mini .txt { flex: 1; min-width: 0; }
+    .report-mini b { display: block; font-size: 11.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .report-mini small { display: block; margin-top: 3px; font-size: 10px; color: var(--muted); }
+    .avatar {
+      width: 34px; height: 34px; flex: none; border-radius: 50%; display: grid; place-items: center;
+      font-size: 10.5px; font-weight: 800; color: #0b100e; letter-spacing: -.3px; overflow: hidden;
+    }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* ============================================================
+       2. HAZARD DETAIL — photo hero + scrollable bottom sheet
+       ============================================================ */
+    .hazard-hero { position: absolute; top: 0; left: 0; right: 0; height: 42%; overflow: hidden; }
+    .hazard-hero img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 45%; }
+    .hazard-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,10,8,.5), rgba(6,10,8,0) 42%, rgba(11,16,14,.92)); }
+    .hazard-sheet {
+      position: absolute; left: 0; right: 0; top: 36%; bottom: 0; z-index: 6;
+      display: flex; flex-direction: column; overflow: hidden;
+      background: var(--bg); border-radius: 28px 28px 0 0; border-top: 1px solid var(--line);
+      box-shadow: 0 -18px 44px rgba(0,0,0,.45);
+    }
+    .sheet-handle { width: 36px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.22); margin: 10px auto 2px; flex: none; }
+    .sheet-scroll { flex: 1; overflow-y: auto; padding: 8px 20px 12px; }
+    .sheet-head h2 { font-size: 20px; font-weight: 800; letter-spacing: -.6px; }
+    .sheet-head p { margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--muted); }
+    .sheet-head .sev { margin-top: 10px; }
+    .metric-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 16px; }
+    .metric { padding: 11px 10px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+    .metric .ic { width: 14px; height: 14px; color: var(--lime); }
+    .metric b { display: block; margin-top: 7px; font-size: 12px; font-weight: 800; }
+    .metric small { display: block; margin-top: 2px; font-size: 9px; color: var(--muted); }
+    .segmented { display: flex; gap: 4px; margin-top: 18px; padding: 4px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+    .segmented button { flex: 1; height: 34px; border-radius: 10px; font-size: 11.5px; font-weight: 700; color: var(--muted); transition: background .18s, color .18s; }
+    .segmented button.is-active { background: var(--surface-3); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.22); }
+    .tab-panel { display: none; margin-top: 16px; }
+    .tab-panel.is-active { display: block; animation: fade .22s var(--ease) both; }
+    .tab-panel h3 { font-size: 13px; font-weight: 800; letter-spacing: -.2px; }
+    .tab-panel p { margin-top: 8px; font-size: 11.5px; line-height: 1.65; font-weight: 500; color: #b4beb5; }
+    .guide-list { margin-top: 14px; display: flex; flex-direction: column; gap: 9px; }
+    .guide-list div { display: flex; align-items: flex-start; gap: 9px; font-size: 11px; font-weight: 600; color: #c9d1c9; }
+    .guide-list .ic { width: 15px; height: 15px; color: var(--teal); margin-top: 1px; }
+    .updated { margin-top: 14px; font-size: 10px; font-weight: 600; color: var(--faint); }
+    .route-item, .hazard-report-item {
+      display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 10px;
+      border-radius: 14px; background: var(--surface); border: 1px solid var(--line); text-align: left;
+    }
+    .route-item + .route-item, .hazard-report-item + .hazard-report-item { margin-top: 8px; }
+    .route-item .txt, .hazard-report-item .txt { flex: 1; min-width: 0; }
+    .route-item b, .hazard-report-item b { display: block; font-size: 11.5px; font-weight: 700; }
+    .route-item small, .hazard-report-item small { display: block; margin-top: 3px; font-size: 10px; color: var(--muted); }
+    .route-item .ic.trailing, .hazard-report-item .ic.trailing { width: 15px; height: 15px; color: var(--faint); }
+    .sheet-actions { display: flex; gap: 9px; flex: none; padding: 10px 20px 28px; background: linear-gradient(180deg, rgba(11,16,14,0), var(--bg) 22%); }
+    .sheet-actions .btn { height: 48px; font-size: 12.5px; }
+    .sheet-actions .btn-outline { flex: 1; }
+    .sheet-actions .btn-primary { flex: 1.2; }
+
+    /* ============================================================
+       3. COMMUNITY REPORTS — verified incident feed
+       ============================================================ */
+    .view-reports { background: var(--bg); }
+    .reports-scroll { position: absolute; inset: 0; overflow-y: auto; padding: calc(var(--sb) + 66px) 20px calc(var(--nav-h) + 56px); }
+    .reports-topbar { position: absolute; top: calc(var(--sb) + 10px); left: 18px; right: 18px; z-index: 14; display: flex; align-items: center; gap: 10px; }
+    .reports-topbar strong { flex: 1; font-size: 15px; font-weight: 800; }
+    .summary-card { display: flex; align-items: center; gap: 12px; padding: 13px; border-radius: 18px; background: linear-gradient(110deg, rgba(201,243,107,.11), rgba(201,243,107,.02)); border: 1px solid rgba(201,243,107,.26); }
+    .summary-card .avatar { width: 38px; height: 38px; }
+    .summary-card .txt { flex: 1; }
+    .summary-card b { display: block; font-size: 12px; font-weight: 800; }
+    .summary-card small { display: block; margin-top: 3px; font-size: 10px; color: #b9c3b9; }
+    .summary-card .ic { width: 16px; height: 16px; color: var(--lime); }
+    .report-list { margin-top: 12px; }
+    .report-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 8px; border-radius: 14px; text-align: left; transition: background .16s; }
+    .report-row:hover, .report-row:active { background: var(--surface); }
+    .report-row .idx { width: 20px; flex: none; font-size: 10px; font-weight: 800; color: var(--faint); text-align: center; }
+    .report-row .txt { flex: 1; min-width: 0; }
+    .report-row b { display: block; font-size: 11.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .report-row small { display: block; margin-top: 3px; font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .report-row time { font-size: 9.5px; font-weight: 700; color: var(--faint); white-space: nowrap; }
+    .fab {
+      position: absolute; right: 18px; bottom: calc(var(--nav-h) + 34px); z-index: 22;
+      height: 44px; padding: 0 16px; border-radius: 999px; display: flex; align-items: center; gap: 8px;
+      background: var(--lime); color: #13170e; font-size: 12px; font-weight: 800;
+      box-shadow: 0 12px 26px rgba(201,243,107,.2);
+    }
+    .fab:active { transform: scale(.96); }
+    .fab .ic { width: 16px; height: 16px; stroke-width: 2.2; }
+
+    /* ============================================================
+       4. FIELD REPORT — immersive photo + reporter card
+       ============================================================ */
+    .photo-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 48%; }
+    .photo-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,9,7,.36) 0%, rgba(6,9,7,0) 24%, rgba(6,9,7,0) 46%, rgba(6,9,7,.82) 100%); }
+    .reporter-card {
+      position: absolute; top: 40%; left: 50%; transform: translateX(-50%); z-index: 8;
+      width: calc(100% - 88px); max-width: 292px; padding: 14px; border-radius: 18px; color: #fff;
+      background: rgba(31,34,30,.66); border: 1px solid rgba(255,255,255,.2);
+      backdrop-filter: blur(18px); box-shadow: 0 16px 40px rgba(0,0,0,.3);
+    }
+    .reporter-top { display: flex; align-items: center; gap: 10px; }
+    .reporter-top .avatar { width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.35); }
+    .reporter-top .txt { flex: 1; }
+    .reporter-top strong { display: block; font-size: 12.5px; font-weight: 800; }
+    .reporter-top span { display: block; margin-top: 2px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,.7); }
+    .rating-badge { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: var(--lime); color: #13170e; }
+    .rating-badge .ic { width: 13px; height: 13px; stroke-width: 2; }
+    .reporter-divider { height: 1px; margin: 12px 0 10px; background: rgba(255,255,255,.16); }
+    .reporter-location { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: rgba(255,255,255,.88); }
+    .reporter-location .ic { width: 13px; height: 13px; }
+    .photo-bottom { position: absolute; left: 20px; right: 20px; bottom: 34px; z-index: 9; }
+    .photo-bottom .btn { width: 100%; }
+    .photo-meta { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; font-size: 10px; font-weight: 700; color: rgba(255,255,255,.8); }
+    .photo-meta .ic { width: 13px; height: 13px; color: var(--lime); }
+
+    /* ============================================================
+       5. LIVE STATUS — metrics + compass + emergency action
+       ============================================================ */
+    .view-live { background: var(--bg); }
+    .live-hero { position: absolute; top: 0; left: 0; right: 0; height: 32%; overflow: hidden; }
+    .live-hero img { width: 100%; height: 100%; object-fit: cover; filter: brightness(.62) saturate(.75); }
+    .live-hero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,10,8,.5), rgba(11,16,14,.05) 45%, var(--bg)); }
+    .live-body { position: absolute; inset: calc(var(--sb) + 62px) 20px 0; overflow-y: auto; padding-bottom: 40px; }
+    .live-title { text-align: center; font-size: 19px; font-weight: 800; letter-spacing: -.4px; }
+    .live-sub { margin-top: 5px; text-align: center; font-size: 10.5px; font-weight: 600; color: var(--muted); }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+    .stat-box { padding: 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
+    .stat-box .ic { width: 15px; height: 15px; color: var(--lime); }
+    .stat-box b { display: block; margin-top: 10px; font-size: 20px; font-weight: 800; letter-spacing: -.5px; }
+    .stat-box small { display: block; margin-top: 3px; font-size: 10px; color: var(--muted); }
+    .compass {
+      position: relative; width: 214px; height: 214px; margin: 20px auto 0; border-radius: 50%;
+      background: radial-gradient(circle at 50% 40%, #222b25, #141a17 72%);
+      border: 1px solid var(--line); box-shadow: inset 0 2px 18px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.25);
+    }
+    .compass svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+    #compassTicks line { stroke: var(--tick); stroke-width: 1.3; }
+    #compassTicks line.major { stroke: var(--tick-major); stroke-width: 2; }
+    .compass svg circle[r="72"], .compass svg circle[r="52"] { stroke: var(--compass-ring); }
+    .compass .cardinal { position: absolute; font-size: 10px; font-weight: 800; color: var(--faint); }
+    .compass .n { top: 12px; left: 50%; transform: translateX(-50%); color: var(--text); }
+    .compass .s { bottom: 12px; left: 50%; transform: translateX(-50%); }
+    .compass .w { left: 14px; top: 50%; transform: translateY(-50%); }
+    .compass .e { right: 14px; top: 50%; transform: translateY(-50%); }
+    .compass-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .compass-center b { font-size: 30px; font-weight: 800; letter-spacing: -1px; }
+    .compass-center span { margin-top: 1px; font-size: 11px; font-weight: 800; color: var(--lime); letter-spacing: 1px; }
+    .compass-center small { margin-top: 8px; font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--faint); }
+    .emergency-btn { width: 100%; height: 52px; margin-top: 22px; border-radius: 18px; display: flex; align-items: center; justify-content: center; gap: 9px; background: var(--surface-2); border: 1px solid var(--line-strong); font-size: 13px; font-weight: 800; }
+    .emergency-btn .ic { width: 17px; height: 17px; color: var(--red); }
+    .emergency-btn:active { transform: scale(.98); }
+    .live-link { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 14px; font-size: 11px; font-weight: 700; color: var(--lime); }
+    .live-link .ic { width: 14px; height: 14px; }
+    .sensor-card { margin-top: 24px; padding: 14px; border-radius: 18px; background: var(--surface); border: 1px solid var(--line); }
+    .sensor-card h3 { font-size: 12px; font-weight: 800; }
+    .sensor-row { display: flex; align-items: center; gap: 9px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .sensor-row:last-of-type { border-bottom: 0; }
+    .sensor-row .ic { width: 15px; height: 15px; color: var(--lime); }
+    .sensor-row span { flex: 1; font-size: 11px; font-weight: 600; color: #c6cec6; }
+    .sensor-row b { font-size: 11.5px; font-weight: 800; white-space: nowrap; }
+    .sensor-foot { margin-top: 8px; text-align: center; font-size: 9.5px; font-weight: 600; color: var(--faint); }
+
+    /* ============================================================
+       6. AREA MAP — dark satellite + route overlays + warning sheet
+       ============================================================ */
+    .view-map { --sheet-h: 322px; background: #080d0b; }
+    .map-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .9; }
+    .map-tint { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,10,8,.62), rgba(6,10,8,.06) 30%, rgba(6,10,8,.08) 54%, rgba(6,10,8,.72)); }
+    .map-svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+    /* Ibinabalik ang dating white navbar sa dating pwesto sa itaas ng map.
+       Puting bilog + black icon (pareho sa light at dark), BASE MAP STYLE sa gitna,
+       at dalawang glass chips sa pangalawang row. */
+    .map-style-tint { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: transparent; transition: background .25s var(--ease); }
+    .map-top {
+      position: absolute; top: calc(var(--sb) + 6px); left: 16px; right: 16px; z-index: 14;
+    }
+    .map-top-row { display: flex; align-items: center; gap: 10px; }
+    .map-nav-btn {
+      position: relative; width: 44px; height: 44px; flex: none; border-radius: 50%;
+      display: grid; place-items: center; padding: 0;
+      color: #101a14; background: #fff; border: 1px solid rgba(16,26,20,.10);
+      box-shadow: 0 4px 14px rgba(0,0,0,.30);
+    }
+    .map-nav-btn .ic { width: 19px; height: 19px; stroke-width: 2.1; }
+    .map-nav-btn:active { transform: scale(.94); }
+    .map-style-select {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; padding: 0 2px;
+      text-align: left; color: #fff; background: none; border: 0;
+      text-shadow: 0 1px 8px rgba(0,0,0,.9);
+    }
+    .map-style-kicker { font-size: 9px; font-weight: 800; letter-spacing: 1.2px; color: rgba(255,255,255,.80); }
+    .map-style-value { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; letter-spacing: .1px; }
+    .map-style-value .ic { width: 13px; height: 13px; stroke-width: 2.2; opacity: .9; }
+    .map-nav-chips { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .map-nav-chip {
+      display: flex; align-items: center; gap: 6px; padding: 8px 11px; border-radius: 999px;
+      background: rgba(17,23,19,.88); color: #f2f6f1;
+      border: 1px solid rgba(255,255,255,.10); box-shadow: 0 4px 14px rgba(0,0,0,.24);
+      font-size: 10.5px; font-weight: 700; white-space: nowrap;
+    }
+    .map-nav-chip .ic { width: 14px; height: 14px; }
+    .map-nav-chip .ic.trailing { width: 11px; height: 11px; opacity: .65; margin-left: 2px; }
+    .map-nav-chip:active { transform: scale(.96); }
+    .map-style-menu {
+      position: absolute; top: calc(var(--sb) + 100px); left: 70px; z-index: 22;
+      min-width: 168px; padding: 7px; border-radius: 15px;
+      background: var(--surface); border: 1px solid var(--line);
+      box-shadow: 0 16px 36px rgba(0,0,0,.4); animation: slideDown .2s var(--ease) both;
+    }
+    .map-style-menu[hidden] { display: none; }
+    .map-style-menu-label { padding: 4px 9px 7px; font-size: 9px; font-weight: 800; letter-spacing: 1.1px; color: var(--faint); }
+    .map-style-menu button { display: block; width: 100%; padding: 9px 10px; border-radius: 9px; text-align: left; font-size: 11.5px; font-weight: 700; color: var(--text); }
+    .map-style-menu button:hover { background: var(--surface-2); }
+    .map-style-menu button.is-active { background: var(--lime-soft); color: var(--lime); box-shadow: inset 3px 0 0 var(--lime); }
+    .notif-wrap { position: relative; }
+    .mini-badge { position: absolute; top: -1px; right: -1px; width: 10px; height: 10px; border-radius: 50%; background: var(--red); border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+    .capacity-card { position: absolute; left: 16px; top: 37%; width: 188px; z-index: 8; padding: 14px; border-radius: 20px; color: #fff; }
+    .capacity-card .eyebrow { color: rgba(255,255,255,.62); }
+    .capacity-card .cap-next { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; }
+    .capacity-card .cap-next span { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.75); }
+    .capacity-card .cap-next button { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.16); }
+    .capacity-card .cap-next .ic { width: 13px; height: 13px; }
+    .capacity-card .big { margin-top: 8px; font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -1.5px; }
+    .capacity-card .big small { font-size: 12px; font-weight: 700; color: rgba(255,255,255,.55); letter-spacing: 0; }
+    .cap-bar { height: 4px; margin-top: 10px; border-radius: 999px; background: rgba(255,255,255,.18); overflow: hidden; }
+    .cap-bar i { display: block; width: 44%; height: 100%; border-radius: 999px; background: var(--lime); }
+    .avatar-pin { position: absolute; z-index: 6; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 800; color: #0b100e; border: 2px solid rgba(255,255,255,.9); box-shadow: 0 4px 12px rgba(0,0,0,.45); }
+    .chat-card { position: absolute; left: 16px; right: 74px; bottom: calc(var(--sheet-h) + 12px); z-index: 9; padding: 11px 12px; border-radius: 16px; color: #fff; }
+    .chat-card .chat-top { display: flex; align-items: center; gap: 8px; }
+    .chat-card .avatar { width: 24px; height: 24px; font-size: 8px; }
+    .chat-card .chat-top b { font-size: 10.5px; font-weight: 800; }
+    .chat-card .chat-top time { margin-left: auto; font-size: 9px; color: rgba(255,255,255,.6); }
+    .chat-card p { margin-top: 7px; font-size: 10.5px; line-height: 1.45; font-weight: 500; color: rgba(255,255,255,.86); }
+    .warning-sheet {
+      position: absolute; left: 0; right: 0; bottom: 0; height: var(--sheet-h); z-index: 10;
+      overflow-y: auto; padding: 12px 20px 30px; border-radius: 26px 26px 0 0;
+      background: var(--bg); border-top: 1px solid var(--line); box-shadow: 0 -18px 44px rgba(0,0,0,.5);
+    }
+    .warning-sheet .sheet-handle { margin-top: 0; margin-bottom: 12px; }
+    .warn-head { display: flex; align-items: center; justify-content: space-between; }
+    .warn-head .eyebrow { color: var(--amber); }
+    .warn-head button { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--surface); }
+    .warn-head .ic { width: 14px; height: 14px; }
+    .warn-title { display: flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 14px; font-weight: 800; }
+    .warn-title .ic { width: 16px; height: 16px; color: var(--muted); }
+    .warn-alert { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 12px; border-radius: 14px; background: rgba(255,111,111,.1); border: 1px solid rgba(255,111,111,.24); }
+    .warn-alert .dot { width: 9px; height: 9px; flex: none; margin-top: 3px; border-radius: 50%; background: var(--red); }
+    .warn-alert b { display: block; font-size: 11.5px; font-weight: 800; color: #ffd0d0; }
+    .warn-alert small { display: block; margin-top: 3px; font-size: 10px; color: #cfa9a9; }
+    .affected-label { margin-top: 15px; font-size: 9.5px; font-weight: 800; letter-spacing: 1.4px; color: var(--faint); }
+    .affected-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 0; border-bottom: 1px solid var(--line); text-align: left; }
+    .affected-row .ic:first-child { width: 15px; height: 15px; color: var(--lime); }
+    .affected-row span { flex: 1; font-size: 11px; font-weight: 700; }
+    .affected-row .ic.trailing { width: 14px; height: 14px; color: var(--faint); transition: transform .2s; }
+    .affected-row[aria-expanded="true"] .ic.trailing { transform: rotate(180deg); }
+    .affected-detail { display: none; padding: 0 0 10px 25px; font-size: 10.5px; line-height: 1.5; color: var(--muted); }
+    .affected-detail.is-open { display: block; }
+    .warning-sheet.is-collapsed .warn-body { display: none; }
+    .sheet-map-btn { width: 100%; margin-top: 16px; }
+
+    /* ============================================================
+       Overlays — search / report / emergency / profile
+       ============================================================ */
+    .overlay { position: absolute; inset: 0; z-index: 50; display: none; background: rgba(4,7,6,.74); backdrop-filter: blur(4px); }
+    .overlay.is-open { display: block; animation: fade .18s both; }
+    .sheet-top { padding: calc(var(--sb) + 14px) 20px 20px; border-radius: 0 0 26px 26px; background: var(--surface); border-bottom: 1px solid var(--line); animation: slideDown .26s var(--ease) both; }
+    .sheet-bottom { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 20px 30px; border-radius: 26px 26px 0 0; background: var(--surface); border-top: 1px solid var(--line); animation: slideUp .28s var(--ease) both; }
+    .sheet-head-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .sheet-head-row strong { font-size: 15px; font-weight: 800; }
+    .sheet-close { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); }
+    .sheet-close .ic { width: 15px; height: 15px; }
+    .field { display: flex; align-items: center; gap: 9px; height: 44px; padding: 0 14px; border-radius: 14px; background: #10150f; border: 1px solid var(--line); }
+    .field .ic { width: 16px; height: 16px; color: var(--lime); }
+    .field input { flex: 1; min-width: 0; border: 0; outline: 0; background: none; font-size: 12.5px; }
+    .field input::placeholder { color: #73796e; }
+    .sheet-list { margin-top: 12px; display: flex; flex-direction: column; gap: 3px; }
+    .sheet-result { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 8px; border-radius: 12px; text-align: left; }
+    .sheet-result:hover { background: var(--surface-2); }
+    .sheet-result .ic { width: 16px; height: 16px; color: var(--lime); }
+    .sheet-result .txt { flex: 1; }
+    .sheet-result b { display: block; font-size: 12px; font-weight: 700; }
+    .sheet-result small { display: block; margin-top: 2px; font-size: 10px; color: var(--muted); }
+    .sheet-result .ic.trailing { width: 14px; height: 14px; color: var(--muted); }
+    .form-label { margin-top: 4px; margin-bottom: 10px; font-size: 9.5px; font-weight: 800; letter-spacing: 1.3px; color: var(--faint); }
+    .textarea { width: 100%; height: 86px; padding: 12px 14px; border-radius: 14px; resize: none; background: #10150f; border: 1px solid var(--line); font-size: 12px; line-height: 1.5; outline: 0; }
+    .textarea::placeholder { color: #73796e; }
+    .sheet-bottom .btn { width: 100%; margin-top: 16px; }
+    .confirm-copy { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 16px; background: rgba(255,111,111,.09); border: 1px solid rgba(255,111,111,.22); }
+    .confirm-copy .ic { width: 20px; height: 20px; color: var(--red); flex: none; }
+    .confirm-copy p { font-size: 11.5px; line-height: 1.55; color: #e6cfcf; }
+    .profile-card { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; background: var(--surface-2); border: 1px solid var(--line); }
+    .profile-card .avatar { width: 46px; height: 46px; font-size: 13px; }
+    .profile-card b { display: block; font-size: 13px; font-weight: 800; }
+    .profile-card small { display: block; margin-top: 3px; font-size: 10.5px; color: var(--muted); }
+    .toggle-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 14px 2px; border-bottom: 1px solid var(--line); text-align: left; }
+    .toggle-row span { flex: 1; font-size: 12px; font-weight: 700; }
+    .toggle-row .soon { flex: none; padding: 4px 9px; border-radius: 999px; background: var(--surface-3); font-size: 9.5px; font-weight: 800; letter-spacing: .3px; color: var(--faint); }
+    .toggle-row.is-static { cursor: default; }
+    .toggle { width: 38px; height: 22px; border-radius: 999px; background: var(--surface-3); position: relative; transition: background .2s; }
+    .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s var(--ease); }
+    .toggle.is-on { background: var(--lime); }
+    .toggle.is-on::after { transform: translateX(16px); background: #13170e; }
+    .toast {
+      position: absolute; left: 50%; bottom: 108px; transform: translate(-50%, 0); z-index: 70;
+      max-width: calc(100% - 40px); padding: 10px 16px; border-radius: 999px; white-space: nowrap;
+      background: rgba(242,246,241,.97); color: #13170e; font-size: 11.5px; font-weight: 800;
+      opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s var(--ease);
+      box-shadow: 0 8px 24px rgba(0,0,0,.34);
+    }
+    .toast.is-visible { opacity: 1; transform: translate(-50%, -6px); }
+
+    /* ---------- responsive ---------- */
+    @media (max-height: 860px) {
+      .feature-wrap { height: 300px; }
+      .view-map { --sheet-h: 290px; }
+    }
+    @media (max-height: 760px) {
+      .view-home { padding-top: calc(var(--sb) + 10px); }
+      .feature-wrap { height: 235px; }
+      .alert-strip { margin-top: 12px; padding: 9px 12px; }
+      .section-head { margin-top: 15px; }
+      .home-actions { margin-top: 11px; }
+      .home-actions .btn { height: 46px; }
+      .hazard-hero { height: 34%; }
+      .hazard-sheet { top: 29%; }
+      .sheet-actions { padding-bottom: 22px; }
+      .view-map { --sheet-h: 234px; }
+      .chat-card { display: none; }
+      .capacity-card { top: 29%; width: 162px; padding: 11px; }
+      .capacity-card .big { font-size: 28px; }
+      .live-hero { height: 26%; }
+      .live-title { font-size: 17px; }
+      .stat-box { padding: 11px; }
+      .compass { width: 168px; height: 168px; margin-top: 14px; }
+      .compass-center b { font-size: 24px; }
+      .reporter-card { top: 35%; }
+      .photo-bottom { bottom: 28px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+
+    /* ============================================================
+       LIGHT / WHITE THEME (default)
+       Same layout, same components — only the surface, contrast and
+       semantic tokens change. Photo areas keep their dark overlays so
+       white captions stay readable (Google Maps / Material 3 pattern).
+       ============================================================ */
+    :root[data-theme="light"] {
+      --bg: #f7f9f6;
+      --surface: #ffffff;
+      --surface-2: #f1f4ef;
+      --surface-3: #e7ece4;
+      --line: rgba(16, 26, 20, .10);
+      --line-strong: rgba(16, 26, 20, .18);
+      --text: #101a14;
+      --muted: #5f6b62;
+      --faint: #8b958c;
+
+      --lime: #2e7d52;                 /* accessible primary green on white */
+      --lime-soft: rgba(46, 125, 82, .10);
+      --teal: #0f766e;
+      --amber: #a86500;
+      --red: #c0392b;
+      --blue: #1d4ed8;
+
+      --tick: rgba(16, 26, 20, .18);
+      --tick-major: rgba(16, 26, 20, .45);
+      --compass-ring: rgba(16, 26, 20, .12);
+    }
+
+    :root[data-theme="light"] body { background: #e9eee8; }
+    :root[data-theme="light"] .home-indicator { background: rgba(16,26,20,.45); }
+    :root[data-theme="light"] .statusbar { color: #101a14; text-shadow: none; }
+    :root[data-theme="light"] .app[data-view="hazard"] .statusbar,
+    :root[data-theme="light"] .app[data-view="photo"] .statusbar,
+    :root[data-theme="light"] .app[data-view="live"] .statusbar,
+    :root[data-theme="light"] .app[data-view="map"] .statusbar { color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,.55); }
+
+    :root[data-theme="light"] .round-btn { color: #101a14; background: rgba(255,255,255,.92); border-color: rgba(16,26,20,.14); }
+    :root[data-theme="light"] .round-btn:hover { background: #fff; }
+    :root[data-theme="light"] .round-btn.is-on { color: #2e7d52; border-color: rgba(46,125,82,.55); }
+    :root[data-theme="light"] .glass { background: rgba(255,255,255,.9); border-color: rgba(16,26,20,.14); }
+    :root[data-theme="light"] .chip { color: #5f6b62; }
+    :root[data-theme="light"] .chip.is-active { color: #2e7d52; border-color: #2e7d52; background: rgba(46,125,82,.10); }
+
+    :root[data-theme="light"] .btn-primary { color: #fff; box-shadow: 0 12px 28px rgba(46,125,82,.18); }
+    :root[data-theme="light"] .btn-primary:active { box-shadow: 0 6px 16px rgba(46,125,82,.14); }
+    :root[data-theme="light"] .btn-outline:hover { background: var(--surface-2); }
+    :root[data-theme="light"] .sev-critical { color: #b3261e; background: rgba(179,38,30,.09); }
+    :root[data-theme="light"] .sev-watch { color: #8a5a00; background: rgba(168,101,0,.12); }
+    :root[data-theme="light"] .sev-verified { color: #0f766e; background: rgba(15,118,110,.10); }
+    :root[data-theme="light"] .sev-pending { color: #5f6b62; background: rgba(16,26,20,.06); }
+
+    :root[data-theme="light"] .app[data-nav="1"] .nav-scrim {
+      background: linear-gradient(180deg, rgba(247,249,246,0) 0%, rgba(247,249,246,.9) 34%, var(--bg) 72%);
+    }
+    :root[data-theme="light"] .bottom-nav { background: rgba(255,255,255,.97); box-shadow: 0 14px 34px rgba(16,26,20,.14); }
+    :root[data-theme="light"] .nav-item:active { transform: scale(.94); }
+
+    :root[data-theme="light"] .avatar-btn { border-color: rgba(16,26,20,.14); }
+    :root[data-theme="light"] .location-pill { color: var(--text); }
+    :root[data-theme="light"] .alert-strip {
+      background: linear-gradient(100deg, rgba(255,194,75,.2), rgba(255,194,75,.05));
+      border-color: rgba(168,101,0,.3);
+    }
+    :root[data-theme="light"] .alert-strip .dot { box-shadow: 0 0 0 4px rgba(255,194,75,.2); }
+    :root[data-theme="light"] .alert-strip strong,
+    :root[data-theme="light"] .alert-strip .ic { color: #8a5a00; }
+    :root[data-theme="light"] .alert-strip p { color: #6b4b00; }
+
+    :root[data-theme="light"] .feature-wrap::before,
+    :root[data-theme="light"] .feature-wrap::after { background: #dfe6dc; }
+    :root[data-theme="light"] .feature-card { border-color: rgba(16,26,20,.1); background: #e7ece4; box-shadow: 0 18px 38px rgba(16,26,20,.16); }
+    /* Photo overlays keep white type + bright lime icons (dark-theme contrast). */
+    :root[data-theme="light"] .feature-top,
+    :root[data-theme="light"] .feature-stats,
+    :root[data-theme="light"] .photo-meta,
+    :root[data-theme="light"] .photo-bottom { color: #fff; }
+    :root[data-theme="light"] .feature-card .stat .ic,
+    :root[data-theme="light"] .photo-meta .ic { color: #c9f36b; }
+
+    :root[data-theme="light"] .hazard-hero::after {
+      background: linear-gradient(180deg, rgba(6,10,8,.5), rgba(6,10,8,0) 42%, rgba(247,249,246,0) 72%, var(--bg));
+    }
+    :root[data-theme="light"] .hazard-sheet { box-shadow: 0 -18px 44px rgba(16,26,20,.16); }
+    :root[data-theme="light"] .sheet-handle { background: rgba(16,26,20,.18); }
+    :root[data-theme="light"] .segmented button.is-active { box-shadow: 0 2px 8px rgba(16,26,20,.10); }
+    :root[data-theme="light"] .tab-panel p,
+    :root[data-theme="light"] .summary-card small,
+    :root[data-theme="light"] .capacity-card .big small,
+    :root[data-theme="light"] .warn-alert small,
+    :root[data-theme="light"] .affected-detail { color: var(--muted); }
+    :root[data-theme="light"] .guide-list div,
+    :root[data-theme="light"] .sensor-row span { color: var(--text); }
+    :root[data-theme="light"] .sheet-actions { background: linear-gradient(180deg, rgba(247,249,246,0), var(--bg) 22%); }
+
+    :root[data-theme="light"] .summary-card {
+      background: linear-gradient(110deg, rgba(46,125,82,.10), rgba(46,125,82,.02));
+      border-color: rgba(46,125,82,.28);
+    }
+    :root[data-theme="light"] .report-row:hover,
+    :root[data-theme="light"] .report-row:active { background: var(--surface-2); }
+    :root[data-theme="light"] .fab { color: #fff; box-shadow: 0 12px 26px rgba(46,125,82,.20); }
+
+    /* Floating cards over photos/maps stay white with dark text. */
+    :root[data-theme="light"] .reporter-card {
+      color: var(--text); background: rgba(255,255,255,.92);
+      border-color: rgba(16,26,20,.14); box-shadow: 0 16px 40px rgba(16,26,20,.20);
+    }
+    :root[data-theme="light"] .reporter-top .avatar { border-color: rgba(16,26,20,.18); }
+    :root[data-theme="light"] .reporter-top .txt span,
+    :root[data-theme="light"] .chat-card .chat-top time { color: var(--muted); }
+    :root[data-theme="light"] .reporter-top .rating-badge { color: #fff; }
+    :root[data-theme="light"] .reporter-divider { background: var(--line); }
+    :root[data-theme="light"] .reporter-location,
+    :root[data-theme="light"] .chat-card p { color: var(--text); }
+
+    :root[data-theme="light"] .live-hero::after {
+      background: linear-gradient(180deg, rgba(6,10,8,.42), rgba(6,10,8,.05) 40%, rgba(247,249,246,0) 72%, var(--bg));
+    }
+    :root[data-theme="light"] .view-live .topbar .title,
+    :root[data-theme="light"] .map-style-select { color: #fff; text-shadow: 0 1px 8px rgba(0,0,0,.9); }
+    :root[data-theme="light"] .map-nav-chip {
+      background: rgba(255,255,255,.92); color: #101a14; border-color: rgba(16,26,20,.14);
+    }
+    :root[data-theme="light"] .live-sub { color: rgba(255,255,255,.88); }
+    :root[data-theme="light"] .compass {
+      background: radial-gradient(circle at 50% 40%, #ffffff, #eef3ec 72%);
+      box-shadow: inset 0 2px 18px rgba(16,26,20,.06), 0 12px 30px rgba(16,26,20,.10);
+    }
+    :root[data-theme="light"] .compass .cardinal,
+    :root[data-theme="light"] .compass-center small { color: var(--muted); }
+
+    :root[data-theme="light"] .view-map { background: #eef2ec; }
+    :root[data-theme="light"] .map-tint {
+      background: linear-gradient(180deg, rgba(6,10,8,.42), rgba(6,10,8,.02) 30%, rgba(6,10,8,.04) 54%, rgba(6,10,8,.55));
+    }
+    :root[data-theme="light"] .mini-badge { border-color: #fff; }
+    :root[data-theme="light"] .capacity-card .eyebrow { color: var(--faint); }
+    :root[data-theme="light"] .capacity-card .cap-next span { color: var(--muted); }
+    :root[data-theme="light"] .capacity-card .cap-next button,
+    :root[data-theme="light"] .cap-bar { background: var(--surface-3); }
+    :root[data-theme="light"] .capacity-card .big small { color: var(--muted); }
+    :root[data-theme="light"] .capacity-card,
+    :root[data-theme="light"] .chat-card { color: var(--text); }
+    :root[data-theme="light"] .warning-sheet { box-shadow: 0 -18px 44px rgba(16,26,20,.16); }
+    :root[data-theme="light"] .warn-alert { background: rgba(192,57,43,.07); border-color: rgba(192,57,43,.20); }
+    :root[data-theme="light"] .warn-alert b { color: #8e2a20; }
+    :root[data-theme="light"] .warn-alert small { color: #a4574d; }
+
+    :root[data-theme="light"] .overlay { background: rgba(16,26,20,.38); }
+    :root[data-theme="light"] .field,
+    :root[data-theme="light"] .textarea { background: var(--surface-2); }
+    :root[data-theme="light"] .field input::placeholder,
+    :root[data-theme="light"] .textarea::placeholder { color: var(--faint); }
+    :root[data-theme="light"] .confirm-copy { background: rgba(192,57,43,.07); border-color: rgba(192,57,43,.20); }
+    :root[data-theme="light"] .confirm-copy p { color: #7f2a20; }
+    :root[data-theme="light"] .toggle.is-on::after { background: #fff; }
+    :root[data-theme="light"] .toast { background: #101a14; color: #fff; box-shadow: 0 8px 24px rgba(16,26,20,.24); }
+
+    /* ============================================================
+       Solid white navigation buttons with pure-black icons.
+       Applies to every top bar (map, hazard, photo, live, reports)
+       in BOTH themes — matches the Pixel 7 reference navbar.
+       ============================================================ */
+    :root[data-theme="light"] .round-btn,
+    :root[data-theme="dark"] .round-btn {
+      background: #ffffff; color: #0b0f0d; border: 0;
+      box-shadow: 0 3px 12px rgba(0,0,0,.24); backdrop-filter: none;
+    }
+    :root[data-theme="light"] .round-btn:hover,
+    :root[data-theme="dark"] .round-btn:hover { background: #eef1ec; }
+    :root[data-theme="light"] .round-btn .ic,
+    :root[data-theme="dark"] .round-btn .ic { stroke-width: 2.1; }
+    :root[data-theme="light"] .round-btn.is-on,
+    :root[data-theme="dark"] .round-btn.is-on { color: var(--lime); }
+    :root[data-theme="dark"] .round-btn.is-on { color: #c9f36b; }
+  </style>
+</head>
+<body>
+  <!-- ============================ icon sprite ============================ -->
+  <svg class="sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-arrow-l" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+    <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m5 9 7 7 7-7"/></symbol>
+    <symbol id="i-chev-u" viewBox="0 0 24 24"><path d="m5 15 7-7 7 7"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><circle cx="5" cy="18" r="2"/><circle cx="19" cy="6" r="2"/><path d="M7 18h6a4 4 0 0 0 4-4v-4"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9L3.5 9.2l5.9-.9L12 3Z"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></symbol>
+    <symbol id="i-arrow-r" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="m14 6 6 6-6 6"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5h4v5"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5 5-2Z"/></symbol>
+    <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 4h12v16l-6-4-6 4V4Z"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6 18 18M18 6 6 18"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-droplet" viewBox="0 0 24 24"><path d="M12 3s6 6.4 6 10.5a6 6 0 0 1-12 0C6 9.4 12 3 12 3Z"/></symbol>
+    <symbol id="i-cloud-rain" viewBox="0 0 24 24"><path d="M7 16a4 4 0 0 1-.5-8A6 6 0 0 1 18 9a3.5 3.5 0 0 1 .5 7"/><path d="m8 19-1 2M13 19l-1 2M18 19l-1 2"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16h14M6 16l-1-5 2-4h10l2 4-1 5"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/></symbol>
+    <symbol id="i-mountain" viewBox="0 0 24 24"><path d="m3 19 6-11 4 6 2-3 6 8H3Z"/><path d="m8 11 1.5-2.5"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6 3h3l1.5 5-2 1.5a12 12 0 0 0 6 6L16 13l5 1.5v3a2 2 0 0 1-2.2 2A17 17 0 0 1 4 5.2 2 2 0 0 1 6 3Z"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="2"/><circle cx="6" cy="12" r="2"/><circle cx="18" cy="19" r="2"/><path d="m8 11 8-5M8 13l8 5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.5 4 5.6 4 9s-1.4 6.5-4 9c-2.6-2.5-4-5.6-4-9s1.4-6.5 4-9Z"/></symbol>
+    <symbol id="i-navigate" viewBox="0 0 24 24"><path d="m3 11 18-8-8 18-2-8-8-2Z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 6"/></symbol>
+    <symbol id="i-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="m3 11 18-8-8 18-2-8-8-2Z"/><path d="m11 13 10-10"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></symbol>
+    <symbol id="i-bus" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="15" rx="2"/><path d="M4 11h16M8 18v2M16 18v2"/><circle cx="8" cy="15" r="1"/><circle cx="16" cy="15" r="1"/></symbol>
+    <symbol id="i-signal" viewBox="0 0 16 12"><path d="M0 8h2.5v4H0zM4.5 5.5H7V12H4.5zM9 3h2.5v9H9zM13.5 0H16v12h-2.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 16 12"><path d="M8 11.2 5.3 8.2a4 4 0 0 1 5.4 0L8 11.2Z" fill="currentColor" stroke="none"/><path d="M8 4.6c1.8 0 3.4.7 4.6 1.8l1.4-1.5A8.5 8.5 0 0 0 8 2.5c-2.3 0-4.4.9-6 2.4l1.4 1.5A6.6 6.6 0 0 1 8 4.6Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-battery" viewBox="0 0 14 14"><path d="M5 0h4v1.4h1.6A1.4 1.4 0 0 1 12 2.8v9.8A1.4 1.4 0 0 1 10.6 14H3.4A1.4 1.4 0 0 1 2 12.6V2.8a1.4 1.4 0 0 1 1.4-1.4H5V0Z" fill="currentColor" stroke="none" opacity=".4"/><path d="M3.4 5.6h7.2v7A1.4 1.4 0 0 1 9.2 14H4.8a1.4 1.4 0 0 1-1.4-1.4v-7Z" fill="currentColor" stroke="none"/></symbol>
+  </svg>
+
+  <div class="app" id="app" data-view="home" data-nav="1">
+    <div class="statusbar">
+      <span id="sbTime">9:41</span>
+      <span class="sb-icons">
+        <svg class="ic"><use href="#i-signal"/></svg>
+        <svg class="ic"><use href="#i-wifi"/></svg>
+        <svg class="ic"><use href="#i-battery"/></svg>
+      </span>
+    </div>
+
+    <!-- ======================= 1. HOME ======================= -->
+    <section class="view view-home scroll is-active" data-screen="home" tabindex="-1" aria-label="Home">
+      <header class="greeting">
+        <div>
+          <h1>Hello, Rizal</h1>
+          <p class="sub">Here's today's situation across all of Rizal.</p>
+        </div>
+        <div class="greeting-actions">
+          <button class="theme-btn" id="themeBtn" type="button" aria-label="Switch to dark theme" title="Switch theme">
+            <svg class="ic"><use href="#i-moon"/></svg>
+          </button>
+          <button class="avatar-btn" id="avatarBtn" type="button" aria-label="Public access — no account needed">
+            <svg class="ic"><use href="#i-globe"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="search-row">
+        <button class="location-pill" id="locationPill" type="button" aria-label="Change location">
+          <svg class="ic"><use href="#i-pin"/></svg>
+          <span>All of Rizal</span>
+          <svg class="ic"><use href="#i-chev-d"/></svg>
+        </button>
+        <button class="icon-btn" id="searchBtn" type="button" aria-label="Search hazards and places">
+          <svg class="ic"><use href="#i-search"/></svg>
+        </button>
+      </div>
+
+      <div class="chip-row" id="homeChips" role="group" aria-label="Filter by hazard type" style="margin-top:14px">
+        <button class="chip is-active" type="button" data-type="all">All</button>
+        <button class="chip" type="button" data-type="flood">Flood</button>
+        <button class="chip" type="button" data-type="landslide">Landslide</button>
+        <button class="chip" type="button" data-type="traffic">Traffic</button>
+        <button class="chip" type="button" data-type="rain">Rain</button>
+      </div>
+
+      <button class="alert-strip" id="alertStrip" type="button">
+        <span class="dot"></span>
+        <div>
+          <strong>ORANGE ALERT · 2 CRITICAL AREAS</strong>
+          <p>Heavy rain expected until 6:00 PM</p>
+        </div>
+        <svg class="ic"><use href="#i-chev-r"/></svg>
+      </button>
+
+      <div class="section-head">
+        <span>Current hazard</span>
+        <button id="seeAllBtn" type="button">See all</button>
+      </div>
+
+      <div class="feature-wrap">
+        <button class="feature-card" id="featureCard" type="button" aria-label="Open Marikina River flood watch details">
+          <img src="./assets/hazard-flood.jpg" alt="Swollen river winding through a mountain barangay under storm clouds" />
+          <span class="feature-shade"></span>
+          <span class="feature-top">
+            <span class="feature-title">Marikina River<small>Water level 17.2 m · Rising</small></span>
+            <span class="feature-arrow"><svg class="ic"><use href="#i-chev-r"/></svg></span>
+          </span>
+          <span class="feature-stats">
+            <span class="stat"><svg class="ic"><use href="#i-clock"/></svg><span><b>6h 47m</b><small>Duration</small></span></span>
+            <span class="stat"><svg class="ic"><use href="#i-route"/></svg><span><b>17.6km</b><small>Evac route</small></span></span>
+            <span class="stat"><svg class="ic"><use href="#i-alert"/></svg><span><b>Critical</b><small>Severity</small></span></span>
+          </span>
+        </button>
+      </div>
+
+      <div class="home-actions">
+        <button class="btn btn-primary" id="goMapHome" type="button">
+          <svg class="ic"><use href="#i-map"/></svg>
+          <span>Go to Map</span>
+          <svg class="ic trailing"><use href="#i-arrow-r"/></svg>
+        </button>
+        <button class="btn btn-outline" id="btnReport" type="button">
+          <svg class="ic"><use href="#i-plus"/></svg>
+          <span>Report</span>
+        </button>
+      </div>
+
+      <div class="section-head"><span>Recent field reports</span><button id="seeReportsBtn" type="button">See all</button></div>
+      <div class="recent" id="recentList">
+        <button class="report-mini" data-type="flood" type="button" data-name="Ana Reyes" data-sub="Floodwater rising at Purok 3">
+          <span class="avatar" style="background:#c9f36b">AR</span>
+          <span class="txt"><b>Floodwater rising at Purok 3</b><small>Ana Reyes · 8:32 AM</small></span>
+          <span class="sev sev-critical">Critical</span>
+        </button>
+        <button class="report-mini" data-type="traffic" type="button" data-name="Joel Santos" data-sub="Route 2 blocked near the bridge">
+          <span class="avatar" style="background:#ffc24b">JS</span>
+          <span class="txt"><b>Route 2 blocked near the bridge</b><small>Joel Santos · 8:11 AM</small></span>
+          <span class="sev sev-watch">Watch</span>
+        </button>
+        <button class="report-mini" data-type="rain" type="button" data-name="Liza Cruz" data-sub="Rain intensity increasing upstream">
+          <span class="avatar" style="background:#6ea8fe">LC</span>
+          <span class="txt"><b>Rain intensity increasing upstream</b><small>Liza Cruz · 7:54 AM</small></span>
+          <span class="sev sev-verified">Verified</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================= 2. HAZARD DETAIL ======================= -->
+    <section class="view view-hazard" data-screen="hazard" tabindex="-1" aria-label="Hazard detail" aria-hidden="true">
+      <div class="hazard-hero">
+        <img src="./assets/hazard-flood.jpg" alt="Aerial view of the swollen Marikina River beside the barangay" />
+      </div>
+      <div class="topbar">
+        <button class="round-btn" type="button" data-back aria-label="Back"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+        <span class="title" style="flex:1"></span>
+        <button class="round-btn" id="bookmarkBtn" type="button" aria-label="Save this hazard"><svg class="ic"><use href="#i-bookmark"/></svg></button>
+      </div>
+      <div class="hazard-sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-scroll scroll">
+          <div class="sheet-head">
+            <div>
+              <h2>Marikina River Flood Watch</h2>
+              <p>Barangay San Jose, Rizal · Station SJ-04</p>
+            </div>
+            <span class="sev sev-critical">Critical</span>
+          </div>
+
+          <div class="metric-row">
+            <div class="metric"><svg class="ic"><use href="#i-clock"/></svg><b>6h 47m</b><small>Duration</small></div>
+            <div class="metric"><svg class="ic"><use href="#i-route"/></svg><b>17.6 km</b><small>Evac route</small></div>
+            <div class="metric"><svg class="ic"><use href="#i-droplet"/></svg><b>17.2 m</b><small>Water level</small></div>
+          </div>
+
+          <div class="segmented" role="tablist" aria-label="Hazard information">
+            <button type="button" role="tab" aria-selected="true" class="is-active" data-tab="details">Details</button>
+            <button type="button" role="tab" aria-selected="false" data-tab="routes">Evacuation</button>
+            <button type="button" role="tab" aria-selected="false" data-tab="reports">Reports</button>
+          </div>
+
+          <div class="tab-panel is-active" data-panel="details" role="tabpanel">
+            <h3>About this hazard</h3>
+            <p>Water level at Station SJ-04 has passed the 17-metre critical mark after six hours of continuous rain over the Sierra Madre watershed. Purok 3 and Sitio Wawa are under a pre-emptive evacuation advisory.</p>
+            <div class="guide-list">
+              <div><svg class="ic"><use href="#i-shield"/></svg><span>Move to the nearest evacuation center before 6:00 PM.</span></div>
+              <div><svg class="ic"><use href="#i-shield"/></svg><span>Avoid the riverside road and the old steel bridge.</span></div>
+              <div><svg class="ic"><use href="#i-shield"/></svg><span>Keep emergency go-bag and documents ready.</span></div>
+            </div>
+            <p class="updated">Last updated 4 minutes ago · PAGASA &amp; Barangay DRRMO</p>
+          </div>
+
+          <div class="tab-panel" data-panel="routes" role="tabpanel">
+            <h3>Evacuation routes</h3>
+            <button class="route-item" type="button" data-navto="map" style="margin-top:12px;width:100%">
+              <span class="avatar" style="background:#c9f36b"><svg class="ic" style="width:16px;height:16px"><use href="#i-route"/></svg></span>
+              <span class="txt"><b>Route 2 · Central Evacuation Center</b><small>17.6 km · approx. 42 min · Open</small></span>
+              <svg class="ic trailing"><use href="#i-chev-r"/></svg>
+            </button>
+            <button class="route-item" type="button" data-navto="map">
+              <span class="avatar" style="background:#ffc24b"><svg class="ic" style="width:16px;height:16px"><use href="#i-route"/></svg></span>
+              <span class="txt"><b>Route 4 · San Jose Covered Court</b><small>9.3 km · approx. 21 min · Congested</small></span>
+              <svg class="ic trailing"><use href="#i-chev-r"/></svg>
+            </button>
+            <button class="route-item" type="button" data-navto="map">
+              <span class="avatar" style="background:#6fe0c1"><svg class="ic" style="width:16px;height:16px"><use href="#i-route"/></svg></span>
+              <span class="txt"><b>Route 6 · Sitio Wawa Hall</b><small>5.1 km · approx. 12 min · Open</small></span>
+              <svg class="ic trailing"><use href="#i-chev-r"/></svg>
+            </button>
+          </div>
+
+          <div class="tab-panel" data-panel="reports" role="tabpanel">
+            <h3>Verified field reports</h3>
+            <button class="hazard-report-item" type="button" data-field="Ana Reyes" data-sub="Floodwater rising at Purok 3" style="margin-top:12px;width:100%">
+              <span class="avatar" style="background:#c9f36b">AR</span>
+              <span class="txt"><b>Floodwater rising at Purok 3</b><small>Ana Reyes · 8:32 AM · Critical</small></span>
+              <svg class="ic trailing"><use href="#i-chev-r"/></svg>
+            </button>
+            <button class="hazard-report-item" type="button" data-field="Mike Wadkly" data-sub="Bridge still passable, water rising fast">
+              <span class="avatar" style="background:#ffc24b"><img src="./assets/avatar-mike.jpg" alt="" /></span>
+              <span class="txt"><b>Bridge still passable, water rising fast</b><small>Mike Wadkly · 8:02 AM · Verified</small></span>
+              <svg class="ic trailing"><use href="#i-chev-r"/></svg>
+            </button>
+            <button class="hazard-report-item" type="button" data-field="Liza Cruz" data-sub="Rain intensity increasing upstream">
+              <span class="avatar" style="background:#6ea8fe">LC</span>
+              <span class="txt"><b>Rain intensity increasing upstream</b><small>Liza Cruz · 7:54 AM · Verified</small></span>
+              <svg class="ic trailing"><use href="#i-chev-r"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="sheet-actions">
+          <button class="btn btn-outline" id="btnLive" type="button"><svg class="ic"><use href="#i-compass"/></svg><span>Live status</span></button>
+          <button class="btn btn-primary" id="goMapHazard" type="button"><svg class="ic"><use href="#i-map"/></svg><span>Go to Map</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= 3. COMMUNITY REPORTS ======================= -->
+    <section class="view view-reports" data-screen="reports" tabindex="-1" aria-label="Community reports" aria-hidden="true">
+      <div class="reports-topbar">
+        <button class="round-btn" type="button" data-back aria-label="Back"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+        <strong>Community Reports</strong>
+        <button class="round-btn" id="reportsSearchBtn" type="button" aria-label="Search reports"><svg class="ic"><use href="#i-search"/></svg></button>
+      </div>
+      <div class="reports-scroll scroll">
+        <div class="summary-card">
+          <span class="avatar" style="background:#c9f36b"><svg class="ic" style="width:18px;height:18px"><use href="#i-shield"/></svg></span>
+          <div class="txt"><b>4 new reports today</b><small>12 verified · 2 pending review across Rizal</small></div>
+          <svg class="ic"><use href="#i-chev-r"/></svg>
+        </div>
+
+        <div class="chip-row" id="reportChips" role="group" aria-label="Filter reports" style="margin-top:16px">
+          <button class="chip is-active" type="button" data-type="all">All</button>
+          <button class="chip" type="button" data-type="flood">Flood</button>
+          <button class="chip" type="button" data-type="landslide">Landslide</button>
+          <button class="chip" type="button" data-type="traffic">Traffic</button>
+          <button class="chip" type="button" data-type="rain">Rain</button>
+        </div>
+
+        <div class="report-list" id="reportList">
+          <button class="report-row" type="button" data-type="flood" data-field="Ana Reyes" data-sub="Floodwater rising at Purok 3">
+            <span class="idx">01</span><span class="avatar" style="background:#c9f36b">AR</span>
+            <span class="txt"><b>Floodwater rising at Purok 3</b><small>Ana Reyes · Verified by DRRMO</small></span>
+            <time>8:32 AM</time>
+          </button>
+          <button class="report-row" type="button" data-type="traffic" data-field="Joel Santos" data-sub="Route 2 blocked near the bridge">
+            <span class="idx">02</span><span class="avatar" style="background:#ffc24b">JS</span>
+            <span class="txt"><b>Route 2 blocked near the bridge</b><small>Joel Santos · 2 confirmations</small></span>
+            <time>8:11 AM</time>
+          </button>
+          <button class="report-row" type="button" data-type="rain" data-field="Liza Cruz" data-sub="Rain intensity increasing upstream">
+            <span class="idx">03</span><span class="avatar" style="background:#6ea8fe">LC</span>
+            <span class="txt"><b>Rain intensity increasing upstream</b><small>Liza Cruz · Verified by PAGASA</small></span>
+            <time>7:54 AM</time>
+          </button>
+          <button class="report-row" type="button" data-type="flood" data-field="Mike Wadkly" data-sub="Bridge still passable, water rising fast">
+            <span class="idx">04</span><span class="avatar" style="background:#ffb0a0"><img src="./assets/avatar-mike.jpg" alt="" /></span>
+            <span class="txt"><b>Bridge still passable, water rising fast</b><small>Mike Wadkly · 8 verified reports</small></span>
+            <time>8:02 AM</time>
+          </button>
+          <button class="report-row" type="button" data-type="landslide" data-field="Mario Bautista" data-sub="Small slide along the ridge road">
+            <span class="idx">05</span><span class="avatar" style="background:#d5b0ff">MB</span>
+            <span class="txt"><b>Small slide along the ridge road</b><small>Mario Bautista · Pending review</small></span>
+            <time>7:26 AM</time>
+          </button>
+          <button class="report-row" type="button" data-type="traffic" data-field="Cherry Villanueva" data-sub="Heavy queue at Central Station">
+            <span class="idx">06</span><span class="avatar" style="background:#6fe0c1">CV</span>
+            <span class="txt"><b>Heavy queue at Central Station</b><small>Cherry Villanueva · Verified</small></span>
+            <time>7:03 AM</time>
+          </button>
+          <button class="report-row" type="button" data-type="flood" data-sub="Drainage blocked at Purok 5" data-field="Lucas Medina">
+            <span class="idx">07</span><span class="avatar" style="background:#f7d08a">LM</span>
+            <span class="txt"><b>Drainage blocked at Purok 5</b><small>Lucas Medina · Verified</small></span>
+            <time>6:48 AM</time>
+          </button>
+          <button class="report-row" type="button" data-type="rain" data-field="Ethan Flores" data-sub="Water level marker at 16.8 m">
+            <span class="idx">08</span><span class="avatar" style="background:#a8c8ff">EF</span>
+            <span class="txt"><b>Water level marker at 16.8 m</b><small>Ethan Flores · Sensor reading</small></span>
+            <time>6:15 AM</time>
+          </button>
+        </div>
+      </div>
+      <button class="fab" id="fabReport" type="button"><svg class="ic"><use href="#i-plus"/></svg>Report an incident</button>
+    </section>
+
+    <!-- ======================= 4. FIELD REPORT PHOTO ======================= -->
+    <section class="view view-photo" data-screen="photo" tabindex="-1" aria-label="Field report" aria-hidden="true">
+      <img class="photo-bg" src="./assets/hazard-field.jpg" alt="Field volunteer looking over a rain-soaked valley and flooded river" />
+      <div class="photo-shade"></div>
+      <div class="topbar">
+        <button class="round-btn" type="button" data-back aria-label="Back"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+        <span class="title" style="flex:1"></span>
+        <button class="round-btn" id="shareBtn" type="button" aria-label="Share this report"><svg class="ic"><use href="#i-share"/></svg></button>
+      </div>
+      <div class="reporter-card">
+        <div class="reporter-top">
+          <span class="avatar" id="reporterAvatar" style="background:#ffb0a0"><img src="./assets/avatar-mike.jpg" alt="" /></span>
+          <div class="txt"><strong id="reporterName">Mike Wadkly</strong><span id="reporterMeta">8 verified reports</span></div>
+          <span class="rating-badge"><svg class="ic"><use href="#i-shield"/></svg></span>
+        </div>
+        <div class="reporter-divider"></div>
+        <div class="reporter-location"><svg class="ic"><use href="#i-pin"/></svg><span id="reporterLocation">Barangay San Jose, Rizal</span></div>
+      </div>
+      <div class="photo-bottom">
+        <p class="photo-meta"><svg class="ic"><use href="#i-check"/></svg><span id="photoCaption">Field report · 8:02 AM · Verified</span></p>
+        <button class="btn btn-primary" id="goMapPhoto" type="button">
+          <svg class="ic"><use href="#i-map"/></svg><span>Go to Map</span>
+          <svg class="ic trailing"><use href="#i-arrow-r"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ======================= 5. LIVE STATUS ======================= -->
+    <section class="view view-live" data-screen="live" tabindex="-1" aria-label="Live status" aria-hidden="true">
+      <div class="live-hero"><img src="./assets/hazard-satellite.jpg" alt="Dark satellite view of the river valley" /></div>
+      <div class="topbar">
+        <button class="round-btn" type="button" data-back aria-label="Back"><svg class="ic"><use href="#i-chev-l"/></svg></button>
+        <span class="title" style="flex:1;text-align:center;font-size:14px;font-weight:800">Live Status</span>
+        <button class="round-btn" id="layersBtn" type="button" aria-label="Map layers"><svg class="ic"><use href="#i-grid"/></svg></button>
+      </div>
+      <div class="live-body scroll">
+        <h2 class="live-title">Hazard Details</h2>
+        <p class="live-sub">Station SJ-04 · updating every 60 seconds</p>
+        <div class="stat-grid">
+          <div class="stat-box"><svg class="ic"><use href="#i-clock"/></svg><b>6h 47min</b><small>Rain duration</small></div>
+          <div class="stat-box"><svg class="ic"><use href="#i-route"/></svg><b>17.6 km</b><small>Evacuation route</small></div>
+        </div>
+        <div class="compass" id="compass">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <g id="compassTicks"></g>
+            <circle cx="100" cy="100" r="72" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="1" />
+            <circle cx="100" cy="100" r="52" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1" />
+            <path d="M100 52 l7 14 -7 -3 -7 3Z" fill="var(--lime)" opacity=".9" />
+            <circle cx="100" cy="100" r="2.5" fill="rgba(255,255,255,.5)" />
+          </svg>
+          <span class="cardinal n">N</span><span class="cardinal s">S</span>
+          <span class="cardinal w">W</span><span class="cardinal e">E</span>
+          <div class="compass-center"><b>260°</b><span>NE</span><small>FLOW DIRECTION</small></div>
+        </div>
+        <button class="emergency-btn" id="emergencyBtn" type="button"><svg class="ic"><use href="#i-alert"/></svg>Emergency alert</button>
+        <button class="live-link" id="goMapLive" type="button">Open live hazard map<svg class="ic"><use href="#i-arrow-r"/></svg></button>
+        <div class="sensor-card">
+          <h3>Sensor readings</h3>
+          <div class="sensor-row"><svg class="ic"><use href="#i-cloud-rain"/></svg><span>Rainfall intensity</span><b>42.6 mm/h</b></div>
+          <div class="sensor-row"><svg class="ic"><use href="#i-droplet"/></svg><span>Water level · SJ-04</span><b>17.2 m ↑</b></div>
+          <div class="sensor-row"><svg class="ic"><use href="#i-navigate"/></svg><span>Wind / flow direction</span><b>18 km/h NE</b></div>
+          <p class="sensor-foot">Synced 4 minutes ago · PAGASA &amp; Barangay DRRMO</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= 6. AREA MAP ======================= -->
+    <section class="view view-map" data-screen="map" tabindex="-1" aria-label="Evacuation area map" aria-hidden="true">
+      <img class="map-bg" src="./assets/hazard-satellite.jpg" alt="Satellite view of the river valley and evacuation routes" />
+      <div class="map-tint"></div>
+      <svg class="map-svg" viewBox="0 0 412 915" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <!-- primary evacuation route -->
+        <path d="M 52 118 C 112 158, 68 228, 128 272 C 180 308, 148 352, 208 392 C 258 426, 228 482, 284 522 C 328 556, 298 610, 338 650"
+              fill="none" stroke="rgba(255,255,255,.92)" stroke-width="2.6" stroke-linecap="round" />
+        <!-- active / recommended segment -->
+        <path d="M 338 650 C 300 700, 250 672, 208 720 C 172 760, 160 790, 118 838"
+              fill="none" stroke="#c9f36b" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="6 8" />
+        <!-- risk radius -->
+        <circle cx="228" cy="468" r="72" fill="none" stroke="rgba(255,255,255,.42)" stroke-width="1.6" stroke-dasharray="2 9" />
+        <circle cx="228" cy="468" r="14" fill="rgba(255,255,255,.22)" />
+        <path d="M224 461 l10 7 -10 7Z" fill="#fff" />
+        <!-- recommended segment toward your location -->
+        <path d="M 228 468 C 260 455, 298 444, 332 432"
+              fill="none" stroke="#c9f36b" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="5 7" opacity=".9" />
+        <!-- waypoints -->
+        <g fill="#0b100e" stroke="#fff" stroke-width="2">
+          <circle cx="128" cy="272" r="9"/><circle cx="208" cy="392" r="9"/>
+          <circle cx="284" cy="522" r="9"/><circle cx="338" cy="650" r="9"/>
+          <circle cx="118" cy="838" r="9"/>
+        </g>
+        <g fill="#fff"><circle cx="128" cy="272" r="2.6"/><circle cx="208" cy="392" r="2.6"/><circle cx="284" cy="522" r="2.6"/><circle cx="338" cy="650" r="2.6"/><circle cx="118" cy="838" r="2.6"/></g>
+        <!-- your location -->
+        <circle cx="332" cy="432" r="17" fill="none" stroke="rgba(110,168,254,.4)" stroke-width="1.5" />
+        <circle cx="332" cy="432" r="7" fill="#6ea8fe" stroke="#fff" stroke-width="2" />
+        <!-- shelters -->
+        <g><circle cx="96" cy="180" r="10" fill="#c9f36b" stroke="#0b100e" stroke-width="2"/><path d="M92 180h8M96 176v8" stroke="#0b100e" stroke-width="1.6"/></g>
+        <g><circle cx="352" cy="742" r="10" fill="#c9f36b" stroke="#0b100e" stroke-width="2"/><path d="M348 742h8M352 738v8" stroke="#0b100e" stroke-width="1.6"/></g>
+      </svg>
+
+      <!-- Dating white navbar, ibinalik sa dating pwesto sa itaas ng map. -->
+      <div class="map-style-tint" aria-hidden="true"></div>
+      <div class="map-top">
+        <div class="map-top-row">
+          <button class="map-nav-btn" type="button" data-back aria-label="Back"><svg class="ic"><use href="#i-arrow-l"/></svg></button>
+          <button class="map-style-select" id="mapStyleBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Basemap style: Hazard Map. Tap to change">
+            <span class="map-style-kicker">BASE MAP STYLE</span>
+            <span class="map-style-value"><span id="mapStyleLabel">Hazard Map</span><svg class="ic"><use href="#i-chev-d"/></svg></span>
+          </button>
+          <button class="map-nav-btn notif-wrap" id="mapBell" type="button" aria-label="2 new alerts">
+            <svg class="ic"><use href="#i-bell"/></svg><span class="mini-badge" aria-hidden="true"></span>
+          </button>
+        </div>
+        <div class="map-nav-chips">
+          <button class="map-nav-chip" id="routeChip" type="button">
+            <svg class="ic"><use href="#i-bus"/></svg><span>Route 2 · San Jose</span>
+            <svg class="ic trailing"><use href="#i-chev-u"/></svg>
+          </button>
+          <button class="map-nav-chip" id="layerChip" type="button">
+            <svg class="ic"><use href="#i-layers"/></svg><span>Hazard layer</span>
+          </button>
+        </div>
+      </div>
+      <div class="map-style-menu" id="mapStyleMenu" role="menu" aria-label="Basemap style" hidden>
+        <p class="map-style-menu-label">BASEMAP STYLE</p>
+        <button type="button" role="menuitem" data-style="hazard">Hazard Map</button>
+        <button type="button" role="menuitem" data-style="traffic">Traffic</button>
+        <button type="button" role="menuitem" data-style="weather">Weather</button>
+        <button type="button" role="menuitem" data-style="flood">Flood Prone</button>
+        <button type="button" role="menuitem" data-style="help">Help Center</button>
+      </div>
+
+      <div class="capacity-card glass">
+        <span class="eyebrow">EVACUEES AT SHELTER</span>
+        <div class="cap-next"><span>Next: Central Evacuation Center</span>
+          <button type="button" id="capacityBtn" aria-label="Open shelter details"><svg class="ic"><use href="#i-arrow-r"/></svg></button>
+        </div>
+        <div class="big">87<small> / 200</small></div>
+        <div class="cap-bar"><i></i></div>
+      </div>
+
+      <span class="avatar-pin" style="left:29%;top:26%;background:#ffc24b">JS</span>
+      <span class="avatar-pin" style="left:56%;top:31%;background:#ffb0a0">MW</span>
+      <span class="avatar-pin" style="left:73%;top:44%;background:#6fe0c1">AR</span>
+
+      <button class="chat-card glass" id="chatCard" type="button">
+        <div class="chat-top">
+          <span class="avatar" style="background:#c9f36b">AR</span><b>Ana Reyes</b><time>8:32 AM</time>
+        </div>
+        <p>Floodwater is rising at Purok 3 — we need transport for the remaining families.</p>
+      </button>
+
+      <div class="warning-sheet scroll" id="warningSheet">
+        <div class="sheet-handle"></div>
+        <div class="warn-head">
+          <span class="eyebrow">WARNING</span>
+          <button type="button" id="collapseWarn" aria-label="Collapse warnings"><svg class="ic"><use href="#i-chev-u"/></svg></button>
+        </div>
+        <div class="warn-body">
+          <div class="warn-title"><svg class="ic"><use href="#i-list"/></svg>Critical areas (2)</div>
+          <div class="warn-alert"><span class="dot"></span><div><b>180 residents need transport</b><small>Route 2 · San Jose · Reported 8:11 AM</small></div></div>
+          <p class="affected-label">AFFECTED AREAS</p>
+          <button class="affected-row" type="button" aria-expanded="false">
+            <svg class="ic"><use href="#i-pin"/></svg><span>Purok 3 — Central Station</span>
+            <svg class="ic trailing"><use href="#i-chev-d"/></svg>
+          </button>
+          <div class="affected-detail">Water level 17.2 m and rising. 2 evacuation vehicles dispatched, 180 residents still waiting.</div>
+          <button class="affected-row" type="button" aria-expanded="false">
+            <svg class="ic"><use href="#i-pin"/></svg><span>Sitio Wawa — Riverside Road</span>
+            <svg class="ic trailing"><use href="#i-chev-d"/></svg>
+          </button>
+          <div class="affected-detail">Riverside Road closed to light vehicles. Use Route 6 to Sitio Wawa Hall.</div>
+          <button class="btn btn-primary sheet-map-btn" id="goMapArea" type="button">
+            <svg class="ic"><use href="#i-map"/></svg><span>Go to Map</span>
+            <svg class="ic trailing"><use href="#i-arrow-r"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= navigation bar ======================= -->
+    <div class="nav-scrim" aria-hidden="true"></div>
+    <nav class="bottom-nav" id="bottomNav" aria-label="Main navigation">
+      <button class="nav-item is-active" type="button" data-nav="home"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></button>
+      <button class="nav-item" type="button" data-nav="map"><svg class="ic"><use href="#i-map"/></svg><span>Map</span></button>
+      <button class="nav-item" type="button" data-nav="reports"><svg class="ic"><use href="#i-list"/></svg><span>Reports</span></button>
+      <button class="nav-item" type="button" data-nav="profile"><svg class="ic"><use href="#i-user"/></svg><span>Profile</span></button>
+    </nav>
+
+    <div class="home-indicator"></div>
+    <div class="sr-only" aria-live="polite" id="liveRegion"></div>
+
+    <!-- ======================= overlays ======================= -->
+    <div class="overlay" id="searchOverlay" role="dialog" aria-modal="true" aria-label="Search">
+      <div class="sheet-top">
+        <div class="sheet-head-row"><strong>Where to?</strong>
+          <button class="sheet-close" type="button" data-close aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+        </div>
+        <label class="field">
+          <svg class="ic"><use href="#i-search"/></svg>
+          <input id="searchInput" type="search" placeholder="Search hazards, routes, sitios…" autocomplete="off" />
+        </label>
+        <div class="sheet-list" id="sheetList"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="reportOverlay" role="dialog" aria-modal="true" aria-label="Report an incident">
+      <div class="sheet-bottom">
+        <div class="sheet-head-row"><strong>Report an incident</strong>
+          <button class="sheet-close" type="button" data-close aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+        </div>
+        <p class="form-label">TYPE OF HAZARD</p>
+        <div class="chip-row" id="reportTypeChips">
+          <button class="chip is-active" type="button" data-type="flood">Flood</button>
+          <button class="chip" type="button" data-type="landslide">Landslide</button>
+          <button class="chip" type="button" data-type="traffic">Traffic</button>
+          <button class="chip" type="button" data-type="rain">Rain</button>
+        </div>
+        <p class="form-label" style="margin-top:16px">WHAT DID YOU SEE?</p>
+        <textarea class="textarea" id="reportText" placeholder="Describe the situation and the exact location…"></textarea>
+        <button class="btn btn-primary" id="submitReport" type="button"><svg class="ic"><use href="#i-send"/></svg>Submit report</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="emergencyOverlay" role="dialog" aria-modal="true" aria-label="Emergency alert">
+      <div class="sheet-bottom">
+        <div class="sheet-head-row"><strong>Emergency alert</strong>
+          <button class="sheet-close" type="button" data-close aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+        </div>
+        <div class="confirm-copy">
+          <svg class="ic"><use href="#i-alert"/></svg>
+          <p>This sends your location and the current hazard status to the Barangay DRRMO and nearby responders.</p>
+        </div>
+        <button class="btn btn-primary" id="confirmEmergency" type="button"><svg class="ic"><use href="#i-phone"/></svg>Send emergency alert</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="profileOverlay" role="dialog" aria-modal="true" aria-label="Profile">
+      <div class="sheet-bottom">
+        <div class="sheet-head-row"><strong>Profile</strong>
+          <button class="sheet-close" type="button" data-close aria-label="Close"><svg class="ic"><use href="#i-close"/></svg></button>
+        </div>
+        <div class="profile-card">
+          <span class="avatar" style="background:var(--lime-soft);height:46px;width:46px;color:var(--lime)"><svg class="ic" style="width:22px;height:22px"><use href="#i-globe"/></svg></span>
+          <div><b>Public access</b><small>Open website · No account required</small></div>
+        </div>
+        <div class="toggle-row is-static"><span>Login &amp; create account</span><span class="soon">Coming soon</span></div>
+        <button class="toggle-row" type="button" data-toggle><span>Push alerts</span><span class="toggle is-on" aria-hidden="true"></span></button>
+        <button class="toggle-row" type="button" data-toggle><span>Share my location</span><span class="toggle" aria-hidden="true"></span></button>
+        <button class="toggle-row" type="button" data-theme-toggle aria-label="Toggle dark theme"><span>Dark theme</span><span class="toggle" id="themeToggleVisual" aria-hidden="true"></span></button>
+        <button class="btn btn-outline" id="hotlineBtn" type="button" style="width:100%;margin-top:16px"><svg class="ic"><use href="#i-phone"/></svg>Barangay hotline</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+      var params = new URLSearchParams(location.search);
+      if (params.get('frame') === '1') document.body.classList.add('is-framed');
+
+      var app = document.getElementById('app');
+      var views = Array.prototype.slice.call(document.querySelectorAll('.view'));
+      var navItems = Array.prototype.slice.call(document.querySelectorAll('.nav-item'));
+      var overlays = Array.prototype.slice.call(document.querySelectorAll('.overlay'));
+      var toast = document.getElementById('toast');
+      var liveRegion = document.getElementById('liveRegion');
+      var toastTimer;
+
+      var SCREENS = {
+        home:    { title: 'Home',              nav: true },
+        hazard:  { title: 'Hazard detail',     nav: false },
+        reports: { title: 'Community reports', nav: true },
+        photo:   { title: 'Field report',      nav: false },
+        live:    { title: 'Live status',       nav: false },
+        map:     { title: 'Evacuation map',    nav: false }
+      };
+      var NAV_FOR = { home: 'home', hazard: 'home', reports: 'reports', photo: 'reports', live: 'home', map: 'map' };
+      var current = 'home';
+      var depth = 0;
+
+      /* ---------- utilities ---------- */
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('is-visible');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { toast.classList.remove('is-visible'); }, 2100);
+      }
+      function anyOverlayOpen() { return overlays.some(function (o) { return o.classList.contains('is-open'); }); }
+      function closeOverlays() {
+        overlays.forEach(function (o) { o.classList.remove('is-open'); });
+        var sm = document.getElementById('mapStyleMenu');
+        if (sm) { sm.hidden = true; }
+        var sb = document.getElementById('mapStyleBtn');
+        if (sb) { sb.setAttribute('aria-expanded', 'false'); }
+      }
+      function openOverlay(id) {
+        closeOverlays();
+        var el = document.getElementById(id);
+        el.classList.add('is-open');
+        var focusable = el.querySelector('input, textarea, button');
+        if (focusable) setTimeout(function () { focusable.focus(); }, 60);
+      }
+      function notifyFrame(view) {
+        try {
+          window.parent.postMessage({ source: 'hs-mobile-home', theme: currentTheme(), view: view }, '*');
+        } catch (e) { /* standalone: nothing to notify */ }
+      }
+
+      /* ---------- theme (white is the default) ---------- */
+      var THEME_KEY = 'hs-theme';
+      function currentTheme() { return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; }
+      function applyTheme(theme) {
+        theme = theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* private mode */ }
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b100e' : '#f7f9f6');
+        var btn = document.getElementById('themeBtn');
+        if (btn) {
+          var use = btn.querySelector('use');
+          if (use) use.setAttribute('href', theme === 'dark' ? '#i-sun' : '#i-moon');
+          btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+        }
+        var toggle = document.getElementById('themeToggleVisual');
+        if (toggle) toggle.classList.toggle('is-on', theme === 'dark');
+        notifyFrame(current);
+      }
+      function toggleTheme() { applyTheme(currentTheme() === 'light' ? 'dark' : 'light'); }
+      function hashView() {
+        var v = location.hash.replace('#', '');
+        return SCREENS[v] ? v : null;
+      }
+
+      /* ---------- router ---------- */
+      function render(view) {
+        if (!SCREENS[view]) view = 'home';
+        current = view;
+        closeOverlays();
+        app.dataset.view = view;
+        app.dataset.nav = SCREENS[view].nav ? '1' : '0';
+
+        views.forEach(function (v) {
+          var on = v.dataset.screen === view;
+          v.classList.toggle('is-active', on);
+          v.setAttribute('aria-hidden', String(!on));
+          if (on) {
+            v.scrollTop = 0;
+            var sc = v.querySelector('.scroll');
+            if (sc) sc.scrollTop = 0;
+            try { v.focus({ preventScroll: true }); } catch (e) { /* older browsers */ }
+          }
+        });
+
+        var activeNav = NAV_FOR[view];
+        navItems.forEach(function (item) { item.classList.toggle('is-active', item.dataset.nav === activeNav); });
+
+        liveRegion.textContent = SCREENS[view].title + ' screen';
+        document.title = 'HazardSync · ' + SCREENS[view].title;
+        notifyFrame(view);
+      }
+      function navigate(view) {
+        if (!SCREENS[view]) return;
+        if (view === current && !anyOverlayOpen()) { render(view); return; }
+        depth++;
+        history.pushState({ view: view, depth: depth }, '', '#' + view);
+        render(view);
+      }
+      function back() {
+        if (depth > 0) history.back();
+        else navigate('home');
+      }
+      window.addEventListener('popstate', function (e) {
+        depth = (e.state && e.state.depth) || 0;
+        render((e.state && e.state.view) || hashView() || 'home');
+      });
+
+      /* The Pixel 7 frame can jump to any screen or switch the theme. */
+      window.addEventListener('message', function (event) {
+        var d = event.data;
+        if (!d) return;
+        if (d.source === 'hs-frame-nav' && SCREENS[d.view]) navigate(d.view);
+        else if (d.source === 'hs-frame-theme') applyTheme(d.theme);
+      });
+
+      function goToMap() { window.location.href = './index.html?fromHome=1'; }
+
+      /* ---------- home ---------- */
+      function applyFilter(type) {
+        var targets = document.querySelectorAll('#recentList .report-mini, #reportList .report-row');
+        Array.prototype.forEach.call(targets, function (row) {
+          row.style.display = (type === 'all' || row.dataset.type === type) ? '' : 'none';
+        });
+      }
+      function bindChipRow(id) {
+        var row = document.getElementById(id);
+        if (!row) return;
+        Array.prototype.forEach.call(row.querySelectorAll('.chip'), function (chip) {
+          chip.addEventListener('click', function () {
+            Array.prototype.forEach.call(row.querySelectorAll('.chip'), function (c) { c.classList.remove('is-active'); });
+            // Keep both filter rows in sync.
+            ['homeChips', 'reportChips'].forEach(function (otherId) {
+              var other = document.getElementById(otherId);
+              if (!other) return;
+              Array.prototype.forEach.call(other.querySelectorAll('.chip'), function (c) {
+                c.classList.toggle('is-active', c.dataset.type === chip.dataset.type);
+              });
+            });
+            applyFilter(chip.dataset.type);
+          });
+        });
+      }
+      bindChipRow('homeChips');
+      bindChipRow('reportChips');
+
+      document.getElementById('featureCard').addEventListener('click', function () { navigate('hazard'); });
+      document.getElementById('alertStrip').addEventListener('click', function () { navigate('map'); });
+      document.getElementById('seeAllBtn').addEventListener('click', function () { navigate('reports'); });
+      document.getElementById('seeReportsBtn').addEventListener('click', function () { navigate('reports'); });
+      document.getElementById('btnReport').addEventListener('click', function () { openOverlay('reportOverlay'); });
+      document.getElementById('avatarBtn').addEventListener('click', function () { openOverlay('profileOverlay'); });
+      document.getElementById('locationPill').addEventListener('click', function () { openOverlay('searchOverlay'); });
+      document.getElementById('searchBtn').addEventListener('click', function () { openOverlay('searchOverlay'); });
+      document.getElementById('reportsSearchBtn').addEventListener('click', function () { openOverlay('searchOverlay'); });
+      document.getElementById('goMapHome').addEventListener('click', goToMap);
+
+      /* ---------- field report screen ---------- */
+      function openFieldReport(name, sub) {
+        name = name || 'Mike Wadkly';
+        if (name === 'You') name = 'Guest reporter';
+        var av = document.getElementById('reporterAvatar');
+        if (name === 'Mike Wadkly') {
+          av.innerHTML = '<img src="./assets/avatar-mike.jpg" alt="" />';
+        } else {
+          var initials = name.trim().split(/\s+/).map(function (w) { return w.charAt(0); }).join('').slice(0, 2).toUpperCase();
+          var palette = ['#c9f36b', '#ffc24b', '#6ea8fe', '#6fe0c1', '#ffb0a0'];
+          av.style.background = palette[name.length % palette.length];
+          av.textContent = initials;
+        }
+        document.getElementById('reporterName').textContent = name;
+        document.getElementById('reporterMeta').textContent =
+          name === 'Mike Wadkly' ? '8 verified reports' :
+          name === 'Guest reporter' ? 'Unverified public report' : 'Verified field reporter';
+        document.getElementById('reporterLocation').textContent = 'Barangay San Jose, Rizal';
+        document.getElementById('photoCaption').textContent =
+          (sub || 'Field report') + ' · ' + (name === 'Guest reporter' ? 'Pending review' : 'Verified');
+        navigate('photo');
+      }
+      function bindFieldButtons(selector) {
+        Array.prototype.forEach.call(document.querySelectorAll(selector), function (btn) {
+          btn.addEventListener('click', function () { openFieldReport(btn.dataset.field, btn.dataset.sub); });
+        });
+      }
+      bindFieldButtons('#recentList .report-mini');
+      bindFieldButtons('#reportList .report-row');
+      bindFieldButtons('.hazard-report-item');
+      document.getElementById('chatCard').addEventListener('click', function () {
+        openFieldReport('Ana Reyes', 'Floodwater rising at Purok 3');
+      });
+      document.getElementById('shareBtn').addEventListener('click', function () { showToast('Report link copied'); });
+      document.getElementById('goMapPhoto').addEventListener('click', goToMap);
+
+      /* ---------- hazard detail ---------- */
+      Array.prototype.forEach.call(document.querySelectorAll('.segmented [role="tab"]'), function (tab) {
+        tab.addEventListener('click', function () {
+          Array.prototype.forEach.call(document.querySelectorAll('.segmented [role="tab"]'), function (t) {
+            t.classList.toggle('is-active', t === tab);
+            t.setAttribute('aria-selected', String(t === tab));
+          });
+          Array.prototype.forEach.call(document.querySelectorAll('.tab-panel'), function (p) {
+            p.classList.toggle('is-active', p.dataset.panel === tab.dataset.tab);
+          });
+        });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-navto]'), function (btn) {
+        btn.addEventListener('click', function () { navigate(btn.dataset.navto); });
+      });
+      document.getElementById('bookmarkBtn').addEventListener('click', function () {
+        var on = this.classList.toggle('is-on');
+        showToast(on ? 'Hazard saved for offline viewing' : 'Removed from saved');
+      });
+      document.getElementById('btnLive').addEventListener('click', function () { navigate('live'); });
+      document.getElementById('goMapHazard').addEventListener('click', goToMap);
+
+      /* ---------- reports ---------- */
+      document.getElementById('fabReport').addEventListener('click', function () { openOverlay('reportOverlay'); });
+      Array.prototype.forEach.call(document.querySelectorAll('#reportTypeChips .chip'), function (chip) {
+        chip.addEventListener('click', function () {
+          Array.prototype.forEach.call(document.querySelectorAll('#reportTypeChips .chip'), function (c) { c.classList.remove('is-active'); });
+          chip.classList.add('is-active');
+        });
+      });
+      document.getElementById('submitReport').addEventListener('click', function () {
+        var text = document.getElementById('reportText').value.trim();
+        var type = document.querySelector('#reportTypeChips .chip.is-active').dataset.type;
+        if (!text) { showToast('Please describe what you saw'); return; }
+        var row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'report-row';
+        row.dataset.type = type;
+        row.dataset.field = 'You';
+        row.dataset.sub = text;
+        row.innerHTML = '<span class="idx">NEW</span><span class="avatar" style="background:#c9f36b">G</span>' +
+          '<span class="txt"><b></b><small>Guest report · Just now · Pending review</small></span><time>Now</time>';
+        row.querySelector('b').textContent = text;
+        row.addEventListener('click', function () { openFieldReport('You', text); });
+        var list = document.getElementById('reportList');
+        list.insertBefore(row, list.firstChild);
+        document.getElementById('reportText').value = '';
+        closeOverlays();
+        applyFilter(document.querySelector('#reportChips .chip.is-active').dataset.type);
+        showToast('Report submitted for verification');
+      });
+
+      /* ---------- live status ---------- */
+      (function buildCompassTicks() {
+        var g = document.getElementById('compassTicks');
+        if (!g) return;
+        var ns = 'http://www.w3.org/2000/svg';
+        for (var i = 0; i < 24; i++) {
+          var line = document.createElementNS(ns, 'line');
+          var major = i % 6 === 0;
+          line.setAttribute('x1', '100');
+          line.setAttribute('y1', major ? '14' : '18');
+          line.setAttribute('x2', '100');
+          line.setAttribute('y2', major ? '26' : '24');
+          line.setAttribute('transform', 'rotate(' + (i * 15) + ' 100 100)');
+          if (major) line.setAttribute('class', 'major');
+          g.appendChild(line);
+        }
+      })();
+      document.getElementById('emergencyBtn').addEventListener('click', function () { openOverlay('emergencyOverlay'); });
+      document.getElementById('confirmEmergency').addEventListener('click', function () {
+        closeOverlays();
+        showToast('Emergency alert sent to Barangay DRRMO');
+      });
+      document.getElementById('goMapLive').addEventListener('click', goToMap);
+      document.getElementById('layersBtn').addEventListener('click', function () { showToast('Map layers coming soon'); });
+
+      /* ---------- area map (ibinalik ang dating white navbar) ---------- */
+      document.getElementById('routeChip').addEventListener('click', function () { showToast('Route 2 · 17.6 km · Open'); });
+      document.getElementById('layerChip').addEventListener('click', function () { showToast('Hazard layer · 2 critical areas'); });
+      document.getElementById('mapBell').addEventListener('click', function () { showToast('2 unread critical alerts'); });
+
+      /* ---------- basemap style (the label follows the open map style) ----------
+         Same names as the real app's BASEMAP STYLE menu: Flood Prone, Traffic,
+         Weather, Help Center, Streets/Hazard Map. Kapag Flood Prone ang binuksan,
+         "Flood Prone" din ang nakalagay sa gitna. */
+      var MAP_STYLES = [
+        { id: 'hazard',  name: 'Hazard Map',  tint: 'transparent' },
+        { id: 'traffic', name: 'Traffic',     tint: 'rgba(255,170,50,.10)' },
+        { id: 'weather', name: 'Weather',     tint: 'rgba(70,140,255,.14)' },
+        { id: 'flood',   name: 'Flood Prone', tint: 'rgba(35,110,210,.20)' },
+        { id: 'help',    name: 'Help Center', tint: 'rgba(12,20,16,.20)' }
+      ];
+      var STYLE_ALIASES = {
+        hazard: 'hazard', streets: 'hazard', main: 'hazard',
+        traffic: 'traffic', dark: 'traffic',
+        weather: 'weather',
+        flood: 'flood', floodprone: 'flood', light: 'flood',
+        help: 'help', helpcenter: 'help', satellite: 'help'
+      };
+      var styleBtn = document.getElementById('mapStyleBtn');
+      var styleMenu = document.getElementById('mapStyleMenu');
+      var styleLabel = document.getElementById('mapStyleLabel');
+      var styleTint = document.querySelector('.map-style-tint');
+      function closeStyleMenu() {
+        styleMenu.hidden = true;
+        styleBtn.setAttribute('aria-expanded', 'false');
+      }
+      function setMapStyle(id, announce) {
+        var chosen = MAP_STYLES[0];
+        Array.prototype.forEach.call(MAP_STYLES, function (s) { if (s.id === id) chosen = s; });
+        styleLabel.textContent = chosen.name;
+        styleTint.style.background = chosen.tint;
+        styleBtn.setAttribute('aria-label', 'Basemap style: ' + chosen.name + '. Tap to change');
+        try { localStorage.setItem('hs-map-style', chosen.id); } catch (e) {}
+        Array.prototype.forEach.call(styleMenu.querySelectorAll('button'), function (b) {
+          b.classList.toggle('is-active', b.dataset.style === chosen.id);
+        });
+        if (announce) showToast('Basemap style: ' + chosen.name);
+      }
+      styleBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        styleMenu.hidden = !styleMenu.hidden;
+        styleBtn.setAttribute('aria-expanded', String(!styleMenu.hidden));
+      });
+      Array.prototype.forEach.call(styleMenu.querySelectorAll('button'), function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          setMapStyle(b.dataset.style, true);
+          closeStyleMenu();
+        });
+      });
+      document.addEventListener('click', function (e) {
+        if (!styleMenu.hidden && !styleMenu.contains(e.target) && e.target !== styleBtn) closeStyleMenu();
+      });
+      var urlStyle = params.get('style');
+      var savedStyle = null;
+      try { savedStyle = localStorage.getItem('hs-map-style'); } catch (e) {}
+      setMapStyle(urlStyle ? (STYLE_ALIASES[urlStyle.toLowerCase()] || 'hazard') : (savedStyle || 'hazard'), false);
+      document.getElementById('capacityBtn').addEventListener('click', function () { navigate('reports'); });
+      document.getElementById('collapseWarn').addEventListener('click', function () {
+        var sheet = document.getElementById('warningSheet');
+        var collapsed = sheet.classList.toggle('is-collapsed');
+        this.setAttribute('aria-label', collapsed ? 'Expand warnings' : 'Collapse warnings');
+        this.querySelector('use').setAttribute('href', collapsed ? '#i-chev-d' : '#i-chev-u');
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('.affected-row'), function (btn) {
+        btn.addEventListener('click', function () {
+          var detail = btn.nextElementSibling;
+          var open = detail.classList.toggle('is-open');
+          btn.setAttribute('aria-expanded', String(open));
+        });
+      });
+      document.getElementById('goMapArea').addEventListener('click', goToMap);
+
+      /* ---------- search sheet ---------- */
+      var input = document.getElementById('searchInput');
+      var sheetList = document.getElementById('sheetList');
+      var places = [
+        { name: 'Marikina River Flood Watch', sub: 'Water level 17.2 m · Critical', view: 'hazard', icon: 'i-droplet' },
+        { name: 'Route 2 · Central Evacuation Center', sub: '17.6 km · Open', view: 'map', icon: 'i-route' },
+        { name: 'Purok 3 Field Report', sub: 'Ana Reyes · 8:32 AM', view: 'photo', icon: 'i-pin', field: 'Ana Reyes' },
+        { name: 'Station SJ-04 Live Status', sub: 'Updating every 60 seconds', view: 'live', icon: 'i-compass' },
+        { name: 'Community Reports', sub: '12 verified · 4 new today', view: 'reports', icon: 'i-list' }
+      ];
+      function renderPlaces(query) {
+        var q = (query || '').trim().toLowerCase();
+        var matches = places.filter(function (p) { return !q || (p.name + ' ' + p.sub).toLowerCase().indexOf(q) !== -1; });
+        sheetList.innerHTML = '';
+        if (!matches.length) {
+          var empty = document.createElement('p');
+          empty.style.cssText = 'padding:12px 8px;font-size:11px;color:var(--muted)';
+          empty.textContent = 'No matching hazards or places.';
+          sheetList.appendChild(empty);
+          return;
+        }
+        matches.forEach(function (place) {
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'sheet-result';
+          btn.innerHTML = '<svg class="ic"><use href="#' + place.icon + '"/></svg>' +
+            '<span class="txt"><b></b><small></small></span>' +
+            '<svg class="ic trailing"><use href="#i-chev-r"/></svg>';
+          btn.querySelector('b').textContent = place.name;
+          btn.querySelector('small').textContent = place.sub;
+          btn.addEventListener('click', function () {
+            if (place.field) openFieldReport(place.field, place.name);
+            else navigate(place.view);
+          });
+          sheetList.appendChild(btn);
+        });
+      }
+      input.addEventListener('input', function () { renderPlaces(input.value); });
+      document.getElementById('searchOverlay').addEventListener('click', function (e) {
+        if (e.target === this) closeOverlays();
+      });
+      renderPlaces('');
+
+      /* ---------- profile / overlays ---------- */
+      Array.prototype.forEach.call(document.querySelectorAll('[data-toggle]'), function (row) {
+        row.addEventListener('click', function () {
+          row.querySelector('.toggle').classList.toggle('is-on');
+        });
+      });
+      document.getElementById('hotlineBtn').addEventListener('click', function () { showToast('Barangay hotline: (02) 8941-1000'); });
+      document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+      document.querySelector('[data-theme-toggle]').addEventListener('click', toggleTheme);
+      Array.prototype.forEach.call(document.querySelectorAll('[data-close]'), function (btn) {
+        btn.addEventListener('click', closeOverlays);
+      });
+      Array.prototype.forEach.call(overlays, function (o) {
+        o.addEventListener('click', function (e) { if (e.target === o) closeOverlays(); });
+      });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-back]'), function (btn) {
+        btn.addEventListener('click', back);
+      });
+
+      /* ---------- bottom nav ---------- */
+      navItems.forEach(function (item) {
+        item.addEventListener('click', function () {
+          var target = item.dataset.nav;
+          if (target === 'profile') { openOverlay('profileOverlay'); return; }
+          if (target === current) { render(current); return; }
+          navigate(target);
+        });
+      });
+
+      /* ---------- keyboard ---------- */
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var sm = document.getElementById('mapStyleMenu');
+        if (sm && !sm.hidden) { closeOverlays(); return; }
+        if (anyOverlayOpen()) closeOverlays();
+        else if (current !== 'home') back();
+      });
+
+      /* ---------- clock (standalone status bar) ---------- */
+      function tickClock() {
+        var d = new Date();
+        var h = d.getHours() % 12 || 12;
+        document.getElementById('sbTime').textContent = h + ':' + String(d.getMinutes()).padStart(2, '0');
+      }
+      tickClock();
+      setInterval(tickClock, 30000);
+
+      /* ---------- boot ---------- */
+      var urlTheme = params.get('theme');
+      var savedTheme = null;
+      try { savedTheme = localStorage.getItem(THEME_KEY); } catch (e) {}
+      applyTheme((urlTheme === 'dark' || urlTheme === 'light') ? urlTheme : (savedTheme || 'light'));
+
+      var initial = hashView() || 'home';
+      history.replaceState({ view: initial, depth: 0 }, '', '#' + initial);
+      render(initial);
+    })();
+  </script>
+</body>
+</html>

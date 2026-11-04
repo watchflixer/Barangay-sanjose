@@ -10,9 +10,14 @@ import {defineConfig, loadEnv, type Connect, type Plugin} from 'vite';
  * "/" serves the real app on `npm run preview` and `npm run dev`. The Pixel 7
  * device frame (public/pixel7-preview.html) is opt-in:
  *
+ *   - "/?home=1"                    -> 302 to the mobile home screen
+ *                                       (public/mobile-home.html) that now
+ *                                       opens first inside the phone frames
  *   - "/?pixel7=1"                   -> 302 to the Pixel 7 device preview
- *   - "/pixel7-preview.html"         -> the frame directly (sizes it embeds
- *                                       "/index.html", which stays the real app)
+ *   - "/pixel7-preview.html"         -> the frame directly (it embeds
+ *                                       "/mobile-home.html?frame=1"; the
+ *                                       "Go to Map" button swaps it for
+ *                                       "/index.html", the real app)
  *   - "/mobile-preview.html"         -> all devices page
  *   - "/?full=1" or "/?desktop=1"    -> normal desktop app (kept for old links)
  *   - deep links like "/?traffic=1&sfrom=..." go straight to the app, so the
@@ -135,6 +140,15 @@ function pixel7OnDemand(): Plugin {
 
     const params = new URLSearchParams(search);
     const keys = [...params.keys()];
+
+    // Direct link to the mobile home screen (also available as the static
+    // "/mobile-home.html" on Cloudflare Pages, where this plugin is absent).
+    if (keys.includes('home') && params.get('home') !== '0') {
+      res.statusCode = 302;
+      res.setHeader('Location', '/mobile-home.html');
+      res.setHeader('Cache-Control', 'no-store');
+      return res.end();
+    }
 
     // Opt-in only — everything else is the app.
     if (!keys.includes(PIXEL7_FLAG)) return next();

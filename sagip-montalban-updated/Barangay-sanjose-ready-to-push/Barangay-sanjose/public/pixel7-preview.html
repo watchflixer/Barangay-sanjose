@@ -54,6 +54,12 @@
     .pixel7-screen iframe {
       border:0; display:block; background:#fff;
     }
+    /* White theme is the default, so the white Android status bar is default.
+       When the prototype switches to dark, postMessage adds .dark-status. */
+    .pixel7-screen.dark-status .hs-status-bar {
+      background:#0e100e; color:#f4f6f1;
+      box-shadow:0 1px 0 rgba(255,255,255,.07);
+    }
     .punch-hole {
       position:absolute; top:9px; left:50%; transform:translateX(-50%);
       width:13px; height:13px; background:#000; border-radius:50%;
@@ -84,7 +90,16 @@
     }
     .actions .secondary { background:#334155; }
 
-    .tip { margin-top:14px; font-size:11px; opacity:0.5; max-width:380px; text-align:center; line-height:1.5; }
+    .screens { margin-top:14px; display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:560px; }
+    .screens button {
+      background:#1e293b; color:#cbd5e1; border:1px solid #334155;
+      padding:7px 11px; border-radius:999px; font-size:10.5px; font-weight:700;
+      font-family:inherit; cursor:pointer; transition:background .18s, color .18s, border-color .18s;
+    }
+    .screens button:hover { border-color:#475569; }
+    .screens button.is-active { background:rgba(201,243,107,.12); border-color:rgba(201,243,107,.55); color:#c9f36b; }
+
+    .tip { margin-top:14px; font-size:11px; opacity:0.5; max-width:430px; text-align:center; line-height:1.5; }
     .tip code { color:#6ee7b7; }
   </style>
 </head>
@@ -93,8 +108,8 @@
 
   <header>
     <h1>Pixel 7 Preview <span id="sizeLabel">412 × 915</span></h1>
-    <p>Barangay San Jose · HazardSync — mobile view</p>
-    <div class="badge"><i></i> LIVE · NAKA-LOCK SA PIXEL 7</div>
+    <p>Barangay San Jose · HazardSync — 6-screen hazard map flow</p>
+    <div class="badge"><i></i> LIVE · HOME MUNA, TAPOS MAP</div>
   </header>
 
   <div class="stage" id="stage">
@@ -105,7 +120,7 @@
         <div class="btn btn-vol2"></div>
         <div class="pixel7-screen" id="screen">
           <div class="punch-hole"></div>
-          <iframe id="appFrame" src="./index.html" title="HazardSync — Pixel 7 preview" scrolling="yes"></iframe>
+          <iframe id="appFrame" src="./mobile-home.html?frame=1" title="HazardSync — Pixel 7 preview" scrolling="yes"></iframe>
         </div>
       </div>
     </div>
@@ -118,14 +133,29 @@
   </div>
 
   <div class="actions">
-    <a href="./index.html?full=1" target="_blank">Open Desktop App</a>
-    <button class="secondary" type="button" id="reloadBtn">Reload App</button>
+    <button type="button" id="homeBtn">← Home Screen</button>
+    <button class="secondary" type="button" id="themeBtn" data-theme="light" aria-pressed="false">☀ White theme</button>
+    <a class="secondary" href="./index.html?fromHome=1" target="_blank">Open Map</a>
+    <a class="secondary" href="./index.html?full=1" target="_blank">Desktop App</a>
+    <button class="secondary" type="button" id="reloadBtn">Reload</button>
     <a class="secondary" href="?w=375&amp;h=820" id="compactLink">Compact 375 × 820</a>
   </div>
 
+  <div class="screens" id="screenSwitcher" aria-label="Jump to a screen">
+    <button type="button" data-view="home" class="is-active">Home</button>
+    <button type="button" data-view="hazard">Hazard detail</button>
+    <button type="button" data-view="reports">Reports</button>
+    <button type="button" data-view="photo">Field photo</button>
+    <button type="button" data-view="live">Live status</button>
+    <button type="button" data-view="map">Area map</button>
+  </div>
+
   <p class="tip">
-    Ito na ang default sa <code>npm run preview</code> — diretsong Pixel 7.<br />
-    Desktop layout: <code>/?full=1</code> · Lahat ng devices: <code>/mobile-preview.html</code>
+    <strong>Home muna</strong>, tapos i-tap ang featured card, reports, o area map. Bawat screen ay
+    naka-align sa hazard monitoring — alert level, severity, evacuation at verified reports.
+    <strong>White theme ang default</strong> — i-tap ang <code>☀ White theme</code> para sa dark version.<br />
+    Ang <code>Go to Map</code> ay nagbubukas ng tunay na Leaflet hazard map.<br />
+    Direkta: <code>/mobile-home.html</code> · Lahat ng devices: <code>/mobile-preview.html</code>
   </p>
 
   <script src="status-bar.js"></script>
@@ -140,6 +170,77 @@
       var box = document.getElementById('phoneBox');
       var frame = document.getElementById('appFrame');
       var screen = document.getElementById('screen');
+
+      var HOME_URL = './mobile-home.html?frame=1';
+      var APP_URL = './index.html?fromHome=1';
+      // ?app=1 skips the home screen (handy when checking the map itself).
+      if (params.get('app') === '1') frame.src = APP_URL;
+
+      function setTheme(theme) {
+        screen.classList.toggle('dark-status', theme === 'dark');
+      }
+      // White theme is the default; the prototype confirms it via postMessage.
+      if (params.get('app') !== '1') setTheme('light');
+
+      var themeBtn = document.getElementById('themeBtn');
+      function syncThemeButton(theme) {
+        themeBtn.dataset.theme = theme;
+        themeBtn.textContent = theme === 'dark' ? '☾ Dark theme' : '☀ White theme';
+        themeBtn.setAttribute('aria-pressed', String(theme === 'dark'));
+      }
+      themeBtn.addEventListener('click', function () {
+        var next = themeBtn.dataset.theme === 'dark' ? 'light' : 'dark';
+        syncThemeButton(next);
+        setTheme(next);
+        if (isHomeFrame()) {
+          frame.contentWindow.postMessage({ source: 'hs-frame-theme', theme: next }, '*');
+        } else {
+          setActiveScreen('home');
+          frame.src = HOME_URL + '&theme=' + next;
+        }
+      });
+
+      // The embedded prototype reports its theme and current screen.
+      var switcher = document.getElementById('screenSwitcher');
+      function setActiveScreen(view) {
+        Array.prototype.forEach.call(switcher.querySelectorAll('button'), function (b) {
+          b.classList.toggle('is-active', b.dataset.view === view);
+        });
+      }
+      window.addEventListener('message', function (event) {
+        var data = event.data;
+        if (!data || data.source !== 'hs-mobile-home') return;
+        setTheme(data.theme);
+        syncThemeButton(data.theme);
+        if (data.view) setActiveScreen(data.view);
+      });
+
+      function isHomeFrame() {
+        try { return frame.contentWindow.location.pathname.indexOf('mobile-home.html') !== -1; }
+        catch (e) { return false; }
+      }
+      Array.prototype.forEach.call(switcher.querySelectorAll('button'), function (btn) {
+        btn.addEventListener('click', function () {
+          setActiveScreen(btn.dataset.view);
+          if (isHomeFrame()) {
+            frame.contentWindow.postMessage({ source: 'hs-frame-nav', view: btn.dataset.view }, '*');
+          } else {
+            // We are on the real map — reload the prototype at the chosen screen.
+            setTheme('dark');
+            frame.src = HOME_URL + '#' + btn.dataset.view;
+          }
+        });
+      });
+
+      // Once the frame moves to the real map, restore the white status bar.
+      frame.addEventListener('load', function () {
+        try {
+          if (frame.contentWindow.location.pathname.indexOf('mobile-home.html') === -1) {
+            setTheme('light');
+            setActiveScreen('');
+          }
+        } catch (e) { setTheme('light'); }
+      });
 
       // Android status bar (live clock) sits on top of the app viewport.
       var BAR = window.HSStatusBar ? window.HSStatusBar.height('android') : 0;
@@ -176,6 +277,13 @@
       document.getElementById('reloadBtn').addEventListener('click', function () {
         try { frame.contentWindow.location.reload(); }
         catch (e) { frame.src = frame.src; }
+      });
+
+      document.getElementById('homeBtn').addEventListener('click', function () {
+        setTheme('dark');
+        setActiveScreen('home');
+        if (isHomeFrame()) frame.contentWindow.postMessage({ source: 'hs-frame-nav', view: 'home' }, '*');
+        else frame.src = HOME_URL;
       });
     })();
   </script>
