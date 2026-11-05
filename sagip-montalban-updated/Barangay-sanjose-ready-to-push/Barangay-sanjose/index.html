@@ -28,6 +28,18 @@
       .leaflet-control-attribution, .mapboxgl-ctrl-attrib,
       .mapboxgl-ctrl-logo, #credit-strip { display: none !important; }
 
+      /* Map Layers → Live Status: buong screen ang lalabas (stat cards,
+         compass, Emergency alert, Sensor readings), pero nanatili ang mapa
+         sa likod. Walang idinadagdag na pekeng phone chrome. */
+      #hs-live-panel {
+        position: fixed; inset: 0; z-index: 10050; display: none;
+        background: #f7f9f6;
+      }
+      #hs-live-panel.is-on { display: block; }
+      #hs-live-panel iframe {
+        display: block; width: 100%; height: 100%; border: 0;
+      }
+
       /* Walang solid bar: ang mga button ay NAKAPATONG mismo sa map tiles.
          Transparent ang banda, kaya ang mapa ay umaabot sa pinaka-itaas.
          May KUNTING 10px na BLANK top inset (walang anumang iginuguhit):
@@ -160,11 +172,47 @@
       <span id="hs-map-title" data-ink="black" aria-live="polite">Hazard Map</span>
     </div>
     <div id="root"></div>
+    <!-- Lahat ng Map Layers button ay nagbubukas nito: ang Live Status screen
+         ng prototype, eksaktong kapareho ng reference. -->
+    <div id="hs-live-panel" role="dialog" aria-modal="true" aria-label="Live Status" aria-hidden="true">
+      <iframe id="hs-live-frame" title="Live Status" src="about:blank"></iframe>
+    </div>
     <script type="module" src="./src/main.tsx"></script>
     <script>
+      // Go to Map → map-styles.html → dito. Ang ?style= ay ang hayagang pinili
+      // ng user sa style picker. Isusulat ito sa sessionStorage BAGO mag-boot
+      // ang React app: ang module script sa itaas ay deferred, kaya siguradong
+      // nauuna ang classic inline script na 'to. MapViewer.readRefreshView()
+      // ang kumukuha nito para bumukas agad ang tamang view (main / traffic /
+      // flood / helpcenter / weather). Shareable at bookmarkable din ang link.
+      (function () {
+        var VIEWS = {
+          hazard: 'main', streets: 'main', main: 'main',
+          help: 'helpcenter', helpcenter: 'helpcenter', satellite: 'helpcenter',
+          weather: 'weather',
+          flood: 'flood', floodprone: 'flood', light: 'flood',
+          traffic: 'traffic', dark: 'traffic'
+        };
+        var id = new URLSearchParams(location.search).get('style');
+        if (!id) return;
+        var view = VIEWS[String(id).toLowerCase()];
+        if (!view) return;
+        try {
+          window.sessionStorage.setItem('san-jose-refresh-view', view);
+          window.sessionStorage.removeItem('san-jose-helpcenter-open');
+          var picked = view === 'main' ? 'hazard' : view === 'helpcenter' ? 'help' : view;
+          // hs-map-style = para sa #map screen ng prototype; hs-map-last-view
+          // = ang TUNAY na huling binuksan (hindi ang default na isinusulat
+          // ng home page), para hindi magpakita ng maling "Last opened" badge.
+          window.localStorage.setItem('hs-map-style', picked);
+          window.localStorage.setItem('hs-map-last-view', picked);
+        } catch (e) { /* private mode: ang React app ay magde-default sa Hazard Map */ }
+      })();
+
       // Walang nang "Home" pill sa ibaba ng mapa: ang tanging pabalik ay ang
       // back button sa transparent top bar. (?fromHome=1 ay route marker na
-      // lang para sa Go to Map links; hindi na ito nag-re-render ng kahit ano.)
+      // lang para sa link ng style picker; hindi na ito nag-re-render ng kahit
+      // ano. history.back() ang magbabalik sa map-styles.html.)
 
       // Back target (halos buong lapad ng bar) + notification button sa kanan.
       // Balik sa dating screen kung may same-origin history; kung hindi,
@@ -340,6 +388,45 @@
       // na ang banda sa itaas.
       (function () {
         // 63px = dated 53px shift + ang kunting 10px blank top inset sa itaas.
+
+        // LAHAT ng Map Layers button ay COMPASS icon na ngayon: bilog na may
+        // diagonal needle (kapareho ng #i-compass ng prototype at ng
+        // Screenshot 2026-11-05 125752.png). Ang dalawang React-rendered
+        // layers button (#btn-toggle-layers-menu sa main document at
+        // .ph-ctrl--layers button sa Weather iframe) ay HINDI pine-edit sa
+        // src/: ang lumang <Layers> SVG ay itinatago via visibility:hidden
+        // (nananatili ang sukat ng button) at ang compass ay iginuguhit bilang
+        // background-image ng button. Isang CSS lang ang ginagamit sa main
+        // document AT sa bawat same-origin iframe, kaya iisang itsura lahat.
+        var COMPASS =
+          'url("data:image/svg+xml,' +
+          "%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' " +
+          "fill='none' stroke='%23334155' stroke-width='2' " +
+          "stroke-linecap='round' stroke-linejoin='round'%3E" +
+          "%3Ccircle cx='12' cy='12' r='9'/%3E" +
+          "%3Cpath d='m15.5 8.5-2 5-5 2 2-5 5-2Z'/%3E%3C/svg%3E\")";
+        var COMPASS_CSS =
+          '#btn-toggle-layers-menu>svg,.ph-ctrl--layers button>svg,' +
+          '#rt-layers>svg,#rt-layers2>svg{visibility:hidden!important}' +
+          '#btn-toggle-layers-menu,.ph-ctrl--layers button{' +
+          'background-image:' + COMPASS + '!important;' +
+          'background-repeat:no-repeat!important;' +
+          'background-position:center!important;' +
+          'background-size:14px 14px!important}' +
+          // Ang dalawang "Map type / Layers" button ng Traffic route view ay
+          // iginuguhit ng sariling JS icon renderer; CSS din ang nagpapalit sa
+          // kanila kahit hindi pa natatapos ang renderer (o kahit ma-block ang
+          // external Mapbox script sa sandbox).
+          '#rt-layers,#rt-layers2{' +
+          'background-image:' + COMPASS + '!important;' +
+          'background-repeat:no-repeat!important;' +
+          'background-position:center!important;' +
+          'background-size:45% 45%!important}';
+        var own = document.createElement('style');
+        own.id = 'hs-compass-layers-icon';
+        own.textContent = COMPASS_CSS;
+        document.head.appendChild(own);
+
         var CSS =
           // Walang Leaflet / Mapbox / custom credit strip sa anumang embedded map.
           '.leaflet-control-attribution,.mapboxgl-ctrl-attrib,' +
@@ -351,7 +438,17 @@
           '.leaflet-control-zoom:not(#traffic-zoom){transform:translateY(33px)!important}' +
           '#base-switch{right:6px!important;padding:3px!important;gap:2px!important}' +
           '#base-switch button{padding:3px 6px!important;font-size:10px!important}' +
-          '}';
+          '}' + COMPASS_CSS;
+        // Lahat ng layers button SA LOOB ng embedded maps (Flood / Traffic /
+        // Weather) ay nagpapadala ng iisang message sa parent para buksan ang
+        // Live Status panel — hindi na ang maliit na MAP SETTINGS popup.
+        var HOOK =
+          "document.addEventListener('click',function(e){" +
+          "var t=e.target&&e.target.closest?e.target.closest(" +
+          "'#host-layers,.ph-ctrl--layers button,[aria-label=\"Layers\"]'):null;" +
+          "if(!t)return;e.preventDefault();e.stopImmediatePropagation();" +
+          "try{window.parent.postMessage({type:'hazardsync-live-open'},location.origin)}catch(x){}" +
+          "},true);";
         function shift() {
           var frames = document.querySelectorAll('iframe');
           for (var i = 0; i < frames.length; i++) {
@@ -363,6 +460,12 @@
               s.id = 'hs-overlay-shift';
               s.textContent = CSS;
               d.head.appendChild(s);
+              if (!d.getElementById('hs-live-layers-hook')) {
+                var sc = d.createElement('script');
+                sc.id = 'hs-live-layers-hook';
+                sc.textContent = HOOK;
+                d.body.appendChild(sc);
+              }
             } catch (e) { /* cross-origin: hindi na kailangan */ }
           }
         }
@@ -372,6 +475,90 @@
           new MutationObserver(shift).observe(document.body, { childList: true, subtree: true });
         }
         shift();
+      })();
+    </script>
+    <script>
+      /* ============================================================
+         MAP LAYERS → LIVE STATUS
+         Iisang aksyon sa LAHAT ng layers button:
+           · React #btn-toggle-layers-menu (Hazard Map / Help Center)
+           · #host-layers ng Flood at Traffic iframes
+           · .ph-ctrl--layers button ng Weather iframe
+           · #layersBtn / #layerChip ng prototype (mobile-home.html)
+         Ang lalabas ay ang buong Live Status screen (6h 47min / 17.6 km,
+         260° compass, Emergency alert, Sensor readings), hindi ang maliit na
+         MAP SETTINGS popup at hindi na ang "coming soon" toast.
+         ============================================================ */
+      (function () {
+        var panel = document.getElementById('hs-live-panel');
+        var frame = document.getElementById('hs-live-frame');
+        if (!panel || !frame) return;
+
+        function open() {
+          if (panel.classList.contains('is-on')) return;
+          var framed = window.self !== window.top;
+          frame.src = './mobile-home.html' + (framed ? '?frame=1' : '') + '#live';
+          panel.classList.add('is-on');
+          panel.setAttribute('aria-hidden', 'false');
+        }
+        function close() {
+          if (!panel.classList.contains('is-on')) return;
+          panel.classList.remove('is-on');
+          panel.setAttribute('aria-hidden', 'true');
+          frame.src = 'about:blank';
+        }
+
+        // Kasi same-origin, ang ‹ back disc ng Live Status screen ay pwedeng
+        // i-wire mula sa parent para ISARA ang panel sa halip na mag-navigate
+        // sa loob ng iframe. Capture sa iframe document = nauuna sa sariling
+        // `back()` listener ng prototype.
+        frame.addEventListener('load', function () {
+          try {
+            var d = frame.contentDocument;
+            if (!d || !d.body || d.URL === 'about:blank') return;
+            d.addEventListener('click', function (e) {
+              var back = e.target && e.target.closest
+                ? e.target.closest('.view-live [data-back]') : null;
+              if (back) {
+                e.preventDefault(); e.stopImmediatePropagation();
+                close();
+                return;
+              }
+              // "Open live hazard map" → style picker sa PARENT, hindi sa loob
+              // ng panel, para hindi magkaroon ng mapa-sa-loob-ng-panel.
+              var go = e.target && e.target.closest
+                ? e.target.closest('#goMapLive') : null;
+              if (go) {
+                e.preventDefault(); e.stopImmediatePropagation();
+                window.location.href = './map-styles.html';
+              }
+            }, true);
+            d.addEventListener('keydown', function (e) {
+              if (e.key === 'Escape') close();
+            }, true);
+          } catch (e) { /* cross-origin: hindi mangyayari, same-origin ito */ }
+        });
+
+        window.addEventListener('message', function (e) {
+          if (e.origin !== location.origin) return;
+          var m = e.data;
+          if (!m || typeof m !== 'object') return;
+          if (m.type === 'hazardsync-live-open') open();
+          if (m.type === 'hazardsync-live-close') close();
+        });
+
+        // React Layers button (Hazard Map / Streets at Help Center).
+        document.addEventListener('click', function (e) {
+          var b = e.target && e.target.closest
+            ? e.target.closest('#btn-toggle-layers-menu') : null;
+          if (!b || b.disabled) return;
+          e.preventDefault(); e.stopImmediatePropagation();
+          open();
+        }, true);
+
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape') close();
+        });
       })();
     </script>
   </body>
