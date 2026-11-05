@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7f9f6" />
+  <meta name="description" content="HazardSync — choose which map to open: Hazard Map, Help Center, Weather, Flood Prone or Traffic. Open to everyone, no account required." />
+  <title>HazardSync · Choose a Map</title>
+  <script>
+    // Same pre-paint theme as the home screen: white is the default, and the
+    // choice survives across the home / picker / map pages (?theme= wins).
+    (function () {
+      var q = new URLSearchParams(location.search).get('theme');
+      var saved = null;
+      try { saved = localStorage.getItem('hs-theme'); } catch (e) {}
+      var theme = (q === 'dark' || q === 'light') ? q : (saved === 'dark' ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b100e' : '#f7f9f6');
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       HAZARDSYNC · MAP STYLE PICKER
+       Kaparehong design system ng mobile-home.html: iisang token set,
+       iisang 8dp rhythm, puting default + dark toggle, at --sb:30px na
+       BLANK top safe area (WALANG status bar / notch / gesture pill).
+       ============================================================ */
+    :root {
+      --bg: #0b100e;
+      --surface: #141a17;
+      --surface-2: #1b221e;
+      --line: rgba(255, 255, 255, .09);
+      --line-strong: rgba(255, 255, 255, .17);
+      --text: #f2f6f1;
+      --muted: #98a39b;
+      --faint: #6d786f;
+      --sb: 30px;
+      --ease: cubic-bezier(.2, 0, 0, 1);
+      --shadow: 0 10px 26px rgba(0, 0, 0, .26);
+    }
+    :root[data-theme="light"] {
+      --bg: #f7f9f6;
+      --surface: #ffffff;
+      --surface-2: #f1f4ef;
+      --line: rgba(16, 26, 20, .10);
+      --line-strong: rgba(16, 26, 20, .18);
+      --text: #101a14;
+      --muted: #5f6b62;
+      --faint: #8b958c;
+      --shadow: 0 10px 26px rgba(16, 26, 20, .08);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; }
+    body {
+      background: #050806; color: var(--text);
+      font-family: 'Plus Jakarta Sans', 'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    :root[data-theme="light"] body { background: #e9eee8; }
+    button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--a, #2e7d52); outline-offset: 3px; }
+    .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .ic { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+    .scroll { scrollbar-width: none; }
+    .scroll::-webkit-scrollbar { display: none; }
+
+    .app {
+      position: relative; width: 100%; max-width: 412px; min-height: 100dvh;
+      margin: 0 auto; isolation: isolate; background: var(--bg);
+      display: flex; flex-direction: column;
+      box-shadow: 0 0 60px rgba(0, 0, 0, .18);
+    }
+    /* BLANK 30px top safe area — espasyo lang, walang anumang iginuguhit. */
+    .safe { flex: none; height: var(--sb); }
+    .topbar {
+      flex: none; display: flex; align-items: center; gap: 10px;
+      padding: 12px 18px 0;
+    }
+    .round-btn {
+      width: 40px; height: 40px; flex: none; border-radius: 50%;
+      display: grid; place-items: center;
+      color: #fff; background: rgba(20, 26, 23, .6); border: 1px solid var(--line-strong);
+      backdrop-filter: blur(12px);
+      transition: transform .16s var(--ease), background .16s;
+    }
+    .round-btn:hover { background: rgba(36, 45, 39, .8); }
+    .round-btn:active { transform: scale(.93); }
+    .round-btn .ic { width: 19px; height: 19px; stroke-width: 2.1; }
+    :root[data-theme="light"] .round-btn {
+      color: #101a14; background: rgba(255, 255, 255, .92); border-color: rgba(16, 26, 20, .14);
+    }
+    :root[data-theme="light"] .round-btn:hover { background: #fff; }
+    .topbar .label {
+      flex: 1; text-align: center; font-size: 10px; font-weight: 800;
+      letter-spacing: 1.6px; text-transform: uppercase; color: var(--faint);
+    }
+
+    .content { flex: 1; overflow-y: auto; padding: 26px 20px 30px; }
+    .eyebrow { font-size: 9.5px; font-weight: 800; letter-spacing: 1.7px; color: var(--faint); }
+    .intro h1 {
+      margin-top: 9px; font-size: 27px; font-weight: 800; letter-spacing: -1px; line-height: 1.15;
+    }
+    .intro p {
+      margin-top: 9px; font-size: 12.5px; line-height: 1.55; color: var(--muted);
+      max-width: 34ch;
+    }
+    .meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 15px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px;
+      border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line);
+      font-size: 10px; font-weight: 700; color: var(--muted);
+    }
+    .pill .ic { width: 13px; height: 13px; stroke-width: 2; }
+
+    .list-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: 26px 2px 11px;
+    }
+    .list-head strong { font-size: 11px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase; color: var(--muted); }
+    .list-head span { font-size: 10px; font-weight: 700; color: var(--faint); }
+
+    .style-list { display: flex; flex-direction: column; gap: 10px; }
+    .style-card {
+      --a: #2e7d52; --a-soft: rgba(46, 125, 82, .10);
+      position: relative; width: 100%; display: flex; align-items: center; gap: 13px;
+      padding: 13px 14px; border-radius: 20px; text-align: left;
+      background: var(--surface); border: 1px solid var(--line);
+      transition: transform .18s var(--ease), border-color .18s, box-shadow .18s var(--ease), background .18s;
+    }
+    /* Isang accent bawat style — limang magkakaibang hue + sariling icon. */
+    .style-card[data-style="hazard"]  { --a: #2e7d52; --a-soft: rgba(46, 125, 82, .10); }
+    .style-card[data-style="help"]    { --a: #0f766e; --a-soft: rgba(15, 118, 110, .10); }
+    .style-card[data-style="weather"] { --a: #4f46e5; --a-soft: rgba(79, 70, 229, .10); }
+    .style-card[data-style="flood"]   { --a: #0369a1; --a-soft: rgba(3, 105, 161, .10); }
+    .style-card[data-style="traffic"] { --a: #a86500; --a-soft: rgba(168, 101, 0, .12); }
+    :root[data-theme="dark"] .style-card[data-style="hazard"]  { --a: #c9f36b; --a-soft: rgba(201, 243, 107, .13); }
+    :root[data-theme="dark"] .style-card[data-style="help"]    { --a: #6fe0c1; --a-soft: rgba(111, 224, 193, .13); }
+    :root[data-theme="dark"] .style-card[data-style="weather"] { --a: #a99bff; --a-soft: rgba(169, 155, 255, .14); }
+    :root[data-theme="dark"] .style-card[data-style="flood"]   { --a: #6ea8fe; --a-soft: rgba(110, 168, 254, .14); }
+    :root[data-theme="dark"] .style-card[data-style="traffic"] { --a: #ffc24b; --a-soft: rgba(255, 194, 75, .14); }
+    .style-card:hover { border-color: var(--a); transform: translateY(-2px); box-shadow: var(--shadow); }
+    .style-card:active { transform: scale(.99); }
+    .style-card.is-last { border-color: var(--a); }
+    .tile {
+      width: 48px; height: 48px; flex: none; border-radius: 15px;
+      display: grid; place-items: center; background: var(--a-soft); color: var(--a);
+    }
+    .tile .ic { width: 23px; height: 23px; stroke-width: 1.85; }
+    .copy { flex: 1; min-width: 0; }
+    .copy b { display: block; font-size: 15px; font-weight: 800; letter-spacing: -.25px; }
+    .copy small { display: block; margin-top: 3px; font-size: 11px; line-height: 1.35; color: var(--muted); }
+    .last-tag {
+      display: none; margin-top: 5px; font-size: 8.5px; font-weight: 800;
+      letter-spacing: .8px; text-transform: uppercase; color: var(--a);
+    }
+    .style-card.is-last .last-tag { display: block; }
+    .chev { width: 18px; height: 18px; flex: none; color: var(--faint); }
+    .style-card:hover .chev { color: var(--a); }
+
+    .foot { margin-top: 22px; padding: 0 2px; }
+    .foot p { font-size: 10.5px; line-height: 1.6; color: var(--faint); }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 7px; margin-top: 15px;
+      font-size: 11.5px; font-weight: 800; color: var(--muted); text-decoration: none;
+    }
+    .back-link .ic { width: 15px; height: 15px; }
+    .back-link:hover { color: var(--text); }
+
+    @media (max-width: 260px) {
+      .content { padding-left: 13px; padding-right: 13px; }
+      .intro h1 { font-size: 22px; }
+      .style-card { gap: 10px; padding: 11px; border-radius: 17px; }
+      .tile { width: 40px; height: 40px; border-radius: 13px; }
+      .tile .ic { width: 20px; height: 20px; }
+      .copy b { font-size: 13px; }
+      .copy small { font-size: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-arrow-l" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2.5 4 6v5.5c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-3.5Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3V6Z"/><path d="M9 3v15M15 6v15"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.5 2.5 0 1 1 4 2c-.9.7-1.6 1.1-1.6 2.3M12 17h.01"/></symbol>
+    <symbol id="i-weather" viewBox="0 0 24 24"><path d="M17.5 18.5a4.2 4.2 0 0 0 .5-8.4 6 6 0 0 0-11.6 1.4A3.5 3.5 0 0 0 7 18.5h10.5Z"/><path d="m9 21 .8-1.8M13 21l.8-1.8M17 21l.8-1.8"/></symbol>
+    <symbol id="i-flood" viewBox="0 0 24 24"><path d="M12 2.8S5.6 9.6 5.6 14a6.4 6.4 0 0 0 12.8 0c0-4.4-6.4-11.2-6.4-11.2Z"/><path d="M9 15.2c.7.9 1.6 1.4 2.7 1.5"/></symbol>
+    <symbol id="i-traffic" viewBox="0 0 24 24"><path d="M8 3 5 21M16 3l3 18M12 4v3M12 10.5v3M12 17v3"/></symbol>
+  </svg>
+
+  <main class="app" aria-label="Choose a map style">
+    <div class="safe" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <button class="round-btn" id="backBtn" type="button" aria-label="Back to home" title="Back to home">
+        <svg class="ic"><use href="#i-arrow-l"/></svg>
+      </button>
+      <span class="label">Go to Map</span>
+      <button class="round-btn" id="themeBtn" type="button" aria-label="Switch to dark theme" title="Switch theme">
+        <svg class="ic"><use href="#i-moon"/></svg>
+      </button>
+    </header>
+
+    <div class="content scroll">
+      <section class="intro">
+        <span class="eyebrow">BASE MAP STYLE</span>
+        <h1>Choose a map</h1>
+        <p>Pick the view you want to open. Every map covers the whole of Rizal and is open to everyone.</p>
+        <div class="meta">
+          <span class="pill"><svg class="ic"><use href="#i-globe"/></svg>All of Rizal</span>
+          <span class="pill"><svg class="ic"><use href="#i-shield"/></svg>No account needed</span>
+        </div>
+      </section>
+
+      <div class="list-head"><strong>Map styles</strong><span>5 available</span></div>
+
+      <div class="style-list" role="group" aria-label="Map styles">
+        <button class="style-card" type="button" data-style="hazard" aria-label="Open Hazard Map">
+          <span class="tile"><svg class="ic"><use href="#i-map"/></svg></span>
+          <span class="copy"><b>Hazard Map</b><small>Live incidents, alerts and evacuation routes</small><span class="last-tag">Last opened</span></span>
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>
+        </button>
+        <button class="style-card" type="button" data-style="help" aria-label="Open Help Center">
+          <span class="tile"><svg class="ic"><use href="#i-help"/></svg></span>
+          <span class="copy"><b>Help Center</b><small>Find shelters, clinics and nearby services</small><span class="last-tag">Last opened</span></span>
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>
+        </button>
+        <button class="style-card" type="button" data-style="weather" aria-label="Open Weather">
+          <span class="tile"><svg class="ic"><use href="#i-weather"/></svg></span>
+          <span class="copy"><b>Weather</b><small>Rainfall, radar and PAGASA bulletins</small><span class="last-tag">Last opened</span></span>
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>
+        </button>
+        <button class="style-card" type="button" data-style="flood" aria-label="Open Flood Prone">
+          <span class="tile"><svg class="ic"><use href="#i-flood"/></svg></span>
+          <span class="copy"><b>Flood Prone</b><small>100-year flood hazard areas by severity</small><span class="last-tag">Last opened</span></span>
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>
+        </button>
+        <button class="style-card" type="button" data-style="traffic" aria-label="Open Traffic">
+          <span class="tile"><svg class="ic"><use href="#i-traffic"/></svg></span>
+          <span class="copy"><b>Traffic</b><small>Realtime road conditions and route planning</small><span class="last-tag">Last opened</span></span>
+          <svg class="ic chev"><use href="#i-chev-r"/></svg>
+        </button>
+      </div>
+
+      <div class="foot">
+        <p>You can switch styles anytime with the Layers button on the map. Your last choice is remembered here.</p>
+        <a class="back-link" id="backLink" href="./mobile-home.html#home"><svg class="ic"><use href="#i-arrow-l"/></svg>Back to home</a>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var THEME_KEY = 'hs-theme';
+      function currentTheme() { return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'; }
+      function applyTheme(theme) {
+        theme = theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.dataset.theme = theme;
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b100e' : '#f7f9f6');
+        var btn = document.getElementById('themeBtn');
+        if (btn) {
+          var use = btn.querySelector('use');
+          if (use) use.setAttribute('href', theme === 'dark' ? '#i-sun' : '#i-moon');
+          btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+        }
+      }
+      document.getElementById('themeBtn').addEventListener('click', function () {
+        applyTheme(currentTheme() === 'light' ? 'dark' : 'light');
+      });
+      applyTheme(currentTheme());
+
+      // Kapag nasa loob ng preview iframe, panatilihin ang ?frame=1 marker
+      // pagbalik sa home (walang pekeng phone chrome na idinadagdag).
+      var framed = window.self !== window.top;
+      var homeUrl = './mobile-home.html' + (framed ? '?frame=1' : '') + '#home';
+      document.getElementById('backLink').setAttribute('href', homeUrl);
+      document.getElementById('backBtn').addEventListener('click', function () {
+        // history.back() ang mas natural kapag galing mismo sa home screen.
+        var sameOrigin = document.referrer && document.referrer.indexOf(location.origin) === 0;
+        if (sameOrigin && history.length > 1) history.back();
+        else location.href = homeUrl;
+      });
+
+      // "Last opened" = ang TUNAY na huling binuksan sa mapa. Hindi ginagamit
+      // ang hs-map-style dahil isinusulat iyon ng home page bilang default
+      // ('hazard') kahit wala pang pinipili ang user — magmumukhang mali ang
+      // badge sa unang bisita.
+      var ALIASES = {
+        hazard: 'hazard', streets: 'hazard', main: 'hazard',
+        help: 'help', helpcenter: 'help', satellite: 'help',
+        weather: 'weather',
+        flood: 'flood', floodprone: 'flood', light: 'flood',
+        traffic: 'traffic', dark: 'traffic'
+      };
+      function markLast() {
+        var last = null;
+        try { last = localStorage.getItem('hs-map-last-view'); } catch (e) {}
+        last = ALIASES[String(last || '').toLowerCase()] || null;
+        Array.prototype.forEach.call(document.querySelectorAll('.style-card'), function (card) {
+          card.classList.toggle('is-last', card.dataset.style === last);
+        });
+      }
+      markLast();
+      // history.back() mula sa mapa ay madalas bumabalik via bfcache (walang
+      // re-run ng script), kaya i-refresh ang badge sa tuwing ipapakita ang page.
+      window.addEventListener('pageshow', markLast);
+
+      // Ang ?style= ay binabasa ng inline script sa index.html BAGO mag-boot
+      // ang React app: isinusulat nito ang san-jose-refresh-view kaya bumubukas
+      // agad ang tamang view. Shareable/bookmarkable din ang link.
+      Array.prototype.forEach.call(document.querySelectorAll('.style-card'), function (card) {
+        card.addEventListener('click', function () {
+          location.href = './index.html?fromHome=1&style=' + encodeURIComponent(card.dataset.style);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

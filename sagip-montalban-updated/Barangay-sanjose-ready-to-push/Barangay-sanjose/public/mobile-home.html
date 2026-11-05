@@ -110,6 +110,23 @@
     .round-btn:hover { background: rgba(36,45,39,.8); }
     .round-btn:active { transform: scale(.93); }
     .round-btn.is-on { color: var(--lime); border-color: rgba(201,243,107,.55); }
+    /* Map Layers button: KAPAREHO ng layers button ng tunay na mapa at ng
+       Flood/Traffic/Weather controls — puting rounded-SQUARE + COMPASS icon
+       (bilog na may diagonal needle, #i-compass). Iisang itsura at iisang
+       icon sa lahat ng screen; hindi na ang dating layers/grid icon. */
+    .layers-btn {
+      width: 40px; height: 40px; flex: none; border-radius: 12px;
+      display: grid; place-items: center;
+      color: #101a14; background: #fff; border: 1px solid rgba(16,26,20,.18);
+      box-shadow: 0 4px 16px rgba(0,0,0,.28);
+      transition: transform .16s var(--ease), background .16s;
+    }
+    .layers-btn:hover { background: #f1f4ef; }
+    .layers-btn:active { transform: scale(.93); }
+    .layers-btn .ic { width: 21px; height: 21px; stroke-width: 1.9; }
+    :root[data-theme="dark"] .layers-btn {
+      color: #101a14; background: #fff; border-color: rgba(16,26,20,.18);
+    }
     .glass {
       background: rgba(20,26,23,.68); border: 1px solid var(--line-strong);
       backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
@@ -1096,7 +1113,7 @@
       <div class="topbar">
         <button class="round-btn" type="button" data-back aria-label="Back"><svg class="ic"><use href="#i-chev-l"/></svg></button>
         <span class="title" style="flex:1;text-align:center;font-size:14px;font-weight:800">Live Status</span>
-        <button class="round-btn" id="layersBtn" type="button" aria-label="Map layers"><svg class="ic"><use href="#i-grid"/></svg></button>
+        <button class="layers-btn" id="layersBtn" type="button" aria-label="Map layers"><svg class="ic"><use href="#i-compass"/></svg></button>
       </div>
       <div class="live-body scroll">
         <h2 class="live-title">Hazard Details</h2>
@@ -1181,7 +1198,7 @@
             <svg class="ic trailing"><use href="#i-chev-u"/></svg>
           </button>
           <button class="map-nav-chip" id="layerChip" type="button">
-            <svg class="ic"><use href="#i-layers"/></svg><span>Hazard layer</span>
+            <svg class="ic"><use href="#i-compass"/></svg><span>Hazard layer</span>
           </button>
         </div>
       </div>
@@ -1448,7 +1465,10 @@
         else if (d.source === 'hs-frame-theme') applyTheme(d.theme);
       });
 
-      function goToMap() { window.location.href = './index.html?fromHome=1'; }
+      /* Go to Map → MUNANG pumunta sa map-styles.html (pagpipilian ng 5 map
+         styles), hindi diretso sa index.html. Doon pipili ang user ng Hazard
+         Map / Help Center / Weather / Flood Prone / Traffic. */
+      function goToMap() { window.location.href = './map-styles.html'; }
 
       /* ---------- home ---------- */
       function applyFilter(type) {
@@ -1600,11 +1620,15 @@
         showToast('Emergency alert sent to Barangay DRRMO');
       });
       document.getElementById('goMapLive').addEventListener('click', goToMap);
-      document.getElementById('layersBtn').addEventListener('click', function () { showToast('Map layers coming soon'); });
+      /* LAHAT ng Map Layers button → Live Status screen (ang itsura ng screen
+         na may 6h 47min / 17.6 km, 260° compass, Emergency alert at Sensor
+         readings). Kaparehong aksyon sa lahat ng layers button ng app. */
+      function openLiveStatus() { navigate('live'); }
+      document.getElementById('layersBtn').addEventListener('click', openLiveStatus);
 
       /* ---------- area map (ibinalik ang dating white navbar) ---------- */
       document.getElementById('routeChip').addEventListener('click', function () { showToast('Route 2 · 17.6 km · Open'); });
-      document.getElementById('layerChip').addEventListener('click', function () { showToast('Hazard layer · 2 critical areas'); });
+      document.getElementById('layerChip').addEventListener('click', openLiveStatus);
       document.getElementById('mapBell').addEventListener('click', function () { showToast('2 unread critical alerts'); });
 
       /* ---------- basemap style (the label follows the open map style) ----------

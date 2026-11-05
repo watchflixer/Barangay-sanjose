@@ -16,8 +16,9 @@ na nag-e-embed ng totoong app, naka-fit sa kahit gaano kaliit na preview panel).
 | `/?home=1`                         | Redirect sa home screen (dev/preview; sa Pages gamitin ang URL sa itaas) |
 | `/?pixel7=1`                       | Pixel 7 device preview — **home muna**                        |
 | `/?full=1` o `/?desktop=1`         | Desktop/regular app                                           |
-| `/index.html`                      | Raw app (ito ang binubuksan ng `Go to Map`)                   |
-| `/index.html?fromHome=1`           | Raw app (route marker lang; pabalik = back button sa taas)     |
+| `/map-styles.html`                 | **Pagpipilian ng 5 map styles** (binubuksan ng `Go to Map`)   |
+| `/index.html`                      | Raw app (default: Hazard Map)                                 |
+| `/index.html?fromHome=1&style=flood` | Raw app na diretso sa napiling style (`hazard` / `help` / `weather` / `flood` / `traffic`) |
 | `/pixel7-preview.html?w=375&h=820` | Pixel 7 frame sa ibang viewport size                          |
 | `/mobile-preview.html`             | Lahat ng devices (Pixel 7, iPhone SE, iPhone 14 Pro, Android) |
 | `/?traffic=1&sfrom=...`            | Deep link papuntang app (hindi ni-re-redirect)                |
@@ -100,9 +101,9 @@ para manatiling buo ang existing layout tests.
 **Tinanggal na rin ang maliit na `Home` pill** (`#hs-home-shortcut`) na dating
 nasa ibabang kaliwa ng tunay na mapa — nakikipag-banggaan ito sa incident banner
 at sa controls. Ang tanging pabalik na ngayon ay ang **`←` back button** sa
-transparent top bar (`history.back()` o `./mobile-home.html`). Ang
-`?fromHome=1` ay iniwang route marker para hindi mabasag ang `Go to Map` links,
-pero wala na itong ini-inject na element.
+transparent top bar (`history.back()` — pabalik sa style picker — o
+`./mobile-home.html` kapag walang history). Ang `?fromHome=1` ay iniwang route
+marker para sa link ng style picker, pero wala na itong ini-inject na element.
 
 **Floating back bar sa tunay na map** — sa halip ng lumang brand navbar, may
 `#hs-map-back-bar` sa pinaka-itaas: **black `←` icon** sa loob ng 38px na
@@ -212,11 +213,67 @@ walang overflow. Nasa `index.html` lang din ito, hindi sa React tree. Ang
 notification icon ng prototype (`#mapBell`) ay hiwalay at nananatiling bell na
 may pulang dot; ang sarili nitong dynamic label (`#mapStyleLabel`) ay buo rin.
 
-**`Go to Map`** ay nasa home, hazard sheet, photo, live at area map. Binubuksan
-nito ang tunay na `/index.html?fromHome=1` — ang existing Leaflet hazard map,
-hindi dummy page — at ang back button sa taas ang pabalik. Hindi nagbago ang default
-na `/`: ang normal app ang lalabas doon, kaya ligtas ang lahat ng existing
-layout tests.
+**`Go to Map` → style picker muna.** Ang limang `Go to Map` (home, hazard sheet,
+photo, live, area map) ay hindi na direktang pumupunta sa `/index.html`:
+nagbubukas muna ang **`/map-styles.html`**, isang bagong pahina na may pagpipilian
+ng eksaktong limang map styles sa ganitong order — **Hazard Map, Help Center,
+Weather, Flood Prone, Traffic**. Kapareho ng design system ng home ang pahina
+(iisang token set, white default + dark toggle sa `hs-theme`, `--sb: 30px` na
+**blank** top safe area, walang pekeng status bar / notch / gesture pill). Bawat
+option ay card na may sariling accent + icon, pamagat, maikling paliwanag at
+`Last opened` badge; may `←` back button at `Back to home` link din.
+
+| Napili | `?style=` | `san-jose-refresh-view` |
+| ------ | --------- | ----------------------- |
+| Hazard Map | `hazard` | `main` |
+| Help Center | `help` | `helpcenter` |
+| Weather | `weather` | `weather` |
+| Flood Prone | `flood` | `flood` |
+| Traffic | `traffic` | `traffic` |
+
+Ang card ay nagna-navigate sa `/index.html?fromHome=1&style=<id>`. Isang **classic
+inline script sa `index.html`** ang nagbabasa ng `?style=` at nagsusulat ng
+`sessionStorage['san-jose-refresh-view']` **bago** mag-execute ang deferred React
+module — kaya ang `MapViewer.readRefreshView()` ay agad na nagbubukas ng tamang
+view. Ina-update din nito ang `localStorage['hs-map-style']` (para sa `#map` screen
+ng prototype) at `localStorage['hs-map-last-view']` (para sa `Last opened`
+badge — hiwalay ito dahil ang home page ay nagsusulat ng default na `hazard`
+kahit wala pang pinipili), at kini-clear ang `san-jose-helpcenter-open`. **Walang `src/` change.** Dahil query parameter ito,
+shareable at bookmarkable ang bawat style. Ang back button sa transparent top
+bar ay `history.back()` kaya pabalik ito sa picker, hindi diretso sa home. Hindi
+nagbago ang default na `/`: ang normal app ang lalabas doon, kaya ligtas ang
+lahat ng existing layout tests.
+
+**Lahat ng `Map Layers` button → Live Status screen.** Iisang itsura at iisang
+aksyon sa bawat layers button ng buong app:
+
+| Layers button | Saan | Dati | Ngayon |
+| ------------- | ---- | ---- | ------ |
+| `#btn-toggle-layers-menu` | Hazard Map / Help Center (React) | maliit na `MAP SETTINGS` popup | **Live Status panel** |
+| `#host-layers` | Flood Prone at Traffic iframes | maliit na `MAP SETTINGS` popup | **Live Status panel** |
+| `.ph-ctrl--layers button` | Weather iframe | maliit na `BASEMAP STYLE` popup | **Live Status panel** |
+| `#layersBtn` / `#layerChip` | prototype (`mobile-home.html`) | toast na `Map layers coming soon` | **`#live` screen** |
+
+Ang itsura ng button ay **puting rounded-square + COMPASS icon** (bilog na
+may diagonal needle, `Screenshot 2026-11-05 125752.png`): ganito na ang React /
+host / weather controls, at ginawang ganito rin ang dating bilog + grid icon na
+`#layersBtn` ng prototype (bagong `.layers-btn` class). Ang icon ay eksaktong
+`#i-compass` (`<circle r="9">` + diagonal needle) sa prototype at sa Flood /
+Traffic / Weather controls (`#i-grid` → `#i-layers` → `#i-compass`); sa mga
+React button ay CSS override sa `index.html` ang ginamit — itinatago ang lumang
+`<Layers>` SVG via `visibility:hidden` (hindi nagbabago ang sukat ng button) at
+iginuguhit ang compass bilang `background-image` — kaya **walang `src/` change**.
+Sa tunay na mapa, ang pag-click ay nagbubukas
+ng `#hs-live-panel` — isang full-screen `iframe` ng
+`./mobile-home.html?frame=1#live` (eksaktong Live Status screen: 6h 47min,
+17.6 km, 260° compass, Emergency alert, Sensor readings) — kaya **nanatili ang
+mapa sa likod**. Isang `document`-capture listener sa `index.html` ang
+humaharang sa React button, at ang `hs-overlay-shift` injector ay naglalagay ng
+`hs-live-layers-hook` script sa bawat same-origin iframe para mag-post ng
+`hazardsync-live-open`. Ang `‹` back disc ng panel at `Escape` ay nagsasara; ang
+`Open live hazard map` ay nagbubukas ng `/map-styles.html` sa parent (hindi sa
+loob ng panel). **Walang `src/` change.** Ang limang basemap styles ay
+abot pa rin sa pamamagitan ng `Go to Map` → picker at ng `?style=` deep links.
 
 Navigation: hash-based (`#home` … `#map`) na may `history.pushState` kaya
 gumagana ang browser/iframe back; `Escape` ay nagba-back o nagsasara ng sheet.
