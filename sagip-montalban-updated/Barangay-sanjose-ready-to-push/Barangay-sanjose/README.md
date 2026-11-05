@@ -31,7 +31,7 @@ copy, imagery at interaction ay naka-align sa **hazard monitoring** — alert
 level, severity, water level, evacuation routes, verified reports at emergency
 alert. Iisang design system ang gamit (white + dark theme): iisang token set,
 `--lime` = action, `--amber` = watch, `--red` = critical, `--blue` = lokasyon;
-8dp spacing, 16–28px radii, 200–280ms motion, `aria`/focus-visible at
+8dp spacing, 7–10px radii sa lahat ng screen, 200–280ms motion, `aria`/focus-visible at
 `prefers-reduced-motion` support.
 
 **Buong Rizal ang scope, hindi isang barangay.** Dahil wala pang login at
@@ -52,8 +52,8 @@ Naka-save ang choice sa `localStorage` (`hs-theme`) at ina-apply bago mag-paint
 para walang flash; pwede rin ang `?theme=dark` / `?theme=light` sa URL.
 Sa light mode: puting surfaces, `--lime` ay mas madilim na `#2e7d52` para
 mabasa ang white text sa primary buttons, severity colors ay mas contrast,
-at ang mga photo/map overlays ay nananatiling madilim para mabasa ang white
-captions. **Walang pekeng phone chrome sa mga device frame**: tinanggal na ang
+at ang mga floating card sa ibabaw ng litrato/mapa ay puti na may maitim na
+ teksto sa parehong theme para hindi umasa sa glass blur. **Walang pekeng phone chrome sa mga device frame**: tinanggal na ang
 Android status bar (oras / wifi / battery), camera punch-hole at ang gray
 gesture pill sa ibaba; ang iframe ay buong taas ng screen mula `y = 0`. Bilang
 kapalit, may **blank top safe area na 30px** sa loob ng prototype (`--sb`) —
@@ -65,21 +65,81 @@ para sa theme at active screen.
 
 | # | Screen | Katumbas sa konsepto | Hazard version |
 | - | ------ | -------------------- | -------------- |
-| 1 | `#home` | Hello, Rizal | Situation overview · ORANGE ALERT strip, Marikina River card, `Go to Map`, recent reports |
+| 1 | `#home` | Hello, Rizal | Plain field bulletin · orange alert line, Marikina River photo + facts, `Go to Map`, recent reports |
 | 2 | `#hazard` | Aiguille du Midi detail | Photo hero + scrollable bottom sheet, metrics, Details / Evacuation / Reports tabs |
 | 3 | `#reports` | Hike Progress leaderboard | Community reports (walang gamification) · verified/pending, filters, report FAB |
 | 4 | `#photo` | Mike Wadkly photo screen | Field report ng volunteer, floating reporter card, `Go to Map` |
 | 5 | `#live` | Hike Details / compass | Live status · rain duration, evacuation distance, flow compass, sensor readings, emergency alert |
 | 6 | `#map` | People in Hike + Traffic Management | Dark satellite + route overlays, chips, evacuee capacity card, chat report, warning sheet |
 
+
+**Home: plain at hindi "AI-looking".** Ang `#home` ay muling ginawa bilang
+isang tahimik na field bulletin, hindi generic na dashboard template: iisang
+berdeng accent (`--lime`), hairline dividers, sentence case, at normal na type
+hierarchy. Tinanggal ang pill-shaped chips (ginawang text tabs na may iisang
+underline), ang orange gradient alert card (isang linya na lang na may maliit na
+amber dot), ang "stacked cards" sa likod ng litrato, ang dark gradient sa ibabaw
+ng photo, ang tatlong stat pills na may icons, ang makukulay na avatar initials,
+ang circular avatar na may berdeng icon, at ang glow shadow ng primary button.
+Ang litrato ng Marikina River ay nasa itaas na lang at ang severity, pangalan,
+water level at mga katotohanan ay nasa ibaba bilang plain text — may
+`Updated 8:48 AM` at `6h 47m of rain · 17.6 km evacuation route` para parang
+totoo at sinulat ng tao, hindi binuo ng template. May maliit na `HazardSync · Rizal`
+wordmark sa itaas. Ang bottom nav sa Home at Reports ay patag na (buong lapad,
+isang hairline, walang lumulutang na pill/shadow). May dagdag na
+`@media (max-width: 360px)` compaction para sa napakaliit na frame.
+
+Lahat ng ito ay **naka-scope sa `.view-home`** (at sa `.app[data-nav="1"] .bottom-nav`)
+kaya ang home redesign ay nananatiling buo kahit na may idinagdag na shared plain
+system para sa limang iba pang screen (tingnan ang susunod na seksyon). Ang 6 na
+hash routes, ang `#layersBtn` / `#layerChip` na `#i-compass`, ang `Go to Map` →
+`/map-styles.html` flow, ang `?style=` deep links, ang 30px blank safe area, ang
+transparent 63px top bar ng tunay na mapa, at ang `src/` ay hindi nagbago. Ang
+copy (`Hello, Rizal`, `Here's today's situation across all of Rizal.`,
+`All of Rizal`, `Public access — no account needed`) at lahat ng `#id` na
+ginagamit ng router ay nanatili. **Walang `src/` change.**
+
+**Lahat ng laman: iisang plain system, at responsive na.** Hindi lang `#home` ang
+pinino — pati `#hazard`, `#reports`, `#photo`, `#live`, `#map` at ang tatlong
+overlay (`#searchOverlay`, `#reportOverlay`, `#profileOverlay`) ay ginawang
+pareho ang wika: isang surface, isang hairline, isang berdeng accent, sentence
+case, 600–700 na font weight, walang 800/900, walang maluwag na letter-spacing.
+Tinanggal ang gradient summary card, mga glass/blur card, glow shadows, pill
+chips, severity capsules, `999px` radii, drag handles, at makukulay na avatar
+initials. Ang mga cards ay naging hairline rows; ang chips at segmented control
+ay naging text tabs na may iisang 2px underline; ang severity ay plain colored
+text; ang floating reporter / capacity / chat cards ay puti na may maitim na
+teksto sa light at dark. Lahat ng micro-label ay sentence case na (`Base map
+style`, `Affected areas`, `Flow direction`, `Type of hazard`, `What did you
+see?`, `Warning`). Ang Live Status hero ay `Current conditions` na, at ang dalawang
+stat box ay isang payak na data band para mabasa sa light at dark.
+
+**Naayos din ang sirang avatar.** Nung ginawa ang home, nawala ang global
+`.avatar` base rule kaya ang `<img>` sa loob ng avatar ay lumalabas sa natural
+na 1024px — tinatakpan nito ang `#reports` at `#photo`. Ibinabalik ng plain
+system ang `width/height/border-radius/overflow` at ang `.avatar img {
+width:100%; height:100%; object-fit:cover }`, kaya 32px lang ang avatar kahit
+saan.
+
+**Tunay na responsive, hindi nakapirming 412px na phone frame.** Ang `.app` ay
+`max-width: 412px` lang sa mobile; mula `620px` ay `calc(100vw - 48px)` at may
+`--hs-pad: clamp(32px, calc((100vw - 48px - 860px) / 2), 260px)` na gutter para
+ang nilalaman ay nananatiling ~860px ang lapad at hindi humahaba nang sobra.
+Sinusukat ito sa 196 / 360 / 412 / 768 / 1024 / 1440 sa light at dark: 412 →
+412px, 768 → 720px, 1024 → 976px, 1440 → 1392px, walang horizontal overflow.
+May compaction para sa `≤360px` (isang-linyang pamagat, 40px icon-only FAB,
+mas maliit na map discs/chips/compass) at para sa `≤560px` na taas (mas maikling
+hero at sheet, pamagat ng Live Status sa ibaba ng litrato). Ang Pixel 7 frame sa
+`pixel7-preview.html` ay nananatiling 412px dahil nasa loob ito ng iframe.
+
 **Ibinabalik ang dating white navbar ng map screen** (`#map`) — nasa dating
 pwesto sa pinaka-itaas (`top: calc(var(--sb) + 6px)`, `left/right: 16px`;
 `--sb` ay 30px na blank safe area, walang status bar). Row 1: **puting bilog na may black icon** — back arrow
-`←` sa kaliwa, `BASE MAP STYLE` + pangalan ng aktibong style sa gitna, at
-**bell na may pulang dot** sa kanan. Row 2: dalawang glass chips —
+`←` sa kaliwa, `Base map style` + pangalan ng aktibong style sa gitna, at
+**bell na may pulang dot** sa kanan. Row 2: dalawang patag na puting chips —
 `Route 2 · San Jose` (katumbas ng `Bus 6023` sa reference) at `Hazard layer`.
-Parehong puti ang bilog sa light at dark theme; ang chips ay puting glass sa
-light at dark glass sa dark, gaya ng dating bersyon.
+Parehong puti ang bilog at ang chips sa light at dark theme; wala nang glass
+blur o shadow, alinsunod sa plain system sa itaas.
 
 Ang pangalan ng style sa gitna ay **dynamic**, hindi hardcoded: i-tap ito para sa
 maliit na `BASEMAP STYLE` menu na may `Hazard Map` (Streets), `Traffic`,
