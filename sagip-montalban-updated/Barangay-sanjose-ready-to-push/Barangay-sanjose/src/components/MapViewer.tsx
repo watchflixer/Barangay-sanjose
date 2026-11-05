@@ -806,7 +806,9 @@ export const MapViewer: React.FC<MapViewerProps> = ({
       maxBounds: mapSettings.lockCameraToBounds ? maxBounds : undefined,
       maxBoundsViscosity: 1.0, // Hard lock - rubberband bouncing back
       zoomControl: false, // Zoom buttons are custom buttons in the left control stack, below 'Show your location'
-      attributionControl: false,
+      // Tile credits are required by the OSM / Esri terms of use, so the
+      // attribution control stays on (compact, see index.css).
+      attributionControl: true,
       // A selected report stays open: only its X (or picking another report)
       // closes the popup, never a stray tap on the map.
       closePopupOnClick: false,
@@ -936,6 +938,8 @@ export const MapViewer: React.FC<MapViewerProps> = ({
     });
 
     mapInstanceRef.current = map;
+    // Credits only (no "Leaflet" flag) — they are shown in compact form.
+    map.attributionControl?.setPrefix(false);
 
     // Keep Leaflet in step when the map container changes size — e.g. when the
     // desktop incident feed is closed with its X and the map gains width.

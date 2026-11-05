@@ -22,6 +22,8 @@ import { UpdatesModal } from './components/UpdatesModal';
 import { ResolvedModal } from './components/ResolvedModal';
 import { HistoryModal } from './components/HistoryModal';
 import { LocationPickerModal } from './components/LocationPickerModal';
+import { GuideModal } from './components/GuideModal';
+import { DonateButton } from './components/DonateButton';
 import { HazardAlert, HazardDraft, MapSettings, HazardType, HazardStatus } from './types';
 import { SAN_JOSE_POLYGON_COORDS } from './data/geoData';
 import { useFloodStatus } from './hooks/useFloodStatus';
@@ -67,6 +69,8 @@ export default function App() {
   const [isUpdatesModalOpen, setIsUpdatesModalOpen] = useState(false);
   const [isResolvedModalOpen, setIsResolvedModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isDonateOpen, setIsDonateOpen] = useState(false);
   const [isAddingPinMode, setIsAddingPinMode] = useState(false);
   const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   const [pickedCoordinates, setPickedCoordinates] = useState<[number, number] | null>(null);
@@ -121,6 +125,7 @@ export default function App() {
       setIsUpdatesModalOpen(false);
       setIsResolvedModalOpen(false);
       setIsHistoryModalOpen(false);
+      setIsGuideOpen(false);
       setIsAdminOpen(false);
       setIsLocationPickerOpen(false);
       setIsAddingPinMode(false);
@@ -388,7 +393,7 @@ export default function App() {
       {feed.error && (
         <div
           role="status"
-          className="fixed bottom-4 left-4 right-4 z-[1900] rounded-xl bg-amber-700 p-3 text-xs text-white shadow-xl"
+          className="fixed bottom-4 left-4 right-4 z-[1900] sm:left-auto sm:right-4 sm:max-w-sm rounded-xl bg-amber-700 p-3 text-xs text-white shadow-xl"
         >
           {feed.error}
         </div>
@@ -396,7 +401,7 @@ export default function App() {
       {submissionNotice && (
         <div
           role="status"
-          className="fixed bottom-4 left-4 right-4 z-[1900] flex items-center justify-between gap-3 rounded-xl bg-slate-900 p-4 text-sm text-white shadow-xl"
+          className="fixed bottom-4 left-4 right-4 z-[1900] sm:left-auto sm:right-4 sm:max-w-sm flex items-center justify-between gap-3 rounded-xl bg-slate-900 p-4 text-sm text-white shadow-xl"
         >
           {submissionNotice}
           <button
@@ -426,6 +431,7 @@ export default function App() {
         onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
         onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
         onOpenHistory={() => setIsHistoryModalOpen(true)}
+        onOpenGuide={() => setIsGuideOpen(true)}
         feedsVisible={incidentFeedsVisible}
         reportCardOpen={reportPopupOpen || helpPopupOpen}
       />
@@ -435,7 +441,7 @@ export default function App() {
         {/* Google-Maps-style icon rail. Renders on laptop/desktop widths only
             (all of its CSS sits behind @media (min-width: 1024px)), so the
             Android/iPhone portrait layout is untouched. */}
-        <DesktopRail donateDisabled={reportPopupOpen || helpPopupOpen} />
+        <DesktopRail donateDisabled={reportPopupOpen || helpPopupOpen} onOpenGuide={() => setIsGuideOpen(true)} />
 
         {/* Left Sidebar (Alerts Feed & GIS Controls) — HAZARD MAP ONLY. */}
         {incidentFeedsVisible && (
@@ -470,6 +476,9 @@ export default function App() {
                 onOpenEvacuationCenters={() => setIsEvacuationModalOpen(true)}
                 onOpenResolvedCleared={() => setIsResolvedModalOpen(true)}
                 onOpenHistory={() => setIsHistoryModalOpen(true)}
+                onOpenGuide={() => setIsGuideOpen(true)}
+                onOpenDonate={() => setIsDonateOpen(true)}
+                donateDisabled={reportPopupOpen || helpPopupOpen}
                 optionsDisabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
               />
 
@@ -610,6 +619,12 @@ export default function App() {
         onFilterToResolved={handleFilterToResolved}
         onSelectAlert={handleSelectAlert}
       />
+
+      {/* How-to guide (Guide button and Get app shortcut) */}
+      <GuideModal isOpen={isGuideOpen} onClose={() => setIsGuideOpen(false)} />
+
+      {/* Donate dialog opened from the phone Options menu (rail/navbar have their own). */}
+      <DonateButton open={isDonateOpen} onOpenChange={setIsDonateOpen} showTrigger={false} />
 
       {/* Full Incident History Modal */}
       <HistoryModal

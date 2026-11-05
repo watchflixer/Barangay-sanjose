@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BellRing, Building2, CheckCircle2, History } from 'lucide-react';
+import { BellRing, Building2, BookOpen, CheckCircle2, Heart, History } from 'lucide-react';
 
 interface OptionsMenuProps {
   /** Disabled while the Flood Prone or Traffic map is open (all devices). */
@@ -8,6 +8,11 @@ interface OptionsMenuProps {
   onOpenEvacuationCenters: () => void;
   onOpenResolvedCleared: () => void;
   onOpenHistory: () => void;
+  /** Guide and Donate are shown here on phones, where the navbar is hidden. */
+  onOpenGuide?: () => void;
+  onOpenDonate?: () => void;
+  /** Donate waits while a report or place card is open on the map. */
+  donateDisabled?: boolean;
   /**
    * Placement classes for the wrapper. The Navbar shows the button on
    * desktop/landscape only (`shrink-0 portrait:hidden`); the Incident Feeds
@@ -38,6 +43,9 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({
   onOpenEvacuationCenters,
   onOpenResolvedCleared,
   onOpenHistory,
+  onOpenGuide,
+  onOpenDonate,
+  donateDisabled = false,
   className = '',
   anchor = 'button',
 }) => {
@@ -98,6 +106,31 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({
           {/* Speech-bubble arrow pointing up at the ●●● button (which sits at
               the right end of the row in the Incident Feeds header too). */}
           <div className="absolute -top-2 right-3 h-4 w-4 rotate-45 rounded-[2px] border-l border-t border-slate-200 bg-white" />
+          {(onOpenGuide || onOpenDonate) && (
+            <div className="py-1">
+              {onOpenGuide && (
+                <button
+                  onClick={() => pick(onOpenGuide)}
+                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                >
+                  <BookOpen className="w-4 h-4 text-slate-700 shrink-0" />
+                  <span>Guide</span>
+                </button>
+              )}
+              {onOpenDonate && (
+                <button
+                  onClick={() => pick(onOpenDonate)}
+                  disabled={donateDisabled}
+                  title={donateDisabled ? 'Close the report first' : 'Donate'}
+                  className="w-full px-3.5 py-2 text-left text-xs font-semibold text-slate-800 hover:bg-slate-50 flex items-center gap-2.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  <Heart className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>Donate</span>
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="py-1">
             <button
               onClick={() => pick(onOpenUpdates)}

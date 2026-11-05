@@ -2420,3 +2420,90 @@ html.kb-nav :is(button, [role='button'], a, summary, input, select, textarea):no
     height: 13px;
   }
 }
+
+/* ==========================================================================
+   PLAIN PROFESSIONAL THEME
+   One restrained look for the whole site: white surfaces, slate text, one
+   navy accent, hairline borders and small radii. No glass blur, no glow.
+   Layout and device rules above are unchanged; this block only restyles.
+   ========================================================================== */
+:root {
+  --hs-ink: #0f172a;
+  --hs-muted: #475569;
+  --hs-line: #d9dee5;
+  --hs-surface: #ffffff;
+  --hs-accent: #1e3a5f;
+  --hs-radius: 10px;
+}
+
+/* Flat surfaces: no frosted blur on overlays and dialogs. */
+.backdrop-blur-xs,
+.backdrop-blur-sm,
+.backdrop-blur-md {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Map canvas: a calm neutral ground instead of the dark dotted grid. Tiles
+   and the outside-area blackout still render exactly as configured. */
+.leaflet-container {
+  background-color: #eef2f5 !important;
+  background-image: none !important;
+}
+
+/* Floating feed card (landscape/desktop): crisp hairline, modest radius. */
+#app-sidebar-panel.is-feed-open {
+  border-color: var(--hs-line) !important;
+  border-radius: var(--hs-radius) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.06) !important;
+}
+#app-sidebar-panel.is-feed-open > .app-feed-inner > aside {
+  border-radius: calc(var(--hs-radius) - 1px) !important;
+}
+
+/* Map controls: uniform square buttons with a hairline and a light shadow. */
+#map-control-stack > button,
+#map-control-stack > div > button {
+  border-radius: 8px !important;
+  border-color: var(--hs-line) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Layers popover and other map popovers: one radius, one shadow. */
+#map-control-stack .rounded-lg,
+.custom-leaflet-popup .leaflet-popup-content-wrapper {
+  border-radius: var(--hs-radius) !important;
+}
+
+/* Attribution: small, legible, and always visible (tile terms require it). */
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: var(--hs-muted) !important;
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+  padding: 1px 6px !important;
+  border-radius: 4px 0 0 0;
+}
+.leaflet-control-attribution a {
+  color: #1e40af !important;
+  text-decoration: none;
+}
+
+/* Keyboard focus: a clear, consistent outline everywhere. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Buttons show a pointer and respect disabled state. */
+button:not(:disabled),
+[role='button'] {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}

@@ -7,7 +7,8 @@ import { DonateButton } from './DonateButton';
  *
  * The narrow strip: the hamburger, then "Guide", "Donate" and "Get app" at the
  * bottom. ("Ask Maps" was removed from the rail; the Donate item is the only
- * one wired to anything — it opens the donate dialog.)
+ * ones wired to anything — Donate opens the donate dialog, and Guide and
+ * Get app open the how-to guide.)
  *
  * The hamburger is DECORATIVE — kept for the Google-Maps look, wired to
  * nothing. The incident feed card beside the rail is opened by default and
@@ -24,7 +25,9 @@ export const DesktopRail: React.FC<{
    * it is closed, so the card is never knocked off screen by the dialog.
    */
   donateDisabled?: boolean;
-}> = ({ donateDisabled = false }) => {
+  /** Opens the how-to guide (Guide and Get app both use it). */
+  onOpenGuide?: () => void;
+}> = ({ donateDisabled = false, onOpenGuide = () => {} }) => {
   // The Donate item drives the SAME dialog the navbar/phone build shows —
   // DonateButton in controlled mode, rendered here without its own trigger.
   const [donateOpen, setDonateOpen] = useState(false);
@@ -44,7 +47,7 @@ export const DesktopRail: React.FC<{
 
     {/* Guide — replaced the old "Recents" slot. Same treatment as the Navbar's
         Guide button (decorative for now, no handler), just as a rail item. */}
-    <button type="button" className="desktop-rail__item" aria-label="Guide" title="Guide">
+    <button type="button" className="desktop-rail__item" aria-label="Guide" title="Guide" onClick={onOpenGuide}>
       <span className="desktop-rail__icon">
         <BookOpen className="h-5 w-5" strokeWidth={2} />
       </span>
@@ -71,7 +74,7 @@ export const DesktopRail: React.FC<{
     {/* Everything above hugs the top; "Get app" sits at the bottom. */}
     <span className="desktop-rail__spacer" aria-hidden="true" />
 
-    <button type="button" className="desktop-rail__item" aria-label="Get app" title="Get app">
+    <button type="button" className="desktop-rail__item" aria-label="Get app" title="Get app: add to home screen" onClick={onOpenGuide}>
       <span className="desktop-rail__icon">
         <Smartphone className="h-5 w-5" strokeWidth={2} />
       </span>

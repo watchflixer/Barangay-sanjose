@@ -48,6 +48,7 @@ interface NavbarProps {
   onOpenEvacuationCenters?: () => void;
   onOpenResolvedCleared?: () => void;
   onOpenHistory?: () => void;
+  onOpenGuide?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -64,6 +65,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   helpCenterOpen = false,
   weatherOpen = false,
   reportCardOpen = false,
+  onOpenGuide = () => {},
   onOpenLiveModal = () => {},
   onOpenUpdates = () => {},
   onOpenEvacuationCenters = () => {},
@@ -221,7 +223,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 moved INSIDE the Incident Feeds header — see Sidebar.tsx. */}
             <OptionsMenu
               className={`shrink-0 ${feedsVisible ? 'portrait:hidden' : ''}`}
-              disabled
+              disabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
               onOpenUpdates={onOpenUpdates}
               onOpenEvacuationCenters={onOpenEvacuationCenters}
               onOpenResolvedCleared={onOpenResolvedCleared}
@@ -240,16 +242,19 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* Guide — nasa dating pwesto ng Donate: itim na bilog na may
                 puting question mark, tapos itim na text na "Guide". */}
-            <GuideButton className="ml-4 portrait:ml-0 portrait:mr-0.5 sm:portrait:mr-5 portrait:h-7 sm:portrait:h-8" />
+            <GuideButton
+              onClick={onOpenGuide}
+              className="ml-4 portrait:ml-0 portrait:mr-0.5 sm:portrait:mr-5 portrait:h-7 sm:portrait:h-8"
+            />
 
             {/* Donate — katabi ng Guide (nagpalitan sila ng pwesto). */}
             <DonateButton className="portrait:h-7 sm:portrait:h-8" disabled={reportCardOpen} />
 
             <button
               id="btn-emergency-hotlines"
-              disabled
-              aria-label="Hotlines temporarily unavailable"
-              className="hidden sm:inline-flex h-8 items-center space-x-1.5 px-3 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-md cursor-not-allowed"
+              onClick={onOpenHotlinesModal}
+              aria-label="Hotlines"
+              className="hidden sm:inline-flex h-8 items-center space-x-1.5 px-3 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded-md hover:bg-rose-100 cursor-pointer"
             >
               <PhoneCall className="w-3.5 h-3.5 text-rose-500" />
               <span>Hotlines</span>

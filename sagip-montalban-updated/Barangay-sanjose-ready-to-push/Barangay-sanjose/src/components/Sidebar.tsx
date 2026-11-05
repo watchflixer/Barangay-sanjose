@@ -54,6 +54,10 @@ interface SidebarProps {
   onOpenEvacuationCenters?: () => void;
   onOpenResolvedCleared?: () => void;
   onOpenHistory?: () => void;
+  onOpenGuide?: () => void;
+  onOpenDonate?: () => void;
+  /** A report or place card is open on the map — Donate waits. */
+  donateDisabled?: boolean;
   /** Flood Prone / Traffic map open — greys out the ⊕ at ●●● buttons (all devices). */
   optionsDisabled?: boolean;
 }
@@ -78,6 +82,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenEvacuationCenters = () => {},
   onOpenResolvedCleared = () => {},
   onOpenHistory = () => {},
+  onOpenGuide,
+  onOpenDonate,
+  donateDisabled = false,
   optionsDisabled = false,
   onOpenAdmin,
 }) => {
@@ -162,7 +169,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          {/* relative: the ●●● dropdown (anchor="row") positions itself under this row. */}
+          <div className="relative flex shrink-0 items-center gap-1.5">
             <ReportButton
               id="btn-report-hazard-mobile"
               className="hidden portrait:inline-flex"
@@ -172,11 +180,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <OptionsMenu
               className="hidden portrait:inline-flex"
               anchor="row"
-              disabled
+              disabled={optionsDisabled}
               onOpenUpdates={onOpenUpdates}
               onOpenEvacuationCenters={onOpenEvacuationCenters}
               onOpenResolvedCleared={onOpenResolvedCleared}
               onOpenHistory={onOpenHistory}
+              onOpenGuide={onOpenGuide}
+              onOpenDonate={onOpenDonate}
+              donateDisabled={donateDisabled}
             />
           </div>
         </div>
@@ -436,24 +447,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Compact footer status bar from the supplied reference. */}
+      {/* Footer: a truthful feed status and a working hotlines directory. */}
       <footer
-        className="shrink-0 bg-slate-50 px-3 pt-2 lg:bg-white"
+        className="shrink-0 border-t border-slate-200 bg-white px-4 pt-3"
         style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
       >
-        <div className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white px-3 py-2 shadow-[0_1px_2px_rgba(60,64,67,.25),0_1px_3px_1px_rgba(60,64,67,.12)]">
+        <div className="flex min-h-11 items-center justify-between gap-3">
           <div className="min-w-0">
-            <span className="block text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500">Streetlights</span>
-            <span className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-slate-800">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-              Active survey
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-500">Emergency</span>
+            <span className="mt-0.5 block truncate text-[11px] font-medium text-slate-800">
+              Call the barangay hotlines for urgent help
             </span>
           </div>
           <button
             type="button"
-            disabled
-            aria-label="Hotlines temporarily unavailable"
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-red-600 px-3 text-[10px] font-bold text-white shadow-sm cursor-not-allowed"
+            onClick={onOpenHotlinesModal}
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-red-600 px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 cursor-pointer"
           >
             <PhoneCall className="h-3.5 w-3.5" />
             <span>Hotlines</span>

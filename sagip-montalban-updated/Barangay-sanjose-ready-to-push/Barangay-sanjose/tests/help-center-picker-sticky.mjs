@@ -61,7 +61,7 @@ try {
     });
     assert.equal(alignment.headerBottom, alignment.scrollTop, 'list starts just below the fixed search header');
     assert.equal(alignment.scrollTop, alignment.emergencyTop, 'scrollbar starts level with the Emergency section');
-    const emergencyOverlay = await page.locator('.hc-picker-sec').evaluate((node) =>
+    const emergencyOverlay = await page.locator('.hc-picker-sec').first().evaluate((node) =>
       getComputedStyle(node, '::after').content,
     );
     assert.equal(emergencyOverlay, 'none', 'section decoration does not cover the first card border');

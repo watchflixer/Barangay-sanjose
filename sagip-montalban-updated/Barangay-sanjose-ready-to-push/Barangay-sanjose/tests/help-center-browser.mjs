@@ -163,8 +163,14 @@ try {
     }
     assert.ok(await page.locator('#hc-base-switch button').first().isDisabled());
     assert.ok(await page.locator('#btn-recenter-gis').isEnabled());
-    const donate = width >= 1024 ? page.locator('.desktop-rail button[aria-label="Donate"]') : page.getByRole('button', { name: 'Donate', exact: true });
-    assert.ok(await donate.isDisabled());
+    // Desktop: the rail's Donate waits while the card is open. Phones: Donate is
+    // not a live control in this view (the feed header, and its ●●● menu, is
+    // not mounted on the Help Center map), so no visible Donate may be enabled.
+    if (width >= 1024) {
+      assert.ok(await page.locator('.desktop-rail button[aria-label="Donate"]').isDisabled());
+    } else {
+      assert.equal(await page.locator('button[aria-label="Donate"]:visible:not(:disabled)').count(), 0);
+    }
     await page.waitForFunction(() => {
       const card = document.querySelector('.hc-popup .leaflet-popup-content-wrapper')?.getBoundingClientRect();
       const map = document.querySelector('#help-center-map-root')?.getBoundingClientRect();
@@ -181,7 +187,7 @@ try {
     await waitForPinsAboveSheet();
     assert.ok(await page.locator('#btn-toggle-layers-menu').isEnabled());
     assert.ok(await page.locator('#btn-show-user-location').isEnabled());
-    assert.ok(await donate.isEnabled());
+    if (width >= 1024) assert.ok(await page.locator('.desktop-rail button[aria-label="Donate"]').isEnabled());
     assert.equal(await page.locator('#help-center-map-root').getByRole('button', { name: 'Zoom in' }).getAttribute('aria-disabled'), 'false');
     // Zoom out may naturally be disabled at the fitted minimum zoom.
 

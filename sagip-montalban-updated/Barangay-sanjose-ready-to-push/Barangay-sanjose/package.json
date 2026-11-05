@@ -22,6 +22,7 @@
     "test:location": "tsx --import ./tests/image-stub.mjs --test tests/location-all-views.test.ts",
     "test:locate-camera": "tsx --import ./tests/image-stub.mjs --test tests/locate-camera-parity.test.ts",
     "test:desktop-rail": "tsx --import ./tests/image-stub.mjs --test tests/desktop-rail.test.ts",
+    "test:site-shell": "tsx --import ./tests/image-stub.mjs --test tests/site-shell.test.ts",
     "test:weather-nav": "tsx --import ./tests/image-stub.mjs --test tests/weather-mode-nav.test.ts",
     "test:weather-zoom": "tsx --import ./tests/image-stub.mjs --test tests/weather-zoom-lock.test.ts",
     "test:city-density": "tsx --import ./tests/image-stub.mjs --test tests/city-density.test.ts",
