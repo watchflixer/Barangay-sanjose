@@ -1,465 +1,436 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  HazardAlert, 
-  HazardType, 
-  HazardStatus 
-} from '../types';
-import { formatReportedTime, isAdminSearch, reportDate } from '../lib/admin';
-import { useLiveNow } from '../hooks/useLiveNow';
-import { WaterLevelLiveBanner } from './WaterLevelLiveBanner';
-import { OptionsMenu } from './OptionsMenu';
-import { ReportButton } from './ReportButton';
-import { 
-  Search, 
-  Flame, 
-  Waves, 
-  Zap, 
-  LightbulbOff,
-  Droplets, 
-  AlertOctagon, 
+  ShieldAlert, 
   MapPin, 
-  Clock, 
-  SlidersHorizontal,
-  CheckCircle2,
-  AlertTriangle,
-  Radio,
-  PlusCircle,
-  PhoneCall,
-  ShieldCheck,
-  Camera,
-  Image as ImageIcon
+  PlusCircle, 
+  PhoneCall, 
+  Menu, 
+  X,
+  Flame,
+  Droplets,
+  Zap,
+  Waves,
+  LightbulbOff,
+  RefreshCw,
 } from 'lucide-react';
+import { OptionsMenu } from './OptionsMenu';
+import { DonateButton } from './DonateButton';
+import { GuideButton } from './GuideButton';
+import { ReportButton } from './ReportButton';
+import { HazardAlert } from '../types';
+import { rememberRefreshView } from '../lib/refreshView';
 
-interface SidebarProps {
-  onOpenAdmin?: () => void;
+interface NavbarProps {
   alerts: HazardAlert[];
-  /** Categories the admin hid from public incident feeds. */
-  hiddenTypes?: HazardType[];
-  selectedAlert: HazardAlert | null;
-  onSelectAlert: (alert: HazardAlert) => void;
-  /** Residents ask an admin to close an incident; they cannot resolve it directly. */
-  onRequestResolved: (alert: HazardAlert) => void;
   onOpenReportModal: () => void;
   onOpenHotlinesModal: () => void;
-  activeFilterType: HazardType | 'all';
-  setActiveFilterType: (type: HazardType | 'all') => void;
-  activeFilterStatus: HazardStatus | 'all';
-  setActiveFilterStatus: (status: HazardStatus | 'all') => void;
-  liveUrl?: string;
+  onResetMap: () => void;
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
+  hasLiveUrl?: boolean;
+  feedsVisible?: boolean;
+  floodProneOpen?: boolean;
+  trafficOpen?: boolean;
+  helpCenterOpen?: boolean;
+  weatherOpen?: boolean;
+  reportCardOpen?: boolean;
   onOpenLiveModal?: () => void;
-  onRemoveLive?: () => void;
-  onClose?: () => void;
-  /** ●●● options menu — lives in this header on mobile portrait. */
   onOpenUpdates?: () => void;
   onOpenEvacuationCenters?: () => void;
   onOpenResolvedCleared?: () => void;
   onOpenHistory?: () => void;
-  /** Flood Prone / Traffic map open — greys out the ⊕ at ●●● buttons (all devices). */
-  optionsDisabled?: boolean;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
+export const Navbar: React.FC<NavbarProps> = ({
   alerts,
-  hiddenTypes = [],
-  selectedAlert,
-  onSelectAlert,
-  onRequestResolved,
   onOpenReportModal,
   onOpenHotlinesModal,
-  activeFilterType,
-  setActiveFilterType,
-  activeFilterStatus,
-  setActiveFilterStatus,
-  liveUrl = '',
+  onResetMap,
+  mobileMenuOpen,
+  setMobileMenuOpen,
+  hasLiveUrl = false,
+  feedsVisible = true,
+  floodProneOpen = false,
+  trafficOpen = false,
+  helpCenterOpen = false,
+  weatherOpen = false,
+  reportCardOpen = false,
   onOpenLiveModal = () => {},
-  onRemoveLive = () => {},
-  onClose,
   onOpenUpdates = () => {},
   onOpenEvacuationCenters = () => {},
   onOpenResolvedCleared = () => {},
   onOpenHistory = () => {},
-  optionsDisabled = false,
-  onOpenAdmin,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const now = useLiveNow();
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [isSpinning, setIsSpinning] = useState<boolean>(false);
 
-  // Filter alerts by search and active filters
-  const filteredAlerts = alerts.filter((alert) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      alert.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      alert.streetName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      alert.sitio.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      alert.description.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesType =
-      activeFilterType === 'all' || alert.type === activeFilterType;
-
-    const matchesStatus =
-      activeFilterStatus === 'all' || alert.status === activeFilterStatus;
-
-    return matchesSearch && matchesType && matchesStatus;
-  });
-
-  const activeCount = alerts.filter((a) => a.status === 'active').length;
-  const monitoringCount = alerts.filter((a) => a.status === 'monitoring').length;
-  const resolvedCount = alerts.filter((a) => a.status === 'resolved').length;
-
-  const getTypeIcon = (type: HazardType) => {
-    switch (type) {
-      case 'fire':
-        return <Flame className="w-3.5 h-3.5 text-red-500" />;
-      case 'flood':
-        return <Waves className="w-3.5 h-3.5 text-blue-500" />;
-      case 'power':
-        return <Zap className="w-3.5 h-3.5 text-amber-500" />;
-      case 'streetlight':
-        return <LightbulbOff className="w-3.5 h-3.5 text-indigo-600" />;
-      case 'water':
-        return <Droplets className="w-3.5 h-3.5 text-cyan-500" />;
-      case 'road':
-        return <AlertOctagon className="w-3.5 h-3.5 text-orange-500" />;
-    }
+  const handleRecenter = () => {
+    setIsSpinning(true);
+    onResetMap();
+    setTimeout(() => {
+      setIsSpinning(false);
+    }, 550);
   };
 
-  const getTypeBg = (type: HazardType) => {
-    switch (type) {
-      case 'fire':
-        return 'bg-red-50 text-red-700 border-red-200';
-      case 'flood':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'power':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
-      case 'streetlight':
-        return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-      case 'water':
-        return 'bg-cyan-50 text-cyan-700 border-cyan-200';
-      case 'road':
-        return 'bg-orange-50 text-orange-700 border-orange-200';
-    }
+  const handleRefresh = () => {
+    const view = trafficOpen ? 'traffic' : helpCenterOpen ? 'helpcenter' : weatherOpen ? 'weather' : floodProneOpen ? 'flood' : 'main';
+    rememberRefreshView(view);
+    window.location.reload();
   };
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Manila',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
+      );
+    };
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const activeAlerts = alerts.filter(a => a.status === 'active');
+  const fireCount = activeAlerts.filter(a => a.type === 'fire').length;
+  const floodCount = activeAlerts.filter(a => a.type === 'flood').length;
+  const powerCount = activeAlerts.filter(a => a.type === 'power').length;
+  const streetlightCount = activeAlerts.filter(a => a.type === 'streetlight').length;
+  const waterCount = activeAlerts.filter(a => a.type === 'water').length;
 
   return (
-    <aside
-      /* Desktop/laptop: this panel is open on load as the floating card, and
-         the round chevron below zoom-out closes/reopens it (see index.css).
-         Phones keep the plain drawer styling and behaviour. */
-      className="flex h-full w-full min-h-0 shrink-0 flex-col overflow-hidden bg-white lg:w-full lg:border-0 lg:shadow-none"
+    <header
+      id="app-navbar"
+      className="sticky top-0 z-30 shrink-0 border-b border-slate-200/80 bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.04)] backdrop-blur-xl"
     >
-      {/* Compact header, search, and filters styled after the supplied screenshots. */}
-      <div className="shrink-0 border-b border-slate-100 bg-[#f6f8fc] px-4 pb-2 pt-3.5 lg:bg-white">
-        <div className="flex items-center gap-2.5">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <h2 className="m-0 text-lg font-medium leading-6 tracking-tight text-[#1f1f1f]">Incident Feeds</h2>
-              <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-medium leading-none text-[#5f6368] shadow-sm">
-                {filteredAlerts.length}
+      <div className="mx-auto max-w-7xl px-3 sm:px-6">
+        <div className="flex h-16 items-center justify-between gap-2 sm:gap-4 portrait:h-13 sm:portrait:h-16">
+          <button
+            type="button"
+            id="btn-brand-refresh"
+            onClick={handleRefresh}
+            title="Refresh"
+            aria-label="Refresh page"
+            className="group flex min-w-0 cursor-pointer items-center space-x-2.5 rounded-xl border border-slate-200/80 bg-white/80 px-2 py-1.5 text-left transition-all hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 sm:space-x-3.5"
+          >
+            <svg
+              viewBox="0 0 32 32"
+              className="h-8 w-8 shrink-0 rounded-xl bg-slate-900/95 p-1.5 text-white portrait:h-7 portrait:w-7 sm:portrait:h-8 sm:portrait:w-8"
+              role="img"
+              aria-label="HazardSync"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M14.15 5.35Q16 1.8 17.85 5.35L29.41 27.54Q30.8 30.2 27.8 30.2H4.2Q1.2 30.2 2.59 27.54L14.15 5.35Z M16 8.9a4.6 4.6 0 1 1 0 9.2 4.6 4.6 0 0 1 0-9.2Z M11.25 30.2V26.45a4.75 4.75 0 0 1 9.5 0V30.2H11.25Z"
+              />
+            </svg>
+            <span className="block min-w-0">
+              <span className="flex items-center space-x-1.5 sm:space-x-2">
+                <span
+                  role="heading"
+                  aria-level={1}
+                  className="whitespace-nowrap text-sm font-extrabold leading-tight tracking-[-0.04em] text-slate-900 sm:text-base"
+                >
+                  HazardSync
+                </span>
               </span>
+              <span className="mt-0.5 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                <span>Rizal</span>
+                <span className="flex items-center gap-1 normal-case tracking-tight text-slate-700 tabular-nums whitespace-nowrap sm:hidden sm:portrait:flex">
+                  <span className="h-2.5 w-0.5 rounded-full bg-slate-300" />
+                  {currentTime || 'PST'}
+                </span>
+              </span>
+            </span>
+          </button>
+
+          <div className="hidden items-center gap-2 lg:flex">
+            <div className="flex w-[500px] max-w-[500px] items-center justify-between rounded-2xl border border-slate-200/80 bg-white/90 px-3 py-2 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
+              <div className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-700">
+                <Flame className="h-3.5 w-3.5 text-rose-500" />
+                <span>{fireCount} Fire</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-700">
+                <Waves className="h-3.5 w-3.5 text-blue-500" />
+                <span>{floodCount} Flood</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-700">
+                <Zap className="h-3.5 w-3.5 text-amber-500" />
+                <span>{powerCount} No Power</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-700">
+                <LightbulbOff className="h-3.5 w-3.5 text-indigo-500" />
+                <span>{streetlightCount} Streetlight</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-slate-700">
+                <Droplets className="h-3.5 w-3.5 text-cyan-500" />
+                <span>{waterCount} Water</span>
+              </div>
             </div>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[11px] text-[#5f6368]">
-              <span className="truncate">Verified reports · Barangay San Jose</span>
-            </p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1.5">
-            <ReportButton
-              id="btn-report-hazard-mobile"
-              className="hidden portrait:inline-flex"
-              disabled={optionsDisabled}
-              onClick={onOpenReportModal}
-            />
+          <div className="flex shrink-0 items-center space-x-2 portrait:flex-row-reverse">
+            <div className="hidden h-8 items-center justify-center rounded-full border border-slate-200 bg-white/80 px-3 text-xs font-semibold tracking-tight text-slate-700 tabular-nums whitespace-nowrap shadow-sm sm:flex portrait:hidden">
+              {currentTime || 'PST'}
+            </div>
+
             <OptionsMenu
-              className="hidden portrait:inline-flex"
-              anchor="row"
-              disabled
+              className={`shrink-0 ${feedsVisible ? 'portrait:hidden' : ''}`}
+              disabled={false}
               onOpenUpdates={onOpenUpdates}
               onOpenEvacuationCenters={onOpenEvacuationCenters}
               onOpenResolvedCleared={onOpenResolvedCleared}
               onOpenHistory={onOpenHistory}
             />
-          </div>
-        </div>
 
-        <label className="mt-2.5 flex h-10 items-center gap-2.5 rounded-full bg-white px-3.5 text-[#5f6368] shadow-[0_1px_2px_rgba(60,64,67,.2),0_1px_3px_1px_rgba(60,64,67,.1)] focus-within:outline focus-within:outline-2 focus-within:outline-[#1a73e8]">
-          <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <input
-            id="input-hazard-search"
-            type="search"
-            value={searchQuery}
-            onChange={(e) => {
-              if (isAdminSearch(e.target.value)) { setSearchQuery(''); onOpenAdmin?.(); }
-              else setSearchQuery(e.target.value);
-            }}
-            placeholder="Search street, sitio, or incident"
-            aria-label="Search incident feeds"
-            className="min-w-0 flex-1 bg-transparent text-[12px] text-[#1f1f1f] outline-none placeholder:text-[#5f6368]"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              aria-label="Clear search"
-              className="grid h-6 w-6 shrink-0 place-items-center rounded-full text-[#5f6368] hover:bg-slate-100"
-            >
-              ×
-            </button>
-          )}
-        </label>
+            <ReportButton
+              id="btn-report-hazard"
+              className={feedsVisible ? 'portrait:hidden' : ''}
+              disabled={floodProneOpen || trafficOpen || helpCenterOpen || weatherOpen}
+              onClick={onOpenReportModal}
+            />
 
-        <div className="-mx-1 mt-2 flex items-center gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {([
-            ['all', 'All'],
-            ['fire', 'Fire'],
-            ['flood', 'Flood'],
-            ['power', 'No Power'],
-            ['streetlight', 'Streetlight'],
-            ['water', 'Water'],
-            ['road', 'Road'],
-          ] as Array<[HazardType | 'all', string]>)
-            .filter(([type]) => type === 'all' || !hiddenTypes.includes(type as HazardType))
-            .map(([type, label]) => {
-              const selected = activeFilterType === type;
-              return (
-                <button
-                  key={type}
-                  id={`filter-${type}`}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setActiveFilterType(type)}
-                  className={`flex h-7 shrink-0 items-center gap-1 rounded-[9px] border px-2.5 text-[10px] font-semibold whitespace-nowrap transition-colors ${
-                    selected
-                      ? 'border-transparent bg-[#e8f0fe] text-[#1a73e8]'
-                      : 'border-[#e3e6ec] bg-white text-[#1f1f1f] hover:bg-slate-50'
-                  }`}
-                >
-                  {type !== 'all' && getTypeIcon(type)}
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-        </div>
+            <GuideButton className="ml-4 portrait:ml-0 portrait:mr-0.5 sm:portrait:mr-5 portrait:h-7 sm:portrait:h-8" />
 
-        <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <span className="shrink-0 text-[8px] font-semibold uppercase tracking-wider text-[#8a9099]">Status:</span>
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
+            <DonateButton className="portrait:h-7 sm:portrait:h-8" disabled={reportCardOpen} />
+
             <button
-              type="button"
-              onClick={() => setActiveFilterStatus('all')}
-              aria-pressed={activeFilterStatus === 'all'}
-              className={`rounded-md px-1.5 py-1 text-[9px] font-medium ${activeFilterStatus === 'all' ? 'bg-[#e8f0fe] text-[#1a73e8]' : 'text-[#5f6368] hover:bg-white'}`}
+              id="btn-emergency-hotlines"
+              disabled={false}
+              aria-label="Emergency hotlines"
+              onClick={onOpenHotlinesModal}
+              className="hidden h-8 items-center space-x-1.5 rounded-lg border bg-rose-50 px-3 text-xs font-bold text-rose-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-rose-100 sm:inline-flex"
             >
-              All ({alerts.length})
+              <PhoneCall className="h-3.5 w-3.5 text-rose-500" />
+              <span>Hotlines</span>
             </button>
+
             <button
-              type="button"
-              onClick={() => setActiveFilterStatus('active')}
-              aria-pressed={activeFilterStatus === 'active'}
-              className={`rounded-md px-1.5 py-1 text-[9px] font-medium ${activeFilterStatus === 'active' ? 'bg-red-50 text-red-700' : 'text-[#5f6368] hover:bg-white'}`}
+              id="btn-mobile-menu"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="hidden h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100 sm:flex lg:hidden portrait:hidden sm:portrait:flex sm:h-8 sm:w-8 sm:p-2"
             >
-              Active ({activeCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveFilterStatus('monitoring')}
-              aria-pressed={activeFilterStatus === 'monitoring'}
-              className={`rounded-md px-1.5 py-1 text-[9px] font-medium ${activeFilterStatus === 'monitoring' ? 'bg-amber-50 text-amber-800' : 'text-[#5f6368] hover:bg-white'}`}
-            >
-              Mon ({monitoringCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveFilterStatus('resolved')}
-              aria-pressed={activeFilterStatus === 'resolved'}
-              className={`rounded-md px-1.5 py-1 text-[9px] font-medium ${activeFilterStatus === 'resolved' ? 'bg-slate-200 text-slate-700' : 'text-[#5f6368] hover:bg-white'}`}
-            >
-              Done ({resolvedCount})
+              {mobileMenuOpen ? <X className="h-4 w-4 sm:h-5 sm:w-5" /> : <Menu className="h-4 w-4 sm:h-5 sm:w-5" />}
             </button>
           </div>
         </div>
       </div>
-
-      <WaterLevelLiveBanner
-        liveUrl={liveUrl}
-        onOpenEditModal={onOpenLiveModal}
-        onRemoveLive={onRemoveLive}
-      />
-
-      {/* Alert Cards List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar bg-slate-50/30 lg:bg-white">
-        {filteredAlerts.length === 0 ? (
-          <div className="py-12 text-center space-y-3">
-            <div className="w-10 h-10 rounded-md bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-slate-800">No matching incidents</p>
-              <p className="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">
-                No reports match your current filter in Barangay San Jose.
-              </p>
-            </div>
-            {(searchQuery || activeFilterType !== 'all' || activeFilterStatus !== 'all') && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setActiveFilterType('all');
-                  setActiveFilterStatus('all');
-                }}
-                className="text-[11px] text-blue-600 font-semibold underline hover:text-blue-700"
-              >
-                Clear all filters
-              </button>
-            )}
-          </div>
-        ) : (
-          filteredAlerts.map((alert) => {
-            const isSelected = selectedAlert?.id === alert.id;
-            const isResolved = alert.status === 'resolved';
-
-            return (
-              <div
-                key={alert.id}
-                id={`alert-card-${alert.id}`}
-                onClick={() => {
-                  onSelectAlert(alert);
-                  onClose?.();
-                }}
-                className={`group relative overflow-hidden p-3 rounded-xl border bg-white transition-all cursor-pointer ${
-                  isSelected
-                    ? 'border-blue-300 shadow-md'
-                    : isResolved
-                    ? 'border-slate-200/80 opacity-70 hover:opacity-100 hover:border-slate-300'
-                    : 'border-slate-200 hover:border-slate-300 hover:shadow-xs'
-                }`}
-              >
-                {/* Photo Proof Thumbnail if present */}
-                {alert.photoUrl && (
-                  <div className="relative -mx-3 -mt-3 mb-2 h-24 overflow-hidden rounded-t-[11px] bg-slate-100">
-                    <img
-                      src={alert.photoUrl}
-                      alt={alert.title}
-                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
-                    />
-                    <span className={`absolute left-1 top-1 rounded-md bg-white/95 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide shadow-sm ${
-                      alert.severity === 'critical' || alert.severity === 'high'
-                        ? 'text-red-700'
-                        : 'text-amber-800'
-                    }`}>
-                      {alert.severity}
-                    </span>
-                    <div className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded bg-slate-900/75 px-1.5 py-0.5 text-[9px] font-medium text-white backdrop-blur-xs">
-                      <Camera className="h-2.5 w-2.5 text-emerald-400" />
-                      <span>Photo attached</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Type, severity, and status now sit directly below the photo. */}
-                {/* Top Row: Icon + Type + Status */}
-                <div className="flex items-start justify-between gap-2 mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 border ${getTypeBg(alert.type)}`}>
-                      {getTypeIcon(alert.type)}
-                    </div>
-                    <div>
-                      <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
-                        {alert.type === 'streetlight' ? 'STREETLIGHT' : alert.type.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    {isResolved ? (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-200 text-slate-700">
-                        Resolved
-                      </span>
-                    ) : alert.status === 'monitoring' ? (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-100 text-amber-800">
-                        Monitoring
-                      </span>
-                    ) : (
-                      <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-100 text-red-700">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Title */}
-                <h3 className="text-xs font-bold leading-snug line-clamp-2 mb-1 text-slate-900">
-                  {alert.title}
-                </h3>
-
-                {/* Location & Sitio — the resident's own words, shown in full
-                    (wrapped, not clipped) so the published card matches what
-                    they typed. `title` keeps the complete text on hover too. */}
-                <div className="flex items-start gap-1 text-[11px] mb-1 text-slate-600">
-                  <MapPin className="mt-[1px] w-3 h-3 text-slate-400 shrink-0" />
-                  <span className="min-w-0 break-words font-medium" title={alert.streetName}>
-                    {alert.streetName}
-                  </span>
-                </div>
-
-
-                <p className="mb-2 break-words text-[10px] text-slate-500">Reported by: {alert.reportedBy}</p>
-                {/* Footer info: time & action */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
-                  <div
-                    className="flex items-center gap-1 font-mono text-[10px]"
-                    title={alert.reportedAt ? reportDate(alert.reportedAt) : undefined}
-                  >
-                    <Clock className="w-3 h-3 shrink-0" />
-                    <span>{formatReportedTime(alert, now)}</span>
-                  </div>
-
-                  {!isResolved && <button
-                    id={`btn-card-resolve-${alert.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRequestResolved(alert);
-                    }}
-                    disabled={!!alert.pendingResolveFlags}
-                    title={
-                      alert.pendingResolveFlags
-                        ? 'A resolve request is already waiting for admin review.'
-                        : 'Ask the barangay admin to mark this incident resolved.'
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-semibold transition-colors bg-[#1a73e8] text-white hover:bg-blue-700 disabled:cursor-default disabled:bg-slate-100 disabled:text-slate-500"
-                  >
-                    <CheckCircle2 className="h-3 w-3" />
-                    {alert.pendingResolveFlags ? 'Request pending' : 'Flag as resolved'}
-                  </button>}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Compact footer status bar from the supplied reference. */}
-      <footer
-        className="shrink-0 bg-slate-50 px-3 pt-2 lg:bg-white"
-        style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom, 0px))' }}
-      >
-        <div className="flex min-h-11 items-center justify-between gap-3 rounded-2xl bg-white px-3 py-2 shadow-[0_1px_2px_rgba(60,64,67,.25),0_1px_3px_1px_rgba(60,64,67,.12)]">
-          <div className="min-w-0">
-            <span className="block text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500">Streetlights</span>
-            <span className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium text-slate-800">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-              Active survey
-            </span>
-          </div>
-          <button
-            type="button"
-            disabled
-            aria-label="Hotlines temporarily unavailable"
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-red-600 px-3 text-[10px] font-bold text-white shadow-sm cursor-not-allowed"
-          >
-            <PhoneCall className="h-3.5 w-3.5" />
-            <span>Hotlines</span>
-          </button>
-        </div>
-      </footer>
-    </aside>
+    </header>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

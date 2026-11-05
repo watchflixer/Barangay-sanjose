@@ -1,26 +1,39 @@
 import React from 'react';
+import { Plus } from 'lucide-react';
 
-/**
- * Guide button — puting button na may itim na bilog (circle) sa loob na may
- * puting question mark, tapos itim na text na "Guide" sa tabi.
- * Nasa Navbar, katabi ng Donate button (sa dulo).
- */
-interface GuideButtonProps {
-  onClick?: () => void;
+interface ReportButtonProps {
+  onClick: () => void;
+  disabled?: boolean;
   className?: string;
+  id?: string;
 }
 
-export const GuideButton: React.FC<GuideButtonProps> = ({ onClick, className = '' }) => (
+export const ReportButton: React.FC<ReportButtonProps> = ({
+  onClick,
+  disabled = false,
+  className = '',
+  id = 'btn-report-hazard',
+}) => (
   <button
-    id="btn-guide"
-    type="button"
+    id={id}
     onClick={onClick}
-    aria-label="Guide"
-    className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-xs font-semibold text-black transition-colors hover:bg-slate-50 ${className}`}
+    disabled={disabled}
+    title="Report Hazard"
+    aria-label="Report a hazard"
+    className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition-all ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50'} ${className}`}
   >
-    <span className="flex h-4.5 w-4.5 items-center justify-center rounded-full bg-black text-[10px] font-bold leading-none text-white">
-      ?
-    </span>
-    <span>Guide</span>
+    <Plus className="h-4 w-4" strokeWidth={2.75} aria-hidden="true" />
   </button>
 );
+
+
+
+
+
+
+
+
+
+
+
+
